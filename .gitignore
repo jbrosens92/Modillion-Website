@@ -1,0 +1,5 @@
+# Confidential investor material — must never be committed.
+# This repository is public.
+*.docx
+*.xlsx
+*.pdf
