@@ -879,6 +879,12 @@ section { padding: var(--section) 0; }
   letter-spacing: -.02em;
   margin-bottom: 18px;
 }
+.partnership-card__logo-img {
+  width: 100%;
+  max-width: 220px;
+  height: auto;
+  margin-bottom: 18px;
+}
 .partnership-card__type {
   font-size: .72rem;
   letter-spacing: .18em;
@@ -1006,13 +1012,10 @@ section { padding: var(--section) 0; }
     <span class="eyebrow">Our Partnerships</span>
 
     <div class="current-partnerships">
-      <!-- Replace FAIRWIND_WEBSITE_URL with Fairwind's final website URL.
-           Replace the text wordmark below with:
-           <img src="fairwind-logo.png" alt="Fairwind">
-           once the final logo file is available. -->
+      <!-- Replace FAIRWIND_WEBSITE_URL with Fairwind's final website URL. -->
       <a class="partnership-card" href="FAIRWIND_WEBSITE_URL" target="_blank" rel="noopener" aria-label="Visit Fairwind's website">
         <div class="partnership-card__inner">
-          <div class="partnership-card__logo">Fairwind</div>
+          <img class="partnership-card__logo-img" src="images/fairwind-logo.png" alt="Fairwind">
           <div class="partnership-card__type">Affordable Housing</div>
           <div class="partnership-card__note">View partnership ↗</div>
         </div>
