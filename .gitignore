@@ -3,3 +3,6 @@
 *.docx
 *.xlsx
 *.pdf
+
+# Local-only holding area for content pulled off the site temporarily.
+.content-archive/
