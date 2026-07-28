@@ -333,8 +333,12 @@ section { padding: var(--section) 0; }
 }
 .section-head__title h2 { margin-bottom: 0; }
 .section-head__body p:last-child { margin-bottom: 0; }
+/* Aligns the h2 top with the body top by offsetting the eyebrow's height. */
+.section-head--top { align-items: start; }
+.section-head--top .section-head__body { padding-top: calc(.78rem * 1.6 + 1.25rem); }
 @media (max-width: 820px) {
   .section-head { grid-template-columns: 1fr; gap: 24px; }
+  .section-head--top .section-head__body { padding-top: 0; }
 }
 
 /* Foundation / stats ----------------------------------------- */
@@ -824,7 +828,7 @@ section { padding: var(--section) 0; }
         </div>
         <div class="contact-meta__row">
           <span class="contact-meta__label">Location</span>
-          <span class="contact-meta__value">Philadelphia, Pennsylvania</span>
+          <span class="contact-meta__value">Wayne, Pennsylvania</span>
         </div>
       </div>
     </div>

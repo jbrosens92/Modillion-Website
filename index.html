@@ -333,8 +333,12 @@ section { padding: var(--section) 0; }
 }
 .section-head__title h2 { margin-bottom: 0; }
 .section-head__body p:last-child { margin-bottom: 0; }
+/* Aligns the h2 top with the body top by offsetting the eyebrow's height. */
+.section-head--top { align-items: start; }
+.section-head--top .section-head__body { padding-top: calc(.78rem * 1.6 + 1.25rem); }
 @media (max-width: 820px) {
   .section-head { grid-template-columns: 1fr; gap: 24px; }
+  .section-head--top .section-head__body { padding-top: 0; }
 }
 
 /* Foundation / stats ----------------------------------------- */
@@ -782,7 +786,7 @@ section { padding: var(--section) 0; }
 <section class="hero homepage-hero">
   <div class="container hero__inner">
         <h1>Partnering with operators to <em>build enduring platforms.</em></h1>
-    <p class="lede">Modillion partners with emerging and growth-stage real estate operators to launch, institutionalize, and scale enduring investment platforms. Backed by Philadelphia family offices along with a fund of discretionary capital, we look to provide flexible capital solutions and institutional resources to forge long-term partnerships and accelerate growth.</p>
+    <p class="lede">Modillion partners with emerging and growth-stage real estate operators to launch, institutionalize, and scale enduring investment platforms. We provide flexible capital solutions and institutional resources to forge long-term partnerships and accelerate growth.</p>
       </div>
 </section>
 
@@ -792,11 +796,11 @@ section { padding: var(--section) 0; }
     <div class="section-head">
       <div class="section-head__title">
         <span class="eyebrow">Our Platform</span>
-        <h2>More than capital. A partner for the full path to scale.</h2>
+        <h2>More than Capital. A Partner for sustained growth.</h2>
       </div>
       <div class="section-head__body">
         <p>Real estate operators rarely face a single constraint. Growth may require operating company capital, guaranty capacity, operating infrastructure, or a reliable source of acquisition capital, often at the same time.</p>
-        <p>Modillion brings these solutions together within one partnership, allowing operators to focus on sourcing, investing, and building their organizations.</p>
+        <p>Backed by a group of Philadelphia family offices, Modillion brings these solutions together within one partnership, allowing operators to focus on sourcing, investing, and building their organizations.</p>
               </div>
     </div>
 
@@ -819,7 +823,7 @@ section { padding: var(--section) 0; }
             <path d="M4 20h16"></path>
           </svg>
         </span>
-        <span class="stat__label"><strong>Programmatic Acquisition Capital</strong><br>Reliable acquisition capital designed to support repeatable investment programs and new-market expansion.</span>
+        <span class="stat__label"><strong>Programmatic Acquisition Capital</strong><br>Discretionary capital supporting repeatable investment programs, removing the friction of deal-by-deal fundraising.</span>
       </div>
       <div class="stat">
         <span class="stat__icon" aria-hidden="true">
@@ -830,7 +834,7 @@ section { padding: var(--section) 0; }
             <rect x="14" y="14" width="6" height="6"></rect>
           </svg>
         </span>
-        <span class="stat__label"><strong>Institutional Infrastructure</strong><br>Back-office, reporting, accounting, and operational resources to help operators institutionalize and scale.</span>
+        <span class="stat__label"><strong>Institutional Infrastructure</strong><br>Financial reporting, accounting, tax, and operational resources to help operators institutionalize and scale.</span>
       </div>
     </div>
   </div>
@@ -839,13 +843,14 @@ section { padding: var(--section) 0; }
 <!-- PARTNERSHIPS ------------------------------------------- -->
 <section>
   <div class="container">
-    <div class="section-head">
+    <div class="section-head section-head--top">
       <div class="section-head__title">
         <span class="eyebrow">Who We Partner With</span>
         <h2>Entrepreneurial operators ready to build enduring platforms.</h2>
       </div>
       <div class="section-head__body">
-        <p>We focus on real estate specialists with compelling sourcing or operating advantages, strong alignment, and a clear path to repeatable growth. Our partners may be launching their first institutional program or scaling an established strategy into new markets, asset classes, or capital relationships.</p>
+        <p>We partner with real estate specialists with geographic and asset-class expertise, compelling competitive advantages, and a path to growth. Our partners range from experienced operators starting new companies to more established companies ready to scale an established strategy, enter a new market or asset class, or forge new and more institutional capital relationships.</p>
+        <p>While real estate is our focus, our capital is flexible by design. This allows us to evaluate compelling opportunities across asset classes and situations, and we welcome conversations where the operator brings genuine expertise.</p>
         <a href="partnerships.html" class="link-arrow">Explore our partnerships</a>
       </div>
     </div>
