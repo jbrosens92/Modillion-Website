@@ -788,6 +788,22 @@ section { padding: var(--section) 0; }
   display: block;
   margin-bottom: 12px;
 }
+.deal__tags {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 14px;
+  margin-bottom: 12px;
+}
+.deal__tags .deal__type { margin-bottom: 0; }
+.deal__structure {
+  font-size: .68rem;
+  letter-spacing: .16em;
+  text-transform: uppercase;
+  color: var(--deep-space);
+  border: 1px solid var(--rule);
+  padding: 4px 10px;
+}
 .deal__name {
   font-size: clamp(1.6rem, 2.4vw, 2.1rem);
   margin: 0 0 6px;
@@ -972,7 +988,10 @@ section { padding: var(--section) 0; }
           <img src="images/deals/the-mill.jpg" alt="The Mill, Greenwich, Connecticut" loading="lazy" width="773" height="515">
         </div>
         <div class="deal__content">
-          <span class="deal__type">Multifamily / Retail</span>
+          <div class="deal__tags">
+            <span class="deal__type">Multifamily / Retail</span>
+            <span class="deal__structure">Co-GP Capital</span>
+          </div>
           <h2 class="deal__name">The Mill</h2>
           <p class="deal__location">Greenwich, Connecticut</p>
           <dl class="deal__meta">
@@ -999,7 +1018,10 @@ section { padding: var(--section) 0; }
           <img src="images/deals/the-arden.jpg" alt="The Arden, Raleigh, North Carolina" loading="lazy" width="686" height="457">
         </div>
         <div class="deal__content">
-          <span class="deal__type">Multifamily</span>
+          <div class="deal__tags">
+            <span class="deal__type">Multifamily</span>
+            <span class="deal__structure">Enhanced LP</span>
+          </div>
           <h2 class="deal__name">The Arden</h2>
           <p class="deal__location">Raleigh, North Carolina</p>
           <dl class="deal__meta">
@@ -1026,7 +1048,10 @@ section { padding: var(--section) 0; }
           <img src="images/deals/gainesville-portfolio.jpg" alt="Gainesville Portfolio, Gainesville, Florida" loading="lazy" width="793" height="511">
         </div>
         <div class="deal__content">
-          <span class="deal__type">Multifamily</span>
+          <div class="deal__tags">
+            <span class="deal__type">Multifamily</span>
+            <span class="deal__structure">Co-GP Capital</span>
+          </div>
           <h2 class="deal__name">Gainesville Portfolio</h2>
           <p class="deal__location">Gainesville, Florida</p>
           <dl class="deal__meta">
@@ -1063,7 +1088,10 @@ section { padding: var(--section) 0; }
           <img src="images/deals/the-juniper.jpg" alt="The Juniper, Philadelphia, Pennsylvania" loading="lazy" width="1000" height="750">
         </div>
         <div class="deal__content">
-          <span class="deal__type">Multifamily</span>
+          <div class="deal__tags">
+            <span class="deal__type">Multifamily</span>
+            <span class="deal__structure">Developer &amp; Operator</span>
+          </div>
           <h2 class="deal__name">The Juniper</h2>
           <p class="deal__location">Philadelphia, Pennsylvania</p>
           <dl class="deal__meta">
@@ -1086,7 +1114,10 @@ section { padding: var(--section) 0; }
           <img src="images/deals/45-market.jpg" alt="45 Market, Morristown, New Jersey" loading="lazy" width="1920" height="1174">
         </div>
         <div class="deal__content">
-          <span class="deal__type">Multifamily / Retail</span>
+          <div class="deal__tags">
+            <span class="deal__type">Multifamily / Retail</span>
+            <span class="deal__structure">LP Secondary Transaction</span>
+          </div>
           <h2 class="deal__name">45 Market</h2>
           <p class="deal__location">Morristown, New Jersey</p>
           <dl class="deal__meta">
