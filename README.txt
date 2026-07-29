@@ -24,7 +24,18 @@ Partnerships page:
   .partnership-card styles are all still in place.
 
 Contact form:
-- The form is visual only and must be connected to a form handler, CRM, or email service.
+- Submitting opens the visitor's own email client with the inquiry already addressed to
+  info@modillionpartners.com and written out — they press send themselves. No form
+  backend, no third-party service, nothing to sign up for or maintain.
+- Name, email, and message are required. Company and "regarding" are optional and are
+  left out of the email when blank. The subject line is "Website inquiry — <regarding>",
+  or "Website inquiry from <name>" when regarding is blank.
+- Caveat of this approach: it depends on the visitor having a mail client configured.
+  Someone on webmail with no default handler may see nothing happen, so the status line
+  under the button also tells them to email info@modillionpartners.com directly.
+- If that tradeoff becomes a problem, the fix is a form backend such as Formspree
+  (free tier, 50 submissions/month): point the form's action at the Formspree endpoint
+  and POST to it instead of building a mailto.
 
 Team page:
 - LinkedIn icons currently use placeholder href="#" links.
