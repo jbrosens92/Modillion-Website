@@ -190,6 +190,7 @@ p { margin: 0 0 1em; }
 }
 .nav a:hover::after, .nav a.is-active::after { right: 0; }
 .nav a:hover { color: var(--alice); }
+.nav__investor { display: none; }
 
 .menu-toggle {
   display: none;
@@ -239,6 +240,7 @@ p { margin: 0 0 1em; }
   .nav a:last-child { border-bottom: 0; }
   .nav a::after { display: none; }
   .nav a.is-active { color: var(--oak); }
+  .nav__investor { display: block; }
 }
 
 /* Hero -------------------------------------------------------- */
@@ -845,6 +847,7 @@ section { padding: var(--section) 0; }
       <a href="partnerships.html">Partnerships</a>
       <a href="case-studies.html">Case Studies</a>
       <a href="contact.html" class="is-active">Contact</a>
+      <a href="https://app.junipersquare.com/login?path=%2Fi%2Fmodillionpartners" target="_blank" rel="noopener" class="nav__investor">Investor Login</a>
     </nav>
   </div>
 </header>
