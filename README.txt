@@ -17,8 +17,12 @@ Required assets:
 - fairwind-logo.png, once provided
 
 Partnerships page:
-- Replace FAIRWIND_WEBSITE_URL with Fairwind's confirmed website URL.
-- Replace the temporary Fairwind text wordmark with the final logo image.
+- The Fairwind partnership card is temporarily hidden (2026-07-29) and will be
+  brought back in a few days. The full markup is preserved in an HTML comment in
+  partnerships.html, just below the "CURRENT PARTNERSHIPS" heading — delete the
+  comment wrapper around it and remove the "coming soon" placeholder section to
+  restore. The logo (images/fairwind-logo.png), the live URL, and the
+  .partnership-card styles are all still in place.
 
 Contact form:
 - The form is visual only and must be connected to a form handler, CRM, or email service.
