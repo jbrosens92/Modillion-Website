@@ -822,6 +822,31 @@ section { padding: var(--section) 0; }
 .deal__content p { color: var(--muted); }
 .deal__content p:last-child { margin-bottom: 0; }
 .deal__content .deal__location { margin-bottom: 0; }
+.deal__content .link-arrow { margin-top: -6px; }
+
+.deal__visit { margin-top: -6px; }
+.deal__visit summary {
+  list-style: none;
+  cursor: pointer;
+}
+.deal__visit summary::-webkit-details-marker { display: none; }
+.deal__visit summary::marker { content: ""; }
+.deal__visit[open] summary { color: var(--steel); border-color: var(--steel); }
+.deal__visit-menu {
+  display: flex;
+  flex-direction: column;
+  margin-top: 14px;
+  border-top: 1px solid var(--rule);
+  max-width: 280px;
+}
+.deal__visit-menu a {
+  font-family: var(--sans);
+  font-size: .88rem;
+  color: var(--deep-space);
+  padding: 10px 0;
+  border-bottom: 1px solid var(--rule);
+}
+.deal__visit-menu a:hover { color: var(--steel); }
 .deal__plan-label {
   font-family: var(--sans);
   font-weight: 400;
@@ -965,6 +990,7 @@ section { padding: var(--section) 0; }
             </div>
           </dl>
           <p>A 72-unit apartment community with approximately 28,700 square feet of ground-floor commercial space and a 1.3-acre developable land parcel. The buildings were constructed between 1881 and 1981 and significantly renovated in 2021.</p>
+          <a class="link-arrow" href="https://themillgreenwich.com/" target="_blank" rel="noopener">Visit the Property</a>
         </div>
       </article>
 
@@ -991,6 +1017,7 @@ section { padding: var(--section) 0; }
             </div>
           </dl>
           <p>A 2022-built, three-story walk-up, surface-parked apartment community located adjacent to NC State's Centennial Campus and less than five miles from Downtown Raleigh.</p>
+          <a class="link-arrow" href="https://theardenraleigh.com/" target="_blank" rel="noopener">Visit the Property</a>
         </div>
       </article>
 
@@ -1017,6 +1044,40 @@ section { padding: var(--section) 0; }
             </div>
           </dl>
           <p>A six-asset, 1,432-unit value-add multifamily portfolio built in the 1980s and 1990s and partially renovated by the previous owner.</p>
+          <details class="deal__visit">
+            <summary class="link-arrow">Visit the Property</summary>
+            <div class="deal__visit-menu">
+              <a href="https://www.hunterscrossing.com/" target="_blank" rel="noopener">Hunters Crossing</a>
+              <a href="https://www.huntingtonlakes.com/" target="_blank" rel="noopener">Huntington Lakes</a>
+              <a href="https://www.lakecrossing.com/" target="_blank" rel="noopener">Lake Crossing</a>
+              <a href="https://www.lakewoodvillas.com/" target="_blank" rel="noopener">Lakewood Villas</a>
+              <a href="https://www.spyglassapts.com/" target="_blank" rel="noopener">Spyglass</a>
+              <a href="https://www.woodlandvillas.com/" target="_blank" rel="noopener">Woodland Villas</a>
+            </div>
+          </details>
+        </div>
+      </article>
+
+      <article class="deal">
+        <div class="deal__media">
+          <img src="images/deals/the-juniper.jpg" alt="The Juniper, Philadelphia, Pennsylvania" loading="lazy" width="1000" height="750">
+        </div>
+        <div class="deal__content">
+          <span class="deal__type">Multifamily</span>
+          <h2 class="deal__name">The Juniper</h2>
+          <p class="deal__location">Philadelphia, Pennsylvania</p>
+          <dl class="deal__meta">
+            <div>
+              <dt>Units</dt>
+              <dd>75</dd>
+            </div>
+            <div>
+              <dt>Acquired</dt>
+              <dd>2025</dd>
+            </div>
+          </dl>
+          <p>A historic tax credit, adaptive reuse redevelopment of the former Social Service Building — designed by Horace Trumbauer and completed in 1923&ndash;1924, later a University of the Arts residence hall — into a 75-unit, 10-story apartment building in Center City Philadelphia. Acquired in 2025 and completed in 2026.</p>
+          <a class="link-arrow" href="https://www.juniperphiladelphia.com/" target="_blank" rel="noopener">Visit the Property</a>
         </div>
       </article>
 
@@ -1039,6 +1100,7 @@ section { padding: var(--section) 0; }
             </div>
           </dl>
           <p>A 2020-built, five-story mixed-use property in downtown Morristown, New Jersey, comprising 54 luxury apartments over approximately 19,000 square feet of street-level commercial space. The residences range from studios to two bedrooms and are served by a penthouse resident lounge, outdoor roof deck, and fitness center. The property sits steps from the Morristown Green and within walking distance of the Morristown train station, which offers direct service to New York Penn Station. Both the residential and commercial space are fully leased.</p>
+          <a class="link-arrow" href="https://www.rent45market.com/" target="_blank" rel="noopener">Visit the Property</a>
         </div>
       </article>
 
