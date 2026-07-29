@@ -12,7 +12,6 @@ Latest changes:
 - Partnerships page simplified to emphasize the Fairwind partnership visually
 
 Required assets:
-- favicon.png
 - Team headshots, once selected
 - fairwind-logo.png, once provided
 
