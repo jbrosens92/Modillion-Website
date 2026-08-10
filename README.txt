@@ -13,15 +13,11 @@ Latest changes:
 
 Required assets:
 - Team headshots, once selected
-- fairwind-logo.png, once provided
 
 Partnerships page:
-- The Fairwind partnership card is temporarily hidden (2026-07-29) and will be
-  brought back in a few days. The full markup is preserved in an HTML comment in
-  partnerships.html, just below the "CURRENT PARTNERSHIPS" heading — delete the
-  comment wrapper around it and remove the "coming soon" placeholder section to
-  restore. The logo (images/fairwind-logo.png), the live URL, and the
-  .partnership-card styles are all still in place.
+- The Fairwind partnership card is live again as of 2026-08-10, after a short
+  period hidden behind a "coming soon" placeholder. Logo, live URL, and layout
+  are as they were before.
 
 Contact form:
 - Submitting opens the visitor's own email client with the inquiry already addressed to
