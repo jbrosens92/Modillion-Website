@@ -5,7 +5,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex, nofollow">
 <title>Company Dashboard | Modillion Partners</title>
-<meta name="description" content="Internal Modillion Partners document dashboard.">
 <link rel="icon" type="image/png" href="favicon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -728,7 +727,7 @@ section { padding: var(--section) 0; }
 <style>
 /* Company Dashboard — internal page ---------------------------
    Structure only. No live document source is connected yet; the
-   page renders from SampleProvider until a real provider is wired
+   page renders from DatasetProvider until a real provider is wired
    in (see the DataProvider seam at the bottom of this file).
    ------------------------------------------------------------- */
 
@@ -778,23 +777,47 @@ body[data-state="ready"]  .dash-gate { display: none; }
   font-size: clamp(2.2rem, 4.4vw, 3.6rem);
   margin-bottom: 18px;
 }
-.dash-gate__lede {
-  color: rgba(226,234,243,.82);
-  max-width: 52ch;
-  margin-bottom: 36px;
-}
-.dash-gate__actions {
-  display: flex;
-  align-items: center;
-  gap: 28px;
-  flex-wrap: wrap;
-  margin-bottom: 28px;
-}
-.dash-gate__preview {
+/* Password form -------------------------------------------------- */
+.dash-gate__form { margin-bottom: 30px; max-width: 440px; }
+.dash-gate__label {
+  display: block;
+  font-size: .72rem;
+  letter-spacing: .2em;
+  text-transform: uppercase;
   color: var(--oak);
-  border-color: rgba(232, 214, 203, .5);
+  margin-bottom: 12px;
 }
-.dash-gate__preview:hover { color: var(--alice); border-color: var(--alice); }
+.dash-gate__row { display: flex; gap: 14px; align-items: stretch; }
+.dash-gate__row input {
+  flex: 1 1 auto;
+  min-width: 0;
+  background: rgba(226, 234, 243, .06);
+  border: 1px solid rgba(226, 234, 243, .32);
+  color: var(--alice);
+  font-family: var(--sans);
+  font-weight: 300;
+  font-size: 1rem;
+  letter-spacing: .1em;
+  padding: 14px 16px;
+  transition: border-color .2s ease, background .2s ease;
+}
+.dash-gate__row input:focus {
+  outline: none;
+  border-color: var(--oak);
+  background: rgba(226, 234, 243, .1);
+}
+.dash-gate__row .btn { flex: 0 0 auto; }
+.dash-gate__error {
+  color: #F0B4A8;
+  font-size: .84rem;
+  margin: 14px 0 0;
+}
+.dash-gate__error[hidden] { display: none; }
+
+@media (max-width: 560px) {
+  .dash-gate__row { flex-direction: column; }
+  .dash-gate__row .btn { justify-content: center; }
+}
 
 .dash-gate__note {
   font-size: .84rem;
@@ -896,7 +919,6 @@ button.link-arrow {
   max-width: none;
   margin-bottom: 16px;
 }
-.dash-hero .lede { max-width: 62ch; }
 
 /* Notice bar ---------------------------------------------------- */
 .dash-notice {
@@ -918,6 +940,13 @@ button.link-arrow {
   flex: 0 0 auto;
 }
 .dash-notice strong { font-weight: 500; }
+
+/* Local snapshot holding real deal names — must never be what ships. */
+.dash-notice[data-variant="live"] {
+  background: #7A2B1E;
+  color: #FDEDE8;
+}
+.dash-notice[data-variant="live"] strong { color: #FFFFFF; }
 
 /* Summary tiles ------------------------------------------------- */
 .dash-summary {
@@ -1002,15 +1031,38 @@ button.link-arrow {
   margin-left: auto;
 }
 
+/* Group heading -------------------------------------------------- */
+.dash-group {
+  font-family: var(--sans);
+  font-weight: 400;
+  font-size: .74rem;
+  letter-spacing: .2em;
+  text-transform: uppercase;
+  color: var(--deep-space);
+  display: flex;
+  align-items: baseline;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin: 0 0 18px;
+}
+.dash-group span {
+  font-size: .8rem;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--muted);
+}
+.dash-grid + .dash-group { margin-top: 52px; }
+
 /* Category grid ------------------------------------------------- */
 .dash-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
   gap: 1px;
-  background: var(--rule);
-  border: 1px solid var(--rule);
 }
+/* Rules are drawn per card rather than by a grid background, so a part-filled
+   final row leaves the section colour showing instead of a grey block. */
 .dash-card {
+  box-shadow: 0 0 0 1px var(--rule);
   background: var(--paper);
   padding: 32px 30px 28px;
   display: flex;
@@ -1292,7 +1344,6 @@ button.link-arrow {
 }
 @media (max-width: 560px) {
   .dash-summary { grid-template-columns: 1fr; gap: 22px; }
-  .dash-gate__actions { gap: 20px; }
   .dash-detail__head { gap: 18px; }
 
   /* The topbar carries brand + identity + sign out in 335px of container */
@@ -1319,30 +1370,23 @@ button.link-arrow {
     <div class="dash-gate__inner">
       <p class="eyebrow">Internal</p>
       <h1>Company Dashboard</h1>
-      <p class="dash-gate__lede">
-        One place for Modillion's property reports, financials, CRM data, fund reports and deal
-        trackers — organised by category, so the right document is a few seconds away rather than
-        several folders deep.
-      </p>
-
-      <div class="dash-gate__actions">
-        <button class="btn btn--light btn--ms" id="signInBtn" disabled>
-          <svg viewBox="0 0 23 23" aria-hidden="true" fill="none">
-            <rect x="1" y="1" width="10" height="10" fill="currentColor" opacity=".9"/>
-            <rect x="12" y="1" width="10" height="10" fill="currentColor" opacity=".6"/>
-            <rect x="1" y="12" width="10" height="10" fill="currentColor" opacity=".6"/>
-            <rect x="12" y="12" width="10" height="10" fill="currentColor" opacity=".35"/>
-          </svg>
-          Sign in with Microsoft
-        </button>
-        <button class="link-arrow dash-gate__preview" id="previewBtn">
-          Preview with sample data
-        </button>
-      </div>
+      <form class="dash-gate__form" id="gateForm" autocomplete="off">
+        <label class="dash-gate__label" for="gatePassword">Team password</label>
+        <div class="dash-gate__row">
+          <input type="password" id="gatePassword" name="password"
+                 autocomplete="current-password" spellcheck="false"
+                 aria-describedby="gateError" required>
+          <button type="submit" class="btn btn--light">Enter</button>
+        </div>
+        <p class="dash-gate__error" id="gateError" role="alert" hidden></p>
+      </form>
 
       <p class="dash-gate__note">
-        Microsoft 365 sign-in is not connected yet. Until it is, this page is a working shell —
-        the preview above is illustrative sample content, not real company data.
+        This password is a speed bump, not security — it is checked in the browser, so anyone
+        who views the page source can work around it. It keeps casual visitors out of a page
+        that currently shows placeholder content only. Real access control arrives with the
+        Microsoft 365 sign-in, which is what must be in place before any live document is
+        connected here.
       </p>
 
       <a class="dash-gate__back" href="index.html">← modillionpartners.com</a>
@@ -1370,11 +1414,10 @@ button.link-arrow {
     </div>
   </header>
 
-  <div class="dash-notice" id="sampleNotice">
+  <div class="dash-notice" id="sampleNotice" hidden>
     <div class="container">
       <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16.5v.01"/></svg>
-      <span><strong>Sample data.</strong> No document source is connected — everything below is
-      placeholder content for reviewing layout and structure.</span>
+      <span class="dash-notice__text"></span>
     </div>
   </div>
 
@@ -1382,10 +1425,6 @@ button.link-arrow {
     <div class="container">
       <p class="eyebrow">Internal</p>
       <h1>Company Dashboard</h1>
-      <p class="lede">
-        Every company document, grouped by what it is. Open a category to browse its folders, or
-        search across all of them at once.
-      </p>
     </div>
   </section>
 
@@ -1425,7 +1464,11 @@ button.link-arrow {
 
       <!-- Category grid -->
       <div class="dash-browse" id="viewBrowse">
-        <div class="dash-grid" id="categoryGrid"></div>
+        <h2 class="dash-group">By area<span>Mirrors the OneDrive folder structure</span></h2>
+        <div class="dash-grid" id="areaGrid"></div>
+
+        <h2 class="dash-group">By document type<span>Reads across every deal at once</span></h2>
+        <div class="dash-grid" id="typeGrid"></div>
       </div>
 
       <!-- Category detail -->
@@ -1480,50 +1523,84 @@ button.link-arrow {
 
   /* ============================================================
      CONFIG
-     Categories are declarative. Adding one is a single object —
-     no other edit anywhere on the page.
 
-     `source` stays null until a document source is connected.
-     When it is, each becomes the address of a real folder, e.g.
-       source: { site: "<tenant>.sharepoint.com:/sites/<Site>",
-                 path: "Shared Documents/Property Reports" }
+     Two ways into the same documents:
+
+       "area"     mirrors the OneDrive folder structure one-to-one
+                  (Active Deals / Closed Deals / Asset Management).
+
+       "type"     reads across every deal at once, gathering the
+                  recurring per-deal subfolders — Model, Term Sheet,
+                  Investment Memo, Legal, Financials and so on.
+
+     The second is the thing a dashboard adds over simply opening
+     OneDrive: the files are filed by deal, but people usually want
+     them by kind ("show me every model", "every investor letter").
+
+     `match` lists the folder-name fragments a type category collects,
+     compared case-insensitively. Adding a category is one object.
      ============================================================ */
   var DASHBOARD_CONFIG = {
-    categories: [
-      { id: "property-reports", label: "Property Reports", icon: "building", source: null,
-        blurb: "Operating reports, rent rolls, construction updates and site photos by asset." },
-      { id: "financials", label: "Financials", icon: "chart", source: null,
-        blurb: "Monthly and quarterly statements, budgets, reforecasts and audit files." },
-      { id: "crm", label: "CRM Database", icon: "contacts", source: null,
-        blurb: "Investor and broker contact records, outreach logs and relationship notes." },
-      { id: "fund-reports", label: "Fund Reports", icon: "layers", source: null,
-        blurb: "Quarterly investor reporting, capital account statements and fund performance." },
-      { id: "deal-trackers", label: "Deal Trackers", icon: "target", source: null,
-        blurb: "Live pipeline, underwriting models and screening summaries for deals in review." },
-      { id: "legal", label: "Legal & Entity Documents", icon: "shield", source: null,
-        blurb: "Operating agreements, entity charts, loan documents and closing binders." },
-      { id: "investor-relations", label: "Investor Relations", icon: "handshake", source: null,
-        blurb: "Pitch materials, subscription documents and investor correspondence." },
-      { id: "templates", label: "Templates & Policies", icon: "template", source: null,
-        blurb: "Firm templates, brand assets, internal policies and onboarding material." }
+    areas: [
+      { id: "active-deals", label: "Active Deals", icon: "target",
+        blurb: "Live pipeline — term sheets, models, diligence and sponsor materials by deal." },
+      { id: "closed-deals", label: "Closed Deals", icon: "shield",
+        blurb: "Realised investments — final documents, org charts and quarterly reporting." },
+      { id: "asset-management", label: "Asset Management", icon: "building",
+        blurb: "Operating assets — monthly update letters, financials and property reporting." }
+    ],
+    types: [
+      { id: "models", label: "Models & Underwriting", icon: "model",
+        blurb: "Underwriting models and cash-flow analysis from every deal.",
+        match: ["model", "underwriting"] },
+      { id: "term-sheets", label: "Term Sheets", icon: "memo",
+        blurb: "Term sheets, LOIs and summaries of proposed terms.",
+        match: ["term sheet", "proposed terms", "loi"] },
+      { id: "investment-memos", label: "Investment Memos", icon: "doc",
+        blurb: "Investment and screening memos prepared for committee.",
+        match: ["investment memo", "memo", "screening"] },
+      { id: "legal-org", label: "Legal & Org Charts", icon: "legal",
+        blurb: "Operating agreements, entity charts, ground leases and closing documents.",
+        match: ["legal", "org chart", "agreement", "final documents", "ground lease", "deposit"] },
+      { id: "financials", label: "Financial Statements", icon: "coins",
+        blurb: "Quarterly financials, T-12s, rent rolls, depreciation and ownership schedules.",
+        match: ["financial statement", "quarterly financial", "depreciation",
+                "percentage ownership", "t-12", "rent roll"] },
+      { id: "investor-updates", label: "Investor Updates", icon: "mail",
+        blurb: "Investor letters, monthly updates, quarterly updates and partner materials.",
+        match: ["investor letter", "quarterly update", "project update",
+                "monthly update", "partner materials"] },
+      { id: "diligence", label: "Due Diligence", icon: "magnify",
+        blurb: "Deal and sponsor diligence, data rooms, market and tenant files.",
+        match: ["due dilligence", "due diligence", " dd", "data room",
+                "seller documents", "market", "tenant"] },
+      { id: "sponsor-materials", label: "Sponsor Materials", icon: "handshake",
+        blurb: "Sponsor decks, track records and executed sponsor agreements.",
+        match: ["sponsor"] }
     ]
   };
+
+  function allCategories() {
+    return DASHBOARD_CONFIG.areas.concat(DASHBOARD_CONFIG.types);
+  }
 
   /* ============================================================
      ICONS
      ============================================================ */
   var ICONS = {
     building:  '<path d="M3 21h18M5 21V5a1 1 0 011-1h7a1 1 0 011 1v16M14 21V9h4a1 1 0 011 1v11"/><path d="M8 8h2M8 12h2M8 16h2"/>',
-    chart:     '<path d="M3 3v18h18"/><path d="M7 15l3.5-4 3 2.5L20 7"/>',
-    contacts:  '<rect x="3" y="4" width="18" height="16" rx="1"/><circle cx="9.5" cy="10.5" r="2.2"/><path d="M6 16.5c.6-1.6 2-2.4 3.5-2.4s2.9.8 3.5 2.4M16 9.5h3M16 13h3"/>',
-    layers:    '<path d="M12 3l9 4.5-9 4.5-9-4.5L12 3z"/><path d="M3 12l9 4.5 9-4.5M3 16.5L12 21l9-4.5"/>',
     target:    '<circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4.5"/><circle cx="12" cy="12" r=".8" fill="currentColor"/>',
     shield:    '<path d="M12 3l7.5 3v5.5c0 4.4-3.1 8.2-7.5 9.5-4.4-1.3-7.5-5.1-7.5-9.5V6L12 3z"/><path d="M9.2 12l2 2 3.6-3.8"/>',
+    model:     '<rect x="4" y="3" width="16" height="18" rx="1"/><path d="M8 7h8M8 11h2M12 11h2M16 11h0M8 15h2M12 15h2M16 15v2M8 19h6"/>',
+    memo:      '<path d="M6 3h9l4 4v14a1 1 0 01-1 1H6a1 1 0 01-1-1V4a1 1 0 011-1z"/><path d="M15 3v4h4M9 12h6M9 16h4"/>',
+    doc:       '<path d="M14 3H7a1 1 0 00-1 1v16a1 1 0 001 1h10a1 1 0 001-1V7l-4-4z"/><path d="M14 3v4h4M9 13h6M9 17h4"/>',
+    legal:     '<path d="M12 4v16M7 20h10"/><path d="M4 9l3.5-4L11 9M4 9a3.5 3.5 0 007 0M13 9l3.5-4L20 9M13 9a3.5 3.5 0 007 0"/>',
+    coins:     '<ellipse cx="12" cy="6.5" rx="7" ry="3"/><path d="M5 6.5v5c0 1.7 3.1 3 7 3s7-1.3 7-3v-5M5 11.5v5c0 1.7 3.1 3 7 3s7-1.3 7-3v-5"/>',
+    mail:      '<rect x="3" y="5" width="18" height="14" rx="1"/><path d="M3.5 6l8.5 6.5L20.5 6"/>',
+    magnify:   '<circle cx="11" cy="11" r="6.5"/><path d="M20 20l-4.2-4.2M9 11h4M11 9v4"/>',
     handshake: '<path d="M11 6.5L8.5 9a2 2 0 000 2.8l.2.2a2 2 0 002.8 0L13 10.3"/><path d="M13 10.3l3.2 3.2a1.7 1.7 0 01-2.4 2.4l-.5-.5"/><path d="M2.5 8.5L6 5.5h4l3 2.5M21.5 8.5L18 5.5h-3"/><path d="M13.3 15.4l-1.6 1.6a1.7 1.7 0 01-2.4-2.4"/>',
-    template:  '<rect x="3" y="4" width="18" height="16" rx="1"/><path d="M3 9h18M9 9v11"/>',
     folder:    '<path d="M3 7a1 1 0 011-1h5l2 2.5h9a1 1 0 011 1V18a1 1 0 01-1 1H4a1 1 0 01-1-1V7z"/>',
-    file:      '<path d="M14 3H7a1 1 0 00-1 1v16a1 1 0 001 1h10a1 1 0 001-1V7l-4-4z"/><path d="M14 3v4h4"/>',
-    search:    '<circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/>'
+    file:      '<path d="M14 3H7a1 1 0 00-1 1v16a1 1 0 001 1h10a1 1 0 001-1V7l-4-4z"/><path d="M14 3v4h4"/>'
   };
 
   function icon(name, kind) {
@@ -1536,184 +1613,229 @@ button.link-arrow {
      DATA PROVIDER SEAM
 
      Everything the UI needs comes through this interface. Swapping
-     SampleProvider for a real one (Microsoft Graph, or anything
-     else) means implementing these four methods — the rendering
-     code below never changes.
+     in a real source (Microsoft Graph) means implementing these four
+     methods — the rendering code below never changes.
 
        getUser()                     -> { name, email, role }
        getCategories()               -> [{ id, count, lastModified }]
        listFolder(catId, pathArray)  -> [ item ]
        search(query)                 -> [ item & { categoryId } ]
 
-     item = { id, name, type: "folder"|"file", ext, size,
+     item = { name, type: "folder"|"file", ext, size,
               modified: Date, modifiedBy, url }
+
+     DatasetProvider below serves whichever dataset is loaded:
+
+       dashboard-data.json   a snapshot of the real OneDrive folder,
+                             generated by tools/onedrive-snapshot.py.
+                             Gitignored — it holds live deal and
+                             sponsor names and never reaches this
+                             public repo. Present in local development
+                             only; in production the fetch 404s.
+
+       FALLBACK_DATA         the placeholder tree below. Deliberately
+                             generic, safe to publish, and shaped to
+                             mirror the real folder taxonomy.
      ============================================================ */
 
-  var SampleProvider = (function () {
-    var connected = false;
-
-    function d(daysAgo) {
-      var t = new Date();
-      t.setDate(t.getDate() - daysAgo);
-      t.setHours(9 + (daysAgo % 8), (daysAgo * 7) % 60, 0, 0);
-      return t;
+  // Placeholder tree. Mirrors the real structure; every name is invented.
+  var FALLBACK_DATA = (function () {
+    function f(name, ext, sizeKB, days) {
+      return { name: name, type: "file", ext: ext, size: sizeKB * 1024, modifiedDays: days };
     }
-    function f(name, ext, size, days, by) {
-      return { id: name, name: name, type: "file", ext: ext, size: size,
-               modified: d(days), modifiedBy: by, url: null };
+    function d(name, days, children) {
+      return { name: name, type: "folder", modifiedDays: days, children: children || [] };
     }
-    function dir(name, days, by, children) {
-      return { id: name, name: name, type: "folder", ext: null, size: null,
-               modified: d(days), modifiedBy: by, url: null, children: children || [] };
+    function dealFolders(tag, base) {
+      return [
+        d("Term Sheet", base, [f(tag + " — Term Sheet.pdf", "pdf", 240, base)]),
+        d("Sponsor Materials", base + 4, [
+          f(tag + " — Sponsor Overview.pdf", "pdf", 6200, base + 4),
+          f(tag + " — Track Record.xlsx", "xlsx", 480, base + 6)
+        ]),
+        d("Model", base + 2, [f(tag + " — Underwriting Model.xlsx", "xlsx", 2100, base + 2)]),
+        d("Investment Memo", base + 3, [f(tag + " — Investment Memo.docx", "docx", 190, base + 3)]),
+        d("Deal Due Dilligence", base + 5, [
+          f(tag + " — Property Condition Report.pdf", "pdf", 8400, base + 5),
+          f(tag + " — Environmental Report.pdf", "pdf", 5200, base + 9)
+        ]),
+        d("Org Chart", base + 7, [f(tag + " — Org Chart.pdf", "pdf", 320, base + 7)])
+      ];
     }
-
-    var PEOPLE = ["Eric Emrich", "Corey Ernst", "David Wolfson", "John Brosens"];
-
-    var TREE = {
-      "property-reports": [
-        dir("The Mill — Greenwich, CT", 3, PEOPLE[1], [
-          f("The Mill — Monthly Operating Report — Jul 2026.xlsx", "xlsx", 842000, 3, PEOPLE[1]),
-          f("The Mill — Rent Roll — 07.31.2026.xlsx", "xlsx", 318000, 3, PEOPLE[1]),
-          f("The Mill — Construction Draw 14.pdf", "pdf", 2410000, 9, PEOPLE[2]),
-          f("The Mill — Retail Leasing Update.docx", "docx", 96000, 16, PEOPLE[0])
-        ]),
-        dir("The Juniper — Philadelphia, PA", 6, PEOPLE[2], [
-          f("The Juniper — Monthly Operating Report — Jul 2026.xlsx", "xlsx", 774000, 6, PEOPLE[2]),
-          f("The Juniper — Rent Roll — 07.31.2026.xlsx", "xlsx", 291000, 6, PEOPLE[2]),
-          f("The Juniper — Lease-Up Tracker.xlsx", "xlsx", 188000, 11, PEOPLE[3])
-        ]),
-        dir("The Arden — Raleigh, NC", 8, PEOPLE[3], [
-          f("The Arden — Monthly Operating Report — Jul 2026.xlsx", "xlsx", 690000, 8, PEOPLE[3]),
-          f("The Arden — Sponsor Update Q2 2026.pdf", "pdf", 1840000, 22, PEOPLE[0])
-        ]),
-        dir("45 Market — Morristown, NJ", 12, PEOPLE[1], [
-          f("45 Market — Monthly Operating Report — Jul 2026.xlsx", "xlsx", 612000, 12, PEOPLE[1]),
-          f("45 Market — Capital Projects Schedule.xlsx", "xlsx", 145000, 27, PEOPLE[2])
-        ]),
-        dir("Gainesville Portfolio — FL", 14, PEOPLE[0], [
-          f("Gainesville — Portfolio Roll-Up — Jul 2026.xlsx", "xlsx", 1120000, 14, PEOPLE[0]),
-          f("Gainesville — Property Condition Summary.pdf", "pdf", 3260000, 41, PEOPLE[2])
-        ]),
-        f("Portfolio Summary — All Assets — Jul 2026.xlsx", "xlsx", 1480000, 2, PEOPLE[0]),
-        f("Reporting Calendar 2026.pdf", "pdf", 210000, 58, PEOPLE[3])
-      ],
-      "financials": [
-        dir("2026 — Monthly Statements", 4, PEOPLE[0], [
-          f("Consolidated P&L — Jul 2026.xlsx", "xlsx", 528000, 4, PEOPLE[0]),
-          f("Consolidated Balance Sheet — Jul 2026.xlsx", "xlsx", 412000, 4, PEOPLE[0]),
-          f("Cash Flow Statement — Jul 2026.xlsx", "xlsx", 366000, 4, PEOPLE[0]),
-          f("Bank Reconciliation — Jul 2026.xlsx", "xlsx", 224000, 5, PEOPLE[3])
-        ]),
-        dir("Budgets & Reforecasts", 19, PEOPLE[1], [
-          f("2026 Operating Budget — Approved.xlsx", "xlsx", 940000, 133, PEOPLE[1]),
-          f("2026 Mid-Year Reforecast.xlsx", "xlsx", 886000, 19, PEOPLE[1]),
-          f("2027 Budget — Working Draft.xlsx", "xlsx", 704000, 19, PEOPLE[1])
-        ]),
-        dir("Audit & Tax", 34, PEOPLE[0], [
-          f("2025 Audited Financial Statements.pdf", "pdf", 2980000, 96, PEOPLE[0]),
-          f("2025 K-1 Distribution Log.xlsx", "xlsx", 158000, 34, PEOPLE[3])
-        ]),
-        f("Chart of Accounts.xlsx", "xlsx", 88000, 71, PEOPLE[3]),
-        f("Management Fee Schedule.xlsx", "xlsx", 74000, 45, PEOPLE[0])
-      ],
-      "crm": [
-        f("Investor Contact Master.xlsx", "xlsx", 1360000, 1, PEOPLE[3]),
-        f("Broker & Intermediary List.xlsx", "xlsx", 640000, 7, PEOPLE[1]),
-        f("Lender Relationships.xlsx", "xlsx", 412000, 13, PEOPLE[2]),
-        f("Outreach Log — 2026.xlsx", "xlsx", 986000, 1, PEOPLE[3]),
-        dir("Meeting Notes", 5, PEOPLE[0], [
-          f("Q3 Investor Calls — Notes.docx", "docx", 132000, 5, PEOPLE[0]),
-          f("Broker Breakfast — Follow-Ups.docx", "docx", 68000, 25, PEOPLE[1])
-        ]),
-        f("CRM Field Definitions.docx", "docx", 54000, 88, PEOPLE[3])
-      ],
-      "fund-reports": [
-        dir("Modillion Fund I — 2026", 2, PEOPLE[0], [
-          f("Fund I — Q2 2026 Investor Report (DRAFT).docx", "docx", 1045000, 2, PEOPLE[0]),
-          f("Fund I — Q1 2026 Investor Report.pdf", "pdf", 4120000, 112, PEOPLE[0]),
-          f("Fund I — Capital Account Statements Q2 2026.xlsx", "xlsx", 720000, 6, PEOPLE[3]),
-          f("Fund I — Performance Summary.xlsx", "xlsx", 486000, 6, PEOPLE[0])
-        ]),
-        dir("Modillion Fund I — 2025", 205, PEOPLE[0], [
-          f("Fund I — Q4 2025 Investor Report.pdf", "pdf", 3880000, 205, PEOPLE[0]),
-          f("Fund I — Q3 2025 Investor Report.pdf", "pdf", 3640000, 296, PEOPLE[0])
-        ]),
-        f("Fund I — Waterfall Model.xlsx", "xlsx", 1240000, 18, PEOPLE[1]),
-        f("Fund I — Capital Call Schedule.xlsx", "xlsx", 298000, 10, PEOPLE[3]),
-        f("Fund II — Preliminary Terms.docx", "docx", 142000, 29, PEOPLE[0])
-      ],
-      "deal-trackers": [
-        f("Live Pipeline Tracker.xlsx", "xlsx", 1580000, 0, PEOPLE[1]),
-        f("Screening Log — 2026.xlsx", "xlsx", 892000, 1, PEOPLE[2]),
-        dir("Under Review", 1, PEOPLE[2], [
-          f("130 Hope Street — Underwriting Model.xlsx", "xlsx", 2140000, 1, PEOPLE[2]),
-          f("130 Hope Street — Screening Memo.docx", "docx", 188000, 4, PEOPLE[2]),
-          f("Hudson County Mixed-Use — Underwriting Model.xlsx", "xlsx", 1960000, 8, PEOPLE[1]),
-          f("Hudson County Mixed-Use — Site Notes.docx", "docx", 96000, 8, PEOPLE[1])
-        ]),
-        dir("Passed", 21, PEOPLE[1], [
-          f("2026 Pass Log with Rationale.xlsx", "xlsx", 340000, 21, PEOPLE[1])
-        ]),
-        f("Underwriting Model — Firm Template.xlsx", "xlsx", 1120000, 62, PEOPLE[1]),
-        f("Deal Approval Checklist.docx", "docx", 62000, 62, PEOPLE[0])
-      ],
-      "legal": [
-        dir("Entity Documents", 40, PEOPLE[0], [
-          f("Modillion Partners LLC — Operating Agreement.pdf", "pdf", 1860000, 402, PEOPLE[0]),
-          f("Entity Organisation Chart.pdf", "pdf", 480000, 40, PEOPLE[0]),
-          f("Good Standing Certificates — 2026.pdf", "pdf", 920000, 40, PEOPLE[3])
-        ]),
-        dir("Closing Binders", 24, PEOPLE[2], [
-          f("The Mill — Closing Binder.pdf", "pdf", 18400000, 320, PEOPLE[2]),
-          f("The Juniper — Closing Binder.pdf", "pdf", 15200000, 24, PEOPLE[2]),
-          f("45 Market — Closing Binder.pdf", "pdf", 12800000, 486, PEOPLE[2])
-        ]),
-        dir("Loan Documents", 31, PEOPLE[2], [
-          f("The Mill — Loan Agreement.pdf", "pdf", 3420000, 320, PEOPLE[2]),
-          f("Debt Summary — All Assets.xlsx", "xlsx", 268000, 31, PEOPLE[1])
-        ]),
-        f("Insurance Certificates — 2026.pdf", "pdf", 1440000, 52, PEOPLE[3])
-      ],
-      "investor-relations": [
-        f("Modillion Partners — Firm Overview.pptx", "pptx", 8640000, 15, PEOPLE[0]),
-        f("Fund I — Investor Presentation.pptx", "pptx", 11200000, 15, PEOPLE[0]),
-        dir("Subscription Documents", 20, PEOPLE[3], [
-          f("Fund I — Subscription Agreement.pdf", "pdf", 1680000, 240, PEOPLE[3]),
-          f("Investor Onboarding Checklist.docx", "docx", 74000, 20, PEOPLE[3])
-        ]),
-        dir("Correspondence", 9, PEOPLE[0], [
-          f("Q2 2026 Investor Letter.docx", "docx", 118000, 9, PEOPLE[0]),
-          f("Annual Meeting — Agenda & Materials.pdf", "pdf", 5240000, 74, PEOPLE[0])
-        ]),
-        f("Track Record Summary.xlsx", "xlsx", 520000, 15, PEOPLE[1])
-      ],
-      "templates": [
-        f("Modillion Letterhead.docx", "docx", 128000, 150, PEOPLE[3]),
-        f("Memo Template.docx", "docx", 62000, 150, PEOPLE[3]),
-        f("Presentation Template.pptx", "pptx", 3480000, 150, PEOPLE[3]),
-        dir("Brand Assets", 150, PEOPLE[3], [
-          f("Modillion Logo Pack.pdf", "pdf", 2240000, 150, PEOPLE[3]),
-          f("Brand Guidelines.pdf", "pdf", 4860000, 150, PEOPLE[3])
-        ]),
-        dir("Policies", 67, PEOPLE[0], [
-          f("Employee Handbook.pdf", "pdf", 1920000, 67, PEOPLE[0]),
-          f("Expense Policy.pdf", "pdf", 340000, 67, PEOPLE[0]),
-          f("Information Security Policy.pdf", "pdf", 420000, 67, PEOPLE[0])
-        ]),
-        f("New Hire Onboarding.docx", "docx", 92000, 67, PEOPLE[3])
+    return {
+      source: "fallback",
+      anonymised: true,
+      areas: [
+        { id: "active-deals", label: "Active Deals", children: [
+          d("Sample Deal A — Programmatic", 1, dealFolders("Deal A", 1)),
+          d("Sample Deal B — Multifamily", 6, dealFolders("Deal B", 6)),
+          d("Sample Deal C — Mixed-Use", 11, dealFolders("Deal C", 11)),
+          d("Sample Deal D — GP Fund", 18, dealFolders("Deal D", 18)),
+          d("Sample Portfolio E", 24, [
+            d("Asset One", 24, [f("Asset One — Summary.pdf", "pdf", 760, 24)]),
+            d("Asset Two", 27, [f("Asset Two — Summary.pdf", "pdf", 720, 27)]),
+            d("Model", 25, [f("Portfolio E — Consolidated Model.xlsx", "xlsx", 3100, 25)])
+          ])
+        ]},
+        { id: "closed-deals", label: "Closed Deals", children: [
+          d("Sample Closed Deal F", 9, [
+            d("Final Documents", 9, [f("Deal F — Closing Binder.pdf", "pdf", 14200, 9)]),
+            d("Model", 14, [f("Deal F — Final Model.xlsx", "xlsx", 1900, 14)]),
+            d("Org Chart", 14, [f("Deal F — Org Chart.pdf", "pdf", 300, 14)]),
+            d("Quarterly Updates", 3, [
+              f("Deal F — Quarterly Update (Q2).pdf", "pdf", 880, 3),
+              f("Deal F — Quarterly Update (Q1).pdf", "pdf", 860, 95)
+            ])
+          ]),
+          d("Sample Closed Deal G", 21, [
+            d("Financial Statements", 21, [f("Deal G — Quarterly FS.pdf", "pdf", 640, 21)]),
+            d("Investor Letters", 12, [f("Deal G — Investor Letter.pdf", "pdf", 410, 12)]),
+            d("Legal Docs", 30, [f("Deal G — Operating Agreement.pdf", "pdf", 1720, 30)]),
+            d("Model", 30, [f("Deal G — Final Model.xlsx", "xlsx", 1650, 30)])
+          ])
+        ]},
+        { id: "asset-management", label: "Asset Management", children: [
+          d("Sample Asset H", 2, [
+            d("Monthly Update Letters", 2, [
+              f("Asset H — Monthly Update (current).pdf", "pdf", 520, 2),
+              f("Asset H — Monthly Update (prior).pdf", "pdf", 515, 32)
+            ]),
+            d("Quarterly Financials", 8, [f("Asset H — Quarterly FS.pdf", "pdf", 690, 8)])
+          ]),
+          d("Sample Asset I", 16, [
+            d("Monthly Update Letters", 16, [f("Asset I — Monthly Update.pdf", "pdf", 495, 16)])
+          ])
+        ]}
       ]
     };
+  }());
 
-    function walk(items, fn, trail) {
-      trail = trail || [];
-      items.forEach(function (it) {
-        fn(it, trail);
-        if (it.children) walk(it.children, fn, trail.concat(it.name));
+  var DatasetProvider = (function () {
+    var DATA = null;          // { areas: [...] }
+    var meta = { source: "fallback", anonymised: true, generatedAt: null };
+    var typeIndex = {};       // categoryId -> [ { key, dealName, areaLabel, node } ]
+
+    function toDate(node) {
+      if (node.modified) return new Date(node.modified);
+      if (typeof node.modifiedDays === "number") {
+        var t = new Date();
+        t.setDate(t.getDate() - node.modifiedDays);
+        t.setHours(9 + (node.modifiedDays % 8), (node.modifiedDays * 7) % 60, 0, 0);
+        return t;
+      }
+      return null;
+    }
+
+    // Normalise both dataset shapes into one in-memory form.
+    function normalise(node) {
+      var out = {
+        name: node.name,
+        type: node.type,
+        ext: node.ext || null,
+        size: typeof node.size === "number" ? node.size : null,
+        modified: toDate(node),
+        modifiedBy: node.modifiedBy || null,
+        url: node.webUrl || node.url || null
+      };
+      if (node.type === "folder") {
+        out.children = (node.children || []).map(normalise);
+        if (!out.modified) out.modified = latestIn(out.children);
+      }
+      return out;
+    }
+
+    function latestIn(nodes) {
+      var latest = null;
+      nodes.forEach(function (n) {
+        if (n.modified && (!latest || n.modified > latest)) latest = n.modified;
+        if (n.children) {
+          var sub = latestIn(n.children);
+          if (sub && (!latest || sub > latest)) latest = sub;
+        }
+      });
+      return latest;
+    }
+
+    function countFiles(nodes) {
+      var n = 0;
+      nodes.forEach(function (item) {
+        if (item.type === "file") n++;
+        else n += countFiles(item.children || []);
+      });
+      return n;
+    }
+
+    function areaById(id) {
+      for (var i = 0; i < DATA.areas.length; i++) {
+        if (DATA.areas[i].id === id) return DATA.areas[i];
+      }
+      return null;
+    }
+
+    // Walk every deal, collecting folders whose name matches a type category.
+    function buildTypeIndex() {
+      typeIndex = {};
+      DASHBOARD_CONFIG.types.forEach(function (cat) { typeIndex[cat.id] = []; });
+
+      DATA.areas.forEach(function (area) {
+        (area.children || []).forEach(function (deal) {
+          // `claimed` carries the categories an ancestor already matched, so a
+          // matching folder nested inside another match (Due Diligence > Market)
+          // is not collected twice and its files are not counted twice.
+          (function descend(nodes, claimed) {
+            nodes.forEach(function (node) {
+              if (node.type !== "folder") return;
+              var low = node.name.toLowerCase();
+              var claimedHere = [];
+
+              DASHBOARD_CONFIG.types.forEach(function (cat) {
+                if (claimed.indexOf(cat.id) !== -1) return;   // outermost match wins
+                var hit = cat.match.some(function (m) { return low.indexOf(m) !== -1; });
+                if (!hit) return;
+                typeIndex[cat.id].push({
+                  key: deal.name + " — " + node.name,
+                  dealName: deal.name,
+                  areaLabel: area.label,
+                  node: node
+                });
+                claimedHere.push(cat.id);
+              });
+
+              descend(node.children || [], claimed.concat(claimedHere));
+            });
+          }(deal.children || [], []));
+        });
       });
     }
 
-    function nodeAt(catId, pathArr) {
-      var items = TREE[catId] || [];
+    function load() {
+      // Try the local snapshot first; fall back to the safe placeholder tree.
+      return fetch("dashboard-data.json", { cache: "no-store" })
+        .then(function (r) {
+          if (!r.ok) throw new Error("no local dataset");
+          return r.json();
+        })
+        .then(function (json) {
+          DATA = { areas: json.areas.map(function (a) {
+            return { id: a.id, label: a.label, children: (a.children || []).map(normalise) };
+          }) };
+          meta = { source: "local-snapshot", anonymised: !!json.anonymised,
+                   generatedAt: json.generatedAt || null };
+        })
+        .catch(function () {
+          DATA = { areas: FALLBACK_DATA.areas.map(function (a) {
+            return { id: a.id, label: a.label, children: (a.children || []).map(normalise) };
+          }) };
+          meta = { source: "fallback", anonymised: true, generatedAt: null };
+        })
+        .then(function () {
+          buildTypeIndex();
+          return meta;
+        });
+    }
+
+    function nodeAt(nodes, pathArr) {
+      var items = nodes;
       for (var i = 0; i < pathArr.length; i++) {
         var next = null;
         for (var j = 0; j < items.length; j++) {
@@ -1725,57 +1847,97 @@ button.link-arrow {
       return items;
     }
 
-    // Simulated latency, so loading states are visible during review.
-    function delay(value, ms) {
-      return new Promise(function (resolve) {
-        setTimeout(function () { resolve(value); }, ms === undefined ? 260 : ms);
-      });
-    }
-
     return {
-      id: "sample",
-      label: "Sample data",
-      isConnected: function () { return connected; },
+      id: "dataset",
+      load: load,
+      meta: function () { return meta; },
+      isConnected: function () { return false; },
 
       getUser: function () {
-        return delay({ name: "Sample User", email: "sample@modillionpartners.com", role: "Preview mode" }, 60);
+        var local = meta.source === "local-snapshot";
+        return Promise.resolve({
+          name: local ? "Local Preview" : "Sample User",
+          email: "",
+          role: local ? "Local snapshot" : "Preview mode"
+        });
       },
 
       getCategories: function () {
-        var out = DASHBOARD_CONFIG.categories.map(function (cat) {
-          var count = 0, latest = null;
-          walk(TREE[cat.id] || [], function (it) {
-            if (it.type === "file") count++;
-            if (!latest || it.modified > latest) latest = it.modified;
-          });
-          return { id: cat.id, count: count, lastModified: latest };
+        var out = [];
+        DASHBOARD_CONFIG.areas.forEach(function (cat) {
+          var area = areaById(cat.id);
+          var kids = area ? area.children : [];
+          out.push({ id: cat.id, count: countFiles(kids), lastModified: latestIn(kids) });
         });
-        return delay(out);
+        DASHBOARD_CONFIG.types.forEach(function (cat) {
+          var hits = typeIndex[cat.id] || [];
+          var nodes = hits.map(function (h) { return h.node; });
+          out.push({ id: cat.id, count: countFiles(nodes), lastModified: latestIn(nodes) });
+        });
+        return Promise.resolve(out);
       },
 
       listFolder: function (catId, pathArr) {
-        return delay(nodeAt(catId, pathArr || []).slice());
+        pathArr = pathArr || [];
+        var area = areaById(catId);
+
+        if (area) return Promise.resolve(nodeAt(area.children, pathArr).slice());
+
+        var hits = typeIndex[catId];
+        if (!hits) return Promise.resolve([]);
+
+        if (!pathArr.length) {
+          // Root of a type view: one entry per matching folder, labelled by deal.
+          return Promise.resolve(hits.map(function (h) {
+            return {
+              name: h.key,
+              type: "folder",
+              ext: null,
+              size: null,
+              modified: h.node.modified,
+              modifiedBy: null,
+              url: null,
+              subtitle: h.areaLabel,
+              children: h.node.children || []
+            };
+          }));
+        }
+
+        var match = null;
+        for (var i = 0; i < hits.length; i++) {
+          if (hits[i].key === pathArr[0]) { match = hits[i]; break; }
+        }
+        if (!match) return Promise.resolve([]);
+        return Promise.resolve(nodeAt(match.node.children || [], pathArr.slice(1)).slice());
       },
 
       search: function (query) {
         var q = query.trim().toLowerCase();
-        if (!q) return delay([]);
+        if (!q) return Promise.resolve([]);
         var hits = [];
-        Object.keys(TREE).forEach(function (catId) {
-          walk(TREE[catId], function (it, trail) {
-            if (it.name.toLowerCase().indexOf(q) !== -1) {
-              hits.push(Object.assign({}, it, { categoryId: catId, path: trail }));
-            }
-          });
+        DATA.areas.forEach(function (area) {
+          (function descend(nodes, trail) {
+            nodes.forEach(function (node) {
+              if (node.name.toLowerCase().indexOf(q) !== -1) {
+                hits.push({
+                  name: node.name, type: node.type, ext: node.ext, size: node.size,
+                  modified: node.modified, modifiedBy: node.modifiedBy, url: node.url,
+                  categoryId: area.id, path: trail
+                });
+              }
+              if (node.children) descend(node.children, trail.concat(node.name));
+            });
+          }(area.children || [], []));
         });
-        hits.sort(function (a, b) { return b.modified - a.modified; });
-        return delay(hits.slice(0, 40));
+        hits.sort(function (a, b) {
+          return (b.modified ? b.modified.getTime() : 0) - (a.modified ? a.modified.getTime() : 0);
+        });
+        return Promise.resolve(hits.slice(0, 60));
       }
     };
   }());
 
-  // The single line that changes when a real source is connected.
-  var Provider = SampleProvider;
+  var Provider = DatasetProvider;
 
   /* ============================================================
      FORMATTING
@@ -1824,8 +1986,9 @@ button.link-arrow {
   }
 
   function catById(id) {
-    for (var i = 0; i < DASHBOARD_CONFIG.categories.length; i++) {
-      if (DASHBOARD_CONFIG.categories[i].id === id) return DASHBOARD_CONFIG.categories[i];
+    var all = allCategories();
+    for (var i = 0; i < all.length; i++) {
+      if (all[i].id === id) return all[i];
     }
     return null;
   }
@@ -1856,17 +2019,14 @@ button.link-arrow {
   /* ============================================================
      RENDER — category grid
      ============================================================ */
-  function renderGrid() {
-    var byId = {};
-    state.summaries.forEach(function (s) { byId[s.id] = s; });
-
-    $("categoryGrid").innerHTML = DASHBOARD_CONFIG.categories.map(function (cat) {
+  function cardsFor(categories, byId) {
+    return categories.map(function (cat) {
       var s = byId[cat.id] || { count: 0, lastModified: null };
       var meta = s.count
         ? '<span class="count">' + s.count + ' document' + (s.count === 1 ? '' : 's') + '</span>' +
           '<span class="sep">·</span>' +
           '<span class="muted">Updated ' + esc(fmtRelative(s.lastModified)) + '</span>'
-        : '<span class="dash-card__unmapped">Not yet mapped</span>';
+        : '<span class="dash-card__unmapped">Nothing filed yet</span>';
 
       return '' +
         '<button class="dash-card" type="button" data-cat="' + esc(cat.id) + '">' +
@@ -1878,22 +2038,32 @@ button.link-arrow {
     }).join("");
   }
 
+  function renderGrid() {
+    var byId = {};
+    state.summaries.forEach(function (s) { byId[s.id] = s; });
+    $("areaGrid").innerHTML = cardsFor(DASHBOARD_CONFIG.areas, byId);
+    $("typeGrid").innerHTML = cardsFor(DASHBOARD_CONFIG.types, byId);
+  }
+
   /* ============================================================
      RENDER — summary tiles
      ============================================================ */
   function renderSummary() {
     var docs = 0, latest = null, latestCat = null;
+    var areaIds = DASHBOARD_CONFIG.areas.map(function (a) { return a.id; });
     state.summaries.forEach(function (s) {
-      docs += s.count;
+      // Type views re-slice the same files, so only areas contribute to the total.
+      if (areaIds.indexOf(s.id) !== -1) docs += s.count;
       if (s.lastModified && (!latest || s.lastModified > latest)) {
         latest = s.lastModified;
         latestCat = catById(s.id);
       }
     });
     $("statDocs").textContent = docs ? docs.toLocaleString() : "—";
-    $("statCats").textContent = DASHBOARD_CONFIG.categories.length;
+    $("statCats").textContent = DASHBOARD_CONFIG.areas.length + " + " + DASHBOARD_CONFIG.types.length;
     $("statRecent").textContent = latestCat ? latestCat.label : "—";
-    $("statSource").textContent = Provider.isConnected() ? "OneDrive" : "Not connected";
+    $("statSource").textContent = Provider.meta().source === "local-snapshot"
+      ? "Local snapshot" : "Not connected";
     $("lastSynced").textContent = "Last synced " + new Date().toLocaleTimeString("en-US",
       { hour: "numeric", minute: "2-digit" });
   }
@@ -2131,24 +2301,97 @@ button.link-arrow {
   $("refreshBtn").addEventListener("click", function () { load(); });
 
   $("signOutBtn").addEventListener("click", function () {
+    try { sessionStorage.removeItem(GATE_KEY); } catch (e) { /* private mode */ }
     document.body.setAttribute("data-state", "locked");
     window.scrollTo({ top: 0 });
   });
 
-  $("previewBtn").addEventListener("click", function () {
+  /* ============================================================
+     GATE
+
+     A client-side password check. It is a speed bump, not access
+     control: the hash below sits in public page source and the
+     comparison runs in the browser, so it stops casual visitors and
+     nothing more. It is only acceptable while this page shows
+     placeholder content. Before any live document is wired up,
+     replace it with the Microsoft 365 sign-in (real, identity-based)
+     or Vercel edge Basic Auth with the secret in an environment
+     variable — see README.txt.
+
+     Stored as SHA-256 so the plaintext password is not committed to
+     this public repository.
+     ============================================================ */
+  var GATE_HASH = "bea94987e438eb2a9fdf51b5d96bde986d102e6b109a03640edd341ee599e1d2";
+  var GATE_KEY = "modillion-dashboard-unlocked";
+
+  function sha256Hex(text) {
+    var bytes = new TextEncoder().encode(text);
+    return crypto.subtle.digest("SHA-256", bytes).then(function (buf) {
+      return Array.prototype.map.call(new Uint8Array(buf), function (b) {
+        return b.toString(16).padStart(2, "0");
+      }).join("");
+    });
+  }
+
+  function unlock() {
+    try { sessionStorage.setItem(GATE_KEY, "1"); } catch (e) { /* private mode */ }
     document.body.setAttribute("data-state", "ready");
     window.scrollTo({ top: 0 });
     load();
+  }
+
+  $("gateForm").addEventListener("submit", function (e) {
+    e.preventDefault();
+    var input = $("gatePassword");
+    var err = $("gateError");
+    var btn = e.target.querySelector("button[type=submit]");
+
+    btn.disabled = true;
+    sha256Hex(input.value).then(function (hex) {
+      btn.disabled = false;
+      if (hex === GATE_HASH) {
+        err.hidden = true;
+        input.value = "";
+        unlock();
+      } else {
+        err.textContent = "That password is not recognised.";
+        err.hidden = false;
+        input.select();
+      }
+    }).catch(function () {
+      btn.disabled = false;
+      // crypto.subtle needs a secure context (https or localhost).
+      err.textContent = "This page must be served over https to check the password.";
+      err.hidden = false;
+    });
   });
 
   /* ============================================================
      BOOT
      ============================================================ */
-  var loaded = false;
+  function describeSource() {
+    var m = Provider.meta();
+    var el = $("sampleNotice");
+    var text = el.querySelector(".dash-notice__text");
+
+    if (m.source === "local-snapshot" && !m.anonymised) {
+      el.setAttribute("data-variant", "live");
+      text.innerHTML = "<strong>Local snapshot — real file names.</strong> Loaded from " +
+        "dashboard-data.json, which is gitignored and never deployed. The published page " +
+        "shows placeholder content instead.";
+    } else if (m.source === "local-snapshot") {
+      el.removeAttribute("data-variant");
+      text.innerHTML = "<strong>Local snapshot — anonymised.</strong> Real folder structure " +
+        "with deal names replaced by pseudonyms.";
+    } else {
+      el.removeAttribute("data-variant");
+      text.innerHTML = "<strong>Placeholder content.</strong> No document source is connected " +
+        "— the structure below mirrors the real OneDrive layout, but every name is invented.";
+    }
+    el.hidden = false;
+  }
 
   function load() {
-    $("sampleNotice").hidden = Provider.isConnected();
-
     Provider.getUser().then(function (user) {
       $("userName").textContent = user.name;
       $("userRole").textContent = user.role || "";
@@ -2156,10 +2399,7 @@ button.link-arrow {
         .join("").slice(0, 2).toUpperCase();
     });
 
-    if (!loaded) {
-      renderGrid();   // paint the cards immediately, counts fill in after
-      loaded = true;
-    }
+    renderGrid();   // paint the cards immediately, counts fill in after
 
     Provider.getCategories().then(function (summaries) {
       state.summaries = summaries;
@@ -2168,11 +2408,21 @@ button.link-arrow {
     });
   }
 
-  // Deep-link into the preview for review: dashboard.html?preview=1
-  if (new URLSearchParams(window.location.search).get("preview") === "1") {
-    document.body.setAttribute("data-state", "ready");
-    load();
-  }
+  /* ============================================================
+     BOOT
+     Resolve the dataset once, then honour an existing unlocked
+     session. There is deliberately no query-string bypass — that
+     would make the gate pointless.
+     ============================================================ */
+  Provider.load().then(function () {
+    describeSource();
+    var unlocked = false;
+    try { unlocked = sessionStorage.getItem(GATE_KEY) === "1"; } catch (e) { /* private mode */ }
+    if (unlocked) {
+      document.body.setAttribute("data-state", "ready");
+      load();
+    }
+  });
 })();
 </script>
 

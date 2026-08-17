@@ -6,3 +6,8 @@
 
 # Local-only holding area for content pulled off the site temporarily.
 .content-archive/
+
+# Real OneDrive snapshot used to develop the Company Dashboard locally.
+# Contains live deal and sponsor names — must never reach this public repo.
+dashboard-data.json
+dashboard-data.*.json
