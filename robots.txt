@@ -1,0 +1,6 @@
+User-agent: *
+Allow: /
+
+# Internal pages — keep out of search results.
+# This is not access control, only a crawler request.
+Disallow: /dashboard.html
