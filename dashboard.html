@@ -1302,6 +1302,512 @@ button.link-arrow {
   .skeleton { animation: none; }
 }
 
+/* Report --------------------------------------------------------- */
+.dash-report[hidden] { display: none; }
+
+.dash-detail__aside {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+.dash-detail__aside .dash-card__meta { border: 0; padding: 0; }
+
+.dash-report__head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 32px;
+  flex-wrap: wrap;
+  padding-bottom: 26px;
+  border-bottom: 2px solid var(--deep-space);
+  margin-bottom: 40px;
+}
+.dash-report__head h2 { margin: 0 0 8px; font-size: clamp(1.8rem, 3.2vw, 2.6rem); }
+.dash-report__meta { margin: 0; color: var(--muted); font-size: .86rem; }
+.dash-report__actions { display: flex; gap: 12px; flex-wrap: wrap; }
+
+.report-section { margin-bottom: 48px; }
+.report-section > h3 {
+  font-family: var(--sans);
+  font-weight: 400;
+  font-size: .74rem;
+  letter-spacing: .2em;
+  text-transform: uppercase;
+  color: var(--deep-space);
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--rule);
+  margin: 0 0 20px;
+}
+.report-note {
+  font-size: .82rem;
+  color: var(--muted);
+  margin: -8px 0 18px;
+}
+
+.report-tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 24px;
+}
+.report-tile__num {
+  font-family: var(--serif);
+  font-size: clamp(1.5rem, 2.4vw, 2.1rem);
+  color: var(--deep-space);
+  line-height: 1.1;
+  display: block;
+  margin-bottom: 6px;
+}
+.report-tile__label { font-size: .82rem; color: var(--muted); }
+
+.report-table-wrap { overflow-x: auto; }
+.report-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: .86rem;
+  min-width: 560px;
+}
+.report-table th {
+  text-align: left;
+  font-family: var(--sans);
+  font-weight: 500;
+  font-size: .68rem;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: var(--muted);
+  padding: 10px 14px 10px 0;
+  border-bottom: 1px solid var(--deep-space);
+  white-space: nowrap;
+  vertical-align: bottom;
+}
+.report-table td {
+  padding: 11px 14px 11px 0;
+  border-bottom: 1px solid var(--rule);
+  color: var(--ink);
+  vertical-align: top;
+}
+.report-table td.num, .report-table th.num { text-align: right; padding-right: 0; }
+.report-table tbody tr:last-child td { border-bottom: 1px solid var(--deep-space); }
+.report-table tfoot td {
+  padding: 12px 14px 12px 0;
+  font-weight: 500;
+  border-bottom: 0;
+}
+.report-table .muted { color: var(--muted); }
+
+/* Coverage matrix */
+.report-table .cell-yes { color: #1D6F42; font-weight: 500; }
+.report-table .cell-no  { color: #C0392B; }
+.report-table th.rot { font-size: .64rem; letter-spacing: .08em; }
+.report-gap { color: #C0392B; font-weight: 500; }
+.report-gap--none { color: #1D6F42; }
+
+/* Workspace tabs — Documents / Investor CRM ---------------------- */
+.dash-tabs {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 40px;
+  border-bottom: 1px solid var(--rule);
+}
+.dash-tabs button {
+  appearance: none;
+  background: none;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  padding: 12px 20px;
+  font-family: var(--sans);
+  font-size: .74rem;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: var(--muted);
+  cursor: pointer;
+  transition: color .2s ease, border-color .2s ease;
+}
+.dash-tabs button:hover { color: var(--deep-space); }
+.dash-tabs button.is-active {
+  color: var(--deep-space);
+  border-bottom-color: var(--deep-space);
+}
+.dash-tabs .dash-tabs__count {
+  margin-left: 8px;
+  font-size: .68rem;
+  letter-spacing: .06em;
+  color: var(--steel);
+}
+
+/* CRM ------------------------------------------------------------ */
+.dash-crm[hidden], .dash-investor[hidden] { display: none; }
+
+.dash-crm__filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  margin-bottom: 28px;
+}
+.dash-crm__filters select {
+  appearance: none;
+  font-family: var(--sans);
+  font-size: .8rem;
+  color: var(--deep-space);
+  background: var(--paper) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 8'%3E%3Cpath d='M1 1.5L6 6.5L11 1.5' fill='none' stroke='%235A6477' stroke-width='1.4'/%3E%3C/svg%3E") no-repeat right 12px center/10px;
+  border: 1px solid var(--rule);
+  border-radius: 2px;
+  padding: 10px 34px 10px 14px;
+  cursor: pointer;
+}
+.dash-crm__filters select:focus { outline: none; border-color: var(--steel); }
+.dash-crm__filters .dash-crm__clear {
+  appearance: none;
+  background: none;
+  border: 0;
+  font-family: var(--sans);
+  font-size: .78rem;
+  color: var(--muted);
+  cursor: pointer;
+  padding: 10px 4px;
+}
+.dash-crm__filters .dash-crm__clear:hover { color: var(--deep-space); text-decoration: underline; }
+.dash-crm__filters .dash-crm__shown { margin-left: auto; font-size: .78rem; color: var(--muted); }
+
+.crmtable-wrap { overflow-x: auto; }
+.crmtable { width: 100%; border-collapse: collapse; min-width: 880px; }
+.crmtable thead th {
+  text-align: left;
+  font-family: var(--sans);
+  font-size: .68rem;
+  font-weight: 500;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: var(--muted);
+  padding: 0 16px 12px 0;
+  border-bottom: 1px solid var(--rule);
+  white-space: nowrap;
+}
+.crmtable thead th button {
+  appearance: none; background: none; border: 0; padding: 0;
+  font: inherit; letter-spacing: inherit; text-transform: inherit;
+  color: inherit; cursor: pointer;
+}
+.crmtable thead th button:hover { color: var(--steel); }
+.crmtable thead th.is-sorted button { color: var(--deep-space); }
+.crmtable thead th .arrow { opacity: 0; font-size: .8rem; }
+.crmtable thead th.is-sorted .arrow { opacity: 1; }
+.crmtable tbody tr {
+  border-bottom: 1px solid var(--rule);
+  cursor: pointer;
+  transition: background .18s ease;
+}
+.crmtable tbody tr:hover { background: rgba(119, 166, 182, 0.07); }
+.crmtable td { padding: 16px 16px 16px 0; font-size: .9rem; vertical-align: top; }
+.crmtable .crm-name { font-weight: 500; color: var(--deep-space); }
+.crmtable .crm-sub { display: block; font-size: .76rem; color: var(--muted); margin-top: 3px; }
+.crmtable .muted { color: var(--muted); }
+
+.crm-pill {
+  display: inline-block;
+  font-size: .68rem;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  padding: 4px 10px;
+  border-radius: 2px;
+  white-space: nowrap;
+  background: rgba(45, 58, 81, 0.07);
+  color: var(--deep-space);
+}
+.crm-pill[data-stage="Prospect"]     { background: rgba(90, 100, 119, 0.1); color: var(--muted); }
+.crm-pill[data-stage="Contacted"]    { background: rgba(119, 166, 182, 0.16); color: #3E6C7C; }
+.crm-pill[data-stage="In diligence"] { background: rgba(232, 214, 203, 0.55); color: #8A5A3B; }
+.crm-pill[data-stage="Committed"]    { background: rgba(29, 111, 66, 0.12); color: #1D6F42; }
+.crm-pill[data-stage="Passed"]       { background: rgba(192, 57, 43, 0.1); color: #C0392B; }
+.crm-pill[data-stage="Dormant"]      { background: rgba(45, 58, 81, 0.06); color: var(--muted); }
+
+.crm-tag {
+  display: inline-block;
+  font-size: .72rem;
+  color: var(--muted);
+  border: 1px solid var(--rule);
+  border-radius: 2px;
+  padding: 3px 9px;
+  margin: 0 5px 5px 0;
+}
+.crm-tag--deal { border-color: rgba(119, 166, 182, .5); color: #3E6C7C; }
+
+/* Investor detail */
+.dash-investor__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 32px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+.dash-investor__head h2 { margin: 0 0 8px; font-size: clamp(1.7rem, 3vw, 2.4rem); }
+.dash-investor__head .dash-investor__sub {
+  margin: 0; color: var(--muted); font-size: .92rem;
+}
+.dash-investor__actions { display: flex; gap: 12px; flex-wrap: wrap; }
+
+.crm-facts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 1px;
+  background: var(--rule);
+  border: 1px solid var(--rule);
+  margin: 36px 0 48px;
+}
+.crm-fact { background: var(--paper); padding: 20px 22px; }
+.crm-fact__label {
+  display: block;
+  font-size: .66rem;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 8px;
+}
+.crm-fact__value { font-size: 1rem; color: var(--deep-space); line-height: 1.4; }
+.crm-fact__value.is-empty { color: var(--muted); font-style: italic; font-size: .9rem; }
+
+.crm-section { margin-bottom: 48px; }
+.crm-section > h3 {
+  font-family: var(--sans);
+  font-size: .72rem;
+  font-weight: 500;
+  letter-spacing: .16em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin: 0 0 18px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--rule);
+}
+.crm-section > h3 .crm-section__aside {
+  float: right;
+  text-transform: none;
+  letter-spacing: normal;
+  font-size: .76rem;
+}
+.crm-why {
+  margin: 0;
+  padding: 20px 24px;
+  background: rgba(232, 214, 203, 0.28);
+  border-left: 2px solid var(--oak);
+  font-size: .94rem;
+  line-height: 1.6;
+  color: var(--deep-space);
+}
+
+.crm-research { list-style: none; margin: 0; padding: 0; }
+.crm-research li {
+  padding: 0 0 18px 0;
+  margin-bottom: 18px;
+  border-bottom: 1px solid var(--rule);
+  font-size: .92rem;
+  line-height: 1.6;
+}
+.crm-research li:last-child { border-bottom: 0; margin-bottom: 0; padding-bottom: 0; }
+.crm-research__meta { display: block; margin-top: 8px; font-size: .76rem; color: var(--muted); }
+.crm-research__meta a { color: var(--steel); text-decoration: none; word-break: break-all; }
+.crm-research__meta a:hover { text-decoration: underline; }
+
+/* Conversation log */
+.crm-log { list-style: none; margin: 0; padding: 0; }
+.crm-log li {
+  position: relative;
+  padding: 0 0 28px 28px;
+  border-left: 1px solid var(--rule);
+}
+.crm-log li:last-child { border-left-color: transparent; padding-bottom: 0; }
+.crm-log li::before {
+  content: "";
+  position: absolute;
+  left: -4.5px; top: 6px;
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--steel);
+}
+.crm-log__head {
+  display: flex; flex-wrap: wrap; gap: 10px; align-items: baseline;
+  margin-bottom: 8px;
+}
+.crm-log__date { font-size: .82rem; color: var(--deep-space); font-weight: 500; }
+.crm-log__channel {
+  font-size: .66rem; letter-spacing: .1em; text-transform: uppercase;
+  color: var(--muted); border: 1px solid var(--rule); border-radius: 2px; padding: 2px 8px;
+}
+.crm-log__who { font-size: .8rem; color: var(--muted); }
+.crm-log__body { margin: 0; font-size: .92rem; line-height: 1.65; white-space: pre-wrap; }
+.crm-log__next {
+  margin: 10px 0 0;
+  font-size: .86rem;
+  color: var(--deep-space);
+}
+.crm-log__next strong {
+  font-weight: 500;
+  color: var(--muted);
+  font-size: .68rem;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  margin-right: 8px;
+}
+.crm-log__source { display: block; margin-top: 8px; font-size: .74rem; color: var(--muted); }
+
+/* Agent ---------------------------------------------------------- */
+.crm-agent {
+  border: 1px solid var(--rule);
+  background: #FAFCFE;
+  padding: 28px 30px;
+  margin-bottom: 40px;
+}
+.crm-agent__head { display: flex; align-items: center; gap: 12px; margin-bottom: 6px; }
+.crm-agent__head h3 {
+  font-family: var(--sans);
+  font-size: .74rem; font-weight: 500; letter-spacing: .16em; text-transform: uppercase;
+  color: var(--deep-space); margin: 0;
+}
+.crm-agent__spark { width: 18px; height: 18px; color: var(--steel); flex: 0 0 auto; }
+.crm-agent__spark svg { width: 100%; height: 100%; fill: none; stroke: currentColor; stroke-width: 1.4; }
+.crm-agent__hint { margin: 0 0 16px; font-size: .84rem; color: var(--muted); line-height: 1.6; max-width: 76ch; }
+.crm-agent textarea {
+  width: 100%;
+  min-height: 132px;
+  resize: vertical;
+  font-family: var(--sans);
+  font-size: .92rem;
+  line-height: 1.6;
+  color: var(--deep-space);
+  background: var(--paper);
+  border: 1px solid var(--rule);
+  border-radius: 2px;
+  padding: 16px 18px;
+}
+.crm-agent textarea:focus { outline: none; border-color: var(--steel); }
+.crm-agent textarea::placeholder { color: var(--muted); }
+.crm-agent__row { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-top: 14px; }
+.crm-agent__row .dash-updated { margin-left: auto; }
+
+.crm-draft {
+  margin-top: 24px;
+  border: 1px solid var(--steel);
+  background: var(--paper);
+  padding: 26px 28px;
+}
+.crm-draft[hidden] { display: none; }
+.crm-draft h4 {
+  font-family: var(--sans);
+  font-size: .72rem; font-weight: 500; letter-spacing: .16em; text-transform: uppercase;
+  color: var(--muted); margin: 0 0 4px;
+}
+.crm-draft__lede { margin: 0 0 22px; font-size: .84rem; color: var(--muted); }
+.crm-draft__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: 18px 24px;
+}
+.crm-field { display: flex; flex-direction: column; }
+.crm-field--wide { grid-column: 1 / -1; }
+.crm-field label {
+  font-size: .66rem; letter-spacing: .14em; text-transform: uppercase;
+  color: var(--muted); margin-bottom: 7px;
+}
+.crm-field input, .crm-field select, .crm-field textarea {
+  font-family: var(--sans);
+  font-size: .9rem;
+  color: var(--deep-space);
+  background: var(--paper);
+  border: 1px solid var(--rule);
+  border-radius: 2px;
+  padding: 10px 12px;
+  width: 100%;
+}
+.crm-field textarea { min-height: 92px; resize: vertical; line-height: 1.55; }
+.crm-field input:focus, .crm-field select:focus, .crm-field textarea:focus {
+  outline: none; border-color: var(--steel);
+}
+.crm-field__note { font-size: .72rem; color: var(--muted); margin-top: 6px; }
+.crm-field__note[data-found="yes"] { color: #1D6F42; }
+.crm-field__note[data-found="new"] { color: #8A5A3B; }
+.crm-draft__actions {
+  display: flex; gap: 12px; flex-wrap: wrap;
+  margin-top: 26px; padding-top: 22px; border-top: 1px solid var(--rule);
+}
+.dash-refresh--primary {
+  background: var(--deep-space);
+  border-color: var(--deep-space);
+  color: #FFFFFF;
+}
+.dash-refresh--primary:hover { background: var(--prussian); border-color: var(--prussian); color: #FFFFFF; }
+
+.crm-unsaved {
+  display: inline-flex; align-items: center; gap: 8px;
+  font-size: .78rem; color: #8A5A3B;
+}
+.crm-unsaved[hidden] { display: none; }
+.crm-unsaved::before {
+  content: ""; width: 7px; height: 7px; border-radius: 50%; background: #C08A3B;
+}
+
+@media (max-width: 700px) {
+  .crm-agent { padding: 22px 20px; }
+  .crm-draft { padding: 20px 18px; }
+  .dash-crm__filters .dash-crm__shown { margin-left: 0; width: 100%; }
+}
+
+/* Print — this is the PDF ---------------------------------------- */
+@media print {
+  @page { margin: 16mm 14mm; }
+
+  html, body { background: #FFFFFF !important; }
+  body { font-size: 10.5pt; }
+
+  /* Everything that is not the report itself */
+  .dash-gate, .dash-topbar, .dash-hero, .dash-notice, .dash-summary,
+  .dash-toolbar, .dash-browse, .dash-detail, .dash-results, .dash-tabs,
+  .dash-crm, .dash-investor,
+  .site-footer, .dash-toast, .dash-report__crumbs, .dash-report__actions {
+    display: none !important;
+  }
+
+  /* Force the app visible even if the gate is locked in this window */
+  body[data-state="locked"] .dash-app { display: block !important; }
+
+  /* The report lives inside the documents workspace, which the CRM tab hides */
+  #wsDocs[hidden] { display: block !important; }
+  #wsCrm { display: none !important; }
+
+  section { padding: 0 !important; }
+  .section--alice { background: #FFFFFF !important; }
+  .container { max-width: none; padding: 0; }
+
+  .dash-report__head {
+    border-bottom: 1.5pt solid #06132B;
+    margin-bottom: 18pt;
+    padding-bottom: 10pt;
+  }
+  .dash-report__head h2 { font-size: 19pt; }
+  .dash-report__meta { font-size: 8.5pt; }
+
+  .report-section { margin-bottom: 20pt; break-inside: auto; }
+  .report-section > h3 { font-size: 8pt; margin-bottom: 8pt; break-after: avoid; }
+  .report-note { font-size: 8pt; }
+
+  .report-tiles { gap: 12pt; }
+  .report-tile__num { font-size: 15pt; }
+  .report-tile__label { font-size: 8pt; }
+
+  .report-table-wrap { overflow: visible; }
+  .report-table { font-size: 8.5pt; min-width: 0; }
+  .report-table th { font-size: 7pt; padding: 5pt 8pt 5pt 0; }
+  .report-table td { padding: 4.5pt 8pt 4.5pt 0; }
+
+  /* Keep rows whole and repeat headers across pages */
+  thead { display: table-header-group; }
+  tfoot { display: table-footer-group; }
+  tr { break-inside: avoid; }
+
+  a[href]::after { content: ""; }   /* no printed URLs */
+}
+
 /* Toast ---------------------------------------------------------- */
 .dash-toast {
   position: fixed;
@@ -1431,6 +1937,15 @@ button.link-arrow {
   <section class="section--alice">
     <div class="container">
 
+      <!-- Workspace tabs -->
+      <nav class="dash-tabs" aria-label="Workspace">
+        <button type="button" data-tab="docs" class="is-active" aria-current="page">Documents</button>
+        <button type="button" data-tab="crm">Investor CRM<span class="dash-tabs__count" id="tabCrmCount"></span></button>
+      </nav>
+
+      <!-- ======================= DOCUMENTS ======================= -->
+      <div id="wsDocs">
+
       <!-- Summary tiles -->
       <div class="dash-summary">
         <div class="stat">
@@ -1458,6 +1973,7 @@ button.link-arrow {
           <label class="visually-hidden" for="searchInput">Search all documents</label>
           <input type="search" id="searchInput" placeholder="Search all documents" autocomplete="off">
         </div>
+        <button class="dash-refresh" id="reportBtn">Portfolio report</button>
         <button class="dash-refresh" id="refreshBtn">Refresh</button>
         <span class="dash-updated" id="lastSynced"></span>
       </div>
@@ -1479,9 +1995,35 @@ button.link-arrow {
             <h2 id="detailTitle"></h2>
             <p id="detailBlurb"></p>
           </div>
-          <span class="dash-card__meta" style="border: 0; padding: 0;" id="detailCount"></span>
+          <div class="dash-detail__aside">
+            <span class="dash-card__meta" id="detailCount"></span>
+            <button class="dash-refresh" id="catReportBtn">Report</button>
+          </div>
         </div>
         <div id="detailBody"></div>
+      </div>
+
+      <!-- Report -->
+      <div class="dash-report" id="viewReport" hidden>
+        <nav class="dash-crumbs dash-report__crumbs" aria-label="Breadcrumb">
+          <button type="button" data-action="home">All categories</button>
+          <span class="sep">/</span>
+          <span class="current">Report</span>
+        </nav>
+
+        <div class="dash-report__head">
+          <div>
+            <p class="eyebrow">Modillion Partners — Internal</p>
+            <h2 id="reportTitle"></h2>
+            <p class="dash-report__meta" id="reportMeta"></p>
+          </div>
+          <div class="dash-report__actions">
+            <button class="dash-refresh" id="exportPdfBtn">Export PDF</button>
+            <button class="dash-refresh" id="exportXlsxBtn">Export Excel</button>
+          </div>
+        </div>
+
+        <div id="reportBody"></div>
       </div>
 
       <!-- Search results -->
@@ -1494,6 +2036,139 @@ button.link-arrow {
         <p class="dash-results__head" id="resultsHead"></p>
         <div id="resultsBody"></div>
       </div>
+
+      </div><!-- /#wsDocs -->
+
+      <!-- ====================== INVESTOR CRM ====================== -->
+      <div id="wsCrm" hidden>
+
+        <!-- Agent — plain-language entry -->
+        <div class="crm-agent" id="crmAgent">
+          <div class="crm-agent__head">
+            <span class="crm-agent__spark" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9L12 3z"/><path d="M18.5 15.5l.7 1.8 1.8.7-1.8.7-.7 1.8-.7-1.8-1.8-.7 1.8-.7.7-1.8z"/></svg>
+            </span>
+            <h3>Log a conversation</h3>
+          </div>
+          <p class="crm-agent__hint">
+            Write what happened in plain language, or paste a forwarded email thread.
+            It gets read into a draft record — investor, date, channel, deals discussed,
+            check size and next step — which you review and correct before anything is saved.
+          </p>
+
+          <label class="visually-hidden" for="agentInput">Conversation notes or pasted email</label>
+          <textarea id="agentInput" spellcheck="true"
+            placeholder="Call with Pathstone on Tuesday. Interested in the Arboretum GP Fund II and the Durham deal. Talked about a $5–7m ticket. Sending the memo and the model by Friday."></textarea>
+
+          <div class="crm-agent__row">
+            <button class="dash-refresh dash-refresh--primary" id="agentParseBtn">Read this</button>
+            <button class="dash-refresh" id="agentClearBtn">Clear</button>
+            <span class="dash-updated" id="agentStatus"></span>
+          </div>
+
+          <!-- Draft — everything is editable before it is committed -->
+          <div class="crm-draft" id="crmDraft" hidden>
+            <h4>Draft entry</h4>
+            <p class="crm-draft__lede">Nothing has been saved yet. Correct anything that is wrong, then add it to the log.</p>
+
+            <div class="crm-draft__grid">
+              <div class="crm-field">
+                <label for="draftInvestor">Investor</label>
+                <input type="text" id="draftInvestor" autocomplete="off" list="crmInvestorNames">
+                <datalist id="crmInvestorNames"></datalist>
+                <span class="crm-field__note" id="draftInvestorNote"></span>
+              </div>
+              <div class="crm-field">
+                <label for="draftDate">Date</label>
+                <input type="date" id="draftDate">
+                <span class="crm-field__note" id="draftDateNote"></span>
+              </div>
+              <div class="crm-field">
+                <label for="draftChannel">Channel</label>
+                <select id="draftChannel">
+                  <option>Call</option>
+                  <option>Email</option>
+                  <option>Meeting</option>
+                  <option>Video call</option>
+                  <option>Conference</option>
+                  <option>Note</option>
+                </select>
+              </div>
+              <div class="crm-field">
+                <label for="draftStage">Stage after this</label>
+                <select id="draftStage"></select>
+              </div>
+              <div class="crm-field">
+                <label for="draftWho">Who was on it</label>
+                <input type="text" id="draftWho" autocomplete="off" placeholder="Names, comma separated">
+              </div>
+              <div class="crm-field">
+                <label for="draftCheck">Check size discussed</label>
+                <input type="text" id="draftCheck" autocomplete="off" placeholder="e.g. $5m–$7m">
+              </div>
+              <div class="crm-field crm-field--wide">
+                <label for="draftDeals">Deals discussed</label>
+                <input type="text" id="draftDeals" autocomplete="off" placeholder="Comma separated">
+                <span class="crm-field__note" id="draftDealsNote"></span>
+              </div>
+              <div class="crm-field crm-field--wide">
+                <label for="draftSummary">What happened</label>
+                <textarea id="draftSummary"></textarea>
+              </div>
+              <div class="crm-field crm-field--wide">
+                <label for="draftNext">Next step</label>
+                <input type="text" id="draftNext" autocomplete="off">
+              </div>
+            </div>
+
+            <div class="crm-draft__actions">
+              <button class="dash-refresh dash-refresh--primary" id="draftSaveBtn">Add to log</button>
+              <button class="dash-refresh" id="draftCancelBtn">Discard</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Toolbar -->
+        <div class="dash-toolbar">
+          <div class="dash-search">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+            <label class="visually-hidden" for="crmSearch">Search investors</label>
+            <input type="search" id="crmSearch" placeholder="Search investors, notes and conversations" autocomplete="off">
+          </div>
+          <button class="dash-refresh" id="crmExportBtn">Export Excel</button>
+          <button class="dash-refresh" id="crmSaveFileBtn">Download crm-data.json</button>
+          <span class="crm-unsaved" id="crmUnsaved" hidden>Unsaved local edits</span>
+        </div>
+
+        <!-- List -->
+        <div class="dash-crm" id="viewCrm">
+          <div class="dash-crm__filters">
+            <label class="visually-hidden" for="crmFilterType">Filter by type</label>
+            <select id="crmFilterType"><option value="">All types</option></select>
+
+            <label class="visually-hidden" for="crmFilterStage">Filter by stage</label>
+            <select id="crmFilterStage"><option value="">All stages</option></select>
+
+            <label class="visually-hidden" for="crmFilterDeal">Filter by deal interest</label>
+            <select id="crmFilterDeal"><option value="">All deals</option></select>
+
+            <button type="button" class="dash-crm__clear" id="crmClearFilters">Clear</button>
+            <span class="dash-crm__shown" id="crmShown"></span>
+          </div>
+          <div id="crmBody"></div>
+        </div>
+
+        <!-- Investor detail -->
+        <div class="dash-investor" id="viewInvestor" hidden>
+          <nav class="dash-crumbs" aria-label="Breadcrumb">
+            <button type="button" data-action="crm-home">All investors</button>
+            <span class="sep">/</span>
+            <span class="current" id="investorCrumb"></span>
+          </nav>
+          <div id="investorBody"></div>
+        </div>
+
+      </div><!-- /#wsCrm -->
 
     </div>
   </section>
@@ -1765,6 +2440,13 @@ button.link-arrow {
       return n;
     }
 
+    // A folder hit contributes its whole subtree; a file hit contributes itself.
+    function hitFileCount(hits) {
+      return hits.reduce(function (n, h) {
+        return n + (h.kind === "file" ? 1 : countFiles(h.node.children || []));
+      }, 0);
+    }
+
     function areaById(id) {
       for (var i = 0; i < DATA.areas.length; i++) {
         if (DATA.areas[i].id === id) return DATA.areas[i];
@@ -1784,18 +2466,36 @@ button.link-arrow {
           // is not collected twice and its files are not counted twice.
           (function descend(nodes, claimed) {
             nodes.forEach(function (node) {
-              if (node.type !== "folder") return;
               var low = node.name.toLowerCase();
-              var claimedHere = [];
 
+              // Loose files count too. Most deals file flat — a model often
+              // sits at the deal root as "… Model 29 - Base.xlsx" rather than
+              // inside a folder called Model. Matching folders only made the
+              // coverage report read as though those documents did not exist.
+              if (node.type === "file") {
+                DASHBOARD_CONFIG.types.forEach(function (cat) {
+                  if (claimed.indexOf(cat.id) !== -1) return;  // counted via its folder
+                  if (!cat.match.some(function (m) { return low.indexOf(m) !== -1; })) return;
+                  typeIndex[cat.id].push({
+                    key: deal.name + " — " + node.name,
+                    dealName: deal.name,
+                    areaLabel: area.label,
+                    kind: "file",
+                    node: node
+                  });
+                });
+                return;
+              }
+
+              var claimedHere = [];
               DASHBOARD_CONFIG.types.forEach(function (cat) {
                 if (claimed.indexOf(cat.id) !== -1) return;   // outermost match wins
-                var hit = cat.match.some(function (m) { return low.indexOf(m) !== -1; });
-                if (!hit) return;
+                if (!cat.match.some(function (m) { return low.indexOf(m) !== -1; })) return;
                 typeIndex[cat.id].push({
                   key: deal.name + " — " + node.name,
                   dealName: deal.name,
                   areaLabel: area.label,
+                  kind: "folder",
                   node: node
                 });
                 claimedHere.push(cat.id);
@@ -1853,6 +2553,12 @@ button.link-arrow {
       meta: function () { return meta; },
       isConnected: function () { return false; },
 
+      // Reporting needs the whole tree and the type index, not just one
+      // folder at a time. A Graph-backed provider would satisfy these by
+      // caching its own crawl.
+      raw: function () { return DATA; },
+      typeHits: function (catId) { return typeIndex[catId] || []; },
+
       getUser: function () {
         var local = meta.source === "local-snapshot";
         return Promise.resolve({
@@ -1872,7 +2578,7 @@ button.link-arrow {
         DASHBOARD_CONFIG.types.forEach(function (cat) {
           var hits = typeIndex[cat.id] || [];
           var nodes = hits.map(function (h) { return h.node; });
-          out.push({ id: cat.id, count: countFiles(nodes), lastModified: latestIn(nodes) });
+          out.push({ id: cat.id, count: hitFileCount(hits), lastModified: latestIn(nodes) });
         });
         return Promise.resolve(out);
       },
@@ -1889,23 +2595,24 @@ button.link-arrow {
         if (!pathArr.length) {
           // Root of a type view: one entry per matching folder, labelled by deal.
           return Promise.resolve(hits.map(function (h) {
+            if (h.kind === "file") {
+              return {
+                name: h.key, type: "file", ext: h.node.ext, size: h.node.size,
+                modified: h.node.modified, modifiedBy: h.node.modifiedBy,
+                url: h.node.url, subtitle: h.dealName
+              };
+            }
             return {
-              name: h.key,
-              type: "folder",
-              ext: null,
-              size: null,
-              modified: h.node.modified,
-              modifiedBy: null,
-              url: null,
-              subtitle: h.areaLabel,
-              children: h.node.children || []
+              name: h.key, type: "folder", ext: null, size: null,
+              modified: h.node.modified, modifiedBy: null, url: null,
+              subtitle: h.areaLabel, children: h.node.children || []
             };
           }));
         }
 
         var match = null;
         for (var i = 0; i < hits.length; i++) {
-          if (hits[i].key === pathArr[0]) { match = hits[i]; break; }
+          if (hits[i].key === pathArr[0] && hits[i].kind !== "file") { match = hits[i]; break; }
         }
         if (!match) return Promise.resolve([]);
         return Promise.resolve(nodeAt(match.node.children || [], pathArr.slice(1)).slice());
@@ -2000,6 +2707,7 @@ button.link-arrow {
     view: "browse",       // browse | detail | results
     categoryId: null,
     path: [],
+    report: null,
     sortKey: "modified",
     sortDir: "desc",
     summaries: []
@@ -2160,6 +2868,7 @@ button.link-arrow {
     $("viewBrowse").hidden  = name !== "browse";
     $("viewDetail").hidden  = name !== "detail";
     $("viewResults").hidden = name !== "results";
+    $("viewReport").hidden  = name !== "report";
   }
 
   function renderCrumbs() {
@@ -2238,6 +2947,579 @@ button.link-arrow {
   }
 
   /* ============================================================
+     REPORTS
+
+     Built entirely from document metadata — names, types, sizes,
+     dates and folder structure. Nothing here opens a document, so
+     these reports describe what exists and what is missing, not
+     what any document says. Figures from inside the files (NOI,
+     IRR, occupancy) need Graph access plus a parser per template
+     and are deliberately out of scope for now.
+
+     Scope is either a single category or the whole portfolio.
+     ============================================================ */
+
+  // Which document types every deal is expected to carry. Absence is
+  // what makes the coverage matrix useful, so keep this list short and
+  // limited to things that genuinely should exist for a live deal.
+  var EXPECTED_TYPES = ["models", "term-sheets", "investment-memos", "legal-org"];
+
+  function flattenFiles(nodes, trail, out) {
+    (nodes || []).forEach(function (n) {
+      if (n.type === "file") {
+        out.push({ name: n.name, ext: extOf(n), size: n.size || 0,
+                   modified: n.modified, path: trail.join(" / ") });
+      } else {
+        flattenFiles(n.children, trail.concat(n.name), out);
+      }
+    });
+    return out;
+  }
+
+  function buildReport(scopeId) {
+    var raw = Provider.raw();
+    var cat = scopeId ? catById(scopeId) : null;
+    var isType = cat && DASHBOARD_CONFIG.types.some(function (t) { return t.id === cat.id; });
+
+    // Deal rows in scope
+    var deals = [];
+    raw.areas.forEach(function (area) {
+      if (cat && !isType && area.id !== cat.id) return;
+      (area.children || []).forEach(function (deal) {
+        var files = flattenFiles(deal.children, [], []);
+        deals.push({
+          area: area.label,
+          name: deal.name,
+          files: files,
+          count: files.length,
+          bytes: files.reduce(function (a, f) { return a + f.size; }, 0),
+          modified: files.reduce(function (a, f) {
+            return (f.modified && (!a || f.modified > a)) ? f.modified : a;
+          }, null),
+          types: {}
+        });
+      });
+    });
+
+    // Which document types each deal carries, from the same index the
+    // "by document type" views use, so the two can never disagree.
+    var byName = {};
+    deals.forEach(function (d) { byName[d.area + "|" + d.name] = d; });
+    DASHBOARD_CONFIG.types.forEach(function (t) {
+      (Provider.typeHits(t.id) || []).forEach(function (hit) {
+        var d = byName[hit.areaLabel + "|" + hit.dealName];
+        if (!d) return;
+        d.types[t.id] = (d.types[t.id] || 0) +
+          (hit.kind === "file" ? 1 : flattenFiles(hit.node.children, [], []).length);
+      });
+    });
+
+    // A type-scoped report narrows to deals that have that type, and narrows
+    // each deal's files to that type's documents — otherwise the totals would
+    // count everything those deals hold, not the documents being reported on.
+    if (isType) {
+      var scoped = {};
+      (Provider.typeHits(cat.id) || []).forEach(function (hit) {
+        var key = hit.areaLabel + "|" + hit.dealName;
+        scoped[key] = (scoped[key] || []).concat(
+          hit.kind === "file"
+            ? [{ name: hit.node.name, ext: extOf(hit.node), size: hit.node.size || 0,
+                 modified: hit.node.modified, path: "" }]
+            : flattenFiles(hit.node.children, [hit.node.name], []));
+      });
+      deals = deals.filter(function (d) { return scoped[d.area + "|" + d.name]; })
+        .map(function (d) {
+          var files = scoped[d.area + "|" + d.name];
+          d.files = files;
+          d.count = files.length;
+          d.bytes = files.reduce(function (a, f) { return a + f.size; }, 0);
+          d.modified = files.reduce(function (a, f) {
+            return (f.modified && (!a || f.modified > a)) ? f.modified : a;
+          }, null);
+          return d;
+        });
+    }
+
+    // Document-type totals
+    var typeRows = DASHBOARD_CONFIG.types.map(function (t) {
+      var n = 0, withIt = 0;
+      deals.forEach(function (d) {
+        if (d.types[t.id]) { n += d.types[t.id]; withIt++; }
+      });
+      return { id: t.id, label: t.label, count: n, deals: withIt };
+    });
+
+    // File-format mix
+    var extMap = {};
+    var allFiles = [];
+    deals.forEach(function (d) {
+      d.files.forEach(function (f) {
+        allFiles.push({ deal: d.name, area: d.area, file: f });
+        extMap[f.ext] = extMap[f.ext] || { ext: f.ext, count: 0, bytes: 0 };
+        extMap[f.ext].count++;
+        extMap[f.ext].bytes += f.size;
+      });
+    });
+    var extRows = Object.keys(extMap).map(function (k) { return extMap[k]; })
+      .sort(function (a, b) { return b.count - a.count; });
+
+    // Coverage gaps
+    var gapRows = deals.map(function (d) {
+      var missing = EXPECTED_TYPES.filter(function (id) { return !d.types[id]; });
+      return { deal: d.name, area: d.area, missing: missing };
+    });
+
+    return {
+      scopeId: scopeId || null,
+      scopeLabel: cat ? cat.label : "Full portfolio",
+      isType: !!isType,
+      generated: new Date(),
+      dataset: Provider.meta(),
+      deals: deals.sort(function (a, b) { return b.count - a.count; }),
+      typeRows: typeRows,
+      extRows: extRows,
+      gapRows: gapRows,
+      allFiles: allFiles,
+      totals: {
+        deals: deals.length,
+        documents: allFiles.length,
+        bytes: allFiles.reduce(function (a, r) { return a + r.file.size; }, 0),
+        areas: (function () {
+          var s = {}; deals.forEach(function (d) { s[d.area] = 1; });
+          return Object.keys(s).length;
+        }())
+      }
+    };
+  }
+
+  /* ---------- render ---------- */
+
+  function table(head, rows, foot) {
+    return '<div class="report-table-wrap"><table class="report-table">' +
+      '<thead><tr>' + head.map(function (h) {
+        return '<th' + (h.num ? ' class="num"' : '') + '>' + esc(h.label) + '</th>';
+      }).join("") + '</tr></thead>' +
+      '<tbody>' + rows.map(function (r) {
+        return '<tr>' + r.map(function (c) {
+          var cls = (c && c.cls) ? c.cls : "";
+          var val = (c && typeof c === "object") ? c.v : c;
+          return '<td' + (cls ? ' class="' + cls + '"' : '') + '>' + val + '</td>';
+        }).join("") + '</tr>';
+      }).join("") + '</tbody>' +
+      (foot ? '<tfoot><tr>' + foot.map(function (c) {
+        var cls = (c && c.cls) ? c.cls : "";
+        var val = (c && typeof c === "object") ? c.v : c;
+        return '<td' + (cls ? ' class="' + cls + '"' : '') + '>' + val + '</td>';
+      }).join("") + '</tr></tfoot>' : "") +
+      '</table></div>';
+  }
+
+  function renderReport(m) {
+    var html = "";
+
+    // Summary
+    html += '<div class="report-section"><h3>Summary</h3><div class="report-tiles">' +
+      [[m.totals.deals, m.totals.deals === 1 ? "Deal" : "Deals"],
+       [m.totals.documents.toLocaleString(), "Documents"],
+       [fmtSize(m.totals.bytes), "Total volume"],
+       [m.totals.areas, m.totals.areas === 1 ? "Area" : "Areas"]]
+      .map(function (t) {
+        return '<div><span class="report-tile__num">' + esc(String(t[0])) + '</span>' +
+               '<span class="report-tile__label">' + esc(t[1]) + '</span></div>';
+      }).join("") + '</div></div>';
+
+    // Coverage matrix — only meaningful for area / portfolio scope
+    if (!m.isType && m.deals.length) {
+      var cols = DASHBOARD_CONFIG.types.filter(function (t) {
+        return EXPECTED_TYPES.indexOf(t.id) !== -1;
+      });
+      html += '<div class="report-section"><h3>Coverage</h3>' +
+        '<p class="report-note">Which of the expected document types each deal currently holds. ' +
+        'Detection is by folder and file name only — nothing here reads a document. A gap means ' +
+        'no folder or file names itself that way, which is a filing signal rather than proof the ' +
+        'document is missing. Treat it as a prompt to check, not a finding.</p>' +
+        table(
+          [{ label: "Deal" }, { label: "Area" }].concat(
+            cols.map(function (c) { return { label: c.label, num: true }; }),
+            [{ label: "Gaps", num: true }]),
+          m.deals.map(function (d) {
+            var missing = 0;
+            var cells = cols.map(function (c) {
+              var n = d.types[c.id] || 0;
+              if (!n) missing++;
+              return { v: n ? String(n) : "—", cls: "num " + (n ? "cell-yes" : "cell-no") };
+            });
+            return [esc(d.name), { v: esc(d.area), cls: "muted" }].concat(cells, [
+              { v: missing ? String(missing) : "0",
+                cls: "num report-gap" + (missing ? "" : " report-gap--none") }
+            ]);
+          })
+        ) + '</div>';
+    }
+
+    // Deals
+    if (m.deals.length) {
+      html += '<div class="report-section"><h3>Deals</h3>' +
+        table(
+          [{ label: "Deal" }, { label: "Area" }, { label: "Documents", num: true },
+           { label: "Volume", num: true }, { label: "Last updated", num: true }],
+          m.deals.map(function (d) {
+            return [esc(d.name), { v: esc(d.area), cls: "muted" },
+                    { v: String(d.count), cls: "num" },
+                    { v: fmtSize(d.bytes), cls: "num" },
+                    { v: esc(fmtDate(d.modified)), cls: "num muted" }];
+          }),
+          ["Total", "", { v: String(m.totals.documents), cls: "num" },
+           { v: fmtSize(m.totals.bytes), cls: "num" }, ""]
+        ) + '</div>';
+    }
+
+    // Document types
+    html += '<div class="report-section"><h3>By document type</h3>' +
+      table(
+        [{ label: "Document type" }, { label: "Documents", num: true }, { label: "Deals", num: true }],
+        m.typeRows.map(function (t) {
+          return [esc(t.label), { v: String(t.count), cls: "num" },
+                  { v: String(t.deals), cls: "num" }];
+        })
+      ) + '</div>';
+
+    // Formats
+    html += '<div class="report-section"><h3>File formats</h3>' +
+      table(
+        [{ label: "Format" }, { label: "Files", num: true }, { label: "Volume", num: true }],
+        m.extRows.map(function (e) {
+          return [esc(e.ext.toUpperCase()), { v: String(e.count), cls: "num" },
+                  { v: fmtSize(e.bytes), cls: "num" }];
+        })
+      ) + '</div>';
+
+    if (!m.deals.length) {
+      html += '<div class="dash-state"><h3>Nothing to report</h3>' +
+              '<p>No documents are filed in this scope yet.</p></div>';
+    }
+
+    $("reportTitle").textContent = m.scopeLabel + " — Document Report";
+    $("reportMeta").textContent =
+      "Generated " + m.generated.toLocaleString("en-US", {
+        dateStyle: "long", timeStyle: "short"
+      }) + " · " +
+      (m.dataset.source === "local-snapshot"
+        ? (m.dataset.anonymised ? "Local snapshot (anonymised)" : "Local snapshot")
+        : "Placeholder content — no document source connected");
+    $("reportBody").innerHTML = html;
+  }
+
+  function openReport(scopeId) {
+    state.report = buildReport(scopeId);
+    renderReport(state.report);
+    showView("report");
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  /* ============================================================
+     XLSX EXPORT
+
+     A minimal, dependency-free .xlsx writer. An xlsx file is a ZIP
+     of XML parts; entries are stored uncompressed, which is valid
+     and keeps this to a CRC32 plus some string building. Written by
+     hand rather than pulling in a library because this page will
+     eventually hold confidential material and a third-party CDN
+     script is surface worth avoiding.
+     ============================================================ */
+
+  var Xlsx = (function () {
+    var CRC = (function () {
+      var t = new Uint32Array(256);
+      for (var n = 0; n < 256; n++) {
+        var c = n;
+        for (var k = 0; k < 8; k++) c = (c & 1) ? (0xEDB88320 ^ (c >>> 1)) : (c >>> 1);
+        t[n] = c >>> 0;
+      }
+      return t;
+    }());
+
+    function crc32(bytes) {
+      var c = 0xFFFFFFFF;
+      for (var i = 0; i < bytes.length; i++) c = CRC[(c ^ bytes[i]) & 0xFF] ^ (c >>> 8);
+      return (c ^ 0xFFFFFFFF) >>> 0;
+    }
+
+    function bytesOf(str) { return new TextEncoder().encode(str); }
+
+    function xmlEsc(s) {
+      return String(s).replace(/[&<>"']/g, function (c) {
+        return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&apos;" }[c];
+      // Control characters are illegal in XML 1.0; strip them.
+      }).replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g, "");
+    }
+
+    function colName(i) {
+      var s = "";
+      i++;
+      while (i > 0) { var r = (i - 1) % 26; s = String.fromCharCode(65 + r) + s; i = (i - r - 1) / 26; }
+      return s;
+    }
+
+    // Excel serial date (1900 system, with its 1900-leap-year quirk baked in).
+    function serialDate(d) {
+      return (d.getTime() - Date.UTC(1899, 11, 30) + d.getTimezoneOffset() * -60000) / 86400000;
+    }
+
+    function sheetXml(sheet) {
+      var widths = (sheet.widths || []).map(function (w, i) {
+        return '<col min="' + (i + 1) + '" max="' + (i + 1) + '" width="' + w + '" customWidth="1"/>';
+      }).join("");
+
+      var rows = sheet.rows.map(function (row, r) {
+        var cells = row.map(function (cell, c) {
+          var ref = colName(c) + (r + 1);
+          if (cell === null || cell === undefined || cell === "") {
+            return '<c r="' + ref + '"' + (r === 0 ? ' s="1"' : '') + '/>';
+          }
+          if (cell instanceof Date) {
+            return '<c r="' + ref + '" s="2"><v>' + serialDate(cell) + '</v></c>';
+          }
+          if (typeof cell === "number" && isFinite(cell)) {
+            return '<c r="' + ref + '"' + (r === 0 ? ' s="1"' : '') + '><v>' + cell + '</v></c>';
+          }
+          return '<c r="' + ref + '" t="inlineStr"' + (r === 0 ? ' s="1"' : '') +
+                 '><is><t xml:space="preserve">' + xmlEsc(cell) + '</t></is></c>';
+        }).join("");
+        return '<row r="' + (r + 1) + '">' + cells + '</row>';
+      }).join("");
+
+      return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+        '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">' +
+        (sheet.rows.length ? '<sheetViews><sheetView workbookViewId="0">' +
+          '<pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/>' +
+          '</sheetView></sheetViews>' : '') +
+        (widths ? '<cols>' + widths + '</cols>' : '') +
+        '<sheetData>' + rows + '</sheetData></worksheet>';
+    }
+
+    function build(sheets) {
+      var parts = [];
+
+      parts.push(["[Content_Types].xml",
+        '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+        '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">' +
+        '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>' +
+        '<Default Extension="xml" ContentType="application/xml"/>' +
+        '<Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>' +
+        '<Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>' +
+        sheets.map(function (s, i) {
+          return '<Override PartName="/xl/worksheets/sheet' + (i + 1) + '.xml" ' +
+                 'ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>';
+        }).join("") + '</Types>']);
+
+      parts.push(["_rels/.rels",
+        '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+        '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">' +
+        '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/>' +
+        '</Relationships>']);
+
+      parts.push(["xl/workbook.xml",
+        '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+        '<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" ' +
+        'xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets>' +
+        sheets.map(function (s, i) {
+          return '<sheet name="' + xmlEsc(s.name.slice(0, 31)) + '" sheetId="' + (i + 1) +
+                 '" r:id="rId' + (i + 1) + '"/>';
+        }).join("") + '</sheets></workbook>']);
+
+      parts.push(["xl/_rels/workbook.xml.rels",
+        '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+        '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">' +
+        sheets.map(function (s, i) {
+          return '<Relationship Id="rId' + (i + 1) + '" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet' + (i + 1) + '.xml"/>';
+        }).join("") +
+        '<Relationship Id="rId' + (sheets.length + 1) + '" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>' +
+        '</Relationships>']);
+
+      // s=0 default, s=1 bold header, s=2 date
+      parts.push(["xl/styles.xml",
+        '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+        '<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">' +
+        '<numFmts count="1"><numFmt numFmtId="164" formatCode="yyyy\\-mm\\-dd"/></numFmts>' +
+        '<fonts count="2"><font><sz val="11"/><name val="Calibri"/></font>' +
+        '<font><b/><sz val="11"/><name val="Calibri"/></font></fonts>' +
+        '<fills count="2"><fill><patternFill patternType="none"/></fill>' +
+        '<fill><patternFill patternType="gray125"/></fill></fills>' +
+        '<borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders>' +
+        '<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>' +
+        '<cellXfs count="3">' +
+        '<xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>' +
+        '<xf numFmtId="0" fontId="1" fillId="0" borderId="0" xfId="0" applyFont="1"/>' +
+        '<xf numFmtId="164" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/>' +
+        '</cellXfs>' +
+        // Without a declared default style some readers warn and substitute one.
+        '<cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles>' +
+        '</styleSheet>']);
+
+      sheets.forEach(function (s, i) {
+        parts.push(["xl/worksheets/sheet" + (i + 1) + ".xml", sheetXml(s)]);
+      });
+
+      return zip(parts);
+    }
+
+    function zip(parts) {
+      var chunks = [], central = [], offset = 0;
+
+      parts.forEach(function (p) {
+        var nameBytes = bytesOf(p[0]);
+        var data = bytesOf(p[1]);
+        var crc = crc32(data);
+
+        var local = new DataView(new ArrayBuffer(30));
+        local.setUint32(0, 0x04034b50, true);
+        local.setUint16(4, 20, true);          // version needed
+        local.setUint16(6, 0x0800, true);      // UTF-8 filename flag
+        local.setUint16(8, 0, true);           // stored, no compression
+        local.setUint16(10, 0, true);          // time
+        local.setUint16(12, 0x2821, true);     // date (2000-01-01)
+        local.setUint32(14, crc, true);
+        local.setUint32(18, data.length, true);
+        local.setUint32(22, data.length, true);
+        local.setUint16(26, nameBytes.length, true);
+        local.setUint16(28, 0, true);
+
+        chunks.push(new Uint8Array(local.buffer), nameBytes, data);
+
+        var cd = new DataView(new ArrayBuffer(46));
+        cd.setUint32(0, 0x02014b50, true);
+        cd.setUint16(4, 20, true);
+        cd.setUint16(6, 20, true);
+        cd.setUint16(8, 0x0800, true);
+        cd.setUint16(10, 0, true);
+        cd.setUint16(12, 0, true);
+        cd.setUint16(14, 0x2821, true);
+        cd.setUint32(16, crc, true);
+        cd.setUint32(20, data.length, true);
+        cd.setUint32(24, data.length, true);
+        cd.setUint16(28, nameBytes.length, true);
+        cd.setUint32(42, offset, true);
+        central.push(new Uint8Array(cd.buffer), nameBytes);
+
+        offset += 30 + nameBytes.length + data.length;
+      });
+
+      var centralSize = central.reduce(function (a, c) { return a + c.length; }, 0);
+      var end = new DataView(new ArrayBuffer(22));
+      end.setUint32(0, 0x06054b50, true);
+      end.setUint16(8, parts.length, true);
+      end.setUint16(10, parts.length, true);
+      end.setUint32(12, centralSize, true);
+      end.setUint32(16, offset, true);
+
+      return new Blob(chunks.concat(central, [new Uint8Array(end.buffer)]),
+                      { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+    }
+
+    return { build: build };
+  }());
+
+  function download(blob, filename) {
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+  }
+
+  function slug(s) {
+    return s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+  }
+
+  function exportXlsx(m) {
+    var stamp = m.generated.toISOString().slice(0, 10);
+    var cols = DASHBOARD_CONFIG.types.filter(function (t) {
+      return EXPECTED_TYPES.indexOf(t.id) !== -1;
+    });
+
+    var sheets = [];
+
+    sheets.push({
+      name: "Summary",
+      widths: [34, 26],
+      rows: [
+        ["Metric", "Value"],
+        ["Report", m.scopeLabel + " — Document Report"],
+        ["Generated", m.generated],
+        ["Dataset", m.dataset.source === "local-snapshot"
+          ? (m.dataset.anonymised ? "Local snapshot (anonymised)" : "Local snapshot")
+          : "Placeholder content — no source connected"],
+        ["Deals", m.totals.deals],
+        ["Documents", m.totals.documents],
+        ["Total volume (bytes)", m.totals.bytes],
+        ["Total volume", fmtSize(m.totals.bytes)],
+        ["Areas", m.totals.areas],
+        [],
+        ["Note", "Built from document metadata only. No document contents were read."]
+      ]
+    });
+
+    sheets.push({
+      name: "Deals",
+      widths: [46, 20, 13, 15, 14],
+      rows: [["Deal", "Area", "Documents", "Volume (bytes)", "Last updated"]].concat(
+        m.deals.map(function (d) {
+          return [d.name, d.area, d.count, d.bytes, d.modified || ""];
+        }))
+    });
+
+    if (!m.isType) {
+      sheets.push({
+        name: "Coverage",
+        widths: [46, 20].concat(cols.map(function () { return 16; }), [9]),
+        rows: [["Deal", "Area"].concat(cols.map(function (c) { return c.label; }), ["Gaps"])].concat(
+          m.deals.map(function (d) {
+            var missing = 0;
+            var cells = cols.map(function (c) {
+              var n = d.types[c.id] || 0;
+              if (!n) missing++;
+              return n;
+            });
+            return [d.name, d.area].concat(cells, [missing]);
+          }))
+      });
+    }
+
+    sheets.push({
+      name: "By type",
+      widths: [30, 13, 9],
+      rows: [["Document type", "Documents", "Deals"]].concat(
+        m.typeRows.map(function (t) { return [t.label, t.count, t.deals]; }))
+    });
+
+    sheets.push({
+      name: "Formats",
+      widths: [12, 10, 16],
+      rows: [["Format", "Files", "Volume (bytes)"]].concat(
+        m.extRows.map(function (e) { return [e.ext.toUpperCase(), e.count, e.bytes]; }))
+    });
+
+    sheets.push({
+      name: "Documents",
+      widths: [60, 40, 20, 10, 14, 14, 40],
+      rows: [["File", "Deal", "Area", "Type", "Size (bytes)", "Modified", "Folder"]].concat(
+        m.allFiles.map(function (r) {
+          return [r.file.name, r.deal, r.area, r.file.ext, r.file.size,
+                  r.file.modified || "", r.file.path];
+        }))
+    });
+
+    download(Xlsx.build(sheets),
+             "modillion-" + slug(m.scopeLabel) + "-report-" + stamp + ".xlsx");
+    toast("Excel workbook downloaded — " + sheets.length + " sheets, " +
+          m.totals.documents.toLocaleString() + " documents.");
+  }
+
+  /* ============================================================
      EVENTS
      ============================================================ */
   document.addEventListener("click", function (e) {
@@ -2299,6 +3581,22 @@ button.link-arrow {
   });
 
   $("refreshBtn").addEventListener("click", function () { load(); });
+
+  // Portfolio-wide report from the toolbar; category-scoped from the detail view.
+  $("reportBtn").addEventListener("click", function () { openReport(null); });
+  $("catReportBtn").addEventListener("click", function () { openReport(state.categoryId); });
+
+  // The print stylesheet is the PDF: it hides everything but the report.
+  $("exportPdfBtn").addEventListener("click", function () { window.print(); });
+
+  $("exportXlsxBtn").addEventListener("click", function () {
+    if (!state.report) return;
+    try {
+      exportXlsx(state.report);
+    } catch (err) {
+      toast("Could not build the workbook: " + err.message);
+    }
+  });
 
   $("signOutBtn").addEventListener("click", function () {
     try { sessionStorage.removeItem(GATE_KEY); } catch (e) { /* private mode */ }
