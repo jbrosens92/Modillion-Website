@@ -1549,15 +1549,22 @@ button.link-arrow {
 }
 .dash-investor__actions { display: flex; gap: 12px; flex-wrap: wrap; }
 
+/* Rules are drawn on the cells, not as gaps over a coloured backing —
+   the fact count rarely fills the last row, and a backing colour shows
+   through the empty cell as a stray grey block. */
 .crm-facts {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
-  gap: 1px;
-  background: var(--rule);
-  border: 1px solid var(--rule);
+  background: var(--paper);
+  border-top: 1px solid var(--rule);
+  border-left: 1px solid var(--rule);
   margin: 36px 0 48px;
 }
-.crm-fact { background: var(--paper); padding: 20px 22px; }
+.crm-fact {
+  padding: 20px 22px;
+  border-right: 1px solid var(--rule);
+  border-bottom: 1px solid var(--rule);
+}
 .crm-fact__label {
   display: block;
   font-size: .66rem;
@@ -1738,6 +1745,176 @@ button.link-arrow {
 }
 .dash-refresh--primary:hover { background: var(--prussian); border-color: var(--prussian); color: #FFFFFF; }
 
+/* Proposed changes — the diff */
+.crm-diff { list-style: none; margin: 0; padding: 0; }
+.crm-diff li {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--rule);
+}
+.crm-diff li:last-child { border-bottom: 0; }
+.crm-diff input[type="checkbox"] { margin-top: 3px; flex: 0 0 auto; accent-color: var(--deep-space); }
+.crm-diff__text { font-size: .92rem; line-height: 1.55; }
+.crm-diff__what {
+  display: block;
+  font-size: .66rem; letter-spacing: .14em; text-transform: uppercase;
+  color: var(--muted); margin-bottom: 5px;
+}
+.crm-diff__from { color: var(--muted); text-decoration: line-through; }
+.crm-diff__arrow { color: var(--muted); margin: 0 8px; }
+.crm-diff__to { color: var(--deep-space); font-weight: 500; }
+.crm-diff__warn { display: block; margin-top: 5px; font-size: .78rem; color: #8A5A3B; }
+
+/* Learned phrases */
+.crm-memory {
+  margin-top: 40px;
+  border-top: 1px solid var(--rule);
+  padding-top: 22px;
+}
+.crm-memory[hidden] { display: none; }
+.crm-memory summary {
+  cursor: pointer;
+  font-size: .72rem; letter-spacing: .14em; text-transform: uppercase;
+  color: var(--muted);
+}
+.crm-memory summary:hover { color: var(--deep-space); }
+.crm-memory summary span { color: var(--steel); letter-spacing: .06em; }
+.crm-memory__lede {
+  margin: 16px 0 18px; font-size: .84rem; color: var(--muted);
+  line-height: 1.6; max-width: 76ch;
+}
+.crm-memory__list { list-style: none; margin: 0; padding: 0; }
+.crm-memory__list li {
+  display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap;
+  padding: 11px 0; border-bottom: 1px solid var(--rule); font-size: .88rem;
+}
+.crm-memory__list li:last-child { border-bottom: 0; }
+.crm-memory__phrase { font-weight: 500; color: var(--deep-space); }
+.crm-memory__meta { font-size: .76rem; color: var(--muted); }
+.crm-memory__forget {
+  margin-left: auto; appearance: none; background: none; border: 0;
+  font-family: var(--sans); font-size: .78rem; color: var(--muted); cursor: pointer;
+}
+.crm-memory__forget:hover { color: #C0392B; text-decoration: underline; }
+
+/* Deal status */
+.crm-deadtag { text-decoration: line-through; opacity: .65; }
+.deal-status {
+  display: inline-block; margin-left: 10px;
+  font-size: .62rem; letter-spacing: .1em; text-transform: uppercase;
+  padding: 2px 8px; border-radius: 2px; vertical-align: middle;
+  background: rgba(45, 58, 81, 0.08); color: var(--muted);
+}
+.deal-status[data-state="Dead"]    { background: rgba(192, 57, 43, 0.1); color: #C0392B; }
+.deal-status[data-state="On hold"] { background: rgba(232, 214, 203, 0.6); color: #8A5A3B; }
+.deal-status[data-state="Closed"]  { background: rgba(29, 111, 66, 0.1); color: #1D6F42; }
+
+/* Task list ------------------------------------------------------ */
+#wsTasks[hidden] { display: none; }
+
+.task-add__row { display: flex; gap: 12px; align-items: stretch; }
+.task-add__row input {
+  flex: 1 1 auto;
+  font-family: var(--sans); font-size: .95rem; color: var(--deep-space);
+  background: var(--paper); border: 1px solid var(--rule); border-radius: 2px;
+  padding: 13px 16px;
+}
+.task-add__row input:focus { outline: none; border-color: var(--steel); }
+.task-add__row input::placeholder { color: var(--muted); }
+.task-add__row .dash-refresh { flex: 0 0 auto; }
+.task-add__fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 16px 20px;
+  margin-top: 18px;
+}
+.task-whoami {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  margin: 40px 0 0; padding-top: 22px; border-top: 1px solid var(--rule);
+  font-size: .8rem; color: var(--muted);
+}
+.task-whoami label {
+  font-size: .66rem; letter-spacing: .14em; text-transform: uppercase;
+}
+.task-whoami select {
+  appearance: none;
+  font-family: var(--sans); font-size: .82rem; color: var(--deep-space);
+  background: var(--paper); border: 1px solid var(--rule); border-radius: 2px;
+  padding: 7px 12px; cursor: pointer;
+}
+.task-whoami span { flex: 1 1 240px; }
+
+.task-group { margin-bottom: 40px; }
+.task-group > h3 {
+  font-family: var(--sans);
+  font-size: .72rem; font-weight: 500; letter-spacing: .16em; text-transform: uppercase;
+  color: var(--muted); margin: 0 0 4px; padding-bottom: 10px;
+  border-bottom: 1px solid var(--rule);
+}
+.task-group > h3 span { color: var(--steel); letter-spacing: .06em; }
+.task-group--overdue > h3 { color: #C0392B; border-bottom-color: rgba(192, 57, 43, .3); }
+
+.task-list { list-style: none; margin: 0; padding: 0; }
+.task {
+  display: flex; align-items: flex-start; gap: 14px;
+  padding: 15px 0; border-bottom: 1px solid var(--rule);
+}
+.task__check {
+  flex: 0 0 auto; margin-top: 2px;
+  width: 18px; height: 18px; cursor: pointer;
+  accent-color: var(--deep-space);
+}
+.task__main { flex: 1 1 auto; min-width: 0; }
+.task__title {
+  font-size: .95rem; color: var(--deep-space); line-height: 1.45;
+  cursor: pointer; border: 0; background: none; padding: 0; text-align: left;
+  font-family: var(--sans); width: 100%;
+}
+.task__title:hover { color: var(--steel); }
+.task__meta {
+  display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: baseline;
+  margin-top: 7px; font-size: .78rem; color: var(--muted);
+}
+.task__meta a { color: var(--steel); text-decoration: none; }
+.task__meta a:hover { text-decoration: underline; }
+.task__due--soon { color: #8A5A3B; }
+.task__due--late { color: #C0392B; font-weight: 500; }
+.task__aside { flex: 0 0 auto; display: flex; align-items: center; gap: 10px; }
+
+.task.is-done .task__title { color: var(--muted); text-decoration: line-through; }
+.task.is-done .task__meta { opacity: .7; }
+
+.task__who {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 26px; height: 26px; border-radius: 50%;
+  background: var(--deep-space); color: #FFFFFF;
+  font-size: .64rem; letter-spacing: .04em;
+}
+.task__who[data-unassigned="yes"] {
+  background: transparent; color: var(--muted);
+  border: 1px dashed var(--rule);
+}
+
+.task-pill {
+  font-size: .64rem; letter-spacing: .1em; text-transform: uppercase;
+  padding: 3px 9px; border-radius: 2px; white-space: nowrap;
+}
+.task-pill[data-p="High"]   { background: rgba(192, 57, 43, .1); color: #C0392B; }
+.task-pill[data-p="Medium"] { background: rgba(232, 214, 203, .55); color: #8A5A3B; }
+.task-pill[data-p="Low"]    { background: rgba(45, 58, 81, .07); color: var(--muted); }
+.task-pill[data-s="In progress"] { background: rgba(119, 166, 182, .18); color: #3E6C7C; }
+.task-pill[data-s="Blocked"]     { background: rgba(192, 57, 43, .1); color: #C0392B; }
+
+.task-edit { margin-top: 0; }
+.task-edit[hidden] { display: none; }
+
+@media (max-width: 700px) {
+  .task-add__row { flex-direction: column; }
+  .task__aside { flex-direction: column; align-items: flex-end; gap: 6px; }
+}
+
 .crm-unsaved {
   display: inline-flex; align-items: center; gap: 8px;
   font-size: .78rem; color: #8A5A3B;
@@ -1763,7 +1940,7 @@ button.link-arrow {
   /* Everything that is not the report itself */
   .dash-gate, .dash-topbar, .dash-hero, .dash-notice, .dash-summary,
   .dash-toolbar, .dash-browse, .dash-detail, .dash-results, .dash-tabs,
-  .dash-crm, .dash-investor,
+  .dash-crm, .dash-investor, #wsTasks,
   .site-footer, .dash-toast, .dash-report__crumbs, .dash-report__actions {
     display: none !important;
   }
@@ -1941,6 +2118,7 @@ button.link-arrow {
       <nav class="dash-tabs" aria-label="Workspace">
         <button type="button" data-tab="docs" class="is-active" aria-current="page">Documents</button>
         <button type="button" data-tab="crm">Investor CRM<span class="dash-tabs__count" id="tabCrmCount"></span></button>
+        <button type="button" data-tab="tasks">Task List<span class="dash-tabs__count" id="tabTaskCount"></span></button>
       </nav>
 
       <!-- ======================= DOCUMENTS ======================= -->
@@ -2048,12 +2226,15 @@ button.link-arrow {
             <span class="crm-agent__spark" aria-hidden="true">
               <svg viewBox="0 0 24 24"><path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9L12 3z"/><path d="M18.5 15.5l.7 1.8 1.8.7-1.8.7-.7 1.8-.7-1.8-1.8-.7 1.8-.7.7-1.8z"/></svg>
             </span>
-            <h3>Log a conversation</h3>
+            <h3>Tell the agent</h3>
           </div>
           <p class="crm-agent__hint">
-            Write what happened in plain language, or paste a forwarded email thread.
-            It gets read into a draft record — investor, date, channel, deals discussed,
-            check size and next step — which you review and correct before anything is saved.
+            Describe a conversation and it becomes a log entry — investor, date, channel,
+            deals discussed, check size, next step. Give it an instruction instead and it
+            becomes a set of edits: <em>drop East Blocks from their list</em>,
+            <em>mark them passed</em>, <em>set owner to JB</em>, <em>that deal fell
+            through</em>, <em>archive them</em>. Either way you see a draft first and
+            nothing is saved until you say so. Corrections you make are remembered.
           </p>
 
           <label class="visually-hidden" for="agentInput">Conversation notes or pasted email</label>
@@ -2108,7 +2289,9 @@ button.link-arrow {
               </div>
               <div class="crm-field crm-field--wide">
                 <label for="draftDeals">Deals discussed</label>
-                <input type="text" id="draftDeals" autocomplete="off" placeholder="Comma separated">
+                <input type="text" id="draftDeals" autocomplete="off" list="crmDealNames"
+                       placeholder="Folder names are recognised whole; separate anything else with a semicolon">
+                <datalist id="crmDealNames"></datalist>
                 <span class="crm-field__note" id="draftDealsNote"></span>
               </div>
               <div class="crm-field crm-field--wide">
@@ -2126,7 +2309,21 @@ button.link-arrow {
               <button class="dash-refresh" id="draftCancelBtn">Discard</button>
             </div>
           </div>
+
+          <!-- Edit commands — shown as a diff, applied only on confirmation -->
+          <div class="crm-draft" id="crmActions" hidden>
+            <h4>Proposed changes</h4>
+            <p class="crm-draft__lede">Nothing has been changed yet. Uncheck anything you do not want, then apply.</p>
+            <ul class="crm-diff" id="crmDiffList"></ul>
+            <div class="crm-draft__actions">
+              <button class="dash-refresh dash-refresh--primary" id="actionsApplyBtn">Apply changes</button>
+              <button class="dash-refresh" id="actionsCancelBtn">Discard</button>
+              <button class="dash-refresh" id="actionsAsLogBtn">Log it as a note instead</button>
+            </div>
+          </div>
         </div>
+
+        <p class="report-note" id="crmSourceNote"></p>
 
         <!-- Toolbar -->
         <div class="dash-toolbar">
@@ -2156,6 +2353,17 @@ button.link-arrow {
             <span class="dash-crm__shown" id="crmShown"></span>
           </div>
           <div id="crmBody"></div>
+
+          <!-- What the agent has picked up, and how to make it forget -->
+          <details class="crm-memory" id="crmMemory" hidden>
+            <summary>What the agent has learned <span id="crmMemoryCount"></span></summary>
+            <p class="crm-memory__lede">
+              Every phrase below was learned from a correction you made to a draft. It is
+              applied before the built-in matching. Nothing is inferred on its own — if a
+              mapping is wrong, forget it and it is gone.
+            </p>
+            <ul class="crm-memory__list" id="crmMemoryList"></ul>
+          </details>
         </div>
 
         <!-- Investor detail -->
@@ -2169,6 +2377,91 @@ button.link-arrow {
         </div>
 
       </div><!-- /#wsCrm -->
+
+      <!-- ======================== TASK LIST ======================== -->
+      <div id="wsTasks" hidden>
+
+        <!-- Add -->
+        <div class="crm-agent task-add">
+          <div class="crm-agent__head">
+            <span class="crm-agent__spark" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h10"/><path d="M17.5 17.5l1.5 1.5 3-3.5"/></svg>
+            </span>
+            <h3>Add a task</h3>
+          </div>
+          <p class="crm-agent__hint">
+            Write it the way you would say it. A name, a date and a priority are picked out of
+            the sentence — <em>send the DDQ to North Quay by Friday, Dana, high</em> — and shown
+            in the fields below so you can correct them before it is added.
+          </p>
+
+          <div class="task-add__row">
+            <label class="visually-hidden" for="taskInput">What needs doing</label>
+            <input type="text" id="taskInput" autocomplete="off" placeholder="What needs doing?">
+            <button class="dash-refresh dash-refresh--primary" id="taskAddBtn">Add</button>
+          </div>
+
+          <div class="task-add__fields">
+            <div class="crm-field">
+              <label for="taskAssignee">Assigned to</label>
+              <select id="taskAssignee"></select>
+            </div>
+            <div class="crm-field">
+              <label for="taskDue">Due</label>
+              <input type="date" id="taskDue">
+            </div>
+            <div class="crm-field">
+              <label for="taskPriority">Priority</label>
+              <select id="taskPriority"></select>
+            </div>
+            <div class="crm-field">
+              <label for="taskLink">Related to</label>
+              <input type="text" id="taskLink" autocomplete="off" list="taskLinkOptions"
+                     placeholder="A deal or an investor (optional)">
+              <datalist id="taskLinkOptions"></datalist>
+            </div>
+          </div>
+          <p class="crm-field__note" id="taskReadNote"></p>
+        </div>
+
+        <p class="report-note" id="taskSourceNote"></p>
+
+        <!-- Toolbar -->
+        <div class="dash-toolbar">
+          <div class="dash-search">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+            <label class="visually-hidden" for="taskSearch">Search tasks</label>
+            <input type="search" id="taskSearch" placeholder="Search tasks" autocomplete="off">
+          </div>
+          <button class="dash-refresh" id="taskExportBtn">Export Excel</button>
+          <button class="dash-refresh" id="taskSaveFileBtn">Download tasks-data.json</button>
+          <span class="crm-unsaved" id="taskUnsaved" hidden>Unsaved local edits</span>
+        </div>
+
+        <div class="dash-crm__filters">
+          <label class="visually-hidden" for="taskFilterWho">Filter by assignee</label>
+          <select id="taskFilterWho"><option value="">Everyone</option></select>
+
+          <label class="visually-hidden" for="taskFilterStatus">Filter by status</label>
+          <select id="taskFilterStatus"><option value="">All open</option></select>
+
+          <label class="visually-hidden" for="taskFilterPriority">Filter by priority</label>
+          <select id="taskFilterPriority"><option value="">Any priority</option></select>
+
+          <button type="button" class="dash-crm__clear" id="taskClearFilters">Clear</button>
+          <span class="dash-crm__shown" id="taskShown"></span>
+        </div>
+
+        <div id="taskBody"></div>
+
+        <p class="task-whoami">
+          <label for="taskWhoAmI">Signed in as</label>
+          <select id="taskWhoAmI"></select>
+          <span>— used for “Mine” and as the default assignee. A placeholder until the
+          Microsoft 365 sign-in supplies a real identity.</span>
+        </p>
+
+      </div><!-- /#wsTasks -->
 
     </div>
   </section>
@@ -2830,12 +3123,20 @@ button.link-arrow {
       var catTag = opts.showCategory && it.categoryId
         ? '<span class="dash-results__cat">' + esc((catById(it.categoryId) || {}).label || "") + '</span>' : "";
 
+      // At the top of an area every folder is a deal, so a deal the CRM has
+      // marked dead or on hold says so here too. The folder is untouched —
+      // this is the CRM's note about it, shown where it is useful.
+      var dealState = opts.dealLevel && it.type === "folder" ? Crm.dealStatus(it.name) : null;
+      var stateTag = dealState && dealState.status !== "Live"
+        ? '<span class="deal-status" data-state="' + esc(dealState.status) + '">' + esc(dealState.status) + '</span>' : "";
+
       return '<tr>' +
         '<td><button class="fileitem" type="button" data-item="' + esc(it.name) + '" data-kind="' + esc(it.type) + '"' +
             (it.categoryId ? ' data-cat="' + esc(it.categoryId) + '"' : "") +
             (it.url ? ' data-url="' + esc(it.url) + '"' : "") + '>' +
           iconFor(it) +
-          '<span><span class="fileitem__label">' + esc(it.name) + '</span>' + sub + '</span>' +
+          '<span><span class="fileitem__label' + (stateTag ? " crm-deadtag" : "") + '">' +
+            esc(it.name) + '</span>' + stateTag + sub + '</span>' +
         '</button></td>' +
         '<td><span class="filetype">' + (it.type === "folder" ? "Folder" : esc(kind)) + '</span>' +
           (catTag ? '<br>' + catTag : "") + '</td>' +
@@ -2913,6 +3214,9 @@ button.link-arrow {
         '<span>' + fileCount + ' file' + (fileCount === 1 ? '' : 's') + '</span>' +
         (dirCount ? '<span class="sep">·</span><span>' + dirCount + ' folder' + (dirCount === 1 ? '' : 's') + '</span>' : '');
       $("detailBody").innerHTML = fileTable(items, {
+        // Top of an area: these rows are the deals themselves.
+        dealLevel: state.path.length === 0 &&
+                   DASHBOARD_CONFIG.areas.some(function (a) { return a.id === catId; }),
         emptyTitle: "Nothing in this folder",
         emptyBody: "No documents have been filed here yet."
       });
@@ -3520,6 +3824,2557 @@ button.link-arrow {
   }
 
   /* ============================================================
+     CRM — DATA
+
+     Same seam as the documents above. Real records live in
+     crm-data.json, which is gitignored and never deployed; the
+     published page falls back to CRM_FALLBACK, whose firms are
+     invented. Nothing real reaches the public repository.
+
+     Edits made in the browser are held in a localStorage overlay
+     keyed by investor id, not written back over the file — a static
+     page cannot write to disk. "Download crm-data.json" produces the
+     merged file to drop back into the folder, and tools/crm-ingest.py
+     writes the same file from forwarded email. The overlay stores
+     only additions and patches, so re-loading a newer file does not
+     lose them and does not duplicate what the file already holds.
+     ============================================================ */
+
+  var CRM_STAGES = ["Prospect", "Contacted", "In diligence", "Committed", "Passed", "Dormant"];
+
+  // Placeholder records. Every firm below is invented.
+  var CRM_FALLBACK = {
+    generatedAt: null,
+    source: "fallback",
+    stages: CRM_STAGES,
+    investors: [
+      { id: "north-quay", name: "North Quay Family Office", type: "Single-family office",
+        stage: "In diligence", location: "Boston, MA", aum: "$1.4B",
+        checkSize: { min: 3000000, max: 6000000, note: "" },
+        mandate: "Direct and fund commitments in US multifamily and industrial.",
+        priority: "High", tags: ["Family office"], deals: [], contacts: [],
+        research: [], why: "", conversations: [] },
+      { id: "ardsley-endowment", name: "Ardsley College Endowment", type: "Endowment",
+        stage: "Contacted", location: "Hartford, CT", aum: "$780M",
+        checkSize: { min: 2000000, max: 4000000, note: "" },
+        mandate: "Value-add real estate through commingled funds only.",
+        priority: "Medium", tags: ["Endowment"], deals: [], contacts: [],
+        research: [], why: "", conversations: [] },
+      { id: "brightwater-mfo", name: "Brightwater Multi-Family Office", type: "Multi-family office",
+        stage: "Prospect", location: "Denver, CO", aum: "$6.2B",
+        checkSize: { min: null, max: null, note: "Not yet discussed" },
+        mandate: "Alternatives programme across private equity, credit and real assets.",
+        priority: "Medium", tags: ["Wealth channel"], deals: [], contacts: [],
+        research: [], why: "", conversations: [] }
+    ]
+  };
+
+  var Crm = (function () {
+    var base = null;                 // as loaded from file or fallback
+    var meta = { source: "fallback", generatedAt: null, intake: null };
+    var merged = [];                 // base + overlay, what the UI reads
+    var OVERLAY_KEY = "modillion-crm-overlay";
+    var overlay = { patches: {}, conversations: {}, created: [],
+                    dealStatus: {}, archived: {}, learned: { aliases: {} } };
+
+    function readOverlay() {
+      try {
+        var raw = localStorage.getItem(OVERLAY_KEY);
+        if (!raw) return;
+        var o = JSON.parse(raw);
+        overlay.patches       = o.patches || {};
+        overlay.conversations = o.conversations || {};
+        overlay.created       = o.created || [];
+        overlay.dealStatus    = o.dealStatus || {};
+        overlay.archived      = o.archived || {};
+        overlay.learned       = o.learned || { aliases: {} };
+        overlay.learned.aliases = overlay.learned.aliases || {};
+      } catch (e) { /* private mode, or corrupt — start clean */ }
+    }
+
+    function writeOverlay() {
+      try { localStorage.setItem(OVERLAY_KEY, JSON.stringify(overlay)); }
+      catch (e) { /* private mode — edits live for this page view only */ }
+    }
+
+    function hasOverlay() {
+      return Object.keys(overlay.patches).length > 0 ||
+             Object.keys(overlay.conversations).length > 0 ||
+             Object.keys(overlay.dealStatus).length > 0 ||
+             Object.keys(overlay.archived).length > 0 ||
+             Object.keys(overlay.learned.aliases || {}).length > 0 ||
+             overlay.created.length > 0;
+    }
+
+    function normalise(inv) {
+      var c = inv.checkSize || {};
+      return {
+        id: inv.id, name: inv.name,
+        type: inv.type || "Unclassified",
+        stage: inv.stage || "Prospect",
+        owner: inv.owner || "",
+        location: inv.location || "",
+        website: inv.website || "",
+        aum: inv.aum || "",
+        checkSize: { min: c.min == null ? null : c.min, max: c.max == null ? null : c.max, note: c.note || "" },
+        mandate: inv.mandate || "",
+        priority: inv.priority || "",
+        tags: (inv.tags || []).slice(),
+        deals: (inv.deals || []).slice(),
+        contacts: (inv.contacts || []).slice(),
+        research: (inv.research || []).slice(),
+        why: inv.why || "",
+        archived: !!inv.archived,
+        conversations: (inv.conversations || []).slice()
+      };
+    }
+
+    // Base records, then field patches, then conversations the file does
+    // not already carry, then investors created in the browser.
+    function rebuild() {
+      var byId = {};
+      merged = (base.investors || []).map(function (inv) {
+        var rec = normalise(inv);
+        byId[rec.id] = rec;
+        return rec;
+      });
+
+      overlay.created.forEach(function (inv) {
+        if (byId[inv.id]) return;             // the file has caught up
+        var rec = normalise(inv);
+        byId[rec.id] = rec;
+        merged.push(rec);
+      });
+
+      Object.keys(overlay.patches).forEach(function (id) {
+        var rec = byId[id];
+        if (!rec) return;
+        var patch = overlay.patches[id];
+        Object.keys(patch).forEach(function (k) { rec[k] = patch[k]; });
+      });
+
+      Object.keys(overlay.conversations).forEach(function (id) {
+        var rec = byId[id];
+        if (!rec) return;
+        var seen = {};
+        rec.conversations.forEach(function (c) { seen[c.id] = 1; });
+        overlay.conversations[id].forEach(function (c) {
+          if (!seen[c.id]) rec.conversations.push(c);
+        });
+      });
+
+      merged.forEach(function (rec) {
+        rec.conversations.sort(function (a, b) {
+          return String(b.date || "").localeCompare(String(a.date || ""));
+        });
+      });
+    }
+
+    function load() {
+      readOverlay();
+      return fetch("crm-data.json", { cache: "no-store" })
+        .then(function (r) {
+          if (!r.ok) throw new Error("no local CRM file");
+          return r.json();
+        })
+        .then(function (json) {
+          base = json;
+          meta = { source: "local", generatedAt: json.generatedAt || null, intake: json.intake || null };
+        })
+        .catch(function () {
+          base = CRM_FALLBACK;
+          meta = { source: "fallback", generatedAt: null, intake: null };
+        })
+        .then(function () {
+          if (base.stages && base.stages.length) CRM_STAGES = base.stages;
+          rebuild();
+        });
+    }
+
+    function byId(id) {
+      for (var i = 0; i < merged.length; i++) if (merged[i].id === id) return merged[i];
+      return null;
+    }
+
+    function slugId(name) {
+      var s = slug(name) || "investor";
+      var n = s, i = 2;
+      while (byId(n)) { n = s + "-" + i; i++; }
+      return n;
+    }
+
+    function createInvestor(fields) {
+      var rec = normalise({
+        id: slugId(fields.name),
+        name: fields.name,
+        type: fields.type || "Unclassified",
+        stage: fields.stage || "Contacted",
+        location: fields.location || "",
+        checkSize: fields.checkSize || {},
+        tags: ["Added in dashboard"],
+        deals: fields.deals || []
+      });
+      overlay.created.push(rec);
+      writeOverlay();
+      rebuild();
+      return byId(rec.id);
+    }
+
+    function patch(id, fields) {
+      overlay.patches[id] = overlay.patches[id] || {};
+      Object.keys(fields).forEach(function (k) { overlay.patches[id][k] = fields[k]; });
+      writeOverlay();
+      rebuild();
+    }
+
+    function addConversation(id, entry) {
+      entry.id = entry.id || ("c-" + Date.now().toString(36) + "-" +
+                              Math.random().toString(36).slice(2, 7));
+      overlay.conversations[id] = overlay.conversations[id] || [];
+      overlay.conversations[id].push(entry);
+      writeOverlay();
+      rebuild();
+      return entry;
+    }
+
+    /* ---- deal status ---------------------------------------------
+       Deals come from the OneDrive snapshot and are read-only — the
+       dashboard mirrors that folder, it does not own it. So a deal
+       being dead is recorded here, next to the investor records, and
+       shown wherever the deal appears. The folder itself is untouched;
+       nothing in this page can or should reach into OneDrive.
+       -------------------------------------------------------------- */
+    function dealStatuses() {
+      var out = {};
+      var fromFile = (base && base.dealStatus) || {};
+      Object.keys(fromFile).forEach(function (k) { out[k] = fromFile[k]; });
+      Object.keys(overlay.dealStatus).forEach(function (k) { out[k] = overlay.dealStatus[k]; });
+      return out;
+    }
+
+    function dealStatus(name) {
+      return dealStatuses()[name] || null;
+    }
+
+    function setDealStatus(name, status, why) {
+      if (status === "Live") delete overlay.dealStatus[name];
+      else overlay.dealStatus[name] = { status: status, why: why || "", setAt: new Date().toISOString().slice(0, 10) };
+      writeOverlay();
+      rebuild();
+    }
+
+    /* ---- archive --------------------------------------------------
+       Deliberately not a delete. A record carries the only history of
+       who said what, and a typo in a name should not be able to
+       destroy it. Archived records stay in the file and come back.
+       -------------------------------------------------------------- */
+    function archive(id, on) {
+      if (on === false) delete overlay.archived[id];
+      else overlay.archived[id] = new Date().toISOString().slice(0, 10);
+      writeOverlay();
+      rebuild();
+    }
+
+    function isArchived(id) { return !!overlay.archived[id] || !!(byIdAll(id) || {}).archived; }
+
+    function byIdAll(id) {
+      for (var i = 0; i < merged.length; i++) if (merged[i].id === id) return merged[i];
+      return null;
+    }
+
+    /* ---- what it has learned -------------------------------------- */
+    function learned() {
+      var fromFile = (base && base.learned) || {};
+      return {
+        aliases: Object.assign({}, fromFile.aliases || {}, overlay.learned.aliases || {})
+      };
+    }
+
+    function teach(phrase, kind, value) {
+      var key = String(phrase).toLowerCase().trim();
+      if (key.length < 2) return null;
+      var existing = learned().aliases[key];
+      overlay.learned.aliases = overlay.learned.aliases || {};
+      overlay.learned.aliases[key] = {
+        kind: kind,                       // "investor" | "deal"
+        value: value,
+        count: (existing && existing.value === value ? existing.count || 1 : 0) + 1,
+        lastSeen: new Date().toISOString().slice(0, 10)
+      };
+      writeOverlay();
+      return overlay.learned.aliases[key];
+    }
+
+    function forget(phrase) {
+      var key = String(phrase).toLowerCase();
+      if (overlay.learned.aliases) delete overlay.learned.aliases[key];
+      // A phrase that came from the file needs a tombstone to stay gone.
+      if (base && base.learned && base.learned.aliases && base.learned.aliases[key]) {
+        overlay.learned.aliases = overlay.learned.aliases || {};
+        overlay.learned.aliases[key] = { forgotten: true };
+      }
+      writeOverlay();
+    }
+
+    // The merged file, in the shape crm-data.json expects.
+    function toFile() {
+      var live = learned().aliases;
+      var keep = {};
+      Object.keys(live).forEach(function (k) { if (!live[k].forgotten) keep[k] = live[k]; });
+
+      return {
+        generatedAt: new Date().toISOString().slice(0, 10),
+        source: "local",
+        note: "Exported from the dashboard. Replaces crm-data.json in the site folder. Gitignored — never commit.",
+        intake: meta.intake,
+        stages: CRM_STAGES,
+        dealStatus: dealStatuses(),
+        learned: { aliases: keep },
+        investors: merged
+      };
+    }
+
+    return {
+      load: load,
+      meta: function () { return meta; },
+      stages: function () { return CRM_STAGES; },
+      all: function () {
+        return merged.filter(function (r) { return !overlay.archived[r.id] && !r.archived; });
+      },
+      allIncludingArchived: function () { return merged; },
+      get: byId,
+      create: createInvestor,
+      patch: patch,
+      addConversation: addConversation,
+      dealStatus: dealStatus,
+      dealStatuses: dealStatuses,
+      setDealStatus: setDealStatus,
+      archive: archive,
+      isArchived: isArchived,
+      learned: learned,
+      teach: teach,
+      forget: forget,
+      hasLocalEdits: hasOverlay,
+      toFile: toFile,
+      clearOverlay: function () {
+        overlay = { patches: {}, conversations: {}, created: [],
+                    dealStatus: {}, archived: {}, learned: { aliases: {} } };
+        writeOverlay();
+        rebuild();
+      }
+    };
+  })();
+
+  /* ============================================================
+     CRM — THE READER (what the "Log a conversation" box runs)
+
+     This is a deterministic parser, not a language model. That is a
+     deliberate constraint, not an oversight: this page is served
+     publicly and holds no secrets, so it cannot carry an API key —
+     a key in page source is a key anyone can spend. What it does
+     instead is pull the structured fields out of ordinary notes and
+     forwarded email headers, and hand you a draft to correct.
+
+     Reader.read(text) -> draft, and everything it returns is shown
+     in an editable form before a single field is saved. It guesses;
+     you confirm.
+
+     To put a real model behind it later, keep this signature and
+     swap the body for a fetch to a small server-side proxy that
+     holds the key (a Vercel function is enough):
+
+       Reader.read = function (text) {
+         return fetch("/api/crm-read", {
+           method: "POST",
+           headers: { "Content-Type": "application/json" },
+           body: JSON.stringify({ text: text, investors: names, deals: deals })
+         }).then(function (r) { return r.json(); });
+       };
+
+     Nothing else in the page changes — the draft form is the same
+     either way.
+     ============================================================ */
+  var Reader = (function () {
+    var MONTHS = ["january","february","march","april","may","june","july",
+                  "august","september","october","november","december"];
+    var DAYS = ["sunday","monday","tuesday","wednesday","thursday","friday","saturday"];
+
+    function iso(d) {
+      return d.getFullYear() + "-" +
+             String(d.getMonth() + 1).padStart(2, "0") + "-" +
+             String(d.getDate()).padStart(2, "0");
+    }
+
+    // Header block of a forwarded message, if there is one.
+    function headers(text) {
+      var out = {};
+      var re = /^\s*(?:\*\*)?(From|To|Cc|Sent|Date|Subject|Reply-To|Message-ID)(?:\*\*)?\s*:\s*(.+)$/gim;
+      var m;
+      while ((m = re.exec(text)) !== null) {
+        var key = m[1].toLowerCase();
+        if (!out[key]) out[key] = m[2].trim();
+      }
+      return out;
+    }
+
+    function stripHeaders(text) {
+      return text.split(/\r?\n/).filter(function (line) {
+        return !/^\s*(?:\*\*)?(From|To|Cc|Bcc|Sent|Date|Subject|Reply-To|Message-ID)(?:\*\*)?\s*:/i.test(line) &&
+               !/^\s*-+\s*(Forwarded message|Original Message)\s*-+/i.test(line) &&
+               !/^\s*>/.test(line);
+      }).join("\n").replace(/\n{3,}/g, "\n\n").trim();
+    }
+
+    /* ---- date ---------------------------------------------------- */
+    function findDate(text, now) {
+      var t = text.toLowerCase();
+      var m;
+
+      m = t.match(/\b(\d{4})-(\d{2})-(\d{2})\b/);
+      if (m) return { value: m[0], how: "from the text" };
+
+      m = t.match(/\b(\d{1,2})\/(\d{1,2})(?:\/(\d{2,4}))?\b/);
+      if (m) {
+        var yr = m[3] ? (m[3].length === 2 ? 2000 + parseInt(m[3], 10) : parseInt(m[3], 10))
+                      : now.getFullYear();
+        var d1 = new Date(yr, parseInt(m[1], 10) - 1, parseInt(m[2], 10));
+        if (!isNaN(d1)) return { value: iso(d1), how: "from the text" };
+      }
+
+      m = t.match(new RegExp("\\b(" + MONTHS.join("|") + "|" +
+              MONTHS.map(function (x) { return x.slice(0, 3); }).join("|") +
+              ")\\.?\\s+(\\d{1,2})(?:st|nd|rd|th)?(?:,?\\s+(\\d{4}))?\\b"));
+      if (m) {
+        var mi = MONTHS.findIndex(function (x) { return x.indexOf(m[1]) === 0; });
+        if (mi >= 0) {
+          var d2 = new Date(m[3] ? parseInt(m[3], 10) : now.getFullYear(), mi, parseInt(m[2], 10));
+          if (!isNaN(d2)) return { value: iso(d2), how: "from the text" };
+        }
+      }
+
+      if (/\byesterday\b/.test(t)) {
+        var y = new Date(now); y.setDate(y.getDate() - 1);
+        return { value: iso(y), how: "read from “yesterday”" };
+      }
+      if (/\b(today|this morning|this afternoon|just now)\b/.test(t)) {
+        return { value: iso(now), how: "read as today" };
+      }
+
+      m = t.match(new RegExp("\\b(?:last\\s+|on\\s+)?(" + DAYS.join("|") + ")\\b"));
+      if (m) {
+        var target = DAYS.indexOf(m[1]);
+        var back = (now.getDay() - target + 7) % 7;
+        if (back === 0) back = 7;                 // "on Tuesday" said on a Tuesday means last week
+        var d3 = new Date(now); d3.setDate(d3.getDate() - back);
+        return { value: iso(d3), how: "read as the most recent " + m[1] };
+      }
+
+      return { value: iso(now), how: "no date found — defaulted to today" };
+    }
+
+    /* ---- channel ------------------------------------------------- */
+    function findChannel(text, hasHeaders) {
+      // A pasted message is an email, whatever it talks about. Forwarded
+      // threads routinely open "thanks for the call", and reading that as
+      // a phone call would log the wrong thing.
+      if (hasHeaders) return "Email";
+
+      var t = text.toLowerCase();
+      if (/\b(zoom|teams call|google meet|video call|webex)\b/.test(t)) return "Video call";
+      if (/\b(conference|summit|nareim|pere|expo|panel)\b/.test(t)) return "Conference";
+      if (/\b(met with|meeting|lunch|breakfast|coffee|in their office|dropped by|sat down)\b/.test(t)) return "Meeting";
+      if (/\b(call|called|phone|spoke with|dialled|dialed|rang)\b/.test(t)) return "Call";
+      if (/\b(emailed|email|wrote|replied|forwarded|sent over)\b/.test(t)) return "Email";
+      return "Note";
+    }
+
+    /* ---- money --------------------------------------------------- */
+    function money(numStr, unit) {
+      var n = parseFloat(numStr.replace(/,/g, ""));
+      if (isNaN(n)) return null;
+      var u = (unit || "").toLowerCase();
+      if (/^(k|thousand)$/.test(u)) n *= 1e3;
+      else if (/^(m|mm|million)$/.test(u)) n *= 1e6;
+      else if (/^(b|bn|billion)$/.test(u)) n *= 1e9;
+      return n;
+    }
+
+    function fmtMoney(n) {
+      if (n == null) return "";
+      if (n >= 1e9) return "$" + (n / 1e9).toFixed(n % 1e9 ? 1 : 0) + "bn";
+      if (n >= 1e6) return "$" + (n / 1e6).toFixed(n % 1e6 ? 1 : 0) + "m";
+      if (n >= 1e3) return "$" + Math.round(n / 1e3) + "k";
+      return "$" + n;
+    }
+
+    function findCheck(text) {
+      // A range first: $5-7m, $5m to $10m, $5m–$7m
+      var range = text.match(/\$\s?([\d,.]+)\s?(k|m|mm|bn|b|million|billion|thousand)?\s*(?:-|–|—|to)\s*\$?\s?([\d,.]+)\s?(k|m|mm|bn|b|million|billion|thousand)?/i);
+      if (range) {
+        var unitB = range[4] || range[2];
+        var lo = money(range[1], range[2] || unitB);
+        var hi = money(range[3], unitB);
+        if (lo != null && hi != null) return { min: lo, max: hi, text: fmtMoney(lo) + "–" + fmtMoney(hi) };
+      }
+      var one = text.match(/\$\s?([\d,.]+)\s?(k|m|mm|bn|b|million|billion|thousand)?\b/i);
+      if (one) {
+        var v = money(one[1], one[2]);
+        if (v != null && v >= 1000) return { min: v, max: v, text: fmtMoney(v) };
+      }
+      return null;
+    }
+
+    /* ---- stage --------------------------------------------------- */
+    function findStage(text) {
+      var t = text.toLowerCase();
+      // "Our typical commitment is $3-8m" is a size, not a decision, so the
+      // bare noun does not count — only language that says they have done it.
+      if (/\b(has committed|have committed|are committing|is committing|committing \$|will commit|wired|signed the (lpa|sub docs?|subscription)|countersigned|closing on)\b/.test(t)) return "Committed";
+      if (/\b(passed|passing|declined|not a fit|no interest|took a pass|won'?t be moving)\b/.test(t)) return "Passed";
+      if (/\b(diligence|ddq|data room|due dilligence|onboarding|legal review|ic memo|investment committee)\b/.test(t)) return "In diligence";
+      if (/\b(intro|introduction|first call|reached out|initial|reconnect(ed)?|spoke)\b/.test(t)) return "Contacted";
+      return null;
+    }
+
+    /* ---- next step ----------------------------------------------- */
+    function findNext(text) {
+      // Split on sentence enders without a lookbehind — Safari was late to those.
+      var sentences = (stripHeaders(text).replace(/\n+/g, " ").match(/[^.!?]+[.!?]*/g) || [])
+        .map(function (s) { return s.trim(); })
+        .filter(Boolean);
+      var cue = /\b(next step|follow up|following up|circle back|revert|will send|i'?ll send|sending|send (?:over|them|him|her|the)|share the|schedule|set up a|book a|to do|action|by (?:monday|tuesday|wednesday|thursday|friday|next week|end of week|eow|friday))\b/i;
+      for (var i = sentences.length - 1; i >= 0; i--) {
+        if (cue.test(sentences[i])) return sentences[i];
+      }
+      return "";
+    }
+
+    /* ---- who ----------------------------------------------------- */
+    function findWho(text, hdr) {
+      var names = [];
+      if (hdr.from) {
+        var disp = hdr.from.replace(/<[^>]*>/g, "").replace(/["']/g, "").trim();
+        if (disp && !/^[^@]+@[^@]+$/.test(disp)) names.push(disp);
+      }
+      var m = stripHeaders(text).match(/\b(?:with|from|and)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+){1,2})\b/g);
+      if (m) {
+        m.slice(0, 3).forEach(function (chunk) {
+          var n = chunk.replace(/^\s*(with|from|and)\s+/i, "").trim();
+          if (names.indexOf(n) === -1) names.push(n);
+        });
+      }
+      return names.join(", ");
+    }
+
+    /* ---- investor ------------------------------------------------ */
+    // "dana@northquay.com" -> "Northquay";  "kai@brookline-family.co.uk"
+    // -> "Brookline Family". Personal mail hosts give nothing away, so
+    // they return blank and the caller falls through to the next guess.
+    var MAIL_HOSTS = /^(gmail|outlook|hotmail|yahoo|icloud|me|aol|proton|protonmail|live|msn|comcast|verizon)$/i;
+    var HOST_NOISE = /^(www|mail|email|smtp|corp|group|inc|llc|com|co|org|net|edu|gov|uk|us|ca|au)$/i;
+
+    function domainName(email) {
+      var m = String(email).match(/@([\w.-]+)$/);
+      if (!m) return "";
+      var labels = m[1].split(".");
+      if (labels.some(function (l) { return MAIL_HOSTS.test(l); })) return "";
+
+      var words = labels.filter(function (l) { return !HOST_NOISE.test(l); });
+      if (!words.length) return "";
+
+      return words[words.length - 1].split(/[-_]/)
+        .filter(Boolean)
+        .map(function (w) { return w.charAt(0).toUpperCase() + w.slice(1); })
+        .join(" ");
+    }
+
+    // Phrases someone has corrected before, checked ahead of the generic
+    // matchers. "sd gp ii" only means the Sample Deal D fund because a person
+    // once said so — the page has no way to work that out on its own.
+    function fromLearned(text, kind) {
+      var t = text.toLowerCase();
+      var aliases = Crm.learned().aliases;
+      var best = null;
+      Object.keys(aliases).forEach(function (phrase) {
+        var entry = aliases[phrase];
+        if (!entry || entry.forgotten || entry.kind !== kind) return;
+        if (t.indexOf(phrase) === -1) return;
+        if (!best || phrase.length > best.phrase.length) best = { phrase: phrase, entry: entry };
+      });
+      return best;
+    }
+
+    function findInvestor(text, hdr, investors) {
+      var t = text.toLowerCase();
+
+      // 0. A phrase someone taught it
+      var taught = fromLearned(text, "investor");
+      if (taught) {
+        var rec = Crm.get(taught.entry.value);
+        if (rec) return { id: rec.id, name: rec.name, how: "learned — you mapped “" + taught.phrase + "” to this" };
+      }
+
+      // 1. An email address that matches a contact we already hold
+      var emails = text.match(/[\w.+-]+@[\w.-]+\.\w+/g) || [];
+      for (var e = 0; e < emails.length; e++) {
+        var addr = emails[e].toLowerCase();
+        var dom = addr.split("@")[1];
+        for (var i = 0; i < investors.length; i++) {
+          var hit = (investors[i].contacts || []).some(function (c) {
+            return c.email && (c.email.toLowerCase() === addr ||
+                               c.email.toLowerCase().split("@")[1] === dom);
+          });
+          if (hit) return { id: investors[i].id, name: investors[i].name, how: "matched on the sender's address" };
+        }
+      }
+
+      // 2. The firm name, or its distinctive first word, appearing in the text
+      var best = null;
+      investors.forEach(function (inv) {
+        var full = inv.name.toLowerCase();
+        if (t.indexOf(full) !== -1) {
+          if (!best || full.length > best.len) best = { id: inv.id, name: inv.name, len: full.length, how: "matched on the firm name" };
+          return;
+        }
+        var lead = full.split(/[\s(]/)[0].replace(/[^a-z0-9]/g, "");
+        if (lead.length >= 4 && new RegExp("\\b" + lead + "\\b").test(t)) {
+          if (!best || lead.length > best.len) best = { id: inv.id, name: inv.name, len: lead.length, how: "matched on “" + lead + "”" };
+        }
+      });
+      if (best) return { id: best.id, name: best.name, how: best.how };
+
+      // 3. The sender's domain. It may name a firm already on file whose
+      //    record simply has no contact saved yet, so check before treating
+      //    it as new — otherwise forwarding a thread creates a duplicate.
+      for (var k = 0; k < emails.length; k++) {
+        var guess = domainName(emails[k]);
+        if (!guess) continue;
+        var onFile = investors.filter(function (i) {
+          return i.name.toLowerCase() === guess.toLowerCase();
+        })[0];
+        if (onFile) return { id: onFile.id, name: onFile.name, how: "matched on the sender's domain" };
+        return { id: null, name: guess, how: "new — taken from the sender's domain" };
+      }
+
+      // 4. Or from a capitalised phrase after with/from/at
+      var cap = stripHeaders(text).match(/\b(?:with|from|at)\s+((?:[A-Z][\w&.'-]*\s+){0,3}(?:Capital|Partners|Advisors|Advisers|Management|Family Office|Foundation|Endowment|Group|Investments|Holdings|Trust|Office))\b/);
+      if (cap) return { id: null, name: cap[1].trim(), how: "new — read from the text" };
+
+      if (hdr.subject) {
+        var subj = hdr.subject.replace(/^\s*(fwd?|re)\s*:\s*/i, "").trim();
+        if (subj) return { id: null, name: subj.slice(0, 60), how: "new — guessed from the subject line" };
+      }
+      return { id: null, name: "", how: "could not tell — please fill this in" };
+    }
+
+    /* ---- deals --------------------------------------------------- */
+    /* ---- deals ---------------------------------------------------
+       Deal folders read "Sponsor - Asset (City, ST)". Matching either
+       half on its own is too loose in both directions: a sponsor with
+       four deals tells you nothing about which one was discussed, and
+       asset halves like "Fund II" or "Portfolio" repeat across
+       sponsors. So a hit needs one of:
+
+         · the whole folder name in the text
+         · sponsor AND asset both present
+         · a distinctive asset name on its own
+         · a sponsor who only has one deal, so there is no ambiguity
+
+       Under-matching is the right failure here — a missed deal is one
+       word to type in the draft, a wrong one is a wrong record.
+       -------------------------------------------------------------- */
+    var GENERIC_ASSET = /^(gp\s+)?(fund|portfolio|programmatic|co-?invest|equity|deal)\b/;
+
+    function findDeals(text, dealNames) {
+      var t = text.toLowerCase();
+
+      var sponsorCount = {};
+      dealNames.forEach(function (name) {
+        var s = name.toLowerCase().split(" - ")[0].trim();
+        sponsorCount[s] = (sponsorCount[s] || 0) + 1;
+      });
+
+      var hits = [];
+
+      // Learned phrases first — "east blocks" or "the houston one" only map
+      // to a folder because someone corrected a draft once.
+      var aliases = Crm.learned().aliases;
+      Object.keys(aliases).forEach(function (phrase) {
+        var entry = aliases[phrase];
+        if (!entry || entry.forgotten || entry.kind !== "deal") return;
+        if (t.indexOf(phrase) !== -1 && dealNames.indexOf(entry.value) !== -1) hits.push(entry.value);
+      });
+
+      dealNames.forEach(function (name) {
+        var low = name.toLowerCase();
+        if (t.indexOf(low) !== -1) { hits.push(name); return; }
+
+        var sponsor = low.split(" - ")[0].trim();
+        var asset = (low.split(" - ")[1] || "").split("(")[0].trim();
+
+        // Three characters is low, but sponsors are proper names and some
+        // are acronyms — SDA, SDB. A sponsor alone still only counts when
+        // they have a single deal, so a short name cannot run away with it.
+        var hasSponsor = sponsor.length >= 3 &&
+                         new RegExp("\\b" + escapeRe(sponsor) + "\\b").test(t);
+        var hasAsset = asset.length >= 5 &&
+                       new RegExp("\\b" + escapeRe(asset) + "\\b").test(t);
+        var assetIsGeneric = !asset || GENERIC_ASSET.test(asset);
+
+        if (hasSponsor && hasAsset) hits.push(name);
+        else if (hasAsset && !assetIsGeneric) hits.push(name);
+        else if (hasSponsor && sponsorCount[sponsor] === 1) hits.push(name);
+      });
+      return hits.filter(function (v, i, a) { return a.indexOf(v) === i; });
+    }
+
+    function escapeRe(s) { return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"); }
+
+    /* ---- the read ------------------------------------------------ */
+    function read(text) {
+      var now = new Date();
+      var hdr = headers(text);
+      var hasHdr = !!(hdr.from || hdr.subject);
+      var investors = Crm.all();
+      var body = stripHeaders(text);
+
+      var dateSource = hdr.sent || hdr.date || text;
+      var date = findDate(dateSource, now);
+      var check = findCheck(text);
+      var inv = findInvestor(text, hdr, investors);
+      var existing = inv.id ? Crm.get(inv.id) : null;
+
+      // Logging a conversation means they are no longer an untouched name
+      // on a list, so an uncued Prospect moves to Contacted. Any other
+      // stage is left where it is unless the text says otherwise.
+      var cued = findStage(text);
+      var stage = cued || (existing && existing.stage !== "Prospect" ? existing.stage : "Contacted");
+
+      return {
+        investorId: inv.id,
+        investorName: inv.name,
+        investorHow: inv.how,
+        date: date.value,
+        dateHow: date.how,
+        channel: findChannel(text, hasHdr),
+        stage: stage,
+        who: findWho(text, hdr),
+        check: check ? check.text : "",
+        checkRange: check,
+        deals: findDeals(text, dealNames()),
+        summary: body || text.trim(),
+        next: findNext(text),
+        subject: hdr.subject || "",
+        raw: text
+      };
+    }
+
+    return {
+      read: read,
+      fmtMoney: fmtMoney,
+      // Exposed so the command interpreter below resolves names the same
+      // way the conversation reader does — one matcher, not two.
+      matchInvestor: function (text) { return findInvestor(text, headers(text), Crm.all()); },
+      matchDeals: function (text) { return findDeals(text, dealNames()); },
+      matchCheck: findCheck
+    };
+  })();
+
+  /* ============================================================
+     CRM — THE INTERPRETER (edit commands)
+
+     The reader above turns prose into a conversation. This turns an
+     instruction into changes to a record: dropping a deal, moving a
+     stage, marking a deal dead, archiving an investor.
+
+     The split between the two is deliberate and mechanical: an
+     explicit edit verb — remove, drop, set, change, mark, archive —
+     or a deal-death phrase means an edit. Everything else is a note
+     about a conversation. Guessing between the two on tone would make
+     the box unpredictable, and a CRM that silently edits when you
+     meant to leave a note is worse than one that does nothing.
+
+     Nothing here applies on its own. Every action is rendered as a
+     before/after line and waits for a person to press Apply.
+     ============================================================ */
+  var DEAL_STATES = ["Live", "On hold", "Dead", "Closed"];
+
+  var Interpreter = (function () {
+    var EDIT_VERB = /\b(remove|removing|drop|dropped|delete|archive|unarchive|restore|set|change|update|mark|assign|rename|add)\b/i;
+    var DEAL_DEATH = /\b(fell through|fell apart|is dead|now dead|dead deal|died|killed|lost it|on hold|paused|parked|no longer live|withdrew|we closed|has closed|now closed|completed)\b/i;
+
+    function stateFrom(text) {
+      var t = text.toLowerCase();
+      if (/\b(on hold|paused|parked)\b/.test(t)) return "On hold";
+      if (/\b(we closed|has closed|now closed|completed|closed)\b/.test(t)) return "Closed";
+      if (/\b(fell through|fell apart|is dead|now dead|dead deal|died|killed|lost it|no longer live|withdrew)\b/.test(t)) return "Dead";
+      return null;
+    }
+
+    function stageFrom(text) {
+      var t = text.toLowerCase();
+      for (var i = 0; i < CRM_STAGES.length; i++) {
+        if (t.indexOf(CRM_STAGES[i].toLowerCase()) !== -1) return CRM_STAGES[i];
+      }
+      if (/\bpassed\b/.test(t)) return "Passed";
+      if (/\bcommitted\b/.test(t)) return "Committed";
+      if (/\bdormant|cold|gone quiet\b/.test(t)) return "Dormant";
+      return null;
+    }
+
+    // "and" splits commands, but not inside a folder name like
+    // "Term Sheet and Legal", so only split on a standalone conjunction.
+    function clauses(text) {
+      return text.split(/\s*(?:;|\n|,\s*(?=(?:also|and)\b)|\band then\b|\balso\b)\s*|\s+and\s+(?=\w+\s)/i)
+        .map(function (c) { return c.trim(); })
+        .filter(function (c) { return c.length > 2; });
+    }
+
+    function field(inv, key, label, to) {
+      return { type: "field", investorId: inv.id, investorName: inv.name,
+               field: key, label: label, from: inv[key] || "", to: to };
+    }
+
+    function readClause(clause, carried, notes) {
+      var out = [];
+      var deals = Reader.matchDeals(clause);
+      var hit = Reader.matchInvestor(clause);
+      // "Set owner to AB for North Quay and change priority to high" — the second
+      // clause names nobody, and means the same firm as the first.
+      var inv = hit.id ? Crm.get(hit.id) : carried;
+
+      /* --- a deal changed state ---------------------------------- */
+      if (deals.length && DEAL_DEATH.test(clause)) {
+        var state = stateFrom(clause);
+        deals.forEach(function (deal) {
+          var current = Crm.dealStatus(deal);
+          out.push({ type: "dealStatus", deal: deal,
+                     from: current ? current.status : "Live", to: state || "Dead",
+                     why: clause });
+        });
+        return out;
+      }
+
+      /* --- deal interest on one investor ------------------------- */
+      if (inv && deals.length && /\b(remove|drop|take off|no longer (?:interested|looking)|not interested)\b/i.test(clause)) {
+        deals.forEach(function (deal) {
+          if (inv.deals.indexOf(deal) !== -1) {
+            out.push({ type: "dealRemove", investorId: inv.id, investorName: inv.name, deal: deal });
+          } else {
+            // Say why nothing happened. Falling through to logging a note
+            // here would look like the instruction was simply ignored.
+            notes.push(deal + " is not on " + inv.name + "'s list, so there is nothing to remove.");
+          }
+        });
+        return out;
+      }
+      if (inv && deals.length && /\b(add|also interested|now interested|wants|looking at)\b/i.test(clause)) {
+        deals.forEach(function (deal) {
+          if (inv.deals.indexOf(deal) === -1) {
+            out.push({ type: "dealAdd", investorId: inv.id, investorName: inv.name, deal: deal });
+          } else {
+            notes.push(deal + " is already on " + inv.name + "'s list.");
+          }
+        });
+        return out;
+      }
+
+      if (!inv) return out;
+
+      /* --- archive ------------------------------------------------ */
+      if (/\b(unarchive|restore|bring back)\b/i.test(clause)) {
+        out.push({ type: "archive", investorId: inv.id, investorName: inv.name, to: false });
+        return out;
+      }
+      if (/\b(archive|remove|delete)\b/i.test(clause) && !deals.length) {
+        out.push({ type: "archive", investorId: inv.id, investorName: inv.name, to: true });
+        return out;
+      }
+
+      /* --- plain fields ------------------------------------------- */
+      var owner = clause.match(/\b(?:owner|assign(?:ed)?(?: it)?)\s*(?:to|=|:)?\s+([A-Z][\w.'-]*(?:\s+[A-Z][\w.'-]*)?)/);
+      if (owner) out.push(field(inv, "owner", "Owner", owner[1].trim()));
+
+      var priority = clause.match(/\bpriority\s*(?:to|=|:)?\s*(high|medium|low)\b/i);
+      if (priority) out.push(field(inv, "priority", "Priority",
+        priority[1].charAt(0).toUpperCase() + priority[1].slice(1).toLowerCase()));
+
+      var location = clause.match(/\blocation\s*(?:to|=|:)?\s+([A-Z][\w.'-]*(?:[\s,]+[A-Z][\w.'-]*)*)/);
+      if (location) out.push(field(inv, "location", "Location", location[1].trim()));
+
+      var type = clause.match(/\btype\s*(?:to|=|:)?\s+([\w\s\/&-]+?)(?:\.|$)/i);
+      if (type) out.push(field(inv, "type", "Type", type[1].trim()));
+
+      var check = /\bcheck(?:\s+size)?\b/i.test(clause) ? Reader.matchCheck(clause) : null;
+      if (check) {
+        out.push({ type: "check", investorId: inv.id, investorName: inv.name,
+                   label: "Check size", from: checkText(inv) || "not recorded",
+                   to: check.text, min: check.min, max: check.max });
+      }
+
+      // Stage last: "mark X as passed" is a stage move, but only when the
+      // clause carries an edit verb — "they passed on it" in prose is a note.
+      if (!out.length && EDIT_VERB.test(clause)) {
+        var stage = stageFrom(clause);
+        if (stage && stage !== inv.stage) out.push(field(inv, "stage", "Stage", stage));
+      }
+
+      return out;
+    }
+
+    function read(text) {
+      // Prose with no edit verb and no deal-death phrase is a conversation.
+      if (!EDIT_VERB.test(text) && !DEAL_DEATH.test(text)) return { kind: "log" };
+
+      var actions = [];
+      var notes = [];
+      var carried = null;
+
+      clauses(text).forEach(function (clause) {
+        var hit = Reader.matchInvestor(clause);
+        if (hit.id) carried = Crm.get(hit.id);
+        readClause(clause, carried, notes).forEach(function (a) { actions.push(a); });
+      });
+
+      // Understood the instruction, but there was nothing to change.
+      if (!actions.length && notes.length) return { kind: "none", notes: notes };
+
+      // An edit verb that produced nothing actionable is almost always prose
+      // ("I'll send the deck and add them to the list"). Log it instead of
+      // showing an empty diff.
+      if (!actions.length) return { kind: "log" };
+      return { kind: "actions", actions: actions, notes: notes };
+    }
+
+    return { read: read, states: DEAL_STATES };
+  })();
+
+  // Every deal folder in the loaded dataset — what the reader matches against.
+  function dealNames() {
+    var out = [];
+    var raw = Provider.raw();
+    if (!raw) return out;
+    (raw.areas || []).forEach(function (area) {
+      (area.children || []).forEach(function (deal) {
+        if (deal.type === "folder") out.push(deal.name);
+      });
+    });
+    return out;
+  }
+
+  /* ============================================================
+     CRM — RENDER
+     ============================================================ */
+  var crmState = {
+    view: "list",          // list | investor
+    investorId: null,
+    query: "",
+    filters: { type: "", stage: "", deal: "" },
+    sortKey: "lastContact",
+    sortDir: "desc",
+    draft: null,
+    actions: null
+  };
+
+  var CRM_COLUMNS = [
+    { key: "name",        label: "Investor" },
+    { key: "type",        label: "Type" },
+    { key: "stage",       label: "Stage" },
+    { key: "check",       label: "Check size" },
+    { key: "deals",       label: "Deals of interest" },
+    { key: "lastContact", label: "Last contact" }
+  ];
+
+  function checkText(inv) {
+    var c = inv.checkSize || {};
+    if (c.min != null && c.max != null) {
+      return c.min === c.max ? Reader.fmtMoney(c.min)
+                             : Reader.fmtMoney(c.min) + "–" + Reader.fmtMoney(c.max);
+    }
+    if (c.min != null) return Reader.fmtMoney(c.min) + "+";
+    if (c.max != null) return "up to " + Reader.fmtMoney(c.max);
+    return "";
+  }
+
+  // A deal tag, struck through and labelled when the deal is no longer live.
+  function dealTag(name) {
+    var status = Crm.dealStatus(name);
+    var dead = status && status.status !== "Live";
+    return '<span class="crm-tag crm-tag--deal' + (dead ? " crm-deadtag" : "") + '">' +
+           esc(name) + '</span>' +
+           (dead ? '<span class="deal-status" data-state="' + esc(status.status) + '">' +
+                   esc(status.status) + '</span>' : "");
+  }
+
+  function lastContact(inv) {
+    if (!inv.conversations.length) return null;
+    return inv.conversations[0].date || null;
+  }
+
+  function crmSortValue(inv, key) {
+    switch (key) {
+      case "name":        return inv.name.toLowerCase();
+      case "type":        return inv.type.toLowerCase();
+      case "stage":       return String(CRM_STAGES.indexOf(inv.stage));
+      case "check":       return inv.checkSize.max || inv.checkSize.min || 0;
+      case "deals":       return inv.deals.length;
+      case "lastContact": return lastContact(inv) || "";
+      default:            return "";
+    }
+  }
+
+  function crmFiltered() {
+    var q = crmState.query.trim().toLowerCase();
+    var f = crmState.filters;
+
+    var list = Crm.all().filter(function (inv) {
+      if (f.type && inv.type !== f.type) return false;
+      if (f.stage && inv.stage !== f.stage) return false;
+      if (f.deal && inv.deals.indexOf(f.deal) === -1) return false;
+      if (!q) return true;
+
+      var haystack = [inv.name, inv.type, inv.location, inv.mandate, inv.why,
+                      inv.aum, inv.tags.join(" "), inv.deals.join(" "),
+                      inv.contacts.map(function (c) { return c.name + " " + (c.email || ""); }).join(" "),
+                      inv.research.map(function (r) { return r.note; }).join(" "),
+                      inv.conversations.map(function (c) {
+                        return [c.summary, c.next, c.who, c.subject].join(" ");
+                      }).join(" ")].join(" ").toLowerCase();
+      return haystack.indexOf(q) !== -1;
+    });
+
+    var dir = crmState.sortDir === "asc" ? 1 : -1;
+    return list.sort(function (a, b) {
+      var av = crmSortValue(a, crmState.sortKey);
+      var bv = crmSortValue(b, crmState.sortKey);
+      if (av < bv) return -1 * dir;
+      if (av > bv) return 1 * dir;
+      return a.name.localeCompare(b.name);
+    });
+  }
+
+  function crmTable(list) {
+    if (!list.length) {
+      return '<div class="dash-state"><h3>No investors match</h3>' +
+             '<p>Clear the filters, or log a conversation above to create the first record.</p></div>';
+    }
+
+    var head = CRM_COLUMNS.map(function (c) {
+      var sorted = crmState.sortKey === c.key;
+      return '<th class="' + (sorted ? "is-sorted" : "") + '">' +
+             '<button type="button" data-crmsort="' + c.key + '">' + c.label +
+             '<span class="arrow">' + (sorted && crmState.sortDir === "asc" ? "↑" : "↓") + '</span>' +
+             '</button></th>';
+    }).join("");
+
+    var rows = list.map(function (inv) {
+      var last = lastContact(inv);
+      var deals = inv.deals.length
+        ? inv.deals.slice(0, 2).map(dealTag).join("") +
+          (inv.deals.length > 2 ? '<span class="crm-tag">+' + (inv.deals.length - 2) + '</span>' : "")
+        : '<span class="muted">—</span>';
+
+      return '<tr data-investor="' + esc(inv.id) + '">' +
+        '<td><span class="crm-name">' + esc(inv.name) + '</span>' +
+          (inv.location ? '<span class="crm-sub">' + esc(inv.location) + '</span>' : "") + '</td>' +
+        '<td>' + esc(inv.type) +
+          (inv.aum ? '<span class="crm-sub">' + esc(inv.aum) + '</span>' : "") + '</td>' +
+        '<td><span class="crm-pill" data-stage="' + esc(inv.stage) + '">' + esc(inv.stage) + '</span></td>' +
+        '<td>' + (checkText(inv) ? esc(checkText(inv)) : '<span class="muted">—</span>') + '</td>' +
+        '<td>' + deals + '</td>' +
+        '<td>' + (last ? esc(last) + '<span class="crm-sub">' + inv.conversations.length +
+                  ' logged</span>' : '<span class="muted">Never</span>') + '</td>' +
+        '</tr>';
+    }).join("");
+
+    return '<div class="crmtable-wrap"><table class="crmtable">' +
+           '<thead><tr>' + head + '</tr></thead><tbody>' + rows + '</tbody></table></div>';
+  }
+
+  function renderCrmFilters() {
+    var list = Crm.all();
+    function fill(id, values, current) {
+      var el = $(id);
+      var label = el.options[0].textContent;
+      el.innerHTML = '<option value="">' + label + '</option>' +
+        values.map(function (v) {
+          return '<option value="' + esc(v) + '"' + (v === current ? " selected" : "") + '>' + esc(v) + '</option>';
+        }).join("");
+    }
+    function uniq(arr) { return arr.filter(function (v, i, a) { return v && a.indexOf(v) === i; }).sort(); }
+
+    fill("crmFilterType", uniq(list.map(function (i) { return i.type; })), crmState.filters.type);
+    fill("crmFilterStage", CRM_STAGES.filter(function (s) {
+      return list.some(function (i) { return i.stage === s; });
+    }), crmState.filters.stage);
+    // Deals that are no longer live stay selectable — you still want to see
+    // who was looking at the one that fell through — but they say so.
+    var allDeals = uniq([].concat.apply([], list.map(function (i) { return i.deals; })));
+    var el = $("crmFilterDeal");
+    el.innerHTML = '<option value="">All deals</option>' + allDeals.map(function (d) {
+      var status = Crm.dealStatus(d);
+      var suffix = status && status.status !== "Live" ? "  (" + status.status.toLowerCase() + ")" : "";
+      return '<option value="' + esc(d) + '"' + (d === crmState.filters.deal ? " selected" : "") + '>' +
+             esc(d + suffix) + '</option>';
+    }).join("");
+  }
+
+  function renderCrm() {
+    var list = crmFiltered();
+    $("crmBody").innerHTML = crmTable(list);
+    $("crmShown").textContent = list.length === Crm.all().length
+      ? list.length + " investor" + (list.length === 1 ? "" : "s")
+      : list.length + " of " + Crm.all().length + " shown";
+    $("tabCrmCount").textContent = Crm.all().length ? "(" + Crm.all().length + ")" : "";
+    $("crmUnsaved").hidden = !Crm.hasLocalEdits();
+    $("crmInvestorNames").innerHTML = Crm.all().map(function (i) {
+      return '<option value="' + esc(i.name) + '">';
+    }).join("");
+    $("crmDealNames").innerHTML = dealNames().map(function (d) {
+      return '<option value="' + esc(d) + '">';
+    }).join("");
+
+    renderMemory();
+
+    var m = Crm.meta();
+    $("crmSourceNote").innerHTML = m.source === "local"
+      ? "Records from crm-data.json — gitignored, local only, never deployed. Research notes come from public sources and carry the date they were checked." +
+        (m.intake && m.intake.address
+          ? " Forward investor threads to <strong>" + esc(m.intake.address) + "</strong>, then run tools/crm-ingest.py to fold them in."
+          : "")
+      : "Placeholder records — every firm shown is invented. The real list lives in crm-data.json, which is not deployed with this page.";
+  }
+
+  function renderInvestor(id) {
+    var inv = Crm.get(id);
+    if (!inv) { showCrmView("list"); return; }
+
+    $("investorCrumb").textContent = inv.name;
+
+    var facts = [
+      ["Type", esc(inv.type)],
+      ["Stage", '<span class="crm-pill" data-stage="' + esc(inv.stage) + '">' + esc(inv.stage) + '</span>'],
+      ["Check size", checkText(inv) ? esc(checkText(inv)) : ""],
+      ["Assets", esc(inv.aum)],
+      ["Location", esc(inv.location)],
+      ["Owner", esc(inv.owner)],
+      ["Priority", esc(inv.priority)],
+      ["Last contact", lastContact(inv) ? esc(lastContact(inv)) : ""]
+    ].map(function (pair) {
+      var empty = !pair[1];
+      var note = pair[0] === "Check size" && inv.checkSize.note ? inv.checkSize.note : "not recorded";
+      return '<div class="crm-fact"><span class="crm-fact__label">' + pair[0] + '</span>' +
+             '<span class="crm-fact__value' + (empty ? " is-empty" : "") + '">' +
+             (empty ? esc(note) : pair[1]) + '</span></div>';
+    }).join("");
+
+    var parts = [];
+
+    parts.push('<div class="dash-investor__head"><div>' +
+      '<h2>' + esc(inv.name) + '</h2>' +
+      '<p class="dash-investor__sub">' + esc(inv.mandate || "No mandate recorded.") +
+      (inv.website ? ' · <a href="' + esc(inv.website) + '" target="_blank" rel="noopener noreferrer">' +
+        esc(inv.website.replace(/^https?:\/\//, "").replace(/\/$/, "")) + '</a>' : "") +
+      '</p></div>' +
+      '<div class="dash-investor__actions">' +
+        '<button class="dash-refresh dash-refresh--primary" data-crm-log="' + esc(inv.id) + '">Log a conversation</button>' +
+      '</div></div>');
+
+    parts.push('<div class="crm-facts">' + facts + '</div>');
+
+    if (inv.why) {
+      parts.push('<div class="crm-section"><h3>Why they are on the list</h3>' +
+                 '<p class="crm-why">' + esc(inv.why) + '</p></div>');
+    }
+
+    if (inv.tags.length || inv.deals.length) {
+      parts.push('<div class="crm-section"><h3>Interests</h3><div>' +
+        inv.deals.map(dealTag).join("") +
+        inv.tags.map(function (t) { return '<span class="crm-tag">' + esc(t) + '</span>'; }).join("") +
+        (inv.deals.length ? "" : '<span class="crm-tag">No deal interest recorded yet</span>') +
+        '</div></div>');
+    }
+
+    if (inv.contacts.length) {
+      parts.push('<div class="crm-section"><h3>People</h3><ul class="crm-research">' +
+        inv.contacts.map(function (c) {
+          return '<li><strong>' + esc(c.name || "—") + '</strong>' +
+                 (c.title ? " · " + esc(c.title) : "") +
+                 (c.email ? '<span class="crm-research__meta">' + esc(c.email) + '</span>' : "") +
+                 '</li>';
+        }).join("") + '</ul></div>');
+    }
+
+    if (inv.research.length) {
+      parts.push('<div class="crm-section"><h3>Research' +
+        '<span class="crm-section__aside">Public sources — verify before relying on any of it</span></h3>' +
+        '<ul class="crm-research">' +
+        inv.research.map(function (r) {
+          return '<li>' + esc(r.note) +
+            '<span class="crm-research__meta">' +
+            (r.source ? '<a href="' + esc(r.source) + '" target="_blank" rel="noopener noreferrer">' + esc(r.source) + '</a>' : "No source recorded") +
+            (r.checked ? " · checked " + esc(r.checked) : "") +
+            '</span></li>';
+        }).join("") + '</ul></div>');
+    }
+
+    parts.push('<div class="crm-section"><h3>Conversations' +
+      '<span class="crm-section__aside">' + inv.conversations.length + ' logged</span></h3>' +
+      (inv.conversations.length
+        ? '<ul class="crm-log">' + inv.conversations.map(function (c) {
+            return '<li>' +
+              '<div class="crm-log__head">' +
+                '<span class="crm-log__date">' + esc(c.date || "Undated") + '</span>' +
+                '<span class="crm-log__channel">' + esc(c.channel || "Note") + '</span>' +
+                (c.who ? '<span class="crm-log__who">' + esc(c.who) + '</span>' : "") +
+              '</div>' +
+              (c.subject ? '<p class="crm-log__body"><strong>' + esc(c.subject) + '</strong></p>' : "") +
+              '<p class="crm-log__body">' + esc(c.summary || "") + '</p>' +
+              (c.check ? '<p class="crm-log__next"><strong>Check</strong>' + esc(c.check) + '</p>' : "") +
+              (c.deals && c.deals.length ? '<p class="crm-log__next"><strong>Deals</strong>' +
+                 esc(c.deals.join(", ")) + '</p>' : "") +
+              (c.next ? '<p class="crm-log__next"><strong>Next</strong>' + esc(c.next) + '</p>' : "") +
+              '<span class="crm-log__source">Logged ' + esc(c.loggedVia || "in the dashboard") +
+                (c.loggedAt ? " · " + esc(String(c.loggedAt).slice(0, 10)) : "") + '</span>' +
+              '</li>';
+          }).join("") + '</ul>'
+        : '<div class="dash-state"><h3>Nothing logged yet</h3>' +
+          '<p>Use “Log a conversation” above, or forward the email thread to the CRM address.</p></div>') +
+      '</div>');
+
+    $("investorBody").innerHTML = parts.join("");
+  }
+
+  function showCrmView(name) {
+    crmState.view = name;
+    $("viewCrm").hidden = name !== "list";
+    $("viewInvestor").hidden = name !== "investor";
+  }
+
+  function openInvestor(id) {
+    crmState.investorId = id;
+    showCrmView("investor");
+    renderInvestor(id);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  /* ============================================================
+     CRM — DRAFT FORM
+     ============================================================ */
+  function showDraft(draft) {
+    crmState.draft = draft;
+
+    $("draftInvestor").value = draft.investorName || "";
+    $("draftInvestorNote").textContent = draft.investorHow || "";
+    $("draftInvestorNote").setAttribute("data-found",
+      draft.investorId ? "yes" : (draft.investorName ? "new" : ""));
+
+    $("draftDate").value = draft.date;
+    $("draftDateNote").textContent = draft.dateHow || "";
+    $("draftChannel").value = draft.channel;
+
+    $("draftStage").innerHTML = CRM_STAGES.map(function (s) {
+      return '<option' + (s === draft.stage ? " selected" : "") + '>' + esc(s) + '</option>';
+    }).join("");
+
+    $("draftWho").value = draft.who || "";
+    $("draftCheck").value = draft.check || "";
+    $("draftDeals").value = (draft.deals || []).join(", ");
+    $("draftDealsNote").textContent = draft.deals.length
+      ? "Matched against the deal folders in the document library."
+      : "No deal name recognised — type one if it was discussed.";
+    $("draftSummary").value = draft.summary || "";
+    $("draftNext").value = draft.next || "";
+
+    $("crmDraft").hidden = false;
+    $("crmDraft").scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }
+
+  function hideDraft() {
+    crmState.draft = null;
+    $("crmDraft").hidden = true;
+  }
+
+  /* ============================================================
+     CRM — PROPOSED CHANGES
+
+     Edits are shown as before → after and applied only on Apply.
+     Anything destructive says so on the line itself.
+     ============================================================ */
+  function describeAction(a) {
+    switch (a.type) {
+      case "field":
+        return { what: a.investorName + " · " + a.label,
+                 from: a.from || "not recorded", to: a.to };
+      case "check":
+        return { what: a.investorName + " · " + a.label, from: a.from, to: a.to };
+      case "dealRemove":
+        return { what: a.investorName + " · deal interest", from: a.deal, to: "removed" };
+      case "dealAdd":
+        return { what: a.investorName + " · deal interest", from: "not on the list", to: a.deal };
+      case "dealStatus":
+        return { what: a.deal + " · deal status", from: a.from, to: a.to,
+                 warn: "Recorded here only. The OneDrive folder is not touched." };
+      case "archive":
+        return a.to
+          ? { what: a.investorName, from: "active", to: "archived",
+              warn: "Hidden from the list. The record and its conversations are kept, and it can be restored." }
+          : { what: a.investorName, from: "archived", to: "active" };
+      default:
+        return { what: "Unknown change", from: "", to: "" };
+    }
+  }
+
+  function showActions(actions) {
+    crmState.actions = actions;
+    $("crmDiffList").innerHTML = actions.map(function (a, i) {
+      var d = describeAction(a);
+      return '<li><input type="checkbox" id="act' + i + '" data-act="' + i + '" checked>' +
+        '<label class="crm-diff__text" for="act' + i + '">' +
+          '<span class="crm-diff__what">' + esc(d.what) + '</span>' +
+          '<span class="crm-diff__from">' + esc(d.from) + '</span>' +
+          '<span class="crm-diff__arrow">→</span>' +
+          '<span class="crm-diff__to">' + esc(d.to) + '</span>' +
+          (d.warn ? '<span class="crm-diff__warn">' + esc(d.warn) + '</span>' : "") +
+        '</label></li>';
+    }).join("");
+
+    $("crmActions").hidden = false;
+    $("crmDraft").hidden = true;
+    $("crmActions").scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }
+
+  function hideActions() {
+    crmState.actions = null;
+    $("crmActions").hidden = true;
+  }
+
+  function applyActions() {
+    var actions = crmState.actions || [];
+    var chosen = actions.filter(function (a, i) {
+      var box = $("act" + i);
+      return box && box.checked;
+    });
+    if (!chosen.length) { toast("Nothing selected."); return; }
+
+    var touched = {};
+    chosen.forEach(function (a) {
+      switch (a.type) {
+        case "field":
+          var patch = {}; patch[a.field] = a.to;
+          Crm.patch(a.investorId, patch);
+          touched[a.investorId] = 1;
+          break;
+        case "check":
+          Crm.patch(a.investorId, { checkSize: { min: a.min, max: a.max,
+            note: "Set in the dashboard on " + new Date().toISOString().slice(0, 10) } });
+          touched[a.investorId] = 1;
+          break;
+        case "dealRemove":
+          var afterRemove = Crm.get(a.investorId).deals.filter(function (d) { return d !== a.deal; });
+          Crm.patch(a.investorId, { deals: afterRemove });
+          touched[a.investorId] = 1;
+          break;
+        case "dealAdd":
+          var afterAdd = Crm.get(a.investorId).deals.concat([a.deal]);
+          Crm.patch(a.investorId, { deals: afterAdd });
+          touched[a.investorId] = 1;
+          break;
+        case "dealStatus":
+          Crm.setDealStatus(a.deal, a.to, a.why);
+          break;
+        case "archive":
+          Crm.archive(a.investorId, a.to);
+          break;
+      }
+    });
+
+    hideActions();
+    $("agentInput").value = "";
+    $("agentStatus").textContent = "";
+    renderCrmFilters();
+    renderCrm();
+    if (crmState.view === "investor") {
+      if (Crm.get(crmState.investorId)) renderInvestor(crmState.investorId);
+      else showCrmView("list");
+    }
+    renderGrid();          // deal-status badges show on the documents tab too
+    toast(chosen.length + " change" + (chosen.length === 1 ? "" : "s") + " applied.");
+  }
+
+  /* ============================================================
+     CRM — LEARNING FROM CORRECTIONS
+
+     Only explicit corrections teach it anything: you changed a field
+     the reader had filled in, so the reader was wrong, so remember
+     the phrase that misled it. Nothing is learned from a draft you
+     accepted unchanged, and nothing is learned in the background.
+
+     What it stores is a phrase → record mapping, nothing more. It
+     does not adjust its own rules, because rules that drift without
+     anyone watching are how a CRM quietly fills with wrong data.
+     ============================================================ */
+  function learnFromCorrections(draft, finalName, finalDeals) {
+    var learnedNow = [];
+    var text = (draft.raw || "").toLowerCase();
+
+    // The investor was corrected — find the phrase that misled it.
+    var record = Crm.all().filter(function (i) {
+      return i.name.toLowerCase() === finalName.toLowerCase();
+    })[0];
+
+    if (record && draft.investorName &&
+        draft.investorName.toLowerCase() !== finalName.toLowerCase()) {
+      var cue = (draft.investorName || "").toLowerCase().trim();
+      if (cue && text.indexOf(cue) !== -1 && cue !== record.name.toLowerCase()) {
+        Crm.teach(cue, "investor", record.id);
+        learnedNow.push("“" + cue + "” now means " + record.name);
+      }
+    }
+
+    // A deal was added by hand that the matcher missed. Learn the longest
+    // phrase in the text that is not already the folder name.
+    var guessed = {};
+    (draft.deals || []).forEach(function (d) { guessed[d] = 1; });
+    finalDeals.forEach(function (deal) {
+      if (guessed[deal]) return;
+      if (dealNames().indexOf(deal) === -1) return;          // free text, not a folder
+      var phrase = longestUnmatchedPhrase(text, deal, finalName);
+      if (phrase) {
+        Crm.teach(phrase, "deal", deal);
+        learnedNow.push("“" + phrase + "” now means " + deal);
+      }
+    });
+
+    return learnedNow;
+  }
+
+  /* Deal folder names contain commas — "Sample Deal B - Riverside Park
+     (Durham, NC)" — so the deals box cannot simply split on them without
+     tearing every name in half. Known folder names are matched whole first;
+     whatever is left over is treated as free text and split then. */
+  function parseDealInput(value) {
+    var rest = " " + String(value) + " ";
+    var found = [];
+
+    // Longest first, so a full name wins over a name that is its prefix.
+    dealNames().slice().sort(function (a, b) { return b.length - a.length; })
+      .forEach(function (name) {
+        var at = rest.toLowerCase().indexOf(name.toLowerCase());
+        if (at === -1) return;
+        found.push(name);
+        rest = rest.slice(0, at) + " ; " + rest.slice(at + name.length);
+      });
+
+    rest.split(/[;,\n]/).forEach(function (chunk) {
+      var text = chunk.trim();
+      if (text && found.indexOf(text) === -1) found.push(text);
+    });
+    return found;
+  }
+
+  /* The words in the note that most plausibly referred to this deal. Strip
+     what carries no identifying weight — articles, the investor's own name,
+     the verbs every note contains — and take the longest run of what is
+     left. It is a guess, which is why the toast names it and the memory
+     panel lets you throw it away. */
+  var PHRASE_NOISE = new RegExp("^(the|a|an|and|or|for|with|on|in|to|of|at|is|are|was|were|we|they|" +
+    "it|that|this|about|our|their|his|her|deal|fund|call|called|spoke|speak|met|meet|meeting|" +
+    "email|emailed|sent|send|sending|want|wants|wanted|like|liked|likes|asked|ask|quick|note|" +
+    "follow|following|up|back|next|week|today|yesterday|tomorrow|model|memo|deck|materials)$");
+
+  function longestUnmatchedPhrase(text, deal, investorName) {
+    var already = deal.toLowerCase();
+    var ownName = {};
+    String(investorName || "").toLowerCase().split(/\W+/).forEach(function (w) {
+      if (w) ownName[w] = 1;
+    });
+
+    var words = text.replace(/[^\w\s-]/g, " ").split(/\s+/).filter(Boolean);
+    var runs = [];
+    var run = [];
+    words.forEach(function (w) {
+      if (PHRASE_NOISE.test(w) || ownName[w] || /^\d+$/.test(w)) {
+        if (run.length) { runs.push(run); run = []; }
+      } else {
+        run.push(w);
+      }
+    });
+    if (run.length) runs.push(run);
+
+    var best = "";
+    runs.forEach(function (r) {
+      var phrase = r.slice(0, 3).join(" ");
+      if (phrase.length < 4) return;
+      if (already.indexOf(phrase) !== -1) return;        // already matchable
+      if (phrase.length > best.length) best = phrase;
+    });
+    return best;
+  }
+
+  function renderMemory() {
+    var aliases = Crm.learned().aliases;
+    var keys = Object.keys(aliases).filter(function (k) { return aliases[k] && !aliases[k].forgotten; });
+
+    $("crmMemory").hidden = !keys.length;
+    $("crmMemoryCount").textContent = keys.length ? "(" + keys.length + ")" : "";
+
+    $("crmMemoryList").innerHTML = keys.sort().map(function (phrase) {
+      var entry = aliases[phrase];
+      var target = entry.kind === "investor"
+        ? ((Crm.get(entry.value) || {}).name || entry.value)
+        : entry.value;
+      return '<li><span class="crm-memory__phrase">“' + esc(phrase) + '”</span>' +
+        '<span class="crm-memory__meta">→ ' + esc(target) + ' · ' + esc(entry.kind) +
+        ' · used ' + (entry.count || 1) + '× · ' + esc(entry.lastSeen || "") + '</span>' +
+        '<button type="button" class="crm-memory__forget" data-forget="' + esc(phrase) + '">Forget</button></li>';
+    }).join("");
+  }
+
+  function commitDraft() {
+    var draft = crmState.draft;
+    if (!draft) return;
+
+    var name = $("draftInvestor").value.trim();
+    if (!name) { toast("Give the investor a name before saving."); $("draftInvestor").focus(); return; }
+
+    var deals = parseDealInput($("draftDeals").value);
+    var check = $("draftCheck").value.trim();
+    var stage = $("draftStage").value;
+
+    // The name in the box wins over whatever the reader matched — someone
+    // correcting it means they know better.
+    var inv = Crm.all().filter(function (i) {
+      return i.name.toLowerCase() === name.toLowerCase();
+    })[0] || null;
+
+    var created = false;
+    if (!inv) {
+      inv = Crm.create({ name: name, stage: stage, deals: deals });
+      created = true;
+    }
+
+    Crm.addConversation(inv.id, {
+      date: $("draftDate").value,
+      channel: $("draftChannel").value,
+      who: $("draftWho").value.trim(),
+      subject: draft.subject || "",
+      summary: $("draftSummary").value.trim(),
+      check: check,
+      deals: deals,
+      next: $("draftNext").value.trim(),
+      loggedVia: draft.loggedVia || "in the dashboard",
+      loggedAt: new Date().toISOString()
+    });
+
+    // Roll the record forward: stage, deal interest, and a check size if
+    // one was discussed and none is on file.
+    var fields = { stage: stage };
+    var union = inv.deals.slice();
+    deals.forEach(function (d) { if (union.indexOf(d) === -1) union.push(d); });
+    if (union.length !== inv.deals.length) fields.deals = union;
+
+    if (draft.checkRange && inv.checkSize.min == null && inv.checkSize.max == null) {
+      fields.checkSize = { min: draft.checkRange.min, max: draft.checkRange.max,
+                           note: "From the conversation on " + $("draftDate").value };
+    }
+    Crm.patch(inv.id, fields);
+
+    // Anything corrected before saving is a signal the reader got it wrong.
+    var lessons = learnFromCorrections(draft, name, deals);
+
+    hideDraft();
+    $("agentInput").value = "";
+    $("agentStatus").textContent = "";
+    renderCrmFilters();
+    renderCrm();
+    renderMemory();
+    openInvestor(inv.id);
+
+    var message = created
+      ? "Created " + inv.name + " and logged the conversation."
+      : "Logged against " + inv.name + ".";
+    toast(lessons.length ? message + " Learned: " + lessons.join("; ") + "." : message);
+  }
+
+  /* ============================================================
+     CRM — EXPORTS
+     ============================================================ */
+  function exportCrmFile() {
+    var blob = new Blob([JSON.stringify(Crm.toFile(), null, 2)], { type: "application/json" });
+    download(blob, "crm-data.json");
+    toast("Downloaded. Replace crm-data.json in the site folder to make these edits the new baseline.");
+  }
+
+  function exportCrmXlsx() {
+    var list = Crm.all();
+    var sheets = [];
+
+    sheets.push({
+      name: "Investors",
+      widths: [34, 26, 15, 18, 16, 22, 14, 12, 40],
+      rows: [["Investor", "Type", "Stage", "Check size", "Assets", "Location",
+              "Last contact", "Logged", "Deals of interest"]].concat(
+        list.map(function (i) {
+          return [i.name, i.type, i.stage, checkText(i), i.aum, i.location,
+                  lastContact(i) || "", i.conversations.length, i.deals.join("; ")];
+        }))
+    });
+
+    var log = [];
+    list.forEach(function (i) {
+      i.conversations.forEach(function (c) {
+        log.push([c.date || "", i.name, c.channel || "", c.who || "", c.subject || "",
+                  c.summary || "", c.check || "", (c.deals || []).join("; "), c.next || "",
+                  c.loggedVia || ""]);
+      });
+    });
+    log.sort(function (a, b) { return String(b[0]).localeCompare(String(a[0])); });
+
+    sheets.push({
+      name: "Conversations",
+      widths: [12, 30, 14, 24, 34, 70, 14, 30, 44, 20],
+      rows: [["Date", "Investor", "Channel", "Who", "Subject", "What happened",
+              "Check", "Deals", "Next step", "Logged via"]].concat(log)
+    });
+
+    var research = [];
+    list.forEach(function (i) {
+      i.research.forEach(function (r) {
+        research.push([i.name, r.note, r.source || "", r.checked || ""]);
+      });
+    });
+    sheets.push({
+      name: "Research",
+      widths: [30, 90, 60, 12],
+      rows: [["Investor", "Note", "Source", "Checked"]].concat(research)
+    });
+
+    download(Xlsx.build(sheets),
+             "modillion-investor-crm-" + new Date().toISOString().slice(0, 10) + ".xlsx");
+    toast("Excel workbook downloaded — " + list.length + " investors, " + log.length + " conversations.");
+  }
+
+  /* ============================================================
+     TASKS — DATA
+
+     Third dataset, same seam as the other two. Real tasks live in
+     tasks-data.json (gitignored); the published page falls back to
+     TASKS_FALLBACK, whose tasks and people are invented.
+
+     The sharing limit matters more here than anywhere else in this
+     page. A task list is the one thing everybody is meant to be
+     looking at, and browser storage is per-machine: two people
+     ticking things off see two different lists until the file is
+     exchanged. That is stated on the page rather than buried here,
+     because a task list that quietly disagrees with itself is worse
+     than no task list. A shared one needs a backend.
+     ============================================================ */
+  var TASK_STATUSES = ["To do", "In progress", "Blocked", "Done"];
+  var TASK_PRIORITIES = ["High", "Medium", "Low"];
+
+  // Placeholder content. Every person and task below is invented.
+  var TASKS_FALLBACK = {
+    source: "fallback",
+    statuses: TASK_STATUSES,
+    priorities: TASK_PRIORITIES,
+    team: [
+      { id: "ab", name: "A. Brooks", role: "Partner" },
+      { id: "cd", name: "C. Duarte", role: "Associate" }
+    ],
+    tasks: [
+      { id: "t-sample-1", title: "Circulate the quarterly investor letter",
+        assignee: "ab", due: null, priority: "Medium", status: "To do",
+        link: "", notes: "", created: null, done: null },
+      { id: "t-sample-2", title: "Refresh the underwriting model template",
+        assignee: "cd", due: null, priority: "Low", status: "In progress",
+        link: "", notes: "", created: null, done: null }
+    ]
+  };
+
+  var Tasks = (function () {
+    var base = null;
+    var meta = { source: "fallback" };
+    var merged = [];
+    var team = [];
+    var OVERLAY_KEY = "modillion-tasks-overlay";
+    var WHO_KEY = "modillion-tasks-whoami";
+    var overlay = { patches: {}, created: [], removed: {} };
+
+    function readOverlay() {
+      try {
+        var raw = localStorage.getItem(OVERLAY_KEY);
+        if (!raw) return;
+        var o = JSON.parse(raw);
+        overlay.patches = o.patches || {};
+        overlay.created = o.created || [];
+        overlay.removed = o.removed || {};
+      } catch (e) { /* private mode, or corrupt — start clean */ }
+    }
+
+    function writeOverlay() {
+      try { localStorage.setItem(OVERLAY_KEY, JSON.stringify(overlay)); }
+      catch (e) { /* private mode — edits live for this page view only */ }
+    }
+
+    function hasOverlay() {
+      return Object.keys(overlay.patches).length > 0 ||
+             Object.keys(overlay.removed).length > 0 ||
+             overlay.created.length > 0;
+    }
+
+    function normalise(t) {
+      return {
+        id: t.id,
+        title: t.title || "(untitled)",
+        assignee: t.assignee || "",
+        due: t.due || null,
+        priority: TASK_PRIORITIES.indexOf(t.priority) !== -1 ? t.priority : "Medium",
+        status: TASK_STATUSES.indexOf(t.status) !== -1 ? t.status : "To do",
+        link: t.link || "",
+        notes: t.notes || "",
+        created: t.created || null,
+        done: t.done || null
+      };
+    }
+
+    function rebuild() {
+      var byId = {};
+      merged = (base.tasks || []).map(function (t) {
+        var rec = normalise(t);
+        byId[rec.id] = rec;
+        return rec;
+      });
+
+      overlay.created.forEach(function (t) {
+        if (byId[t.id]) return;               // the file has caught up
+        var rec = normalise(t);
+        byId[rec.id] = rec;
+        merged.push(rec);
+      });
+
+      Object.keys(overlay.patches).forEach(function (id) {
+        var rec = byId[id];
+        if (!rec) return;
+        var patch = overlay.patches[id];
+        Object.keys(patch).forEach(function (k) { rec[k] = patch[k]; });
+      });
+
+      merged = merged.filter(function (t) { return !overlay.removed[t.id]; });
+    }
+
+    function load() {
+      readOverlay();
+      return fetch("tasks-data.json", { cache: "no-store" })
+        .then(function (r) {
+          if (!r.ok) throw new Error("no local task file");
+          return r.json();
+        })
+        .then(function (json) {
+          base = json;
+          meta = { source: "local", generatedAt: json.generatedAt || null };
+        })
+        .catch(function () {
+          base = TASKS_FALLBACK;
+          meta = { source: "fallback", generatedAt: null };
+        })
+        .then(function () {
+          if (base.statuses && base.statuses.length) TASK_STATUSES = base.statuses;
+          if (base.priorities && base.priorities.length) TASK_PRIORITIES = base.priorities;
+          team = (base.team || []).slice();
+          rebuild();
+        });
+    }
+
+    function get(id) {
+      for (var i = 0; i < merged.length; i++) if (merged[i].id === id) return merged[i];
+      return null;
+    }
+
+    function create(fields) {
+      var rec = normalise({
+        id: "t-" + Date.now().toString(36) + "-" + Math.random().toString(36).slice(2, 6),
+        title: fields.title,
+        assignee: fields.assignee || "",
+        due: fields.due || null,
+        priority: fields.priority || "Medium",
+        status: "To do",
+        link: fields.link || "",
+        notes: fields.notes || "",
+        created: new Date().toISOString().slice(0, 10)
+      });
+      overlay.created.push(rec);
+      writeOverlay();
+      rebuild();
+      return get(rec.id);
+    }
+
+    function patch(id, fields) {
+      overlay.patches[id] = overlay.patches[id] || {};
+      Object.keys(fields).forEach(function (k) { overlay.patches[id][k] = fields[k]; });
+      writeOverlay();
+      rebuild();
+    }
+
+    // Ticking the box is the whole point, so it is one call and it also
+    // stamps when it happened — "who closed this and when" is the question
+    // a task list gets asked afterwards.
+    function setDone(id, done) {
+      patch(id, done
+        ? { status: "Done", done: new Date().toISOString().slice(0, 10) }
+        : { status: "To do", done: null });
+    }
+
+    function remove(id) {
+      overlay.removed[id] = new Date().toISOString().slice(0, 10);
+      writeOverlay();
+      rebuild();
+    }
+
+    function whoAmI() {
+      try { return localStorage.getItem(WHO_KEY) || ""; } catch (e) { return ""; }
+    }
+
+    function setWhoAmI(id) {
+      try { localStorage.setItem(WHO_KEY, id || ""); } catch (e) { /* private mode */ }
+    }
+
+    function personName(id) {
+      if (!id) return "";
+      for (var i = 0; i < team.length; i++) if (team[i].id === id) return team[i].name;
+      return id;                                   // a name typed in free-hand
+    }
+
+    function initials(id) {
+      var name = personName(id);
+      if (!name) return "?";
+      return name.replace(/[^A-Za-z\s.]/g, "").split(/[\s.]+/).filter(Boolean)
+        .map(function (p) { return p[0]; }).join("").slice(0, 2).toUpperCase();
+    }
+
+    function toFile() {
+      return {
+        generatedAt: new Date().toISOString().slice(0, 10),
+        source: "local",
+        note: "Exported from the dashboard. Replaces tasks-data.json in the site folder. Gitignored — never commit.",
+        statuses: TASK_STATUSES,
+        priorities: TASK_PRIORITIES,
+        team: team,
+        tasks: merged
+      };
+    }
+
+    return {
+      load: load,
+      meta: function () { return meta; },
+      all: function () { return merged; },
+      team: function () { return team; },
+      statuses: function () { return TASK_STATUSES; },
+      priorities: function () { return TASK_PRIORITIES; },
+      get: get,
+      create: create,
+      patch: patch,
+      setDone: setDone,
+      remove: remove,
+      whoAmI: whoAmI,
+      setWhoAmI: setWhoAmI,
+      personName: personName,
+      initials: initials,
+      hasLocalEdits: hasOverlay,
+      toFile: toFile
+    };
+  })();
+
+  /* ============================================================
+     TASKS — READING A ONE-LINE TASK
+
+     "Send the DDQ to North Quay by Friday, Dana, high" carries an
+     assignee, a date, a priority and a link. Same principle as the
+     CRM reader: pull them out, put them in the fields, let a person
+     correct them. The title keeps its original wording — stripping
+     the parts it recognised would leave sentences that read oddly,
+     and the fields already say what it took.
+     ============================================================ */
+  var TaskReader = (function () {
+    var DAYS = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
+    var MONTHS = ["january", "february", "march", "april", "may", "june", "july",
+                  "august", "september", "october", "november", "december"];
+
+    function iso(d) {
+      return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") +
+             "-" + String(d.getDate()).padStart(2, "0");
+    }
+
+    // Task dates point forwards — "by Friday" is the Friday coming.
+    function ahead(text, now) {
+      var t = text.toLowerCase();
+      var m;
+
+      m = t.match(/\b(\d{4})-(\d{2})-(\d{2})\b/);
+      if (m) return m[0];
+
+      m = t.match(/\b(\d{1,2})\/(\d{1,2})(?:\/(\d{2,4}))?\b/);
+      if (m) {
+        var yr = m[3] ? (m[3].length === 2 ? 2000 + parseInt(m[3], 10) : parseInt(m[3], 10))
+                      : now.getFullYear();
+        var d = new Date(yr, parseInt(m[1], 10) - 1, parseInt(m[2], 10));
+        if (!isNaN(d)) return iso(d);
+      }
+
+      m = t.match(new RegExp("\\b(" + MONTHS.join("|") + "|" +
+            MONTHS.map(function (x) { return x.slice(0, 3); }).join("|") +
+            ")\\.?\\s+(\\d{1,2})(?:st|nd|rd|th)?\\b"));
+      if (m) {
+        var mi = MONTHS.findIndex(function (x) { return x.indexOf(m[1]) === 0; });
+        if (mi >= 0) {
+          var md = new Date(now.getFullYear(), mi, parseInt(m[2], 10));
+          if (md < now) md.setFullYear(md.getFullYear() + 1);
+          return iso(md);
+        }
+      }
+
+      if (/\btoday\b/.test(t)) return iso(now);
+      if (/\btomorrow\b/.test(t)) {
+        var tm = new Date(now); tm.setDate(tm.getDate() + 1); return iso(tm);
+      }
+      if (/\b(end of week|eow|this week)\b/.test(t)) {
+        var eow = new Date(now); eow.setDate(eow.getDate() + ((5 - eow.getDay() + 7) % 7 || 7));
+        return iso(eow);
+      }
+      if (/\bnext week\b/.test(t)) {
+        var nw = new Date(now); nw.setDate(nw.getDate() + 7); return iso(nw);
+      }
+      if (/\b(end of month|eom)\b/.test(t)) {
+        return iso(new Date(now.getFullYear(), now.getMonth() + 1, 0));
+      }
+
+      m = t.match(new RegExp("\\b(?:by|on|before|due)\\s+(?:next\\s+)?(" + DAYS.join("|") + ")\\b"));
+      if (!m) m = t.match(new RegExp("\\b(" + DAYS.join("|") + ")\\b"));
+      if (m) {
+        var target = DAYS.indexOf(m[1]);
+        var forward = (target - now.getDay() + 7) % 7;
+        if (forward === 0) forward = 7;
+        if (/\bnext\s+/.test(t) && forward < 7) forward += 7;
+        var wd = new Date(now); wd.setDate(wd.getDate() + forward);
+        return iso(wd);
+      }
+      return null;
+    }
+
+    function findAssignee(text, team) {
+      var t = text.toLowerCase();
+
+      // An @mention wins — it is unambiguous by design.
+      var at = text.match(/@([\w.-]+)/);
+      if (at) {
+        var tag = at[1].toLowerCase();
+        for (var i = 0; i < team.length; i++) {
+          var person = team[i];
+          if (person.id.toLowerCase() === tag) return person.id;
+          if (person.name.toLowerCase().replace(/\s+/g, "") === tag) return person.id;
+          if (person.name.toLowerCase().split(/\s+/)[0] === tag) return person.id;
+        }
+      }
+
+      for (var j = 0; j < team.length; j++) {
+        var p = team[j];
+        var full = p.name.toLowerCase();
+        var first = full.split(/\s+/)[0];
+        if (t.indexOf(full) !== -1) return p.id;
+        if (first.length >= 3 && new RegExp("\\b" + first + "\\b").test(t)) return p.id;
+      }
+      return "";
+    }
+
+    function findPriority(text) {
+      var t = text.toLowerCase();
+      if (/\b(urgent|asap|critical|high priority|high)\b/.test(t)) return "High";
+      if (/\b(low priority|low|whenever|no rush)\b/.test(t)) return "Low";
+      return "Medium";
+    }
+
+    // Deals first, then investors — both are things a task hangs off.
+    function findLink(text) {
+      var deals = Reader.matchDeals(text);
+      if (deals.length) return deals[0];
+      var hit = Reader.matchInvestor(text);
+      if (hit.id) return (Crm.get(hit.id) || {}).name || "";
+      return "";
+    }
+
+    function read(text) {
+      var now = new Date();
+      return {
+        title: text.trim(),
+        assignee: findAssignee(text, Tasks.team()),
+        due: ahead(text, now),
+        priority: findPriority(text),
+        link: findLink(text)
+      };
+    }
+
+    return { read: read };
+  })();
+
+  /* ============================================================
+     TASKS — RENDER
+     ============================================================ */
+  var taskState = {
+    query: "",
+    filters: { who: "", status: "", priority: "" },
+    editing: null
+  };
+
+  function today() { return new Date().toISOString().slice(0, 10); }
+
+  function dueClass(task) {
+    if (!task.due || task.status === "Done") return "";
+    if (task.due < today()) return "task__due--late";
+    var soon = new Date();
+    soon.setDate(soon.getDate() + 3);
+    return task.due <= soon.toISOString().slice(0, 10) ? "task__due--soon" : "";
+  }
+
+  function dueLabel(task) {
+    if (!task.due) return "No date";
+    if (task.status === "Done") return "Due " + task.due;
+    var t = today();
+    if (task.due < t) return "Overdue — " + task.due;
+    if (task.due === t) return "Due today";
+    return "Due " + task.due;
+  }
+
+  function taskFiltered() {
+    var q = taskState.query.trim().toLowerCase();
+    var f = taskState.filters;
+
+    return Tasks.all().filter(function (t) {
+      if (f.who === "__mine") {
+        if (t.assignee !== Tasks.whoAmI()) return false;
+      } else if (f.who === "__none") {
+        if (t.assignee) return false;
+      } else if (f.who && t.assignee !== f.who) return false;
+
+      // The default view is the open list — a task list is for what is
+      // still outstanding. "Done" has to be asked for.
+      if (f.status) { if (t.status !== f.status) return false; }
+      else if (t.status === "Done") return false;
+
+      if (f.priority && t.priority !== f.priority) return false;
+
+      if (!q) return true;
+      return [t.title, t.notes, t.link, Tasks.personName(t.assignee)]
+        .join(" ").toLowerCase().indexOf(q) !== -1;
+    });
+  }
+
+  function taskRow(t) {
+    var who = t.assignee
+      ? '<span class="task__who" title="' + esc(Tasks.personName(t.assignee)) + '">' +
+        esc(Tasks.initials(t.assignee)) + '</span>'
+      : '<span class="task__who" data-unassigned="yes" title="Unassigned">—</span>';
+
+    var bits = [];
+    bits.push('<span class="' + dueClass(t) + '">' + esc(dueLabel(t)) + '</span>');
+    bits.push('<span>' + esc(t.assignee ? Tasks.personName(t.assignee) : "Unassigned") + '</span>');
+    if (t.link) bits.push('<span>' + esc(t.link) + '</span>');
+    if (t.status === "Done" && t.done) bits.push('<span>Done ' + esc(t.done) + '</span>');
+
+    return '<li class="task' + (t.status === "Done" ? " is-done" : "") + '">' +
+      '<input type="checkbox" class="task__check" data-task-check="' + esc(t.id) + '"' +
+        (t.status === "Done" ? " checked" : "") +
+        ' aria-label="Mark “' + esc(t.title) + '” done">' +
+      '<span class="task__main">' +
+        '<button type="button" class="task__title" data-task-edit="' + esc(t.id) + '">' +
+          esc(t.title) + '</button>' +
+        '<span class="task__meta">' + bits.join("") + '</span>' +
+      '</span>' +
+      '<span class="task__aside">' +
+        (t.status !== "To do" && t.status !== "Done"
+          ? '<span class="task-pill" data-s="' + esc(t.status) + '">' + esc(t.status) + '</span>' : "") +
+        '<span class="task-pill" data-p="' + esc(t.priority) + '">' + esc(t.priority) + '</span>' +
+        who +
+      '</span>' +
+    '</li>';
+  }
+
+  // Grouped by when it is due, because that is the order the list gets read in.
+  function taskGroups(list) {
+    var t = today();
+    var week = new Date();
+    week.setDate(week.getDate() + 7);
+    var weekIso = week.toISOString().slice(0, 10);
+
+    var groups = [
+      { key: "overdue", label: "Overdue", items: [] },
+      { key: "today",   label: "Today",   items: [] },
+      { key: "week",    label: "Next seven days", items: [] },
+      { key: "later",   label: "Later",   items: [] },
+      { key: "undated", label: "No date", items: [] },
+      { key: "done",    label: "Done",    items: [] }
+    ];
+
+    list.forEach(function (task) {
+      if (task.status === "Done") return groups[5].items.push(task);
+      if (!task.due) return groups[4].items.push(task);
+      if (task.due < t) return groups[0].items.push(task);
+      if (task.due === t) return groups[1].items.push(task);
+      if (task.due <= weekIso) return groups[2].items.push(task);
+      groups[3].items.push(task);
+    });
+
+    var rank = { High: 0, Medium: 1, Low: 2 };
+    groups.forEach(function (g) {
+      g.items.sort(function (a, b) {
+        if (a.due !== b.due) return (a.due || "9999").localeCompare(b.due || "9999");
+        return rank[a.priority] - rank[b.priority];
+      });
+    });
+    return groups.filter(function (g) { return g.items.length; });
+  }
+
+  function renderTasks() {
+    var list = taskFiltered();
+    var groups = taskGroups(list);
+
+    $("taskBody").innerHTML = groups.length
+      ? groups.map(function (g) {
+          return '<div class="task-group' + (g.key === "overdue" ? " task-group--overdue" : "") + '">' +
+            '<h3>' + esc(g.label) + ' <span>(' + g.items.length + ')</span></h3>' +
+            '<ul class="task-list">' + g.items.map(taskRow).join("") + '</ul></div>';
+        }).join("")
+      : '<div class="dash-state"><h3>Nothing here</h3>' +
+        '<p>Either everything is done, or the filters are hiding it. Add a task above.</p></div>';
+
+    var open = Tasks.all().filter(function (t) { return t.status !== "Done"; }).length;
+    $("tabTaskCount").textContent = open ? "(" + open + ")" : "";
+    $("taskShown").textContent = list.length + " shown · " + open + " open";
+    $("taskUnsaved").hidden = !Tasks.hasLocalEdits();
+
+    var m = Tasks.meta();
+    $("taskSourceNote").innerHTML = m.source === "local"
+      ? "Tasks from tasks-data.json — gitignored, local only, never deployed. " +
+        "<strong>Ticks are saved in this browser.</strong> Until someone downloads the file and " +
+        "puts it back in the folder, two people looking at this page see two different lists."
+      : "Placeholder tasks — the people and the work shown are invented. The real list lives in " +
+        "tasks-data.json, which is not deployed with this page.";
+  }
+
+  function fillTaskSelects() {
+    var team = Tasks.team();
+    var me = Tasks.whoAmI();
+
+    var people = team.map(function (p) {
+      return '<option value="' + esc(p.id) + '">' + esc(p.name) +
+             (p.role ? " — " + esc(p.role) : "") + '</option>';
+    }).join("");
+
+    $("taskAssignee").innerHTML = '<option value="">Unassigned</option>' + people;
+    $("taskPriority").innerHTML = TASK_PRIORITIES.map(function (p) {
+      return '<option' + (p === "Medium" ? " selected" : "") + '>' + esc(p) + '</option>';
+    }).join("");
+
+    $("taskFilterWho").innerHTML = '<option value="">Everyone</option>' +
+      (me ? '<option value="__mine">Mine</option>' : "") +
+      '<option value="__none">Unassigned</option>' + people;
+    $("taskFilterWho").value = taskState.filters.who;
+
+    $("taskFilterStatus").innerHTML = '<option value="">All open</option>' +
+      TASK_STATUSES.map(function (s) { return '<option>' + esc(s) + '</option>'; }).join("");
+    $("taskFilterStatus").value = taskState.filters.status;
+
+    $("taskFilterPriority").innerHTML = '<option value="">Any priority</option>' +
+      TASK_PRIORITIES.map(function (p) { return '<option>' + esc(p) + '</option>'; }).join("");
+    $("taskFilterPriority").value = taskState.filters.priority;
+
+    $("taskWhoAmI").innerHTML = '<option value="">Nobody selected</option>' + people;
+    $("taskWhoAmI").value = me;
+
+    // A task hangs off a deal or an investor; offer both.
+    $("taskLinkOptions").innerHTML = dealNames().concat(
+      Crm.all().map(function (i) { return i.name; })
+    ).map(function (v) { return '<option value="' + esc(v) + '">'; }).join("");
+  }
+
+  /* ---- add and edit ------------------------------------------- */
+  function readTaskLine() {
+    var text = $("taskInput").value.trim();
+    if (text.length < 3) return;
+    var draft = TaskReader.read(text);
+
+    if (draft.assignee) $("taskAssignee").value = draft.assignee;
+    else if (Tasks.whoAmI()) $("taskAssignee").value = Tasks.whoAmI();
+    if (draft.due) $("taskDue").value = draft.due;
+    $("taskPriority").value = draft.priority;
+    if (draft.link) $("taskLink").value = draft.link;
+
+    var took = [];
+    if (draft.assignee) took.push("assigned to " + Tasks.personName(draft.assignee));
+    else if (Tasks.whoAmI()) took.push("assigned to you");
+    if (draft.due) took.push("due " + draft.due);
+    if (draft.priority !== "Medium") took.push(draft.priority.toLowerCase() + " priority");
+    if (draft.link) took.push("linked to " + draft.link);
+    $("taskReadNote").textContent = took.length
+      ? "Read from what you typed: " + took.join(", ") + ". Correct anything before adding."
+      : "Nothing recognised in the text — set the fields yourself.";
+  }
+
+  function addTask() {
+    var title = $("taskInput").value.trim();
+    if (!title) { toast("Give the task a title."); $("taskInput").focus(); return; }
+
+    if (taskState.editing) {
+      Tasks.patch(taskState.editing, {
+        title: title,
+        assignee: $("taskAssignee").value,
+        due: $("taskDue").value || null,
+        priority: $("taskPriority").value,
+        link: $("taskLink").value.trim()
+      });
+      var wasEditing = taskState.editing;
+      clearTaskForm();
+      renderTasks();
+      toast("Task updated.");
+      return wasEditing;
+    }
+
+    var task = Tasks.create({
+      title: title,
+      assignee: $("taskAssignee").value,
+      due: $("taskDue").value || null,
+      priority: $("taskPriority").value,
+      link: $("taskLink").value.trim()
+    });
+
+    clearTaskForm();
+    renderTasks();
+    toast(task.assignee
+      ? "Added and assigned to " + Tasks.personName(task.assignee) + "."
+      : "Added — nobody is assigned to it yet.");
+  }
+
+  function clearTaskForm() {
+    taskState.editing = null;
+    $("taskInput").value = "";
+    $("taskDue").value = "";
+    $("taskLink").value = "";
+    $("taskPriority").value = "Medium";
+    $("taskAssignee").value = Tasks.whoAmI() || "";
+    $("taskReadNote").textContent = "";
+    $("taskAddBtn").textContent = "Add";
+    var remove = $("taskDeleteBtn");
+    if (remove) remove.remove();
+  }
+
+  function editTask(id) {
+    var t = Tasks.get(id);
+    if (!t) return;
+
+    taskState.editing = id;
+    $("taskInput").value = t.title;
+    $("taskAssignee").value = t.assignee;
+    $("taskDue").value = t.due || "";
+    $("taskPriority").value = t.priority;
+    $("taskLink").value = t.link;
+    $("taskAddBtn").textContent = "Save changes";
+    $("taskReadNote").textContent = "Editing an existing task. Press Save changes, or Delete to remove it.";
+
+    if (!$("taskDeleteBtn")) {
+      var btn = document.createElement("button");
+      btn.className = "dash-refresh";
+      btn.id = "taskDeleteBtn";
+      btn.type = "button";
+      btn.textContent = "Delete";
+      btn.addEventListener("click", function () {
+        var task = Tasks.get(taskState.editing);
+        if (!task) return;
+        Tasks.remove(taskState.editing);
+        clearTaskForm();
+        renderTasks();
+        toast("Deleted “" + task.title + "”.");
+      });
+      $("taskAddBtn").parentNode.appendChild(btn);
+    }
+
+    $("taskInput").focus();
+    $("taskInput").scrollIntoView({ behavior: "smooth", block: "center" });
+  }
+
+  /* ---- exports ------------------------------------------------- */
+  function exportTaskFile() {
+    var blob = new Blob([JSON.stringify(Tasks.toFile(), null, 2)], { type: "application/json" });
+    download(blob, "tasks-data.json");
+    toast("Downloaded. Replace tasks-data.json in the site folder so the team sees these.");
+  }
+
+  function exportTaskXlsx() {
+    var list = Tasks.all().slice().sort(function (a, b) {
+      return (a.due || "9999").localeCompare(b.due || "9999");
+    });
+    download(Xlsx.build([{
+      name: "Tasks",
+      widths: [60, 22, 13, 12, 14, 34, 13, 13],
+      rows: [["Task", "Assigned to", "Due", "Priority", "Status", "Related to", "Created", "Completed"]]
+        .concat(list.map(function (t) {
+          return [t.title, Tasks.personName(t.assignee) || "Unassigned", t.due || "",
+                  t.priority, t.status, t.link, t.created || "", t.done || ""];
+        }))
+    }]), "modillion-tasks-" + today() + ".xlsx");
+    toast("Excel workbook downloaded — " + list.length + " tasks.");
+  }
+
+  /* ---- events -------------------------------------------------- */
+  $("taskAddBtn").addEventListener("click", addTask);
+
+  $("taskInput").addEventListener("keydown", function (e) {
+    if (e.key === "Enter") { e.preventDefault(); addTask(); }
+  });
+
+  // Read the line as it is typed, so the fields fill in before you commit.
+  var taskReadTimer = null;
+  $("taskInput").addEventListener("input", function () {
+    if (taskState.editing) return;              // do not re-read an edit in progress
+    clearTimeout(taskReadTimer);
+    taskReadTimer = setTimeout(readTaskLine, 350);
+  });
+
+  document.addEventListener("click", function (e) {
+    var check = e.target.closest("[data-task-check]");
+    if (check) {
+      var id = check.getAttribute("data-task-check");
+      Tasks.setDone(id, check.checked);
+      renderTasks();
+      var done = Tasks.get(id);
+      toast(check.checked
+        ? "Ticked off" + (done ? " — " + done.title : "") + "."
+        : "Reopened.");
+      return;
+    }
+
+    var edit = e.target.closest("[data-task-edit]");
+    if (edit) { editTask(edit.getAttribute("data-task-edit")); return; }
+  });
+
+  var taskSearchTimer = null;
+  $("taskSearch").addEventListener("input", function (e) {
+    var q = e.target.value;
+    clearTimeout(taskSearchTimer);
+    taskSearchTimer = setTimeout(function () { taskState.query = q; renderTasks(); }, 200);
+  });
+
+  ["taskFilterWho", "taskFilterStatus", "taskFilterPriority"].forEach(function (id) {
+    $(id).addEventListener("change", function (e) {
+      var key = id.replace("taskFilter", "").toLowerCase();
+      taskState.filters[key] = e.target.value;
+      renderTasks();
+    });
+  });
+
+  $("taskClearFilters").addEventListener("click", function () {
+    taskState.filters = { who: "", status: "", priority: "" };
+    taskState.query = "";
+    $("taskSearch").value = "";
+    fillTaskSelects();
+    renderTasks();
+  });
+
+  $("taskWhoAmI").addEventListener("change", function (e) {
+    Tasks.setWhoAmI(e.target.value);
+    fillTaskSelects();
+    renderTasks();
+    toast(e.target.value
+      ? "You are " + Tasks.personName(e.target.value) + " on this machine."
+      : "Nobody selected.");
+  });
+
+  $("taskExportBtn").addEventListener("click", function () {
+    try { exportTaskXlsx(); }
+    catch (err) { toast("Could not build the workbook: " + err.message); }
+  });
+
+  $("taskSaveFileBtn").addEventListener("click", exportTaskFile);
+
+  /* ============================================================
+     CRM — EVENTS
+     ============================================================ */
+  function switchTab(tab) {
+    crmState.tab = tab;
+    Array.prototype.forEach.call(document.querySelectorAll(".dash-tabs button"), function (b) {
+      var on = b.getAttribute("data-tab") === tab;
+      b.classList.toggle("is-active", on);
+      if (on) b.setAttribute("aria-current", "page"); else b.removeAttribute("aria-current");
+    });
+    $("wsDocs").hidden = tab !== "docs";
+    $("wsCrm").hidden = tab !== "crm";
+    $("wsTasks").hidden = tab !== "tasks";
+    if (tab === "crm") { renderCrmFilters(); renderCrm(); }
+    if (tab === "tasks") { fillTaskSelects(); renderTasks(); }
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  document.addEventListener("click", function (e) {
+    var tab = e.target.closest("[data-tab]");
+    if (tab) { switchTab(tab.getAttribute("data-tab")); return; }
+
+    var crmHome = e.target.closest("[data-action='crm-home']");
+    if (crmHome) { showCrmView("list"); renderCrm(); window.scrollTo({ top: 0, behavior: "smooth" }); return; }
+
+    var logBtn = e.target.closest("[data-crm-log]");
+    if (logBtn) {
+      var target = Crm.get(logBtn.getAttribute("data-crm-log"));
+      showCrmView("list");
+      renderCrm();
+      $("agentInput").value = target ? target.name + " — " : "";
+      $("agentInput").focus();
+      $("agentInput").setSelectionRange($("agentInput").value.length, $("agentInput").value.length);
+      $("crmAgent").scrollIntoView({ behavior: "smooth", block: "start" });
+      return;
+    }
+
+    var crmSort = e.target.closest("[data-crmsort]");
+    if (crmSort) {
+      var key = crmSort.getAttribute("data-crmsort");
+      if (crmState.sortKey === key) crmState.sortDir = crmState.sortDir === "asc" ? "desc" : "asc";
+      else { crmState.sortKey = key; crmState.sortDir = key === "name" || key === "type" ? "asc" : "desc"; }
+      renderCrm();
+      return;
+    }
+
+    var row = e.target.closest("[data-investor]");
+    if (row) { openInvestor(row.getAttribute("data-investor")); return; }
+
+    var forget = e.target.closest("[data-forget]");
+    if (forget) {
+      var phrase = forget.getAttribute("data-forget");
+      Crm.forget(phrase);
+      renderMemory();
+      renderCrm();
+      toast("Forgotten — “" + phrase + "” no longer maps to anything.");
+      return;
+    }
+  });
+
+  $("agentParseBtn").addEventListener("click", function () {
+    var text = $("agentInput").value.trim();
+    if (text.length < 8) {
+      toast("Write a sentence or two first, or paste the email thread.");
+      $("agentInput").focus();
+      return;
+    }
+    $("agentStatus").textContent = "Reading…";
+    Promise.resolve().then(function () {
+      // An instruction becomes a set of changes; anything else becomes a
+      // conversation draft. Both wait for confirmation.
+      var command = Interpreter.read(text);
+
+      if (command.kind === "none") {
+        hideDraft();
+        hideActions();
+        $("agentStatus").textContent = command.notes.join(" ");
+        return;
+      }
+
+      if (command.kind === "actions") {
+        $("agentStatus").textContent = command.actions.length +
+          " change" + (command.actions.length === 1 ? "" : "s") + " proposed — nothing applied yet." +
+          (command.notes.length ? " " + command.notes.join(" ") : "");
+        hideDraft();
+        showActions(command.actions);
+        return;
+      }
+      hideActions();
+      $("agentStatus").textContent = "Draft ready — check it before saving.";
+      showDraft(Reader.read(text));
+    }).catch(function (err) {
+      $("agentStatus").textContent = "";
+      toast("Could not read that: " + err.message);
+    });
+  });
+
+  $("actionsApplyBtn").addEventListener("click", applyActions);
+
+  $("actionsCancelBtn").addEventListener("click", function () {
+    hideActions();
+    $("agentStatus").textContent = "Discarded — nothing was changed.";
+  });
+
+  // The escape hatch for when it reads an instruction into prose that was
+  // only ever meant as a note.
+  $("actionsAsLogBtn").addEventListener("click", function () {
+    hideActions();
+    $("agentStatus").textContent = "Draft ready — check it before saving.";
+    showDraft(Reader.read($("agentInput").value));
+  });
+
+  $("agentClearBtn").addEventListener("click", function () {
+    $("agentInput").value = "";
+    $("agentStatus").textContent = "";
+    hideDraft();
+    $("agentInput").focus();
+  });
+
+  // Cmd/Ctrl+Enter reads without reaching for the mouse.
+  $("agentInput").addEventListener("keydown", function (e) {
+    if ((e.metaKey || e.ctrlKey) && e.key === "Enter") { e.preventDefault(); $("agentParseBtn").click(); }
+  });
+
+  $("draftSaveBtn").addEventListener("click", commitDraft);
+  $("draftCancelBtn").addEventListener("click", function () {
+    hideDraft();
+    $("agentStatus").textContent = "Draft discarded — nothing was saved.";
+  });
+
+  // Re-check the name as it is typed, so you can see whether it will
+  // attach to an existing record or create a new one.
+  $("draftInvestor").addEventListener("input", function (e) {
+    var name = e.target.value.trim().toLowerCase();
+    var hit = Crm.all().filter(function (i) { return i.name.toLowerCase() === name; })[0];
+    var note = $("draftInvestorNote");
+    if (!name) { note.textContent = ""; note.removeAttribute("data-found"); return; }
+    if (hit) {
+      note.textContent = "Will be logged against the existing record.";
+      note.setAttribute("data-found", "yes");
+    } else {
+      note.textContent = "No record with that name — a new one will be created.";
+      note.setAttribute("data-found", "new");
+    }
+  });
+
+  var crmSearchTimer = null;
+  $("crmSearch").addEventListener("input", function (e) {
+    var q = e.target.value;
+    clearTimeout(crmSearchTimer);
+    crmSearchTimer = setTimeout(function () {
+      crmState.query = q;
+      if (crmState.view !== "list") showCrmView("list");
+      renderCrm();
+    }, 200);
+  });
+
+  ["crmFilterType", "crmFilterStage", "crmFilterDeal"].forEach(function (id) {
+    $(id).addEventListener("change", function (e) {
+      crmState.filters[id.replace("crmFilter", "").toLowerCase()] = e.target.value;
+      if (crmState.view !== "list") showCrmView("list");
+      renderCrm();
+    });
+  });
+
+  $("crmClearFilters").addEventListener("click", function () {
+    crmState.filters = { type: "", stage: "", deal: "" };
+    crmState.query = "";
+    $("crmSearch").value = "";
+    renderCrmFilters();
+    renderCrm();
+  });
+
+  $("crmExportBtn").addEventListener("click", function () {
+    try { exportCrmXlsx(); }
+    catch (err) { toast("Could not build the workbook: " + err.message); }
+  });
+
+  $("crmSaveFileBtn").addEventListener("click", exportCrmFile);
+
+  /* ============================================================
      EVENTS
      ============================================================ */
   document.addEventListener("click", function (e) {
@@ -3704,6 +6559,11 @@ button.link-arrow {
       renderSummary();
       renderGrid();
     });
+
+    renderCrmFilters();
+    renderCrm();
+    fillTaskSelects();
+    renderTasks();
   }
 
   /* ============================================================
@@ -3712,7 +6572,7 @@ button.link-arrow {
      session. There is deliberately no query-string bypass — that
      would make the gate pointless.
      ============================================================ */
-  Provider.load().then(function () {
+  Promise.all([Provider.load(), Crm.load(), Tasks.load()]).then(function () {
     describeSource();
     var unlocked = false;
     try { unlocked = sessionStorage.getItem(GATE_KEY) === "1"; } catch (e) { /* private mode */ }

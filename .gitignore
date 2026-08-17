@@ -11,3 +11,14 @@
 # Contains live deal and sponsor names — must never reach this public repo.
 dashboard-data.json
 dashboard-data.*.json
+
+# Investor CRM records — real firm names, conversation notes and forwarded
+# email content. Same rule as the snapshot above: never commit.
+crm-data.json
+crm-data.*.json
+crm-inbox/
+
+# Company task list — titles reference live deals, investors and internal
+# deadlines. Same rule: never commit.
+tasks-data.json
+tasks-data.*.json
