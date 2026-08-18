@@ -2199,7 +2199,7 @@ button.link-arrow {
   body[data-state="locked"] .dash-app { display: block !important; }
 
   /* The report lives inside the Deal Pipeline workspace, which the CRM tabs hide */
-  #wsDocs[hidden] { display: block !important; }
+  #wsDocs[hidden], #wsAssets[hidden] { display: block !important; }
   #wsCrm, #wsOperators { display: none !important; }
 
   section { padding: 0 !important; }
@@ -2369,6 +2369,7 @@ button.link-arrow {
         <button type="button" data-tab="docs" class="is-active" aria-current="page">Deal Pipeline</button>
         <button type="button" data-tab="crm">Investor CRM<span class="dash-tabs__count" id="tabCrmCount"></span></button>
         <button type="button" data-tab="operators">Operator CRM<span class="dash-tabs__count" id="tabOperatorCount"></span></button>
+        <button type="button" data-tab="assets">Asset Management<span class="dash-tabs__count" id="tabAssetCount"></span></button>
         <button type="button" data-tab="tasks">Task List<span class="dash-tabs__count" id="tabTaskCount"></span></button>
       </nav>
 
@@ -2694,6 +2695,99 @@ button.link-arrow {
 
       </div><!-- /#wsOperators -->
 
+      <!-- ==================== ASSET MANAGEMENT ==================== -->
+      <div id="wsAssets" hidden>
+
+        <!-- Summary tiles -->
+        <div class="dash-summary">
+          <div class="stat">
+            <span class="stat__num" id="assetStatProps">—</span>
+            <span class="stat__label">Properties</span>
+          </div>
+          <div class="stat">
+            <span class="stat__num" id="assetStatDocs">—</span>
+            <span class="stat__label">Documents indexed</span>
+          </div>
+          <div class="stat">
+            <span class="stat__num stat__num--text" id="assetStatRecent">—</span>
+            <span class="stat__label">Most recently updated</span>
+          </div>
+          <div class="stat">
+            <span class="stat__num stat__num--text" id="assetStatSource">—</span>
+            <span class="stat__label">Document source</span>
+          </div>
+        </div>
+
+        <!-- Toolbar -->
+        <div class="dash-toolbar">
+          <div class="dash-search">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+            <label class="visually-hidden" for="assetSearchInput">Search asset management</label>
+            <input type="search" id="assetSearchInput" placeholder="Search the operating assets" autocomplete="off">
+          </div>
+          <button class="dash-refresh" id="assetReportBtn">Asset report</button>
+          <button class="dash-refresh" id="assetRefreshBtn">Refresh</button>
+          <span class="dash-updated" id="assetLastSynced"></span>
+        </div>
+
+        <!-- Property grid -->
+        <div class="dash-browse" id="assetBrowse">
+          <h2 class="dash-group">Operating assets<span>One card per property, as the folders stand</span></h2>
+          <div class="dash-grid" id="assetGrid"></div>
+        </div>
+
+        <!-- Property detail -->
+        <div class="dash-detail" id="assetDetail" hidden>
+          <nav class="dash-crumbs" id="assetCrumbs" aria-label="Breadcrumb"></nav>
+          <div class="dash-detail__head">
+            <div>
+              <h2 id="assetDetailTitle"></h2>
+              <p id="assetDetailBlurb"></p>
+            </div>
+            <div class="dash-detail__aside">
+              <span class="dash-card__meta" id="assetDetailCount"></span>
+              <button class="dash-refresh" id="assetCatReportBtn">Report</button>
+            </div>
+          </div>
+          <div id="assetDetailBody"></div>
+        </div>
+
+        <!-- Report -->
+        <div class="dash-report" id="assetReport" hidden>
+          <nav class="dash-crumbs dash-report__crumbs" aria-label="Breadcrumb">
+            <button type="button" data-action="assets-home">All properties</button>
+            <span class="sep">/</span>
+            <span class="current">Report</span>
+          </nav>
+
+          <div class="dash-report__head">
+            <div>
+              <p class="eyebrow">Modillion Partners — Internal</p>
+              <h2 id="assetReportTitle"></h2>
+              <p class="dash-report__meta" id="assetReportMeta"></p>
+            </div>
+            <div class="dash-report__actions">
+              <button class="dash-refresh" id="assetExportPdfBtn">Export PDF</button>
+              <button class="dash-refresh" id="assetExportXlsxBtn">Export Excel</button>
+            </div>
+          </div>
+
+          <div id="assetReportBody"></div>
+        </div>
+
+        <!-- Search results -->
+        <div class="dash-results" id="assetResults" hidden>
+          <nav class="dash-crumbs" aria-label="Breadcrumb">
+            <button type="button" data-action="assets-home">All properties</button>
+            <span class="sep">/</span>
+            <span class="current">Search</span>
+          </nav>
+          <p class="dash-results__head" id="assetResultsHead"></p>
+          <div id="assetResultsBody"></div>
+        </div>
+
+      </div><!-- /#wsAssets -->
+
       <!-- ======================== TASK LIST ======================== -->
       <div id="wsTasks" hidden>
 
@@ -2879,7 +2973,10 @@ button.link-arrow {
         blurb: "Live pipeline — term sheets, models, diligence and sponsor materials by deal." },
       { id: "closed-deals", label: "Closed Deals", icon: "shield",
         blurb: "Realised investments — final documents, org charts and quarterly reporting." },
-      { id: "asset-management", label: "Asset Management", icon: "building",
+      // Its own tab. The pipeline is what the firm is buying; this is what it
+      // already owns, and the two are read at different times by different
+      // people. `ws` is the only thing that decides which tab an area lands on.
+      { id: "asset-management", label: "Asset Management", icon: "building", ws: "assets",
         blurb: "Operating assets — monthly update letters, financials and property reporting." }
     ],
     types: [
@@ -3350,6 +3447,16 @@ button.link-arrow {
     });
   }
 
+  // Areas are split across two tabs. Everything without a `ws` is pipeline.
+  function areasFor(ws) {
+    return DASHBOARD_CONFIG.areas.filter(function (a) { return (a.ws || "docs") === ws; });
+  }
+
+  function wsForCategory(catId) {
+    var cat = catById(catId);
+    return cat && cat.ws ? cat.ws : "docs";
+  }
+
   function catById(id) {
     var all = allCategories();
     for (var i = 0; i < all.length; i++) {
@@ -3362,7 +3469,8 @@ button.link-arrow {
      STATE
      ============================================================ */
   var state = {
-    view: "browse",       // browse | detail | results
+    ws: "docs",           // docs | assets — which set of containers to write into
+    view: "browse",       // browse | detail | results | report
     categoryId: null,
     path: [],
     report: null,
@@ -3372,6 +3480,31 @@ button.link-arrow {
   };
 
   var $ = function (id) { return document.getElementById(id); };
+
+  /* The Deal Pipeline and Asset Management tabs are the same machinery
+     pointed at different folders, so the views are addressed by role
+     rather than by id. Adding a third document tab is one more row. */
+  var WORKSPACE_VIEWS = {
+    docs: {
+      browse: "viewBrowse", detail: "viewDetail", results: "viewResults", report: "viewReport",
+      crumbs: "crumbs", title: "detailTitle", blurb: "detailBlurb",
+      count: "detailCount", body: "detailBody", search: "searchInput",
+      resultsHead: "resultsHead", resultsBody: "resultsBody",
+      reportTitle: "reportTitle", reportMeta: "reportMeta", reportBody: "reportBody",
+      homeAction: "home", homeLabel: "All categories"
+    },
+    assets: {
+      browse: "assetBrowse", detail: "assetDetail", results: "assetResults", report: "assetReport",
+      crumbs: "assetCrumbs", title: "assetDetailTitle", blurb: "assetDetailBlurb",
+      count: "assetDetailCount", body: "assetDetailBody", search: "assetSearchInput",
+      resultsHead: "assetResultsHead", resultsBody: "assetResultsBody",
+      reportTitle: "assetReportTitle", reportMeta: "assetReportMeta", reportBody: "assetReportBody",
+      homeAction: "assets-home", homeLabel: "All properties"
+    }
+  };
+
+  function wsView(ws) { return WORKSPACE_VIEWS[ws || state.ws]; }
+  function wsEl(name, ws) { return $(wsView(ws)[name]); }
 
   var toastTimer = null;
   function toast(message) {
@@ -3407,8 +3540,75 @@ button.link-arrow {
   function renderGrid() {
     var byId = {};
     state.summaries.forEach(function (s) { byId[s.id] = s; });
-    $("areaGrid").innerHTML = cardsFor(DASHBOARD_CONFIG.areas, byId);
+    $("areaGrid").innerHTML = cardsFor(areasFor("docs"), byId);
     $("typeGrid").innerHTML = cardsFor(DASHBOARD_CONFIG.types, byId);
+  }
+
+  /* ============================================================
+     RENDER — Asset Management
+
+     The tab browses a single area, so its front page is not a list
+     of categories but the properties themselves. Everything below
+     that level is the same detail view the pipeline uses.
+     ============================================================ */
+  function assetProperties() {
+    var raw = Provider.raw();
+    var out = [];
+    if (!raw) return out;
+    (raw.areas || []).forEach(function (area) {
+      if (wsForCategory(area.id) !== "assets") return;
+      (area.children || []).forEach(function (node) {
+        if (node.type !== "folder") return;
+        var files = flattenFiles(node.children, [], []);
+        var latest = node.modified || null;
+        files.forEach(function (f) {
+          if (f.modified && (!latest || f.modified > latest)) latest = f.modified;
+        });
+        out.push({ name: node.name, count: files.length, lastModified: latest });
+      });
+    });
+    return out;
+  }
+
+  function renderAssetGrid() {
+    var props = assetProperties();
+    $("assetGrid").innerHTML = props.length
+      ? props.map(function (p) {
+          var meta = p.count
+            ? '<span class="count">' + p.count + ' document' + (p.count === 1 ? '' : 's') + '</span>' +
+              '<span class="sep">·</span>' +
+              '<span class="muted">Updated ' + esc(fmtRelative(p.lastModified)) + '</span>'
+            : '<span class="dash-card__unmapped">Nothing filed yet</span>';
+          return '<button class="dash-card" type="button" data-cat="asset-management" ' +
+                   'data-asset="' + esc(p.name) + '">' +
+            '<span class="dash-card__icon"><svg viewBox="0 0 24 24" aria-hidden="true">' +
+              ICONS.building + '</svg></span>' +
+            '<h3 class="dash-card__name">' + esc(p.name) + '</h3>' +
+            '<p class="dash-card__blurb">Update letters, financials and property reporting.</p>' +
+            '<span class="dash-card__meta">' + meta + '</span>' +
+          '</button>';
+        }).join("")
+      : '<div class="dash-state"><h3>No properties yet</h3>' +
+        '<p>Nothing is filed under Asset Management in the folder snapshot.</p></div>';
+  }
+
+  function renderAssetSummary() {
+    var props = assetProperties();
+    var docs = 0, latest = null, latestName = null;
+    props.forEach(function (p) {
+      docs += p.count;
+      if (p.lastModified && (!latest || p.lastModified > latest)) {
+        latest = p.lastModified;
+        latestName = p.name;
+      }
+    });
+    $("assetStatProps").textContent = props.length ? String(props.length) : "—";
+    $("assetStatDocs").textContent = docs ? docs.toLocaleString() : "—";
+    $("assetStatRecent").textContent = latestName || "—";
+    $("assetStatSource").textContent = Provider.meta().source === "local-snapshot"
+      ? "Local snapshot" : "Not connected";
+    $("assetLastSynced").textContent = "Last synced " + new Date().toLocaleTimeString("en-US",
+      { hour: "numeric", minute: "2-digit" });
   }
 
   /* ============================================================
@@ -3416,17 +3616,20 @@ button.link-arrow {
      ============================================================ */
   function renderSummary() {
     var docs = 0, latest = null, latestCat = null;
-    var areaIds = DASHBOARD_CONFIG.areas.map(function (a) { return a.id; });
+    // Asset Management has its own tab and its own tiles, so the pipeline
+    // counts the pipeline. Type views re-slice the same files, so only
+    // areas contribute to the total.
+    var areaIds = areasFor("docs").map(function (a) { return a.id; });
     state.summaries.forEach(function (s) {
-      // Type views re-slice the same files, so only areas contribute to the total.
-      if (areaIds.indexOf(s.id) !== -1) docs += s.count;
+      if (areaIds.indexOf(s.id) === -1) return;
+      docs += s.count;
       if (s.lastModified && (!latest || s.lastModified > latest)) {
         latest = s.lastModified;
         latestCat = catById(s.id);
       }
     });
     $("statDocs").textContent = docs ? docs.toLocaleString() : "—";
-    $("statCats").textContent = DASHBOARD_CONFIG.areas.length + " + " + DASHBOARD_CONFIG.types.length;
+    $("statCats").textContent = areasFor("docs").length + " + " + DASHBOARD_CONFIG.types.length;
     $("statRecent").textContent = latestCat ? latestCat.label : "—";
     $("statSource").textContent = Provider.meta().source === "local-snapshot"
       ? "Local snapshot" : "Not connected";
@@ -3529,23 +3732,30 @@ button.link-arrow {
   /* ============================================================
      RENDER — views
      ============================================================ */
-  function showView(name) {
-    state.view = name;
-    $("viewBrowse").hidden  = name !== "browse";
-    $("viewDetail").hidden  = name !== "detail";
-    $("viewResults").hidden = name !== "results";
-    $("viewReport").hidden  = name !== "report";
+  function showView(name, ws) {
+    ws = ws || state.ws;
+    if (ws === state.ws) state.view = name;
+    ["browse", "detail", "results", "report"].forEach(function (v) {
+      var el = wsEl(v, ws);
+      if (el) el.hidden = v !== name;
+    });
   }
 
   function renderCrumbs() {
+    var view = wsView();
     var cat = catById(state.categoryId);
-    var parts = ['<button type="button" data-action="home">All categories</button>'];
+    var parts = ['<button type="button" data-action="' + view.homeAction + '">' +
+                 esc(view.homeLabel) + '</button>'];
     parts.push('<span class="sep">/</span>');
 
+    // On the Asset Management tab the category IS the tab, so its own name
+    // is not a step in the trail — the properties sit directly under home.
+    var showCat = state.ws !== "assets";
+
     if (state.path.length) {
-      parts.push('<button type="button" data-crumb="-1">' + esc(cat.label) + '</button>');
+      if (showCat) parts.push('<button type="button" data-crumb="-1">' + esc(cat.label) + '</button>');
       state.path.forEach(function (seg, i) {
-        parts.push('<span class="sep">/</span>');
+        if (showCat || i > 0) parts.push('<span class="sep">/</span>');
         if (i === state.path.length - 1) {
           parts.push('<span class="current">' + esc(seg) + '</span>');
         } else {
@@ -3555,30 +3765,34 @@ button.link-arrow {
     } else {
       parts.push('<span class="current">' + esc(cat.label) + '</span>');
     }
-    $("crumbs").innerHTML = parts.join(" ");
+    wsEl("crumbs").innerHTML = parts.join(" ");
   }
 
   function openCategory(catId, path) {
+    // The category decides the tab, not the other way round: a deal tag on
+    // the Operator CRM can point at either one and land in the right place.
+    state.ws = wsForCategory(catId);
+    var ws = state.ws;
     state.categoryId = catId;
     state.path = path || [];
     var cat = catById(catId);
 
     showView("detail");
     renderCrumbs();
-    $("detailTitle").textContent = state.path.length ? state.path[state.path.length - 1] : cat.label;
-    $("detailBlurb").textContent = state.path.length ? "" : cat.blurb;
-    $("detailCount").textContent = "";
-    $("detailBody").innerHTML = loadingTable();
+    wsEl("title").textContent = state.path.length ? state.path[state.path.length - 1] : cat.label;
+    wsEl("blurb").textContent = state.path.length ? "" : cat.blurb;
+    wsEl("count").textContent = "";
+    wsEl("body").innerHTML = loadingTable();
     window.scrollTo({ top: 0, behavior: "smooth" });
 
     Provider.listFolder(catId, state.path).then(function (items) {
       if (state.categoryId !== catId) return;   // user navigated away mid-load
       var fileCount = items.filter(function (i) { return i.type === "file"; }).length;
       var dirCount  = items.length - fileCount;
-      $("detailCount").innerHTML =
+      wsEl("count", ws).innerHTML =
         '<span>' + fileCount + ' file' + (fileCount === 1 ? '' : 's') + '</span>' +
         (dirCount ? '<span class="sep">·</span><span>' + dirCount + ' folder' + (dirCount === 1 ? '' : 's') + '</span>' : '');
-      $("detailBody").innerHTML = fileTable(items, {
+      wsEl("body", ws).innerHTML = fileTable(items, {
         // Top of an area: these rows are the deals themselves.
         dealLevel: state.path.length === 0 &&
                    DASHBOARD_CONFIG.areas.some(function (a) { return a.id === catId; }),
@@ -3589,28 +3803,35 @@ button.link-arrow {
   }
 
   function goHome() {
-    state.categoryId = null;
+    // Asset Management browses one area, so its home is the property grid
+    // and the area stays selected underneath it.
+    state.categoryId = state.ws === "assets" ? "asset-management" : null;
     state.path = [];
-    $("searchInput").value = "";
+    wsEl("search").value = "";
     showView("browse");
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
+  // Each tab searches its own folders. One index underneath, filtered by the
+  // area a hit came from — a search on the pipeline that turned up an
+  // operating property would be answering a question nobody asked.
   function runSearch(q) {
-    showView("results");
-    $("resultsHead").textContent = "Searching…";
-    $("resultsBody").innerHTML = loadingTable();
+    var ws = state.ws;
+    showView("results", ws);
+    wsEl("resultsHead", ws).textContent = "Searching…";
+    wsEl("resultsBody", ws).innerHTML = loadingTable();
 
     Provider.search(q).then(function (hits) {
-      if ($("searchInput").value.trim() !== q.trim()) return;  // stale response
-      $("resultsHead").textContent = hits.length
+      if (wsEl("search", ws).value.trim() !== q.trim()) return;  // stale response
+      hits = hits.filter(function (h) { return wsForCategory(h.categoryId) === ws; });
+      wsEl("resultsHead", ws).textContent = hits.length
         ? hits.length + " result" + (hits.length === 1 ? "" : "s") + ' for "' + q + '"'
         : 'No results for "' + q + '"';
-      $("resultsBody").innerHTML = fileTable(hits, {
+      wsEl("resultsBody", ws).innerHTML = fileTable(hits, {
         showPath: true,
-        showCategory: true,
+        showCategory: ws !== "assets",
         emptyTitle: "No matches",
-        emptyBody: "Try a shorter search term, or open a category and browse instead."
+        emptyBody: "Try a shorter search term, or open a folder and browse instead."
       });
     });
   }
@@ -3738,10 +3959,18 @@ button.link-arrow {
       return { deal: d.name, area: d.area, missing: missing };
     });
 
+    // An operating property is not a deal, and the questions the coverage
+    // matrix asks — term sheet, memo — are the wrong ones for something the
+    // firm already owns. One flag decides both the wording and the section.
+    var isAssets = !!cat && !isType && (cat.ws === "assets");
+
     return {
       scopeId: scopeId || null,
       scopeLabel: cat ? cat.label : "Full portfolio",
       isType: !!isType,
+      isAssets: isAssets,
+      rowLabel: isAssets ? "Property" : "Deal",
+      rowLabelPlural: isAssets ? "Properties" : "Deals",
       generated: new Date(),
       dataset: Provider.meta(),
       deals: deals.sort(function (a, b) { return b.count - a.count; }),
@@ -3788,7 +4017,7 @@ button.link-arrow {
 
     // Summary
     html += '<div class="report-section"><h3>Summary</h3><div class="report-tiles">' +
-      [[m.totals.deals, m.totals.deals === 1 ? "Deal" : "Deals"],
+      [[m.totals.deals, m.totals.deals === 1 ? m.rowLabel : m.rowLabelPlural],
        [m.totals.documents.toLocaleString(), "Documents"],
        [fmtSize(m.totals.bytes), "Total volume"],
        [m.totals.areas, m.totals.areas === 1 ? "Area" : "Areas"]]
@@ -3798,7 +4027,7 @@ button.link-arrow {
       }).join("") + '</div></div>';
 
     // Coverage matrix — only meaningful for area / portfolio scope
-    if (!m.isType && m.deals.length) {
+    if (!m.isType && !m.isAssets && m.deals.length) {
       var cols = DASHBOARD_CONFIG.types.filter(function (t) {
         return EXPECTED_TYPES.indexOf(t.id) !== -1;
       });
@@ -3826,11 +4055,11 @@ button.link-arrow {
         ) + '</div>';
     }
 
-    // Deals
+    // Deals — properties, when the scope is something the firm already owns
     if (m.deals.length) {
-      html += '<div class="report-section"><h3>Deals</h3>' +
+      html += '<div class="report-section"><h3>' + m.rowLabelPlural + '</h3>' +
         table(
-          [{ label: "Deal" }, { label: "Area" }, { label: "Documents", num: true },
+          [{ label: m.rowLabel }, { label: "Area" }, { label: "Documents", num: true },
            { label: "Volume", num: true }, { label: "Last updated", num: true }],
           m.deals.map(function (d) {
             return [esc(d.name), { v: esc(d.area), cls: "muted" },
@@ -3846,7 +4075,8 @@ button.link-arrow {
     // Document types
     html += '<div class="report-section"><h3>By document type</h3>' +
       table(
-        [{ label: "Document type" }, { label: "Documents", num: true }, { label: "Deals", num: true }],
+        [{ label: "Document type" }, { label: "Documents", num: true },
+         { label: m.rowLabelPlural, num: true }],
         m.typeRows.map(function (t) {
           return [esc(t.label), { v: String(t.count), cls: "num" },
                   { v: String(t.deals), cls: "num" }];
@@ -3868,15 +4098,15 @@ button.link-arrow {
               '<p>No documents are filed in this scope yet.</p></div>';
     }
 
-    $("reportTitle").textContent = m.scopeLabel + " — Document Report";
-    $("reportMeta").textContent =
+    wsEl("reportTitle").textContent = m.scopeLabel + " — Document Report";
+    wsEl("reportMeta").textContent =
       "Generated " + m.generated.toLocaleString("en-US", {
         dateStyle: "long", timeStyle: "short"
       }) + " · " +
       (m.dataset.source === "local-snapshot"
         ? (m.dataset.anonymised ? "Local snapshot (anonymised)" : "Local snapshot")
         : "Placeholder content — no document source connected");
-    $("reportBody").innerHTML = html;
+    wsEl("reportBody").innerHTML = html;
   }
 
   function openReport(scopeId) {
@@ -4122,7 +4352,7 @@ button.link-arrow {
         ["Dataset", m.dataset.source === "local-snapshot"
           ? (m.dataset.anonymised ? "Local snapshot (anonymised)" : "Local snapshot")
           : "Placeholder content — no source connected"],
-        ["Deals", m.totals.deals],
+        [m.rowLabelPlural, m.totals.deals],
         ["Documents", m.totals.documents],
         ["Total volume (bytes)", m.totals.bytes],
         ["Total volume", fmtSize(m.totals.bytes)],
@@ -4133,15 +4363,15 @@ button.link-arrow {
     });
 
     sheets.push({
-      name: "Deals",
+      name: m.rowLabelPlural,
       widths: [46, 20, 13, 15, 14],
-      rows: [["Deal", "Area", "Documents", "Volume (bytes)", "Last updated"]].concat(
+      rows: [[m.rowLabel, "Area", "Documents", "Volume (bytes)", "Last updated"]].concat(
         m.deals.map(function (d) {
           return [d.name, d.area, d.count, d.bytes, d.modified || ""];
         }))
     });
 
-    if (!m.isType) {
+    if (!m.isType && !m.isAssets) {
       sheets.push({
         name: "Coverage",
         widths: [46, 20].concat(cols.map(function () { return 16; }), [9]),
@@ -4161,7 +4391,7 @@ button.link-arrow {
     sheets.push({
       name: "By type",
       widths: [30, 13, 9],
-      rows: [["Document type", "Documents", "Deals"]].concat(
+      rows: [["Document type", "Documents", m.rowLabelPlural]].concat(
         m.typeRows.map(function (t) { return [t.label, t.count, t.deals]; }))
     });
 
@@ -8169,9 +8399,17 @@ button.link-arrow {
     $("wsDocs").hidden = tab !== "docs";
     $("wsCrm").hidden = tab !== "crm";
     $("wsOperators").hidden = tab !== "operators";
+    $("wsAssets").hidden = tab !== "assets";
     $("wsTasks").hidden = tab !== "tasks";
     if (tab === "crm") { renderCrmFilters(); renderCrm(); }
     if (tab === "operators") { renderOperatorFilters(); renderOperators(); }
+    // The two document tabs share one set of state, so moving between them
+    // starts at the top of the one you asked for rather than showing the
+    // other tab's folder under this tab's heading.
+    if (tab === "docs" || tab === "assets") {
+      if (state.ws !== tab) { state.ws = tab; goHome(); }
+    }
+    if (tab === "assets") { renderAssetSummary(); renderAssetGrid(); }
     if (tab === "tasks") { fillTaskSelects(); renderTasks(); }
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
@@ -8360,10 +8598,16 @@ button.link-arrow {
      EVENTS
      ============================================================ */
   document.addEventListener("click", function (e) {
+    // A card is either a category (pipeline) or a property (asset
+    // management); the property carries its own folder name.
     var card = e.target.closest(".dash-card");
-    if (card) { openCategory(card.getAttribute("data-cat"), []); return; }
+    if (card) {
+      var prop = card.getAttribute("data-asset");
+      openCategory(card.getAttribute("data-cat"), prop ? [prop] : []);
+      return;
+    }
 
-    var home = e.target.closest("[data-action='home']");
+    var home = e.target.closest("[data-action='home'], [data-action='assets-home']");
     if (home) { goHome(); return; }
 
     var crumb = e.target.closest("[data-crumb]");
@@ -8383,7 +8627,7 @@ button.link-arrow {
         state.sortDir = key === "modified" || key === "size" ? "desc" : "asc";
       }
       if (state.view === "detail") openCategory(state.categoryId, state.path);
-      else if (state.view === "results") runSearch($("searchInput").value);
+      else if (state.view === "results") runSearch(wsEl("search").value);
       return;
     }
 
@@ -8418,6 +8662,37 @@ button.link-arrow {
   });
 
   $("refreshBtn").addEventListener("click", function () { load(); });
+
+  var assetSearchTimer = null;
+  $("assetSearchInput").addEventListener("input", function (e) {
+    var q = e.target.value;
+    clearTimeout(assetSearchTimer);
+    assetSearchTimer = setTimeout(function () {
+      if (q.trim().length >= 2) runSearch(q);
+      else if (state.view === "results") showView("browse");
+    }, 300);
+  });
+
+  $("assetSearchInput").addEventListener("keydown", function (e) {
+    if (e.key === "Escape") { e.target.value = ""; goHome(); }
+  });
+
+  $("assetRefreshBtn").addEventListener("click", function () { load(); });
+
+  // Scoped to the area on the toolbar, to the open property below it.
+  $("assetReportBtn").addEventListener("click", function () { openReport("asset-management"); });
+  $("assetCatReportBtn").addEventListener("click", function () { openReport(state.categoryId); });
+
+  $("assetExportPdfBtn").addEventListener("click", function () { window.print(); });
+
+  $("assetExportXlsxBtn").addEventListener("click", function () {
+    if (!state.report) return;
+    try {
+      exportXlsx(state.report);
+    } catch (err) {
+      toast("Could not build the workbook: " + err.message);
+    }
+  });
 
   // Portfolio-wide report from the toolbar; category-scoped from the detail view.
   $("reportBtn").addEventListener("click", function () { openReport(null); });
@@ -9420,7 +9695,7 @@ button.link-arrow {
 
       return Promise.resolve({
         reply: head + "\n" + lines.join("\n") +
-               (top.length > 8 ? "\n\u2026and " + (top.length - 8) + " more \u2014 the Deal Pipeline tab shows them all." : "")
+               (top.length > 8 ? "\n\u2026and " + (top.length - 8) + " more \u2014 the Deal Pipeline and Asset Management tabs show them all." : "")
       });
     }
 
@@ -10214,6 +10489,10 @@ button.link-arrow {
     });
 
     renderGrid();   // paint the cards immediately, counts fill in after
+    renderAssetGrid();
+    renderAssetSummary();
+    $("tabAssetCount").textContent = assetProperties().length
+      ? "(" + assetProperties().length + ")" : "";
 
     Provider.getCategories().then(function (summaries) {
       state.summaries = summaries;

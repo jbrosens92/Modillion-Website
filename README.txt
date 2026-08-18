@@ -91,6 +91,8 @@ The Deal Pipeline tab (dashboard.html) — renamed from "Documents" 2026-08-18:
 - Same tab, same folder mirror, new name: it is the deal folders as they stand in OneDrive, so
   "Deal Pipeline" says what is on it. The internal id is still "docs" — it is wired through the
   tab switch, the print rules and the agent's context — so only the label changed.
+- It now carries Active Deals and Closed Deals only. Asset Management moved to its own tab
+  (below), so the tiles count the pipeline and the category count reads 2 + 8.
 
 Investor CRM (dashboard.html, "Investor CRM" tab) — added 2026-08-17:
 - Tracks investor conversations: who the investor is, what type (family office, institutional,
@@ -243,6 +245,37 @@ Operator CRM (dashboard.html, "Operator CRM" tab) — added 2026-08-18:
   or who the owner is) but cannot change a record. Operator edits go through the form, where every field is
   in front of you; giving the agent an action vocabulary for a fourth dataset is a separate job.
 
+Asset Management (dashboard.html, "Asset Management" tab) — split out 2026-08-18:
+- Was a category card on the Documents tab; now its own tab, sitting left of the Task List. The
+  pipeline is what the firm is buying, this is what it already owns, and the two get read at
+  different times by different people.
+- IT IS THE SAME MACHINERY, POINTED AT ONE AREA. The views are addressed by role rather than by
+  id (WORKSPACE_VIEWS at the top of the script), so the Deal Pipeline and Asset Management share
+  one detail view, one file table, one sort, one report builder. Adding a third document tab is
+  one more row in that map plus a `ws` on the area.
+- Its front page is the properties themselves, one card each with a document count and a last
+  updated stamp, rather than a single category card you have to click through. Below that it is
+  the same folder browsing, with breadcrumbs that read All properties / <property> / <folder> —
+  the area's own name is not a step in the trail, because the tab IS the area.
+- Each tab searches its own folders. One index underneath, filtered by the area a hit came from:
+  a search for "mill" on the pipeline returns the closed Greenwich deal, the same search here
+  returns the operating property, and neither answers a question nobody asked.
+- "Asset report" is the same report builder scoped to the area, and it knows the difference: it
+  counts PROPERTIES rather than deals, and it drops the coverage matrix, which asks whether a
+  term sheet and an investment memo are on file — the wrong questions for something already
+  owned. Export PDF and Export Excel work as they do on the pipeline.
+- The print stylesheet prints whichever report is open, on either document tab. Both workspaces
+  are forced visible for print and everything that is not the open report is hidden by class, so
+  exactly one report reaches the page.
+- Which tab an area lands on is one property in DASHBOARD_CONFIG.areas: `ws: "assets"`. Nothing
+  else knows the split, including the deal tags on the Operator CRM — a tag opens whichever tab
+  its area belongs to.
+- Known limit, deliberate: the "By document type" cards on the pipeline still read across EVERY
+  area, asset management included. They are a cross-cutting view of all documents, and the
+  snapshot currently files nothing under asset management, so nothing double-counts today. If
+  the properties fill up and the type cards should stop counting them, the type index needs an
+  area scope — say so and it is a small change.
+
 Task List (dashboard.html, "Task List" tab) — added 2026-08-17:
 - Third workspace, independent of Documents and the CRM. Company to-dos, assigned to a person,
   with a due date, a priority, a status and an optional link to a deal or an investor.
@@ -290,8 +323,8 @@ The sharing limit — read this before rolling the task list out to the team:
 
 The agent (the chat in the corner) — added 2026-08-17:
 - One conversation, available on every tab. It sits outside the tab containers on purpose:
-  the same thread follows you from the Deal Pipeline to the two CRMs to the Task List, and it
-  knows which tab you are on when you ask. The transcript is kept in localStorage, per browser, and "New" clears it.
+  the same thread follows you from the Deal Pipeline to the two CRMs to Asset Management to the
+  Task List, and it knows which tab you are on when you ask. The transcript is kept in localStorage, per browser, and "New" clears it.
 - The difference from the "Tell the agent" box on the CRM tab: that box reads one message and
   forgets it. This one holds context, asks when it is unsure which record you mean, and can change
   things that are ALREADY SAVED — a logged meeting, a task, an investor field, a deal's status.
