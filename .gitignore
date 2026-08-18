@@ -18,6 +18,11 @@ crm-data.json
 crm-data.*.json
 crm-inbox/
 
+# Operator CRM records — sponsor names and the deals they run, read off the
+# live folder snapshot. Same rule: never commit.
+operator-data.json
+operator-data.*.json
+
 # Company task list — titles reference live deals, investors and internal
 # deadlines. Same rule: never commit.
 tasks-data.json

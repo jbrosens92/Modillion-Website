@@ -87,6 +87,11 @@ Local preview:
   then open http://localhost:8000/dashboard.html
 
 
+The Deal Pipeline tab (dashboard.html) — renamed from "Documents" 2026-08-18:
+- Same tab, same folder mirror, new name: it is the deal folders as they stand in OneDrive, so
+  "Deal Pipeline" says what is on it. The internal id is still "docs" — it is wired through the
+  tab switch, the print rules and the agent's context — so only the label changed.
+
 Investor CRM (dashboard.html, "Investor CRM" tab) — added 2026-08-17:
 - Tracks investor conversations: who the investor is, what type (family office, institutional,
   endowment, GP-stakes fund, platform), check size, which deals they are interested in, the
@@ -102,8 +107,14 @@ Investor CRM (dashboard.html, "Investor CRM" tab) — added 2026-08-17:
   and the date it was checked. NO CONVERSATION WAS INVENTED — every log starts empty. Check size
   is blank on most of them because it is genuinely not public; that field is for what they tell
   you.
-- Sort on any column; filter by type, stage or deal interest; search runs across names,
-  mandates, research notes and conversation text at once.
+- Sort on any column; filter by type, ASSET CLASS, stage or deal interest; search runs across
+  names, mandates, research notes and conversation text at once.
+- Asset class (added 2026-08-18) is what the investor wants to own — multifamily, retail,
+  industrial, office, life science and so on, several per record. It shows in the facts grid and
+  as a column on the list, filters, searches and exports. It uses THE SAME VOCABULARY as asset
+  strategy on the Operator CRM on purpose: "who would want this deal" is then a question you
+  answer by reading down two columns. It is edited on the record, not through the agent — the
+  agent's diff compares single values, and a list needs list-aware before/after lines.
 - Two exports: "Export Excel" gives three sheets (Investors / Conversations / Research);
   "Download crm-data.json" gives the merged file, including deal statuses and learned aliases.
 - Note on the deals field in a draft: folder names contain commas — "Sponsor - Asset Name
@@ -147,7 +158,7 @@ The agent — "Tell the agent":
   a record — the log is often the only history of who said what, and a mistyped name should
   not be able to destroy it.
 - DEAL STATUS IS A CRM-SIDE NOTE. Marking a deal dead strikes it through and badges it
-  everywhere it appears, including the deal rows on the Documents tab, and drops it out of
+  everywhere it appears, including the deal rows on the Deal Pipeline tab, and drops it out of
   pickers. The OneDrive folder is untouched — the dashboard mirrors that folder, it does not
   own it, and nothing in this page should be able to reach into it.
 
@@ -170,6 +181,67 @@ What the agent learns:
   it is what teaches the aliases.
 - Known rough edge: stage is the weakest guess. A message saying "I'll revert with our diligence
   list" reads as "In diligence" when it is really still an intro. Correct it in the draft.
+
+Operator CRM (dashboard.html, "Operator CRM" tab) — added 2026-08-18:
+- The other side of the table from the Investor CRM. That one tracks who gives the firm capital;
+  this one tracks the sponsors and operators the firm invests alongside — what it does with them
+  (Co-GP equity, seed), what they build (multifamily, retail, industrial), where they build it,
+  which live deals are theirs, how they are prioritised and what they run.
+- Columns: Company Name, Stage, Investment Type, Asset Strategy, Market Focus, Deals, Priority,
+  AUM.
+  Investment type, asset strategy and market focus each hold SEVERAL values — an operator can be
+  Co-GP and seed, multifamily and industrial, "Southeast, Texas, Florida" — so those cells are
+  tag stacks, and the filters match on any one of them.
+- DEAL TAGS ARE LINKS. Clicking one switches to the Deal Pipeline tab and opens that deal's folder
+  under Active Deals. Only names that match an Active Deals folder become links; anything else
+  stays a plain tag rather than promising a folder that is not there. A deal marked dead or on
+  hold in the Investor CRM carries the same strike-through here — one deal status, read
+  everywhere.
+- Same data rule as everything else. Real records live in operator-data.json, GITIGNORED and
+  never deployed. The committed page falls back to OPERATOR_FALLBACK, three invented firms. The
+  line above the table always says which of the two is loaded.
+- What is in the starter file, and what is deliberately not: the thirteen company names and the
+  deals against them are READ OFF the live Active Deals folders in dashboard-data.json, so they
+  are facts, not guesses. Market focus is filled in only where the folder name itself states the
+  market (Houston TX, Durham NC, Westchester NY). Stage is "Active partner" for all thirteen
+  because each one has a live deal in the pipeline — also read off the folders, not guessed.
+  Investment type, asset strategy, equity per deal, priority, AUM, owner, founded, track record,
+  GP co-invest, vertical integration, last contact and contacts are LEFT BLANK — they are not in
+  the folder structure and nothing was invented to fill them. The tab shows a blank field as "not recorded" rather than a zero.
+  Two Active Deals folders carry no operator prefix (Programmatiq, Workforce Housing Portfolio)
+  and are not assigned to anyone; attach them by hand once it is known who runs them.
+- Each record also carries the fields the Investor CRM carries, so the two tabs read alike
+  (added 2026-08-18): STAGE (Prospect / Contacted / In diligence / Active partner / Passed /
+  Dormant, shown as the same pill), EQUITY PER DEAL (the operator's answer to check size — a
+  range becomes numbers the list can sort on, anything else is kept as written), OWNER (from the
+  task list roster, the same single copy the Investor CRM reads), CONTACT with title and email,
+  and LAST CONTACT. Last contact is TYPED IN here rather than derived: conversations are logged
+  against investors, not operators, and a derived-looking field with nothing behind it would lie.
+- And the fields that only matter for an operator: FOUNDED, TRACK RECORD, GP CO-INVEST and
+  VERTICAL INTEGRATION — the four things asked on every sponsor call — plus free TAGS.
+- Sort on any column — AUM sorts on the figure behind the text, so $1.4B ranks above $640M, and
+  stage sorts by rank rather than alphabet. Search runs across names, strategies, markets, deals,
+  track record, notes and contacts at once. Filter by investment type, strategy, market, stage
+  or priority.
+- "Add operator" opens a blank form; clicking a row opens the record, and "Edit" opens the same
+  form on it. A company name is the only required field.
+- The multi-value boxes take commas — "Co-GP Equity, Seed". THE DEALS BOX TAKES SEMICOLONS,
+  because deal folder names contain commas ("Sponsor - Asset (City, ST)") and splitting on those
+  would tear every name in half. Same reasoning as the deals box in the CRM draft form.
+- A value typed into a record joins the pickers on the next render, so a new market or strategy
+  does not need this page edited. The starting vocabularies also live in operator-data.json and
+  can be widened there.
+- Archive is not delete, same as the Investor CRM: the record leaves the list and stays in the
+  file. Clearing local edits in the browser brings it back.
+- Edits are held in a localStorage overlay with the same amber "Unsaved local edits" marker and
+  the same limit — two people on two machines see two different lists until the file is
+  exchanged. "Download operator-data.json" writes the merged file to drop back into the folder.
+- Exports: "Export Excel" gives two sheets — Operators, with every field on the record, and
+  Deals by operator, one row per operator-deal pair with the operator's stage and the deal's
+  status, the shape a pivot wants.
+- The chat agent can READ this tab (ask it which operators are in Texas, who is on East Blocks,
+  or who the owner is) but cannot change a record. Operator edits go through the form, where every field is
+  in front of you; giving the agent an action vocabulary for a fourth dataset is a separate job.
 
 Task List (dashboard.html, "Task List" tab) — added 2026-08-17:
 - Third workspace, independent of Documents and the CRM. Company to-dos, assigned to a person,
@@ -217,9 +289,9 @@ The sharing limit — read this before rolling the task list out to the team:
   the file as the source of truth and re-export after a working session.
 
 The agent (the chat in the corner) — added 2026-08-17:
-- One conversation, available on all three tabs. It sits outside the tab containers on purpose:
-  the same thread follows you from Documents to the CRM to the Task List, and it knows which tab
-  you are on when you ask. The transcript is kept in localStorage, per browser, and "New" clears it.
+- One conversation, available on every tab. It sits outside the tab containers on purpose:
+  the same thread follows you from the Deal Pipeline to the two CRMs to the Task List, and it
+  knows which tab you are on when you ask. The transcript is kept in localStorage, per browser, and "New" clears it.
 - The difference from the "Tell the agent" box on the CRM tab: that box reads one message and
   forgets it. This one holds context, asks when it is unsure which record you mean, and can change
   things that are ALREADY SAVED — a logged meeting, a task, an investor field, a deal's status.

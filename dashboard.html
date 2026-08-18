@@ -1523,6 +1523,7 @@ button.link-arrow {
 .crm-pill[data-stage="Committed"]    { background: rgba(29, 111, 66, 0.12); color: #1D6F42; }
 .crm-pill[data-stage="Passed"]       { background: rgba(192, 57, 43, 0.1); color: #C0392B; }
 .crm-pill[data-stage="Dormant"]      { background: rgba(45, 58, 81, 0.06); color: var(--muted); }
+.crm-pill[data-stage="Active partner"] { background: rgba(29, 111, 66, 0.12); color: #1D6F42; }
 
 .crm-tag {
   display: inline-block;
@@ -1534,6 +1535,34 @@ button.link-arrow {
   margin: 0 5px 5px 0;
 }
 .crm-tag--deal { border-color: rgba(119, 166, 182, .5); color: #3E6C7C; }
+
+/* Operator CRM ---------------------------------------------------
+   The list reuses the investor table wholesale — same head, same
+   rows, same sort — so the two CRMs read as one thing with two
+   subjects. What is new here is that several fields hold more than
+   one value (an operator can be Co-GP and Seed, multifamily and
+   industrial, Texas and Florida), so the cells are tag stacks
+   rather than single words, and a deal tag is a button: it opens
+   that deal's folder on the Deal Pipeline tab. */
+#wsOperators[hidden] { display: none; }
+
+.crmtable .task-pill { display: inline-block; }
+.crmtable .crm-tag { margin-bottom: 4px; }
+
+.crm-tag--link {
+  appearance: none;
+  background: none;
+  font-family: inherit;
+  cursor: pointer;
+  transition: border-color .18s ease, color .18s ease;
+}
+.crm-tag--link:hover { border-color: var(--steel); color: var(--deep-space); }
+
+.crm-tag--type     { border-color: rgba(45, 58, 81, .28); color: var(--deep-space); }
+.crm-tag--strategy { border-color: rgba(138, 90, 59, .35); color: #8A5A3B; }
+.crm-tag--market   { border-color: rgba(90, 100, 119, .3); color: var(--muted); }
+
+.op-empty { color: var(--muted); font-style: italic; font-size: .82rem; }
 
 /* Investor detail */
 .dash-investor__head {
@@ -2161,7 +2190,7 @@ button.link-arrow {
   .dash-gate, .dash-topbar, .dash-hero, .dash-notice, .dash-summary,
   .dash-toolbar, .dash-browse, .dash-detail, .dash-results, .dash-tabs,
   .agent-dock,
-  .dash-crm, .dash-investor, #wsTasks,
+  .dash-crm, .dash-investor, #wsTasks, #wsOperators,
   .site-footer, .dash-toast, .dash-report__crumbs, .dash-report__actions {
     display: none !important;
   }
@@ -2169,9 +2198,9 @@ button.link-arrow {
   /* Force the app visible even if the gate is locked in this window */
   body[data-state="locked"] .dash-app { display: block !important; }
 
-  /* The report lives inside the documents workspace, which the CRM tab hides */
+  /* The report lives inside the Deal Pipeline workspace, which the CRM tabs hide */
   #wsDocs[hidden] { display: block !important; }
-  #wsCrm { display: none !important; }
+  #wsCrm, #wsOperators { display: none !important; }
 
   section { padding: 0 !important; }
   .section--alice { background: #FFFFFF !important; }
@@ -2337,12 +2366,13 @@ button.link-arrow {
 
       <!-- Workspace tabs -->
       <nav class="dash-tabs" aria-label="Workspace">
-        <button type="button" data-tab="docs" class="is-active" aria-current="page">Documents</button>
+        <button type="button" data-tab="docs" class="is-active" aria-current="page">Deal Pipeline</button>
         <button type="button" data-tab="crm">Investor CRM<span class="dash-tabs__count" id="tabCrmCount"></span></button>
+        <button type="button" data-tab="operators">Operator CRM<span class="dash-tabs__count" id="tabOperatorCount"></span></button>
         <button type="button" data-tab="tasks">Task List<span class="dash-tabs__count" id="tabTaskCount"></span></button>
       </nav>
 
-      <!-- ======================= DOCUMENTS ======================= -->
+      <!-- ====================== DEAL PIPELINE ====================== -->
       <div id="wsDocs">
 
       <!-- Summary tiles -->
@@ -2458,7 +2488,7 @@ button.link-arrow {
             nothing is saved until you say so. Corrections you make are remembered.
             This box is the careful route — every field of the draft is editable before
             it is saved. For a back-and-forth, or to change something already logged,
-            use the agent in the corner; it works on all three tabs.
+            use the agent in the corner; it works on every tab.
           </p>
 
           <label class="visually-hidden" for="agentInput">Conversation notes or pasted email</label>
@@ -2567,6 +2597,9 @@ button.link-arrow {
             <label class="visually-hidden" for="crmFilterType">Filter by type</label>
             <select id="crmFilterType"><option value="">All types</option></select>
 
+            <label class="visually-hidden" for="crmFilterAsset">Filter by asset class</label>
+            <select id="crmFilterAsset"><option value="">All asset classes</option></select>
+
             <label class="visually-hidden" for="crmFilterStage">Filter by stage</label>
             <select id="crmFilterStage"><option value="">All stages</option></select>
 
@@ -2601,6 +2634,65 @@ button.link-arrow {
         </div>
 
       </div><!-- /#wsCrm -->
+
+      <!-- ====================== OPERATOR CRM ====================== -->
+      <div id="wsOperators" hidden>
+
+        <p class="report-note" id="opSourceNote"></p>
+
+        <!-- Toolbar -->
+        <div class="dash-toolbar">
+          <div class="dash-search">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+            <label class="visually-hidden" for="opSearch">Search operators</label>
+            <input type="search" id="opSearch" placeholder="Search operators, strategies, markets and deals" autocomplete="off">
+          </div>
+          <button class="dash-refresh dash-refresh--primary" id="opAddBtn">Add operator</button>
+          <button class="dash-refresh" id="opExportBtn">Export Excel</button>
+          <button class="dash-refresh" id="opSaveFileBtn">Download operator-data.json</button>
+          <span class="crm-unsaved" id="opUnsaved" hidden>Unsaved local edits</span>
+        </div>
+
+        <!-- List -->
+        <div class="dash-crm" id="viewOperators">
+          <div class="dash-crm__filters">
+            <label class="visually-hidden" for="opFilterInvestment">Filter by investment type</label>
+            <select id="opFilterInvestment"><option value="">All investment types</option></select>
+
+            <label class="visually-hidden" for="opFilterStrategy">Filter by asset strategy</label>
+            <select id="opFilterStrategy"><option value="">All strategies</option></select>
+
+            <label class="visually-hidden" for="opFilterMarket">Filter by market</label>
+            <select id="opFilterMarket"><option value="">All markets</option></select>
+
+            <label class="visually-hidden" for="opFilterStage">Filter by stage</label>
+            <select id="opFilterStage"><option value="">All stages</option></select>
+
+            <label class="visually-hidden" for="opFilterPriority">Filter by priority</label>
+            <select id="opFilterPriority"><option value="">Any priority</option></select>
+
+            <button type="button" class="dash-crm__clear" id="opClearFilters">Clear</button>
+            <span class="dash-crm__shown" id="opShown"></span>
+          </div>
+          <div id="opBody"></div>
+        </div>
+
+        <!-- Operator detail -->
+        <div class="dash-investor" id="viewOperator" hidden>
+          <nav class="dash-crumbs" aria-label="Breadcrumb">
+            <button type="button" data-action="op-home">All operators</button>
+            <span class="sep">/</span>
+            <span class="current" id="operatorCrumb"></span>
+          </nav>
+          <div id="operatorBody"></div>
+        </div>
+
+        <datalist id="opDealNames"></datalist>
+        <datalist id="opInvestmentTypes"></datalist>
+        <datalist id="opStrategies"></datalist>
+        <datalist id="opMarkets"></datalist>
+
+      </div><!-- /#wsOperators -->
 
       <!-- ======================== TASK LIST ======================== -->
       <div id="wsTasks" hidden>
@@ -2706,7 +2798,7 @@ button.link-arrow {
        AGENT — the chat dock
 
        Lives outside the workspace tabs on purpose: the same
-       conversation is available on Documents, the CRM and the Task
+       conversation is available on the Deal Pipeline, the CRMs and the Task
        List, and it knows which tab you are on when you ask.
        ============================================================ -->
   <div class="agent-dock" id="agentDock" hidden>
@@ -4115,6 +4207,13 @@ button.link-arrow {
 
   var CRM_STAGES = ["Prospect", "Contacted", "In diligence", "Committed", "Passed", "Dormant"];
 
+  // What an investor wants to own. The same words the Operator CRM uses for
+  // asset strategy, deliberately: one vocabulary across both tabs is what
+  // makes "who would want this deal" answerable by reading down two columns.
+  var CRM_ASSET_CLASSES = ["Multifamily", "Retail", "Industrial", "Office", "Life science",
+                           "Hospitality", "Mixed-use", "Student housing", "Self storage",
+                           "Data centres", "Senior housing", "Land"];
+
   // Placeholder records. Every firm below is invented.
   var CRM_FALLBACK = {
     generatedAt: null,
@@ -4123,18 +4222,21 @@ button.link-arrow {
     investors: [
       { id: "north-quay", name: "North Quay Family Office", type: "Single-family office",
         stage: "In diligence", location: "Boston, MA", aum: "$1.4B",
+        assetClasses: ["Multifamily", "Industrial"],
         checkSize: { min: 3000000, max: 6000000, note: "" },
         mandate: "Direct and fund commitments in US multifamily and industrial.",
         priority: "High", tags: ["Family office"], deals: [], contacts: [],
         research: [], why: "", conversations: [] },
       { id: "ardsley-endowment", name: "Ardsley College Endowment", type: "Endowment",
         stage: "Contacted", location: "Hartford, CT", aum: "$780M",
+        assetClasses: ["Multifamily", "Retail"],
         checkSize: { min: 2000000, max: 4000000, note: "" },
         mandate: "Value-add real estate through commingled funds only.",
         priority: "Medium", tags: ["Endowment"], deals: [], contacts: [],
         research: [], why: "", conversations: [] },
       { id: "brightwater-mfo", name: "Brightwater Multi-Family Office", type: "Multi-family office",
         stage: "Prospect", location: "Denver, CO", aum: "$6.2B",
+        assetClasses: [],
         checkSize: { min: null, max: null, note: "Not yet discussed" },
         mandate: "Alternatives programme across private equity, credit and real assets.",
         priority: "Medium", tags: ["Wealth channel"], deals: [], contacts: [],
@@ -4210,6 +4312,9 @@ button.link-arrow {
         location: inv.location || "",
         website: inv.website || "",
         aum: inv.aum || "",
+        assetClasses: (inv.assetClasses || []).filter(function (v, i, a) {
+          return v && a.indexOf(v) === i;
+        }),
         checkSize: { min: c.min == null ? null : c.min, max: c.max == null ? null : c.max, note: c.note || "" },
         mandate: inv.mandate || "",
         priority: inv.priority || "",
@@ -5152,7 +5257,7 @@ button.link-arrow {
     investorId: null,
     editing: false,        // investor detail: fields open for hand editing
     query: "",
-    filters: { type: "", stage: "", deal: "" },
+    filters: { type: "", asset: "", stage: "", deal: "" },
     sortKey: "lastContact",
     sortDir: "desc",
     draft: null,
@@ -5162,6 +5267,7 @@ button.link-arrow {
   var CRM_COLUMNS = [
     { key: "name",        label: "Investor" },
     { key: "type",        label: "Type" },
+    { key: "assetClass",  label: "Asset class" },
     { key: "stage",       label: "Stage" },
     { key: "check",       label: "Check size" },
     { key: "deals",       label: "Deals of interest" },
@@ -5205,6 +5311,7 @@ button.link-arrow {
     switch (key) {
       case "name":        return inv.name.toLowerCase();
       case "type":        return inv.type.toLowerCase();
+      case "assetClass":  return inv.assetClasses.join(" ").toLowerCase();
       case "stage":       return String(CRM_STAGES.indexOf(inv.stage));
       case "check":       return inv.checkSize.max || inv.checkSize.min || 0;
       case "deals":       return inv.deals.length;
@@ -5219,12 +5326,13 @@ button.link-arrow {
 
     var list = Crm.all().filter(function (inv) {
       if (f.type && inv.type !== f.type) return false;
+      if (f.asset && inv.assetClasses.indexOf(f.asset) === -1) return false;
       if (f.stage && inv.stage !== f.stage) return false;
       if (f.deal && inv.deals.indexOf(f.deal) === -1) return false;
       if (!q) return true;
 
       var haystack = [inv.name, inv.type, inv.location, inv.mandate, inv.why,
-                      inv.aum, inv.tags.join(" "), inv.deals.join(" "),
+                      inv.aum, inv.assetClasses.join(" "), inv.tags.join(" "), inv.deals.join(" "),
                       inv.contacts.map(function (c) { return (c.name || "") + " " + (c.email || ""); }).join(" "),
                       inv.research.map(function (r) { return r.note; }).join(" "),
                       inv.conversations.map(function (c) {
@@ -5269,6 +5377,13 @@ button.link-arrow {
           (inv.location ? '<span class="crm-sub">' + esc(inv.location) + '</span>' : "") + '</td>' +
         '<td>' + esc(inv.type) +
           (inv.aum ? '<span class="crm-sub">' + esc(inv.aum) + '</span>' : "") + '</td>' +
+        '<td>' + (inv.assetClasses.length
+          ? inv.assetClasses.slice(0, 2).map(function (a) {
+              return '<span class="crm-tag crm-tag--strategy">' + esc(a) + '</span>';
+            }).join("") +
+            (inv.assetClasses.length > 2
+              ? '<span class="crm-tag">+' + (inv.assetClasses.length - 2) + '</span>' : "")
+          : '<span class="muted">—</span>') + '</td>' +
         '<td><span class="crm-pill" data-stage="' + esc(inv.stage) + '">' + esc(inv.stage) + '</span></td>' +
         '<td>' + (checkText(inv) ? esc(checkText(inv)) : '<span class="muted">—</span>') + '</td>' +
         '<td>' + deals + '</td>' +
@@ -5294,6 +5409,11 @@ button.link-arrow {
     function uniq(arr) { return arr.filter(function (v, i, a) { return v && a.indexOf(v) === i; }).sort(); }
 
     fill("crmFilterType", uniq(list.map(function (i) { return i.type; })), crmState.filters.type);
+    // Every class in use, plus the standing vocabulary, so a filter exists
+    // for one nobody has typed on a record yet.
+    fill("crmFilterAsset",
+      uniq(CRM_ASSET_CLASSES.concat([].concat.apply([], list.map(function (i) { return i.assetClasses; })))),
+      crmState.filters.asset);
     fill("crmFilterStage", CRM_STAGES.filter(function (s) {
       return list.some(function (i) { return i.stage === s; });
     }), crmState.filters.stage);
@@ -5343,6 +5463,11 @@ button.link-arrow {
 
     var facts = [
       ["Type", esc(inv.type)],
+      ["Asset class", inv.assetClasses.length
+        ? inv.assetClasses.map(function (a) {
+            return '<span class="crm-tag crm-tag--strategy">' + esc(a) + '</span>';
+          }).join("")
+        : ""],
       ["Stage", '<span class="crm-pill" data-stage="' + esc(inv.stage) + '">' + esc(inv.stage) + '</span>'],
       ["Check size", checkText(inv) ? esc(checkText(inv)) : ""],
       ["Assets", esc(inv.aum)],
@@ -5515,6 +5640,12 @@ button.link-arrow {
           note("A range or a figure becomes numbers the list can sort on. Anything else — " +
                "“not yet discussed” — is kept as written.")) +
         field("editAum", "Assets", text("editAum", inv.aum, ' placeholder="$1.4B"')) +
+        field("editAssetClass", "Asset class",
+          text("editAssetClass", inv.assetClasses.join(", "), ' list="crmAssetClasses"') +
+          datalist("crmAssetClasses", uniqVals(CRM_ASSET_CLASSES.concat(
+            [].concat.apply([], records.map(function (i) { return i.assetClasses; }))))) +
+          note("Separated by commas. What they want to own — the same words the Operator " +
+               "CRM uses for asset strategy, so the two tabs can be read against each other.")) +
         field("editLocation", "Location", text("editLocation", inv.location)) +
         field("editOwner", "Owner",
           '<select id="editOwner">' + options([""].concat(team), inv.owner) + '</select>') +
@@ -5601,6 +5732,7 @@ button.link-arrow {
       stage: $("editStage").value,
       checkSize: check,
       aum: val("editAum"),
+      assetClasses: commaList("editAssetClass"),
       location: val("editLocation"),
       owner: val("editOwner"),
       priority: $("editPriority").value,
@@ -5791,7 +5923,7 @@ button.link-arrow {
       if (Crm.get(crmState.investorId)) renderInvestor(crmState.investorId);
       else showCrmView("list");
     }
-    renderGrid();          // deal-status badges show on the documents tab too
+    renderGrid();          // deal-status badges show on the Deal Pipeline tab too
     toast(chosen.length + " change" + (chosen.length === 1 ? "" : "s") + " applied." +
       (wasEditing ? " The edit form was closed — anything typed in it was not saved." : ""));
   }
@@ -6006,12 +6138,12 @@ button.link-arrow {
 
     sheets.push({
       name: "Investors",
-      widths: [34, 26, 15, 18, 16, 22, 14, 12, 40],
-      rows: [["Investor", "Type", "Stage", "Check size", "Assets", "Location",
+      widths: [34, 26, 26, 15, 18, 16, 22, 14, 12, 40],
+      rows: [["Investor", "Type", "Asset class", "Stage", "Check size", "Assets", "Location",
               "Last contact", "Logged", "Deals of interest"]].concat(
         list.map(function (i) {
-          return [i.name, i.type, i.stage, checkText(i), i.aum, i.location,
-                  lastContact(i) || "", i.conversations.length, i.deals.join("; ")];
+          return [i.name, i.type, i.assetClasses.join(", "), i.stage, checkText(i), i.aum,
+                  i.location, lastContact(i) || "", i.conversations.length, i.deals.join("; ")];
         }))
     });
 
@@ -6048,6 +6180,986 @@ button.link-arrow {
              "modillion-investor-crm-" + new Date().toISOString().slice(0, 10) + ".xlsx");
     toast("Excel workbook downloaded — " + list.length + " investors, " + log.length + " conversations.");
   }
+
+  /* ============================================================
+     OPERATOR CRM — DATA
+
+     Fourth dataset, same seam as the other three. The subject is
+     the other side of the table from the Investor CRM: the sponsors
+     and operators the firm invests alongside, what it does with
+     them (Co-GP equity, seed), what they build, where they build
+     it, and which live deals are theirs.
+
+     Real records live in operator-data.json, which is gitignored
+     and never deployed — operator names are live counterparties.
+     The published page falls back to OPERATOR_FALLBACK, whose firms
+     are invented. A line above the table always says which of the
+     two is loaded.
+
+     Edits are held in a localStorage overlay keyed by operator id,
+     exactly as the Investor CRM holds them, and "Download
+     operator-data.json" produces the merged file to drop back into
+     the folder. Nothing here writes to disk on its own; a static
+     page cannot.
+     ============================================================ */
+
+  // Starting vocabularies. They are not a closed set — a value typed
+  // into a record joins the pickers on the next render, so the tab
+  // does not have to be edited to add a market or a strategy.
+  var OPERATOR_INVESTMENT_TYPES = ["Co-GP Equity", "Seed"];
+  var OPERATOR_STRATEGIES = ["Multifamily", "Retail", "Industrial"];
+  var OPERATOR_MARKETS = ["National", "Regional", "Southeast", "Northeast", "Mid-Atlantic",
+                          "Midwest", "Southwest", "West", "Texas", "Florida", "Georgia",
+                          "North Carolina", "New York"];
+  var OPERATOR_PRIORITIES = ["High", "Medium", "Low"];
+  // The relationship, not the deal. An operator already in an Active Deals
+  // folder is an active partner by definition, which is why the starter file
+  // can fill this one in without guessing at anything.
+  var OPERATOR_STAGES = ["Prospect", "Contacted", "In diligence", "Active partner",
+                         "Passed", "Dormant"];
+
+  // Placeholder records. Every firm below is invented.
+  var OPERATOR_FALLBACK = {
+    generatedAt: null,
+    source: "fallback",
+    operators: [
+      { id: "sample-operator-a", name: "Sample Operator A",
+        investmentTypes: ["Co-GP Equity"], assetStrategies: ["Multifamily"],
+        markets: ["Southeast", "North Carolina"], deals: ["Sample Deal B — Multifamily"],
+        stage: "Active partner", priority: "High", aum: "$1.8B", location: "Raleigh, NC",
+        checkSize: { min: 5000000, max: 15000000, note: "" }, owner: "", website: "",
+        founded: "2009", trackRecord: "38 assets, $2.1B since inception",
+        coInvest: "10% GP co-invest", verticalIntegration: "In-house property management",
+        tags: ["Repeat sponsor"], lastContact: "", contacts: [], notes: "" },
+      { id: "sample-operator-b", name: "Sample Operator B",
+        investmentTypes: ["Co-GP Equity", "Seed"], assetStrategies: ["Industrial", "Retail"],
+        markets: ["National"], deals: ["Sample Deal A — Programmatic"],
+        stage: "In diligence", priority: "Medium", aum: "$640M", location: "Dallas, TX",
+        checkSize: { min: 3000000, max: 8000000, note: "" }, owner: "", website: "",
+        founded: "2016", trackRecord: "11 assets since inception",
+        coInvest: "5% GP co-invest", verticalIntegration: "Third-party managed",
+        tags: [], lastContact: "", contacts: [], notes: "" },
+      { id: "sample-operator-c", name: "Sample Operator C",
+        investmentTypes: ["Seed"], assetStrategies: ["Multifamily"],
+        markets: ["Texas", "Florida"], deals: [],
+        stage: "Prospect", priority: "Low", aum: "", location: "Austin, TX",
+        checkSize: { min: null, max: null, note: "Not yet discussed" }, owner: "", website: "",
+        founded: "", trackRecord: "", coInvest: "", verticalIntegration: "",
+        tags: [], lastContact: "", contacts: [], notes: "" }
+    ]
+  };
+
+  var Operators = (function () {
+    var base = null;
+    var meta = { source: "fallback", generatedAt: null, note: "" };
+    var merged = [];
+    var OVERLAY_KEY = "modillion-operator-overlay";
+    var overlay = { patches: {}, created: [], archived: {} };
+
+    function readOverlay() {
+      try {
+        var raw = localStorage.getItem(OVERLAY_KEY);
+        if (!raw) return;
+        var o = JSON.parse(raw);
+        overlay.patches  = o.patches || {};
+        overlay.created  = o.created || [];
+        overlay.archived = o.archived || {};
+      } catch (e) { /* private mode, or corrupt — start clean */ }
+    }
+
+    function writeOverlay() {
+      try { localStorage.setItem(OVERLAY_KEY, JSON.stringify(overlay)); }
+      catch (e) { /* private mode — edits live for this page view only */ }
+    }
+
+    function hasOverlay() {
+      return Object.keys(overlay.patches).length > 0 ||
+             Object.keys(overlay.archived).length > 0 ||
+             overlay.created.length > 0;
+    }
+
+    // A field that holds several values is stored as an array, but a file
+    // written by hand may well carry a single string. Both are accepted;
+    // what comes out is always an array with the blanks dropped.
+    function valueList(v) {
+      var arr = [];
+      if (Object.prototype.toString.call(v) === "[object Array]") arr = v;
+      else if (typeof v === "string") arr = v.split(";");
+      return arr.map(function (s) { return String(s).trim(); })
+                .filter(function (s, i, a) { return s.length > 0 && a.indexOf(s) === i; });
+    }
+
+    function normalise(rec) {
+      var c = rec.checkSize || {};
+      return {
+        id: rec.id || slug(rec.name || "") || "operator",
+        name: rec.name || "",
+        investmentTypes: valueList(rec.investmentTypes),
+        assetStrategies: valueList(rec.assetStrategies),
+        markets: valueList(rec.markets),
+        deals: valueList(rec.deals),
+        stage: rec.stage || "",
+        owner: rec.owner || "",
+        priority: rec.priority || "",
+        aum: rec.aum || "",
+        // What the firm writes alongside them, deal by deal. Same shape as the
+        // investor check size so the same parser and the same formatting work.
+        checkSize: { min: c.min == null ? null : c.min,
+                     max: c.max == null ? null : c.max,
+                     note: c.note || "" },
+        founded: rec.founded || "",
+        trackRecord: rec.trackRecord || "",
+        coInvest: rec.coInvest || "",
+        verticalIntegration: rec.verticalIntegration || "",
+        tags: valueList(rec.tags),
+        lastContact: rec.lastContact || "",
+        location: rec.location || "",
+        website: rec.website || "",
+        contacts: (rec.contacts || []).map(function (c) {
+          return { name: c.name || "", title: c.title || "", email: c.email || "" };
+        }),
+        notes: rec.notes || "",
+        archived: !!rec.archived
+      };
+    }
+
+    function rebuild() {
+      var rows = (base && base.operators ? base.operators : []).concat(overlay.created);
+      merged = rows.map(function (rec) {
+        var out = normalise(rec);
+        var patch = overlay.patches[out.id];
+        if (patch) out = normalise(Object.assign({}, out, patch));
+        return out;
+      });
+      merged.sort(function (a, b) { return a.name.localeCompare(b.name); });
+    }
+
+    function load() {
+      readOverlay();
+      return fetch("operator-data.json", { cache: "no-store" })
+        .then(function (r) {
+          if (!r.ok) throw new Error("no local operator file");
+          return r.json();
+        })
+        .then(function (json) {
+          base = json;
+          meta = { source: "local", generatedAt: json.generatedAt || null, note: json.note || "" };
+        })
+        .catch(function () {
+          base = OPERATOR_FALLBACK;
+          meta = { source: "fallback", generatedAt: null, note: "" };
+        })
+        .then(function () {
+          // A vocabulary in the file wins, so the pickers can be widened
+          // without touching this page.
+          if (base.investmentTypes && base.investmentTypes.length) OPERATOR_INVESTMENT_TYPES = base.investmentTypes;
+          if (base.assetStrategies && base.assetStrategies.length) OPERATOR_STRATEGIES = base.assetStrategies;
+          if (base.markets && base.markets.length) OPERATOR_MARKETS = base.markets;
+          if (base.priorities && base.priorities.length) OPERATOR_PRIORITIES = base.priorities;
+          if (base.stages && base.stages.length) OPERATOR_STAGES = base.stages;
+          rebuild();
+        });
+    }
+
+    function byId(id) {
+      for (var i = 0; i < merged.length; i++) if (merged[i].id === id) return merged[i];
+      return null;
+    }
+
+    function slugId(name) {
+      var s = slug(name) || "operator";
+      var n = s, i = 2;
+      while (byId(n)) { n = s + "-" + i; i++; }
+      return n;
+    }
+
+    function create(fields) {
+      var rec = normalise(Object.assign({ id: slugId(fields.name || "") }, fields));
+      overlay.created.push(rec);
+      writeOverlay();
+      rebuild();
+      return byId(rec.id);
+    }
+
+    function patch(id, fields) {
+      var existing = overlay.patches[id] || {};
+      overlay.patches[id] = Object.assign({}, existing, fields);
+      writeOverlay();
+      rebuild();
+      return byId(id);
+    }
+
+    // Archive is not delete, same rule as the Investor CRM: the record
+    // leaves the list and stays in the file.
+    function archive(id, on) {
+      if (on === false) delete overlay.archived[id];
+      else overlay.archived[id] = true;
+      writeOverlay();
+      rebuild();
+    }
+
+    function all() {
+      return merged.filter(function (r) { return !overlay.archived[r.id] && !r.archived; });
+    }
+
+    // Every value in use, whether or not it was in the starting vocabulary.
+    function vocabulary(field, seed) {
+      var out = seed.slice();
+      merged.forEach(function (r) {
+        r[field].forEach(function (v) { if (out.indexOf(v) === -1) out.push(v); });
+      });
+      return out;
+    }
+
+    function toFile() {
+      return {
+        generatedAt: new Date().toISOString().slice(0, 10),
+        source: "local",
+        note: "Exported from the dashboard. Replaces operator-data.json in the site folder. Gitignored — never commit.",
+        investmentTypes: OPERATOR_INVESTMENT_TYPES,
+        assetStrategies: OPERATOR_STRATEGIES,
+        markets: OPERATOR_MARKETS,
+        priorities: OPERATOR_PRIORITIES,
+        stages: OPERATOR_STAGES,
+        operators: merged.map(function (r) {
+          var out = Object.assign({}, r);
+          if (overlay.archived[r.id]) out.archived = true;
+          return out;
+        })
+      };
+    }
+
+    return {
+      load: load,
+      meta: function () { return meta; },
+      all: all,
+      allIncludingArchived: function () { return merged; },
+      get: byId,
+      create: create,
+      patch: patch,
+      archive: archive,
+      isArchived: function (id) { return !!overlay.archived[id]; },
+      investmentTypes: function () { return vocabulary("investmentTypes", OPERATOR_INVESTMENT_TYPES); },
+      strategies: function () { return vocabulary("assetStrategies", OPERATOR_STRATEGIES); },
+      markets: function () { return vocabulary("markets", OPERATOR_MARKETS); },
+      priorities: function () { return OPERATOR_PRIORITIES.slice(); },
+      stages: function () { return OPERATOR_STAGES.slice(); },
+      hasLocalEdits: hasOverlay,
+      toFile: toFile,
+      clearOverlay: function () {
+        overlay = { patches: {}, created: [], archived: {} };
+        writeOverlay();
+        rebuild();
+      }
+    };
+  })();
+
+  /* ============================================================
+     OPERATOR CRM — RENDER
+     ============================================================ */
+  var opState = {
+    view: "list",          // list | operator | new
+    operatorId: null,
+    editing: false,
+    query: "",
+    filters: { investment: "", strategy: "", market: "", stage: "", priority: "" },
+    sortKey: "name",
+    sortDir: "asc"
+  };
+
+  var OPERATOR_COLUMNS = [
+    { key: "name",       label: "Company Name" },
+    { key: "stage",      label: "Stage" },
+    { key: "investment", label: "Investment Type" },
+    { key: "strategy",   label: "Asset Strategy" },
+    { key: "market",     label: "Market Focus" },
+    { key: "deals",      label: "Deals" },
+    { key: "priority",   label: "Priority" },
+    { key: "aum",        label: "AUM" }
+  ];
+
+  // Only the live pipeline. A deal tag is a link into the Deal Pipeline tab,
+  // and Active Deals is the folder it lands in — a name from Closed Deals
+  // or Asset Management would take you somewhere the link does not claim
+  // to go, so it stays a plain tag.
+  function activeDealNames() {
+    var raw = Provider.raw();
+    var out = [];
+    if (!raw) return out;
+    (raw.areas || []).forEach(function (area) {
+      if (area.id !== "active-deals") return;
+      (area.children || []).forEach(function (deal) {
+        if (deal.type === "folder") out.push(deal.name);
+      });
+    });
+    return out;
+  }
+
+  // The deal's own folder, opened on the Deal Pipeline tab. Deals marked dead
+  // or closed in the CRM carry the same strike-through they carry there —
+  // one deal status, read everywhere.
+  function opDealChip(name) {
+    var status = Crm.dealStatus(name);
+    var dead = status && status.status !== "Live";
+    var badge = dead ? '<span class="deal-status" data-state="' + esc(status.status) + '">' +
+                       esc(status.status) + '</span>' : "";
+    var cls = "crm-tag crm-tag--deal" + (dead ? " crm-deadtag" : "");
+
+    if (activeDealNames().indexOf(name) === -1) {
+      return '<span class="' + cls + '">' + esc(name) + '</span>' + badge;
+    }
+    return '<button type="button" class="' + cls + ' crm-tag--link" data-op-deal="' + esc(name) +
+           '" title="Open this deal in the Deal Pipeline">' + esc(name) + '</button>' + badge;
+  }
+
+  function opTagStack(values, kind, limit) {
+    if (!values.length) return '<span class="muted">—</span>';
+    var shown = limit ? values.slice(0, limit) : values;
+    return shown.map(function (v) {
+      return '<span class="crm-tag crm-tag--' + kind + '">' + esc(v) + '</span>';
+    }).join("") +
+    (limit && values.length > limit
+      ? '<span class="crm-tag">+' + (values.length - limit) + '</span>' : "");
+  }
+
+  // "$1.4B" sorts above "$640M" — the figure is text on the record, so the
+  // number behind it is worked out here rather than stored twice.
+  function aumValue(text) {
+    var m = String(text || "").match(/([\d.,]+)\s*([bmk])?/i);
+    if (!m) return 0;
+    var n = parseFloat(m[1].replace(/,/g, ""));
+    if (isNaN(n)) return 0;
+    var unit = (m[2] || "").toLowerCase();
+    if (unit === "b") return n * 1e9;
+    if (unit === "m") return n * 1e6;
+    if (unit === "k") return n * 1e3;
+    return n;
+  }
+
+  function opSortValue(rec, key) {
+    switch (key) {
+      case "name":       return rec.name.toLowerCase();
+      case "stage":      return String(OPERATOR_STAGES.indexOf(rec.stage) === -1
+                                ? OPERATOR_STAGES.length : OPERATOR_STAGES.indexOf(rec.stage));
+      case "investment": return rec.investmentTypes.join(" ").toLowerCase();
+      case "strategy":   return rec.assetStrategies.join(" ").toLowerCase();
+      case "market":     return rec.markets.join(" ").toLowerCase();
+      case "deals":      return rec.deals.length;
+      case "priority":   return OPERATOR_PRIORITIES.indexOf(rec.priority) === -1
+                                ? OPERATOR_PRIORITIES.length : OPERATOR_PRIORITIES.indexOf(rec.priority);
+      case "aum":        return aumValue(rec.aum);
+      default:           return "";
+    }
+  }
+
+  function opFiltered() {
+    var q = opState.query.trim().toLowerCase();
+    var f = opState.filters;
+
+    var list = Operators.all().filter(function (rec) {
+      if (f.investment && rec.investmentTypes.indexOf(f.investment) === -1) return false;
+      if (f.strategy && rec.assetStrategies.indexOf(f.strategy) === -1) return false;
+      if (f.market && rec.markets.indexOf(f.market) === -1) return false;
+      if (f.stage && rec.stage !== f.stage) return false;
+      if (f.priority && rec.priority !== f.priority) return false;
+      if (!q) return true;
+
+      var haystack = [rec.name, rec.location, rec.aum, rec.priority, rec.notes,
+                      rec.stage, rec.owner, rec.founded, rec.trackRecord, rec.coInvest,
+                      rec.verticalIntegration, rec.tags.join(" "), opCheckText(rec),
+                      rec.investmentTypes.join(" "), rec.assetStrategies.join(" "),
+                      rec.markets.join(" "), rec.deals.join(" "),
+                      rec.contacts.map(function (c) {
+                        return [c.name, c.title, c.email].join(" ");
+                      }).join(" ")].join(" ").toLowerCase();
+      return haystack.indexOf(q) !== -1;
+    });
+
+    // Priority sorts high-to-low whichever way the arrow points, because
+    // its natural order is the rank, not the alphabet.
+    var dir = opState.sortDir === "asc" ? 1 : -1;
+    return list.sort(function (a, b) {
+      var av = opSortValue(a, opState.sortKey);
+      var bv = opSortValue(b, opState.sortKey);
+      if (av < bv) return -1 * dir;
+      if (av > bv) return 1 * dir;
+      return a.name.localeCompare(b.name);
+    });
+  }
+
+  function operatorTable(list) {
+    if (!list.length) {
+      return '<div class="dash-state"><h3>No operators match</h3>' +
+             '<p>Clear the filters, or add one with the button above.</p></div>';
+    }
+
+    var head = OPERATOR_COLUMNS.map(function (c) {
+      var sorted = opState.sortKey === c.key;
+      return '<th class="' + (sorted ? "is-sorted" : "") + '">' +
+             '<button type="button" data-opsort="' + c.key + '">' + c.label +
+             '<span class="arrow">' + (sorted && opState.sortDir === "asc" ? "↑" : "↓") + '</span>' +
+             '</button></th>';
+    }).join("");
+
+    var rows = list.map(function (rec) {
+      var deals = rec.deals.length
+        ? rec.deals.slice(0, 2).map(opDealChip).join("") +
+          (rec.deals.length > 2 ? '<span class="crm-tag">+' + (rec.deals.length - 2) + '</span>' : "")
+        : '<span class="muted">—</span>';
+
+      return '<tr data-operator="' + esc(rec.id) + '">' +
+        '<td><span class="crm-name">' + esc(rec.name) + '</span>' +
+          (rec.location ? '<span class="crm-sub">' + esc(rec.location) + '</span>' : "") + '</td>' +
+        '<td>' + (rec.stage
+          ? '<span class="crm-pill" data-stage="' + esc(rec.stage) + '">' + esc(rec.stage) + '</span>'
+          : '<span class="muted">—</span>') + '</td>' +
+        '<td>' + opTagStack(rec.investmentTypes, "type") + '</td>' +
+        '<td>' + opTagStack(rec.assetStrategies, "strategy") + '</td>' +
+        '<td>' + opTagStack(rec.markets, "market", 3) + '</td>' +
+        '<td>' + deals +
+          (rec.deals.length ? '<span class="crm-sub">' + rec.deals.length + ' active deal' +
+            (rec.deals.length === 1 ? "" : "s") + '</span>' : "") + '</td>' +
+        '<td>' + (rec.priority
+          ? '<span class="task-pill" data-p="' + esc(rec.priority) + '">' + esc(rec.priority) + '</span>'
+          : '<span class="muted">—</span>') + '</td>' +
+        '<td>' + (rec.aum ? esc(rec.aum) : '<span class="muted">—</span>') + '</td>' +
+        '</tr>';
+    }).join("");
+
+    return '<div class="crmtable-wrap"><table class="crmtable">' +
+           '<thead><tr>' + head + '</tr></thead><tbody>' + rows + '</tbody></table></div>';
+  }
+
+  function renderOperatorFilters() {
+    function fill(id, values, current) {
+      var el = $(id);
+      var label = el.options[0].textContent;
+      el.innerHTML = '<option value="">' + label + '</option>' +
+        values.map(function (v) {
+          return '<option value="' + esc(v) + '"' + (v === current ? " selected" : "") + '>' +
+                 esc(v) + '</option>';
+        }).join("");
+    }
+    fill("opFilterInvestment", Operators.investmentTypes(), opState.filters.investment);
+    fill("opFilterStrategy", Operators.strategies(), opState.filters.strategy);
+    fill("opFilterMarket", Operators.markets(), opState.filters.market);
+    fill("opFilterStage", Operators.stages(), opState.filters.stage);
+    fill("opFilterPriority", Operators.priorities(), opState.filters.priority);
+  }
+
+  function fillOperatorDatalists() {
+    function fill(id, values) {
+      $(id).innerHTML = values.map(function (v) {
+        return '<option value="' + esc(v) + '">';
+      }).join("");
+    }
+    fill("opDealNames", activeDealNames());
+    fill("opInvestmentTypes", Operators.investmentTypes());
+    fill("opStrategies", Operators.strategies());
+    fill("opMarkets", Operators.markets());
+  }
+
+  function renderOperators() {
+    var list = opFiltered();
+    $("opBody").innerHTML = operatorTable(list);
+    $("opShown").textContent = list.length === Operators.all().length
+      ? list.length + " operator" + (list.length === 1 ? "" : "s")
+      : list.length + " of " + Operators.all().length + " shown";
+    $("tabOperatorCount").textContent = Operators.all().length ? "(" + Operators.all().length + ")" : "";
+    $("opUnsaved").hidden = !Operators.hasLocalEdits();
+
+    fillOperatorDatalists();
+
+    $("opSourceNote").innerHTML = Operators.meta().source === "local"
+      ? "Records from operator-data.json — gitignored, local only, never deployed. Deal tags open the " +
+        "deal's folder on the Deal Pipeline tab; a blank field is one nobody has filled in yet, not a zero."
+      : "Placeholder records — every firm shown is invented. The real list lives in operator-data.json, " +
+        "which is not deployed with this page.";
+  }
+
+  function showOperatorView(name) {
+    opState.view = name;
+    if (name !== "operator") opState.editing = false;
+    $("viewOperators").hidden = name !== "list";
+    $("viewOperator").hidden = name === "list";
+  }
+
+  function scrollToOperator() {
+    var el = $("viewOperator");
+    if (!el) return;
+    var bar = document.querySelector(".dash-topbar");
+    var offset = (bar ? bar.getBoundingClientRect().height : 0) + 20;
+    var top = window.scrollY + el.getBoundingClientRect().top - offset;
+    window.scrollTo({ top: top < 0 ? 0 : top, behavior: "smooth" });
+  }
+
+  // The equity the firm writes alongside them, formatted the way the
+  // investor card formats a check size — one reader, one look.
+  function opCheckText(rec) {
+    var c = rec.checkSize || {};
+    if (c.min != null && c.max != null) {
+      return c.min === c.max ? Reader.fmtMoney(c.min)
+                             : Reader.fmtMoney(c.min) + "–" + Reader.fmtMoney(c.max);
+    }
+    if (c.min != null) return Reader.fmtMoney(c.min) + "+";
+    if (c.max != null) return "up to " + Reader.fmtMoney(c.max);
+    return "";
+  }
+
+  function operatorFacts(rec) {
+    var contact = rec.contacts[0] || null;
+    return [
+      ["Investment type", rec.investmentTypes.length ? opTagStack(rec.investmentTypes, "type") : ""],
+      ["Asset strategy", rec.assetStrategies.length ? opTagStack(rec.assetStrategies, "strategy") : ""],
+      ["Market focus", rec.markets.length ? opTagStack(rec.markets, "market") : ""],
+      ["Stage", rec.stage
+        ? '<span class="crm-pill" data-stage="' + esc(rec.stage) + '">' + esc(rec.stage) + '</span>' : ""],
+      ["Equity per deal", esc(opCheckText(rec))],
+      ["AUM", esc(rec.aum)],
+      ["Owner", esc(rec.owner)],
+      ["Priority", rec.priority
+        ? '<span class="task-pill" data-p="' + esc(rec.priority) + '">' + esc(rec.priority) + '</span>' : ""],
+      ["Location", esc(rec.location)],
+      ["Founded", esc(rec.founded)],
+      ["Track record", esc(rec.trackRecord)],
+      ["GP co-invest", esc(rec.coInvest)],
+      ["Vertical integration", esc(rec.verticalIntegration)],
+      ["Active deals", rec.deals.length ? String(rec.deals.length) : ""],
+      ["Contact", esc((contact || {}).name || "") +
+        ((contact || {}).title ? '<span class="crm-sub">' + esc(contact.title) + '</span>' : "")],
+      ["Contact email", (contact || {}).email
+        ? '<a href="mailto:' + esc(contact.email) + '">' + esc(contact.email) + '</a>' : ""],
+      ["Last contact", esc(rec.lastContact)]
+    ].map(function (pair) {
+      var empty = !pair[1];
+      var note = pair[0] === "Equity per deal" && rec.checkSize.note ? rec.checkSize.note : "not recorded";
+      return '<div class="crm-fact"><span class="crm-fact__label">' + pair[0] + '</span>' +
+             '<span class="crm-fact__value' + (empty ? " is-empty" : "") + '">' +
+             (empty ? esc(note) : pair[1]) + '</span></div>';
+    }).join("");
+  }
+
+  function operatorEditForm(rec, isNew) {
+    function field(id, label, control, wide) {
+      return '<div class="crm-field' + (wide ? " crm-field--wide" : "") + '">' +
+             '<label for="' + id + '">' + esc(label) + '</label>' + control + '</div>';
+    }
+    function note(text) { return '<span class="crm-field__note">' + esc(text) + '</span>'; }
+    function text(id, value, extra) {
+      return '<input type="text" id="' + id + '" value="' + esc(value || "") + '" autocomplete="off"' +
+             (extra || "") + '>';
+    }
+    function options(values, current) {
+      return values.map(function (v) {
+        return '<option value="' + esc(v) + '"' + (v === current ? " selected" : "") + '>' +
+               esc(v || "not recorded") + '</option>';
+      }).join("");
+    }
+
+    var contact = rec.contacts[0] || { name: "", title: "", email: "" };
+    var priorities = Operators.priorities();
+    if (rec.priority && priorities.indexOf(rec.priority) === -1) priorities = priorities.concat([rec.priority]);
+    var stages = Operators.stages();
+    if (rec.stage && stages.indexOf(rec.stage) === -1) stages = stages.concat([rec.stage]);
+
+    // Owners come from the task list's roster, the same single copy the
+    // Investor CRM reads — correct the roster and every tab follows.
+    var team = Tasks.team().map(function (p) { return p.name; });
+    if (rec.owner && team.indexOf(rec.owner) === -1) team.push(rec.owner);
+
+    return '<div class="crm-edit">' +
+      '<h3>' + (isNew ? "New operator" : "Editing this record") + '</h3>' +
+      '<p class="crm-edit__lede">Nothing is written until you press Save, and a save stays in this ' +
+        'browser — use “Download operator-data.json” on the list to put it back in the folder.</p>' +
+      '<div class="crm-edit__grid">' +
+        field("opEditName", "Company name", text("opEditName", rec.name)) +
+        field("opEditStage", "Stage",
+          '<select id="opEditStage">' + options([""].concat(stages), rec.stage) + '</select>') +
+        field("opEditCheck", "Equity per deal",
+          text("opEditCheck", opCheckText(rec) || rec.checkSize.note, ' placeholder="$5m–$15m"') +
+          note("What the firm writes alongside them. A range or a figure becomes numbers the " +
+               "list can sort on; anything else — “not yet discussed” — is kept as written.")) +
+        field("opEditAum", "AUM", text("opEditAum", rec.aum, ' placeholder="$1.4B"')) +
+        field("opEditOwner", "Owner",
+          '<select id="opEditOwner">' + options([""].concat(team), rec.owner) + '</select>') +
+        field("opEditPriority", "Priority",
+          '<select id="opEditPriority">' + options([""].concat(priorities), rec.priority) + '</select>') +
+        field("opEditLocation", "Location", text("opEditLocation", rec.location, ' placeholder="Raleigh, NC"')) +
+        field("opEditFounded", "Founded", text("opEditFounded", rec.founded, ' placeholder="2009"')) +
+        field("opEditCoInvest", "GP co-invest",
+          text("opEditCoInvest", rec.coInvest, ' placeholder="10% GP co-invest"')) +
+        field("opEditVertical", "Vertical integration",
+          text("opEditVertical", rec.verticalIntegration, ' placeholder="In-house property management"')) +
+        field("opEditLastContact", "Last contact",
+          '<input type="date" id="opEditLastContact" value="' + esc(rec.lastContact) + '">' +
+          note("Typed in, not derived: conversations are logged against investors, not operators.")) +
+        field("opEditWebsite", "Website",
+          '<input type="url" id="opEditWebsite" value="' + esc(rec.website) +
+          '" autocomplete="off" placeholder="https://">') +
+        field("opEditContactName", "Contact name", text("opEditContactName", contact.name)) +
+        field("opEditContactTitle", "Contact title", text("opEditContactTitle", contact.title)) +
+        field("opEditContactEmail", "Contact email",
+          '<input type="email" id="opEditContactEmail" value="' + esc(contact.email) +
+          '" autocomplete="off" placeholder="name@firm.com">') +
+        field("opEditInvestment", "Investment type",
+          text("opEditInvestment", rec.investmentTypes.join(", "), ' list="opInvestmentTypes"') +
+          note("Several are fine — separated by commas. Co-GP Equity, Seed."), true) +
+        field("opEditStrategy", "Asset strategy",
+          text("opEditStrategy", rec.assetStrategies.join(", "), ' list="opStrategies"') +
+          note("Separated by commas. Multifamily, retail, industrial — anything typed here " +
+               "joins the filter on the next render."), true) +
+        field("opEditMarkets", "Market focus",
+          text("opEditMarkets", rec.markets.join(", "), ' list="opMarkets"') +
+          note("Separated by commas. Mix scope and place freely — “Southeast, Texas, Florida” " +
+               "or just “National”."), true) +
+        field("opEditDeals", "Deals",
+          text("opEditDeals", rec.deals.join("; "), ' list="opDealNames"') +
+          note("Separated by SEMICOLONS, not commas — deal folder names contain commas " +
+               "(“Sponsor - Asset (City, ST)”) and splitting on those would tear them in half. " +
+               "A name matching an Active Deals folder becomes a link on the list."), true) +
+        field("opEditTrack", "Track record",
+          text("opEditTrack", rec.trackRecord, ' placeholder="38 assets, $2.1B since inception"'), true) +
+        field("opEditTags", "Tags",
+          text("opEditTags", rec.tags.join(", ")) + note("Separated by commas."), true) +
+        field("opEditNotes", "Notes",
+          '<textarea id="opEditNotes">' + esc(rec.notes) + '</textarea>', true) +
+      '</div>' +
+      '<div class="crm-edit__actions">' +
+        (isNew
+          ? '<button class="dash-refresh dash-refresh--primary" data-op-new-save="1">Add operator</button>' +
+            '<button class="dash-refresh" data-op-new-cancel="1">Cancel</button>'
+          : '<button class="dash-refresh dash-refresh--primary" data-op-edit-save="' + esc(rec.id) + '">Save changes</button>' +
+            '<button class="dash-refresh" data-op-edit-cancel="' + esc(rec.id) + '">Cancel</button>' +
+            '<button class="dash-refresh" data-op-archive="' + esc(rec.id) + '">Archive</button>') +
+        '<span class="crm-edit__derived">Archiving takes the record off the list and leaves it in the ' +
+          'file — nothing here deletes one. Clearing local edits in this browser brings an archived ' +
+          'operator back.</span>' +
+      '</div></div>';
+  }
+
+  function readOperatorForm() {
+    function val(id) { var el = $(id); return el ? el.value.trim() : ""; }
+    function commaList(id) {
+      return val(id).split(",").map(function (s) { return s.trim(); })
+                    .filter(function (s) { return s.length > 0; });
+    }
+    function semiList(id) {
+      return val(id).split(";").map(function (s) { return s.trim(); })
+                    .filter(function (s) { return s.length > 0; });
+    }
+
+    var contacts = [];
+    var cName = val("opEditContactName");
+    var cTitle = val("opEditContactTitle");
+    var cEmail = val("opEditContactEmail");
+    if (cName || cTitle || cEmail) contacts = [{ name: cName, title: cTitle, email: cEmail }];
+
+    // One box for the equity per deal, read the way the CRM reads a check
+    // size. A range becomes numbers; anything else is kept verbatim.
+    var raw = val("opEditCheck");
+    var check = { min: null, max: null, note: "" };
+    if (raw) {
+      var probe = /\$/.test(raw) ? raw : raw.replace(/(^|[^\w$])(\d)/g, "$1$$$2");
+      var parsed = Reader.matchCheck(probe);
+      if (parsed) check = { min: parsed.min, max: parsed.max, note: "" };
+      else check.note = raw;
+    }
+
+    return {
+      name: val("opEditName"),
+      investmentTypes: commaList("opEditInvestment"),
+      assetStrategies: commaList("opEditStrategy"),
+      markets: commaList("opEditMarkets"),
+      deals: semiList("opEditDeals"),
+      stage: $("opEditStage").value,
+      owner: $("opEditOwner").value,
+      priority: $("opEditPriority").value,
+      checkSize: check,
+      aum: val("opEditAum"),
+      founded: val("opEditFounded"),
+      trackRecord: val("opEditTrack"),
+      coInvest: val("opEditCoInvest"),
+      verticalIntegration: val("opEditVertical"),
+      tags: commaList("opEditTags"),
+      lastContact: val("opEditLastContact"),
+      location: val("opEditLocation"),
+      website: val("opEditWebsite"),
+      contacts: contacts,
+      notes: val("opEditNotes")
+    };
+  }
+
+  function renderOperator(id) {
+    var rec = Operators.get(id);
+    if (!rec) { showOperatorView("list"); renderOperators(); return; }
+
+    $("operatorCrumb").textContent = rec.name;
+
+    var parts = [];
+    parts.push('<div class="dash-investor__head"><div>' +
+      '<h2>' + esc(rec.name) + '</h2>' +
+      '<p class="dash-investor__sub">' +
+        (rec.investmentTypes.length ? esc(rec.investmentTypes.join(" · ")) : "No investment type recorded") +
+        (rec.assetStrategies.length ? " — " + esc(rec.assetStrategies.join(", ")) : "") +
+        (rec.website ? ' · <a href="' + esc(rec.website) + '" target="_blank" rel="noopener noreferrer">' +
+          esc(rec.website.replace(/^https?:\/\//, "").replace(/\/$/, "")) + '</a>' : "") +
+      '</p></div>' +
+      '<div class="dash-investor__actions">' +
+        (opState.editing ? "" :
+          '<button class="dash-refresh" data-op-edit="' + esc(rec.id) + '">Edit</button>') +
+      '</div></div>');
+
+    parts.push(opState.editing
+      ? operatorEditForm(rec, false)
+      : '<div class="crm-facts">' + operatorFacts(rec) + '</div>');
+
+    parts.push('<div class="crm-section"><h3>Deals' +
+      '<span class="crm-section__aside">Opens the folder on the Deal Pipeline tab</span></h3><div>' +
+      (rec.deals.length
+        ? rec.deals.map(opDealChip).join("")
+        : '<span class="crm-tag">No deals recorded against this operator yet</span>') +
+      '</div></div>');
+
+    if (rec.tags.length) {
+      parts.push('<div class="crm-section"><h3>Tags</h3><div>' +
+        rec.tags.map(function (t) { return '<span class="crm-tag">' + esc(t) + '</span>'; }).join("") +
+        '</div></div>');
+    }
+
+    if (rec.contacts.length) {
+      parts.push('<div class="crm-section"><h3>People</h3><ul class="crm-research">' +
+        rec.contacts.map(function (c) {
+          return '<li><strong>' + esc(c.name || "—") + '</strong>' +
+                 (c.title ? " · " + esc(c.title) : "") +
+                 (c.email ? '<span class="crm-research__meta">' + esc(c.email) + '</span>' : "") +
+                 '</li>';
+        }).join("") + '</ul></div>');
+    }
+
+    if (rec.notes) {
+      parts.push('<div class="crm-section"><h3>Notes</h3>' +
+                 '<p class="crm-why">' + esc(rec.notes) + '</p></div>');
+    }
+
+    $("operatorBody").innerHTML = parts.join("");
+    showOperatorView("operator");
+  }
+
+  function openOperator(id) {
+    opState.operatorId = id;
+    opState.editing = false;
+    renderOperator(id);
+    scrollToOperator();
+  }
+
+  function renderNewOperator() {
+    var blank = { id: "", name: "", investmentTypes: [], assetStrategies: [], markets: [],
+                  deals: [], stage: "", owner: "", priority: "",
+                  checkSize: { min: null, max: null, note: "" }, aum: "",
+                  founded: "", trackRecord: "", coInvest: "", verticalIntegration: "",
+                  tags: [], lastContact: "", location: "", website: "",
+                  contacts: [], notes: "" };
+    $("operatorCrumb").textContent = "New operator";
+    $("operatorBody").innerHTML =
+      '<div class="dash-investor__head"><div><h2>Add an operator</h2>' +
+      '<p class="dash-investor__sub">A company name is all that is required — the rest can be ' +
+      'filled in as it is learned.</p></div></div>' + operatorEditForm(blank, true);
+    showOperatorView("new");
+    scrollToOperator();
+    $("opEditName").focus();
+  }
+
+  function saveOperatorEdits(id) {
+    var fields = readOperatorForm();
+    if (!fields.name) { toast("A record needs a company name."); $("opEditName").focus(); return; }
+    Operators.patch(id, fields);
+    opState.editing = false;
+    renderOperatorFilters();
+    renderOperators();
+    renderOperator(id);
+    toast("Saved in this browser. Download operator-data.json to keep it.");
+  }
+
+  function createOperatorFromForm() {
+    var fields = readOperatorForm();
+    if (!fields.name) { toast("A record needs a company name."); $("opEditName").focus(); return; }
+    var rec = Operators.create(fields);
+    renderOperatorFilters();
+    renderOperators();
+    openOperator(rec.id);
+    toast("Added " + rec.name + ". Download operator-data.json to keep it.");
+  }
+
+  /* ============================================================
+     OPERATOR CRM — EXPORTS
+     ============================================================ */
+  function exportOperatorFile() {
+    var blob = new Blob([JSON.stringify(Operators.toFile(), null, 2)], { type: "application/json" });
+    download(blob, "operator-data.json");
+    toast("Downloaded. Replace operator-data.json in the site folder to make these edits the new baseline.");
+  }
+
+  function exportOperatorXlsx() {
+    var list = Operators.all();
+    var sheets = [];
+
+    sheets.push({
+      name: "Operators",
+      widths: [30, 15, 24, 26, 34, 16, 14, 16, 18, 10, 30, 22, 26, 24, 14, 30, 60],
+      rows: [["Company", "Stage", "Investment type", "Asset strategy", "Market focus",
+              "Equity per deal", "Priority", "AUM", "Owner", "Founded", "Track record",
+              "GP co-invest", "Vertical integration", "Location", "Last contact",
+              "Contact", "Deals"]].concat(
+        list.map(function (r) {
+          var c = r.contacts[0] || {};
+          return [r.name, r.stage, r.investmentTypes.join(", "), r.assetStrategies.join(", "),
+                  r.markets.join(", "), opCheckText(r) || r.checkSize.note, r.priority, r.aum,
+                  r.owner, r.founded, r.trackRecord, r.coInvest, r.verticalIntegration,
+                  r.location, r.lastContact,
+                  [c.name, c.title, c.email].filter(Boolean).join(" — "), r.deals.join("; ")];
+        }))
+    });
+
+    // One row per operator-deal pair, which is the shape a pivot wants.
+    var byDeal = [];
+    list.forEach(function (r) {
+      r.deals.forEach(function (d) {
+        var status = Crm.dealStatus(d);
+        byDeal.push([d, r.name, r.stage, r.investmentTypes.join(", "),
+                     r.assetStrategies.join(", "), r.markets.join(", "),
+                     (status && status.status) || "Live"]);
+      });
+    });
+    byDeal.sort(function (a, b) { return String(a[0]).localeCompare(String(b[0])); });
+
+    sheets.push({
+      name: "Deals by operator",
+      widths: [46, 30, 15, 24, 26, 34, 12],
+      rows: [["Deal", "Operator", "Stage", "Investment type", "Asset strategy",
+              "Market focus", "Status"]].concat(byDeal)
+    });
+
+    download(Xlsx.build(sheets),
+             "modillion-operator-crm-" + new Date().toISOString().slice(0, 10) + ".xlsx");
+    toast("Excel workbook downloaded — " + list.length + " operators, " + byDeal.length + " deal rows.");
+  }
+
+  /* ============================================================
+     OPERATOR CRM — EVENTS
+     ============================================================ */
+  var opSearchTimer = null;
+  $("opSearch").addEventListener("input", function (e) {
+    var q = e.target.value;
+    clearTimeout(opSearchTimer);
+    opSearchTimer = setTimeout(function () {
+      opState.query = q;
+      if (opState.view !== "list") showOperatorView("list");
+      renderOperators();
+    }, 200);
+  });
+
+  ["opFilterInvestment", "opFilterStrategy", "opFilterMarket", "opFilterStage", "opFilterPriority"]
+    .forEach(function (id) {
+      $(id).addEventListener("change", function (e) {
+        opState.filters[id.replace("opFilter", "").toLowerCase()] = e.target.value;
+        if (opState.view !== "list") showOperatorView("list");
+        renderOperators();
+      });
+    });
+
+  $("opClearFilters").addEventListener("click", function () {
+    opState.filters = { investment: "", strategy: "", market: "", stage: "", priority: "" };
+    opState.query = "";
+    $("opSearch").value = "";
+    renderOperatorFilters();
+    renderOperators();
+  });
+
+  $("opAddBtn").addEventListener("click", renderNewOperator);
+
+  $("opExportBtn").addEventListener("click", function () {
+    try { exportOperatorXlsx(); }
+    catch (err) { toast("Could not build the workbook: " + err.message); }
+  });
+
+  $("opSaveFileBtn").addEventListener("click", exportOperatorFile);
+
+  document.addEventListener("click", function (e) {
+    // A deal tag is inside a row that opens the operator, so it has to be
+    // read first — otherwise the row wins and the link never fires.
+    var dealChip = e.target.closest("[data-op-deal]");
+    if (dealChip) {
+      e.stopPropagation();
+      var name = dealChip.getAttribute("data-op-deal");
+      switchTab("docs");
+      openCategory("active-deals", [name]);
+      return;
+    }
+
+    var opHome = e.target.closest("[data-action='op-home']");
+    if (opHome) {
+      showOperatorView("list");
+      renderOperators();
+      window.scrollTo({ top: 0, behavior: "smooth" });
+      return;
+    }
+
+    var opSort = e.target.closest("[data-opsort]");
+    if (opSort) {
+      var key = opSort.getAttribute("data-opsort");
+      if (opState.sortKey === key) opState.sortDir = opState.sortDir === "asc" ? "desc" : "asc";
+      else { opState.sortKey = key; opState.sortDir = key === "aum" || key === "deals" ? "desc" : "asc"; }
+      renderOperators();
+      return;
+    }
+
+    var opRow = e.target.closest("[data-operator]");
+    if (opRow) { openOperator(opRow.getAttribute("data-operator")); return; }
+
+    var opEdit = e.target.closest("[data-op-edit]");
+    if (opEdit) {
+      opState.editing = true;
+      renderOperator(opEdit.getAttribute("data-op-edit"));
+      $("opEditName").focus();
+      return;
+    }
+
+    var opSave = e.target.closest("[data-op-edit-save]");
+    if (opSave) { saveOperatorEdits(opSave.getAttribute("data-op-edit-save")); return; }
+
+    var opCancel = e.target.closest("[data-op-edit-cancel]");
+    if (opCancel) {
+      opState.editing = false;
+      renderOperator(opCancel.getAttribute("data-op-edit-cancel"));
+      return;
+    }
+
+    var opNewSave = e.target.closest("[data-op-new-save]");
+    if (opNewSave) { createOperatorFromForm(); return; }
+
+    var opNewCancel = e.target.closest("[data-op-new-cancel]");
+    if (opNewCancel) {
+      showOperatorView("list");
+      renderOperators();
+      window.scrollTo({ top: 0, behavior: "smooth" });
+      return;
+    }
+
+    var opArchive = e.target.closest("[data-op-archive]");
+    if (opArchive) {
+      var id = opArchive.getAttribute("data-op-archive");
+      var rec = Operators.get(id);
+      Operators.archive(id, true);
+      opState.editing = false;
+      showOperatorView("list");
+      renderOperatorFilters();
+      renderOperators();
+      window.scrollTo({ top: 0, behavior: "smooth" });
+      toast("Archived " + (rec ? rec.name : "the record") +
+            ". It stays in the file and comes back when local edits are cleared.");
+      return;
+    }
+  });
 
   /* ============================================================
      TASKS — DATA
@@ -7056,8 +8168,10 @@ button.link-arrow {
     });
     $("wsDocs").hidden = tab !== "docs";
     $("wsCrm").hidden = tab !== "crm";
+    $("wsOperators").hidden = tab !== "operators";
     $("wsTasks").hidden = tab !== "tasks";
     if (tab === "crm") { renderCrmFilters(); renderCrm(); }
+    if (tab === "operators") { renderOperatorFilters(); renderOperators(); }
     if (tab === "tasks") { fillTaskSelects(); renderTasks(); }
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
@@ -7219,7 +8333,7 @@ button.link-arrow {
     }, 200);
   });
 
-  ["crmFilterType", "crmFilterStage", "crmFilterDeal"].forEach(function (id) {
+  ["crmFilterType", "crmFilterAsset", "crmFilterStage", "crmFilterDeal"].forEach(function (id) {
     $(id).addEventListener("change", function (e) {
       crmState.filters[id.replace("crmFilter", "").toLowerCase()] = e.target.value;
       if (crmState.view !== "list") showCrmView("list");
@@ -7228,7 +8342,7 @@ button.link-arrow {
   });
 
   $("crmClearFilters").addEventListener("click", function () {
-    crmState.filters = { type: "", stage: "", deal: "" };
+    crmState.filters = { type: "", asset: "", stage: "", deal: "" };
     crmState.query = "";
     $("crmSearch").value = "";
     renderCrmFilters();
@@ -7388,11 +8502,11 @@ button.link-arrow {
   });
 
   /* ============================================================
-     THE AGENT — one conversation, all three tabs
+     THE AGENT — one conversation, every tab
 
      The box on the CRM tab reads one message at a time and forgets
      it. This is the other thing: a chat that stays open across
-     Documents, the Investor CRM and the Task List, remembers what
+     the Deal Pipeline, the two CRMs and the Task List, remembers what
      you were just talking about, asks when it is not sure which
      record you mean, and can change things that are already saved
      — a logged meeting, a task, an investor field, a deal's status.
@@ -7441,6 +8555,7 @@ button.link-arrow {
         return {
           id: inv.id, name: inv.name, type: inv.type, stage: inv.stage,
           owner: inv.owner, priority: inv.priority, location: inv.location,
+          assetClasses: inv.assetClasses.slice(),
           check: checkText(inv), deals: inv.deals.slice(),
           lastContact: lastContact(inv) || "",
           conversations: inv.conversations.map(function (c) {
@@ -7472,6 +8587,23 @@ button.link-arrow {
       });
     }
 
+    // Read-only: the agent can answer "who operates in Texas" and "which
+    // operators are on East Blocks" without being able to change a record.
+    // Operator edits go through the tab, where every field is in front of
+    // you — an action vocabulary for a fourth dataset is a separate job.
+    function operators() {
+      return Operators.all().map(function (r) {
+        return { id: r.id, name: r.name,
+                 investmentTypes: r.investmentTypes.slice(),
+                 assetStrategies: r.assetStrategies.slice(),
+                 markets: r.markets.slice(),
+                 deals: r.deals.slice(),
+                 stage: r.stage, owner: r.owner, priority: r.priority,
+                 aum: r.aum, location: r.location, founded: r.founded,
+                 trackRecord: r.trackRecord, lastContact: r.lastContact };
+      });
+    }
+
     function build() {
       return {
         today: new Date().toISOString().slice(0, 10),
@@ -7483,6 +8615,7 @@ button.link-arrow {
         statuses: TASK_STATUSES.slice(),
         team: Tasks.team().map(function (p) { return { id: p.id, name: p.name }; }),
         investors: investors(),
+        operators: operators(),
         tasks: tasks(),
         deals: deals()
       };
@@ -8287,7 +9420,7 @@ button.link-arrow {
 
       return Promise.resolve({
         reply: head + "\n" + lines.join("\n") +
-               (top.length > 8 ? "\n\u2026and " + (top.length - 8) + " more \u2014 the Documents tab shows them all." : "")
+               (top.length > 8 ? "\n\u2026and " + (top.length - 8) + " more \u2014 the Deal Pipeline tab shows them all." : "")
       });
     }
 
@@ -8474,7 +9607,7 @@ button.link-arrow {
 
       /* --- pleasantries and the manual ---------------------------- */
       if (/^(hi|hey|hello|yo|morning|good morning|good afternoon)\b/.test(t) && raw.length < 24) {
-        return done({ reply: "Morning. I can look things up across the documents, the CRM and the task list, " +
+        return done({ reply: "Morning. I can look things up across the deal pipeline, the CRMs and the task list, " +
                              "and change what is already saved — a logged meeting, a task, an investor field, a deal's status. " +
                              "Everything I would change is shown before it is saved." });
       }
@@ -8801,7 +9934,7 @@ button.link-arrow {
       }).join("");
 
       log.innerHTML = html || '<div class="agent-msg agent-msg--note"><div class="agent-msg__body">' +
-        'Ask about anything on these three tabs, or tell me what to change. ' +
+        'Ask about anything on these tabs, or tell me what to change. ' +
         'Try “what’s overdue”, or “edit the last meeting with North Quay”.' +
         '</div></div>';
 
@@ -9090,6 +10223,8 @@ button.link-arrow {
 
     renderCrmFilters();
     renderCrm();
+    renderOperatorFilters();
+    renderOperators();
     fillTaskSelects();
     renderTasks();
     Agent.init();
@@ -9101,7 +10236,7 @@ button.link-arrow {
      session. There is deliberately no query-string bypass — that
      would make the gate pointless.
      ============================================================ */
-  Promise.all([Provider.load(), Crm.load(), Tasks.load()]).then(function () {
+  Promise.all([Provider.load(), Crm.load(), Operators.load(), Tasks.load()]).then(function () {
     describeSource();
     var unlocked = false;
     try { unlocked = sessionStorage.getItem(GATE_KEY) === "1"; } catch (e) { /* private mode */ }
