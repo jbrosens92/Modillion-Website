@@ -733,6 +733,7 @@ section { padding: var(--section) 0; }
 
 /* State switching --------------------------------------------- */
 body[data-state="locked"] .dash-app  { display: none; }
+body[data-state="locked"] .agent-dock { display: none; }
 body[data-state="ready"]  .dash-gate { display: none; }
 
 .visually-hidden {
@@ -1930,6 +1931,164 @@ button.link-arrow {
   .dash-crm__filters .dash-crm__shown { margin-left: 0; width: 100%; }
 }
 
+/* Agent dock — the chat, on every tab ---------------------------- */
+.agent-dock { position: fixed; right: 24px; bottom: 24px; z-index: 60; }
+.agent-dock[hidden] { display: none; }
+
+.agent-dock__tab {
+  appearance: none; cursor: pointer;
+  display: flex; align-items: center; gap: 10px;
+  padding: 13px 20px;
+  font-family: var(--sans); font-size: .78rem; letter-spacing: .12em;
+  text-transform: uppercase; font-weight: 500;
+  color: var(--alice); background: var(--deep-space);
+  border: 1px solid var(--deep-space); border-radius: 2px;
+  box-shadow: 0 10px 30px rgba(6, 19, 43, .22);
+  transition: background .2s ease, transform .2s ease;
+}
+.agent-dock__tab[hidden] { display: none; }
+.agent-dock__tab:hover { background: var(--prussian); transform: translateY(-1px); }
+.agent-dock__tab svg { width: 17px; height: 17px; fill: none; stroke: var(--steel); stroke-width: 1.4; }
+.agent-dock__count {
+  min-width: 18px; padding: 0 5px; border-radius: 9px;
+  background: var(--steel); color: var(--prussian);
+  font-size: .66rem; letter-spacing: 0; line-height: 18px; text-align: center;
+}
+.agent-dock__count[hidden] { display: none; }
+
+.agent-panel {
+  width: min(430px, calc(100vw - 40px));
+  height: min(620px, calc(100vh - 120px));
+  display: flex; flex-direction: column;
+  background: var(--paper);
+  border: 1px solid var(--rule);
+  box-shadow: 0 24px 60px rgba(6, 19, 43, .26);
+}
+.agent-panel[hidden] { display: none; }
+
+.agent-panel__head {
+  display: flex; align-items: center; gap: 10px;
+  padding: 15px 18px;
+  background: var(--deep-space); color: var(--alice);
+}
+.agent-panel__head h3 {
+  margin: 0; color: var(--alice); font-family: var(--sans);
+  font-size: .74rem; letter-spacing: .16em; text-transform: uppercase; font-weight: 500;
+}
+.agent-panel__mode {
+  font-size: .66rem; letter-spacing: .1em; text-transform: uppercase;
+  color: var(--steel); display: flex; align-items: center; gap: 6px;
+}
+.agent-panel__mode::before {
+  content: ""; width: 6px; height: 6px; border-radius: 50%;
+  background: var(--steel);
+}
+.agent-panel__mode[data-mode="remote"]::before { background: #7FB78A; }
+.agent-panel__icon {
+  appearance: none; background: none; border: 0; cursor: pointer;
+  font-family: var(--sans); font-size: .72rem; letter-spacing: .1em;
+  text-transform: uppercase; color: rgba(226, 234, 243, .62); padding: 4px 2px;
+}
+.agent-panel__icon:hover { color: var(--paper); }
+.agent-panel__icon--close { margin-left: 0; font-size: 1.3rem; line-height: 1; letter-spacing: 0; }
+.agent-panel__head .agent-panel__mode { margin-left: auto; }
+
+.agent-panel__log {
+  flex: 1 1 auto; overflow-y: auto;
+  padding: 20px 18px; background: #FAFCFE;
+}
+
+.agent-msg { margin-bottom: 18px; font-size: .88rem; line-height: 1.6; }
+.agent-msg:last-child { margin-bottom: 0; }
+.agent-msg__who {
+  display: block; font-size: .62rem; letter-spacing: .14em;
+  text-transform: uppercase; color: var(--muted); margin-bottom: 5px;
+}
+.agent-msg__body {
+  color: var(--deep-space); white-space: pre-wrap;
+  border-left: 2px solid var(--rule); padding-left: 12px;
+}
+.agent-msg--you .agent-msg__body { border-left-color: var(--deep-space); color: var(--prussian); }
+.agent-msg--agent .agent-msg__body { border-left-color: var(--steel); }
+.agent-msg--note .agent-msg__body { color: var(--muted); font-size: .82rem; }
+.agent-msg__body a { color: var(--deep-space); }
+
+.agent-msg__choices { list-style: none; margin: 10px 0 0; padding: 0; }
+.agent-msg__choices li { margin-bottom: 7px; }
+.agent-choice {
+  appearance: none; cursor: pointer; text-align: left; width: 100%;
+  font-family: var(--sans); font-size: .82rem; line-height: 1.5;
+  color: var(--deep-space); background: var(--paper);
+  border: 1px solid var(--rule); border-radius: 2px; padding: 9px 12px;
+}
+.agent-choice:hover { border-color: var(--steel); background: #F4F9FC; }
+.agent-choice strong { display: block; font-weight: 500; }
+.agent-choice span { display: block; font-size: .74rem; color: var(--muted); margin-top: 2px; }
+
+/* A proposal, inside the transcript */
+.agent-proposal {
+  margin-top: 12px; border: 1px solid var(--steel);
+  background: var(--paper); padding: 14px 15px;
+}
+.agent-proposal h4 {
+  margin: 0 0 4px; font-family: var(--sans);
+  font-size: .66rem; letter-spacing: .14em; text-transform: uppercase;
+  color: var(--deep-space); font-weight: 500;
+}
+.agent-proposal__lede { margin: 0 0 10px; font-size: .76rem; color: var(--muted); line-height: 1.5; }
+.agent-proposal .crm-diff li { padding: 10px 0; }
+.agent-proposal .crm-diff__text { font-size: .84rem; }
+.agent-proposal__actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+.agent-proposal__actions .dash-refresh { font-size: .68rem; padding: 8px 14px; }
+.agent-proposal[data-done="applied"] { border-color: #7FB78A; }
+.agent-proposal[data-done] .agent-proposal__actions { display: none; }
+.agent-proposal[data-done] .crm-diff input { display: none; }
+.agent-proposal__done {
+  display: none; margin: 10px 0 0; font-size: .76rem; letter-spacing: .1em;
+  text-transform: uppercase; color: var(--muted);
+}
+.agent-proposal[data-done] .agent-proposal__done { display: block; }
+
+.agent-panel__compose {
+  display: flex; gap: 8px; align-items: flex-end;
+  padding: 12px 14px; border-top: 1px solid var(--rule); background: var(--paper);
+}
+.agent-panel__compose textarea {
+  flex: 1 1 auto; resize: none; max-height: 140px;
+  font-family: var(--sans); font-size: .88rem; line-height: 1.5;
+  color: var(--deep-space); background: var(--paper);
+  border: 1px solid var(--rule); border-radius: 2px; padding: 10px 12px;
+}
+.agent-panel__compose textarea:focus { outline: none; border-color: var(--steel); }
+.agent-send {
+  appearance: none; cursor: pointer; flex: 0 0 auto;
+  width: 40px; height: 40px; border-radius: 2px;
+  border: 1px solid var(--deep-space); background: var(--deep-space);
+  color: var(--alice); font-size: 1rem;
+}
+.agent-send:hover { background: var(--prussian); }
+.agent-send:disabled { opacity: .45; cursor: default; }
+
+.agent-panel__foot {
+  margin: 0; padding: 0 14px 12px; font-size: .68rem;
+  line-height: 1.5; color: var(--muted); background: var(--paper);
+}
+
+.agent-typing { display: inline-flex; gap: 4px; align-items: center; }
+.agent-typing span {
+  width: 5px; height: 5px; border-radius: 50%; background: var(--steel);
+  animation: agentBlink 1.1s infinite ease-in-out;
+}
+.agent-typing span:nth-child(2) { animation-delay: .18s; }
+.agent-typing span:nth-child(3) { animation-delay: .36s; }
+@keyframes agentBlink { 0%, 60%, 100% { opacity: .25; } 30% { opacity: 1; } }
+
+@media (max-width: 620px) {
+  .agent-dock { right: 12px; bottom: 12px; left: 12px; }
+  .agent-panel { width: 100%; height: min(72vh, 560px); }
+  .agent-dock__tab { width: 100%; justify-content: center; }
+}
+
 /* Print — this is the PDF ---------------------------------------- */
 @media print {
   @page { margin: 16mm 14mm; }
@@ -1940,6 +2099,7 @@ button.link-arrow {
   /* Everything that is not the report itself */
   .dash-gate, .dash-topbar, .dash-hero, .dash-notice, .dash-summary,
   .dash-toolbar, .dash-browse, .dash-detail, .dash-results, .dash-tabs,
+  .agent-dock,
   .dash-crm, .dash-investor, #wsTasks,
   .site-footer, .dash-toast, .dash-report__crumbs, .dash-report__actions {
     display: none !important;
@@ -2235,6 +2395,9 @@ button.link-arrow {
             <em>mark them passed</em>, <em>set owner to JB</em>, <em>that deal fell
             through</em>, <em>archive them</em>. Either way you see a draft first and
             nothing is saved until you say so. Corrections you make are remembered.
+            This box is the careful route — every field of the draft is editable before
+            it is saved. For a back-and-forth, or to change something already logged,
+            use the agent in the corner; it works on all three tabs.
           </p>
 
           <label class="visually-hidden" for="agentInput">Conversation notes or pasted email</label>
@@ -2393,6 +2556,8 @@ button.link-arrow {
             Write it the way you would say it. A name, a date and a priority are picked out of
             the sentence — <em>send the DDQ to North Quay by Friday, Dana, high</em> — and shown
             in the fields below so you can correct them before it is added.
+            To change a task that is already on the list, or to ask what is due,
+            talk to the agent in the corner.
           </p>
 
           <div class="task-add__row">
@@ -2465,6 +2630,44 @@ button.link-arrow {
 
     </div>
   </section>
+
+
+  <!-- ============================================================
+       AGENT — the chat dock
+
+       Lives outside the workspace tabs on purpose: the same
+       conversation is available on Documents, the CRM and the Task
+       List, and it knows which tab you are on when you ask.
+       ============================================================ -->
+  <div class="agent-dock" id="agentDock" hidden>
+    <button type="button" class="agent-dock__tab" id="agentDockTab"
+            aria-expanded="false" aria-controls="agentPanel">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9L12 3z"/><path d="M18.5 15.5l.7 1.8 1.8.7-1.8.7-.7 1.8-.7-1.8-1.8-.7 1.8-.7.7-1.8z"/></svg>
+      <span class="agent-dock__label">Ask the agent</span>
+      <span class="agent-dock__count" id="agentDockCount" hidden></span>
+    </button>
+
+    <div class="agent-panel" id="agentPanel" hidden>
+      <div class="agent-panel__head">
+        <h3>Agent</h3>
+        <span class="agent-panel__mode" id="agentModeTag" data-mode="local"></span>
+        <button type="button" class="agent-panel__icon" id="agentNewBtn">New</button>
+        <button type="button" class="agent-panel__icon agent-panel__icon--close"
+                id="agentCloseBtn" aria-label="Close the agent">&times;</button>
+      </div>
+
+      <div class="agent-panel__log" id="agentLog" aria-live="polite"></div>
+
+      <form class="agent-panel__compose" id="agentChatForm">
+        <label class="visually-hidden" for="agentAsk">Message the agent</label>
+        <textarea id="agentAsk" rows="1" spellcheck="true"
+                  placeholder="Ask a question, or tell it what to change…"></textarea>
+        <button type="submit" class="agent-send" id="agentSendBtn" aria-label="Send">&rarr;</button>
+      </form>
+
+      <p class="agent-panel__foot" id="agentFoot"></p>
+    </div>
+  </div>
 
   <footer class="site-footer">
     <div class="container">
@@ -3875,6 +4078,7 @@ button.link-arrow {
     var merged = [];                 // base + overlay, what the UI reads
     var OVERLAY_KEY = "modillion-crm-overlay";
     var overlay = { patches: {}, conversations: {}, created: [],
+                    convPatches: {}, convRemoved: {},
                     dealStatus: {}, archived: {}, learned: { aliases: {} } };
 
     function readOverlay() {
@@ -3885,6 +4089,8 @@ button.link-arrow {
         overlay.patches       = o.patches || {};
         overlay.conversations = o.conversations || {};
         overlay.created       = o.created || [];
+        overlay.convPatches   = o.convPatches || {};
+        overlay.convRemoved   = o.convRemoved || {};
         overlay.dealStatus    = o.dealStatus || {};
         overlay.archived      = o.archived || {};
         overlay.learned       = o.learned || { aliases: {} };
@@ -3900,10 +4106,25 @@ button.link-arrow {
     function hasOverlay() {
       return Object.keys(overlay.patches).length > 0 ||
              Object.keys(overlay.conversations).length > 0 ||
+             Object.keys(overlay.convPatches).length > 0 ||
+             Object.keys(overlay.convRemoved).length > 0 ||
              Object.keys(overlay.dealStatus).length > 0 ||
              Object.keys(overlay.archived).length > 0 ||
              Object.keys(overlay.learned.aliases || {}).length > 0 ||
              overlay.created.length > 0;
+    }
+
+    // A conversation logged in the browser gets an id when it is created.
+    // One that arrived in crm-data.json may not have one, and patches are
+    // keyed by id — so derive a stable one from its own contents. Same file
+    // in, same id out, every reload.
+    function convId(invId, entry, index) {
+      if (entry.id) return entry.id;
+      var seed = invId + "|" + (entry.date || "") + "|" + (entry.channel || "") + "|" +
+                 String(entry.summary || "").slice(0, 120) + "|" + index;
+      var h = 5381;
+      for (var i = 0; i < seed.length; i++) h = ((h * 33) ^ seed.charCodeAt(i)) >>> 0;
+      return "c-file-" + h.toString(36);
     }
 
     function normalise(inv) {
@@ -3925,7 +4146,12 @@ button.link-arrow {
         research: (inv.research || []).slice(),
         why: inv.why || "",
         archived: !!inv.archived,
-        conversations: (inv.conversations || []).slice()
+        conversations: (inv.conversations || []).map(function (c, i) {
+          var copy = {};
+          Object.keys(c).forEach(function (k) { copy[k] = c[k]; });
+          copy.id = convId(inv.id, c, i);
+          return copy;
+        })
       };
     }
 
@@ -3963,7 +4189,20 @@ button.link-arrow {
         });
       });
 
+      // A conversation that came from the file can still be corrected or
+      // withdrawn. The overlay holds the correction, not a rewritten entry —
+      // re-loading a newer crm-data.json keeps the correction on top.
       merged.forEach(function (rec) {
+        rec.conversations = rec.conversations
+          .filter(function (c) { return !overlay.convRemoved[c.id]; })
+          .map(function (c) {
+            var patch = overlay.convPatches[c.id];
+            if (!patch) return c;
+            var copy = {};
+            Object.keys(c).forEach(function (k) { copy[k] = c[k]; });
+            Object.keys(patch).forEach(function (k) { copy[k] = patch[k]; });
+            return copy;
+          });
         rec.conversations.sort(function (a, b) {
           return String(b.date || "").localeCompare(String(a.date || ""));
         });
@@ -4035,6 +4274,40 @@ button.link-arrow {
       writeOverlay();
       rebuild();
       return entry;
+    }
+
+    /* ---- correcting a logged conversation -------------------------
+       Same rule as everywhere else here: the entry is not rewritten in
+       place, a patch is recorded against its id. Withdrawing one is a
+       tombstone, not a delete — the entry stays in the file it came
+       from and comes back if the tombstone is cleared.
+       -------------------------------------------------------------- */
+    function patchConversation(convId, fields) {
+      overlay.convPatches[convId] = overlay.convPatches[convId] || {};
+      Object.keys(fields).forEach(function (k) { overlay.convPatches[convId][k] = fields[k]; });
+      writeOverlay();
+      rebuild();
+    }
+
+    function removeConversation(convId) {
+      overlay.convRemoved[convId] = new Date().toISOString().slice(0, 10);
+      writeOverlay();
+      rebuild();
+    }
+
+    // Every logged conversation across every investor, newest first, each
+    // carrying the record it belongs to. What the agent searches.
+    function conversations() {
+      var out = [];
+      merged.forEach(function (inv) {
+        inv.conversations.forEach(function (c) {
+          out.push({ entry: c, investorId: inv.id, investorName: inv.name });
+        });
+      });
+      out.sort(function (a, b) {
+        return String(b.entry.date || "").localeCompare(String(a.entry.date || ""));
+      });
+      return out;
     }
 
     /* ---- deal status ---------------------------------------------
@@ -4146,6 +4419,9 @@ button.link-arrow {
       create: createInvestor,
       patch: patch,
       addConversation: addConversation,
+      patchConversation: patchConversation,
+      removeConversation: removeConversation,
+      conversations: conversations,
       dealStatus: dealStatus,
       dealStatuses: dealStatuses,
       setDealStatus: setDealStatus,
@@ -4158,6 +4434,7 @@ button.link-arrow {
       toFile: toFile,
       clearOverlay: function () {
         overlay = { patches: {}, conversations: {}, created: [],
+                    convPatches: {}, convRemoved: {},
                     dealStatus: {}, archived: {}, learned: { aliases: {} } };
         writeOverlay();
         rebuild();
@@ -6520,6 +6797,1662 @@ button.link-arrow {
   });
 
   /* ============================================================
+     THE AGENT — one conversation, all three tabs
+
+     The box on the CRM tab reads one message at a time and forgets
+     it. This is the other thing: a chat that stays open across
+     Documents, the Investor CRM and the Task List, remembers what
+     you were just talking about, asks when it is not sure which
+     record you mean, and can change things that are already saved
+     — a logged meeting, a task, an investor field, a deal's status.
+
+     Two brains behind one seam, think(message, context, pending):
+
+       LOCAL   a deterministic engine that runs entirely in this
+               page. No key, no network, works offline. It handles
+               the phrasings below and says plainly when it cannot
+               read something.
+
+       REMOTE  a small server-side function holding an API key,
+               which puts a real model behind the same seam. The
+               page probes /api/agent once per browser session; if
+               it answers, the header says "Claude" and messages go
+               there. If it does not, nothing breaks — the local
+               engine answers, and says which one is talking.
+
+     Both return the same shape, so everything downstream — the
+     diff, the confirmation, the writes — is identical either way:
+
+       { reply:   "what to say",
+         actions: [ ...proposed changes... ],   // optional
+         choices: [ ...disambiguation... ],     // optional
+         pending: { ... }                       // optional
+       }
+
+     NOTHING IS WRITTEN WITHOUT CONFIRMATION. Every action is
+     rendered as a before → after line with a checkbox and waits
+     for Apply, exactly like the CRM diff. That holds for the model
+     too: a remote answer proposes, it does not commit.
+     ============================================================ */
+
+  var AGENT_ENDPOINT = "/api/agent";
+
+  /* ---- what the agent knows ------------------------------------
+     A compact snapshot of the three datasets. The local engine
+     resolves against it, and it is what gets posted to the model —
+     small enough to send whole, which is why the agent can answer
+     "when did we last speak to them" without a round trip per
+     record.
+     -------------------------------------------------------------- */
+  var AgentContext = (function () {
+    function investors() {
+      return Crm.all().map(function (inv) {
+        return {
+          id: inv.id, name: inv.name, type: inv.type, stage: inv.stage,
+          owner: inv.owner, priority: inv.priority, location: inv.location,
+          check: checkText(inv), deals: inv.deals.slice(),
+          lastContact: lastContact(inv) || "",
+          conversations: inv.conversations.map(function (c) {
+            return {
+              id: c.id, date: c.date || "", channel: c.channel || "",
+              who: c.who || "", subject: c.subject || "",
+              summary: c.summary || "", next: c.next || "",
+              check: c.check || "", deals: (c.deals || []).slice()
+            };
+          })
+        };
+      });
+    }
+
+    function tasks() {
+      return Tasks.all().map(function (t) {
+        return {
+          id: t.id, title: t.title, assignee: Tasks.personName(t.assignee),
+          assigneeId: t.assignee, due: t.due || "", priority: t.priority,
+          status: t.status, link: t.link || "", notes: t.notes || ""
+        };
+      });
+    }
+
+    function deals() {
+      var statuses = Crm.dealStatuses();
+      return dealNames().map(function (name) {
+        return { name: name, status: (statuses[name] || {}).status || "Live" };
+      });
+    }
+
+    function build() {
+      return {
+        today: new Date().toISOString().slice(0, 10),
+        tab: crmState.tab || "docs",
+        openInvestorId: crmState.view === "investor" ? crmState.investorId : "",
+        whoAmI: Tasks.personName(Tasks.whoAmI()) || "",
+        stages: CRM_STAGES.slice(),
+        priorities: TASK_PRIORITIES.slice(),
+        statuses: TASK_STATUSES.slice(),
+        team: Tasks.team().map(function (p) { return { id: p.id, name: p.name }; }),
+        investors: investors(),
+        tasks: tasks(),
+        deals: deals()
+      };
+    }
+
+    return { build: build };
+  })();
+
+  /* ---- the actions both brains speak ---------------------------
+     One vocabulary. The local engine emits these; the model is
+     given the same list as its tool schema; and only this file
+     knows how to render or apply them.
+     -------------------------------------------------------------- */
+  var AgentActions = (function () {
+    var INVESTOR_FIELDS = ["stage", "owner", "priority", "type", "location",
+                           "aum", "website", "mandate", "why"];
+    var ENTRY_FIELDS = ["date", "channel", "who", "summary", "next", "check", "subject", "deals"];
+    var TASK_FIELDS = ["title", "assignee", "due", "priority", "status", "link", "notes"];
+
+    function investorName(id) { return (Crm.get(id) || {}).name || id; }
+
+    function entryOf(investorId, entryId) {
+      var inv = Crm.get(investorId);
+      if (!inv) return null;
+      for (var i = 0; i < inv.conversations.length; i++) {
+        if (inv.conversations[i].id === entryId) return inv.conversations[i];
+      }
+      return null;
+    }
+
+    function entryLabel(entry, investorId) {
+      return investorName(investorId) + " · " +
+             (entry ? ((entry.channel || "Note").toLowerCase() + " on " + (entry.date || "an unrecorded date"))
+                    : "conversation");
+    }
+
+    function text(v) {
+      if (v === null || v === undefined || v === "") return "";
+      if (Object.prototype.toString.call(v) === "[object Array]") return v.join(", ");
+      return String(v);
+    }
+
+    // before → after, in words, for the diff line.
+    function describe(a) {
+      var inv, entry, task;
+      switch (a.op) {
+        case "investor.set":
+          inv = Crm.get(a.investorId) || {};
+          return { what: investorName(a.investorId) + " · " + a.field,
+                   from: text(inv[a.field]) || "not recorded", to: text(a.value) };
+
+        case "investor.check":
+          inv = Crm.get(a.investorId) || {};
+          return { what: investorName(a.investorId) + " · check size",
+                   from: checkText(inv) || "not recorded", to: text(a.value) };
+
+        case "investor.deal":
+          return a.add
+            ? { what: investorName(a.investorId) + " · deal interest",
+                from: "not on the list", to: a.deal }
+            : { what: investorName(a.investorId) + " · deal interest",
+                from: a.deal, to: "removed" };
+
+        case "investor.archive":
+          return a.value
+            ? { what: investorName(a.investorId), from: "active", to: "archived",
+                warn: "Hidden from the list. The record and its conversations are kept, and it can be restored." }
+            : { what: investorName(a.investorId), from: "archived", to: "active" };
+
+        case "conversation.set":
+          entry = entryOf(a.investorId, a.entryId);
+          return { what: entryLabel(entry, a.investorId) + " · " + a.field,
+                   from: text(entry ? entry[a.field] : "") || "not recorded",
+                   to: text(a.value) || "cleared" };
+
+        case "conversation.remove":
+          entry = entryOf(a.investorId, a.entryId);
+          return { what: entryLabel(entry, a.investorId),
+                   from: "in the log", to: "withdrawn",
+                   warn: "Hidden from the record. It stays in crm-data.json and can be brought back by clearing local edits." };
+
+        case "conversation.add":
+          return { what: (a.investorName || investorName(a.investorId)) + " · new log entry",
+                   from: "nothing logged", to: (a.entry.channel || "Note") + " on " + (a.entry.date || "today") };
+
+        case "deal.status":
+          return { what: a.deal + " · deal status",
+                   from: (Crm.dealStatus(a.deal) || {}).status || "Live", to: a.value,
+                   warn: "Recorded here only. The OneDrive folder is not touched." };
+
+        case "task.set":
+          task = Tasks.get(a.taskId) || {};
+          return { what: (task.title || "task") + " · " + a.field,
+                   from: (a.field === "assignee" ? Tasks.personName(task.assignee) : text(task[a.field])) || "not set",
+                   to: (a.field === "assignee" ? Tasks.personName(a.value) : text(a.value)) || "cleared" };
+
+        case "task.add":
+          return { what: "New task", from: "not on the list",
+                   to: a.fields.title + (a.fields.due ? " · due " + a.fields.due : "") };
+
+        case "task.remove":
+          task = Tasks.get(a.taskId) || {};
+          return { what: task.title || "task", from: "on the list", to: "deleted",
+                   warn: "A task really is deleted — unlike an investor, there is no archive to bring it back." };
+
+        default:
+          return { what: "Unrecognised change", from: "", to: "" };
+      }
+    }
+
+    // Drop anything that no longer makes sense, so a stale proposal
+    // left open in the transcript cannot write over newer edits.
+    function valid(a) {
+      if (!a || !a.op) return false;
+      switch (a.op) {
+        case "investor.set":
+          return !!Crm.get(a.investorId) && INVESTOR_FIELDS.indexOf(a.field) !== -1;
+        case "investor.check":
+        case "investor.archive":
+        case "investor.deal":
+          return !!Crm.get(a.investorId);
+        case "conversation.set":
+          return !!entryOf(a.investorId, a.entryId) && ENTRY_FIELDS.indexOf(a.field) !== -1;
+        case "conversation.remove":
+          return !!entryOf(a.investorId, a.entryId);
+        case "conversation.add":
+          return !!(a.entry && (a.investorId || a.investorName));
+        case "deal.status":
+          return !!a.deal && DEAL_STATES.indexOf(a.value) !== -1;
+        case "task.set":
+          return !!Tasks.get(a.taskId) && TASK_FIELDS.indexOf(a.field) !== -1;
+        case "task.remove":
+          return !!Tasks.get(a.taskId);
+        case "task.add":
+          return !!(a.fields && a.fields.title);
+        default:
+          return false;
+      }
+    }
+
+    // A line that reads "High → High" is noise in a diff and a lie in a
+    // transcript. Anything that would not move a value is dropped before
+    // it is ever shown.
+    function changes(a) {
+      var inv, entry, task;
+      switch (a.op) {
+        case "investor.set":
+          inv = Crm.get(a.investorId) || {};
+          return String(inv[a.field] || "") !== String(a.value || "");
+        case "investor.deal":
+          inv = Crm.get(a.investorId) || {};
+          return a.add ? (inv.deals || []).indexOf(a.deal) === -1
+                       : (inv.deals || []).indexOf(a.deal) !== -1;
+        case "investor.archive":
+          return Crm.isArchived(a.investorId) !== !!a.value;
+        case "conversation.set":
+          entry = entryOf(a.investorId, a.entryId) || {};
+          return text(entry[a.field]) !== text(a.value);
+        case "deal.status":
+          return ((Crm.dealStatus(a.deal) || {}).status || "Live") !== a.value;
+        case "task.set":
+          task = Tasks.get(a.taskId) || {};
+          return String(task[a.field] || "") !== String(a.value == null ? "" : a.value);
+        default:
+          return true;
+      }
+    }
+
+    function apply(list) {
+      var touched = { crm: false, tasks: false, docs: false, investorId: "" };
+
+      list.forEach(function (a) {
+        var inv, after;
+        switch (a.op) {
+          case "investor.set":
+            var patch = {}; patch[a.field] = a.value;
+            Crm.patch(a.investorId, patch);
+            touched.crm = true; touched.investorId = a.investorId;
+            break;
+
+          case "investor.check":
+            Crm.patch(a.investorId, { checkSize: { min: a.min == null ? null : a.min,
+                                                   max: a.max == null ? null : a.max,
+                                                   note: "Set from the agent on " + new Date().toISOString().slice(0, 10) } });
+            touched.crm = true; touched.investorId = a.investorId;
+            break;
+
+          case "investor.deal":
+            inv = Crm.get(a.investorId);
+            if (!inv) break;
+            after = a.add
+              ? (inv.deals.indexOf(a.deal) === -1 ? inv.deals.concat([a.deal]) : inv.deals.slice())
+              : inv.deals.filter(function (d) { return d !== a.deal; });
+            Crm.patch(a.investorId, { deals: after });
+            touched.crm = true; touched.investorId = a.investorId;
+            break;
+
+          case "investor.archive":
+            Crm.archive(a.investorId, a.value);
+            touched.crm = true;
+            break;
+
+          case "conversation.set":
+            var fields = {}; fields[a.field] = a.value;
+            Crm.patchConversation(a.entryId, fields);
+            touched.crm = true; touched.investorId = a.investorId;
+            break;
+
+          case "conversation.remove":
+            Crm.removeConversation(a.entryId);
+            touched.crm = true; touched.investorId = a.investorId;
+            break;
+
+          case "conversation.add":
+            var target = a.investorId ? Crm.get(a.investorId) : null;
+            if (!target && a.investorName) {
+              target = Crm.all().filter(function (i) {
+                return i.name.toLowerCase() === String(a.investorName).toLowerCase();
+              })[0] || Crm.create({ name: a.investorName, stage: "Contacted", deals: a.entry.deals || [] });
+            }
+            if (!target) break;
+            Crm.addConversation(target.id, {
+              date: a.entry.date || new Date().toISOString().slice(0, 10),
+              channel: a.entry.channel || "Note",
+              who: a.entry.who || "",
+              subject: a.entry.subject || "",
+              summary: a.entry.summary || "",
+              check: a.entry.check || "",
+              deals: a.entry.deals || [],
+              next: a.entry.next || "",
+              loggedVia: "by the agent",
+              loggedAt: new Date().toISOString()
+            });
+            touched.crm = true; touched.investorId = target.id;
+            break;
+
+          case "deal.status":
+            Crm.setDealStatus(a.deal, a.value, a.why || "");
+            touched.crm = true; touched.docs = true;
+            break;
+
+          case "task.set":
+            if (a.field === "status" && a.value === "Done") Tasks.setDone(a.taskId, true);
+            else if (a.field === "status") Tasks.patch(a.taskId, { status: a.value, done: null });
+            else {
+              var tp = {}; tp[a.field] = a.value;
+              Tasks.patch(a.taskId, tp);
+            }
+            touched.tasks = true;
+            break;
+
+          case "task.add":
+            Tasks.create(a.fields);
+            touched.tasks = true;
+            break;
+
+          case "task.remove":
+            Tasks.remove(a.taskId);
+            touched.tasks = true;
+            break;
+        }
+      });
+
+      return touched;
+    }
+
+    return {
+      describe: describe, apply: apply, valid: valid, changes: changes,
+      entryOf: entryOf, entryLabel: entryLabel,
+      investorFields: INVESTOR_FIELDS, entryFields: ENTRY_FIELDS, taskFields: TASK_FIELDS
+    };
+  })();
+
+  /* ---- the local brain -----------------------------------------
+     Deterministic, in-page, no key, works offline. It resolves what
+     you are pointing at — "the Bronson Point meeting", "the DDQ
+     task", "them" — and turns the rest of the sentence into
+     changes. When two records fit, it asks rather than guessing;
+     when it understood you but there is nothing to change, it says
+     so rather than quietly doing nothing.
+     -------------------------------------------------------------- */
+  var LocalBrain = (function () {
+    var DAYS = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
+    var MONTHS = ["january", "february", "march", "april", "may", "june", "july",
+                  "august", "september", "october", "november", "december"];
+    var CHANNELS = ["Call", "Email", "Meeting", "Video call", "Conference", "Note"];
+
+    var EDIT_VERB = /\b(edit|change|changed|update|updated|correct|fix|amend|revise|set|make|rename|retitle|reschedul\w*|move|moved|push|delete|remove|withdraw|drop|add|assign|reassign|mark|tick|close|reopen|archive|restore)\b/;
+    // "the Bronson Point meeting", "that call", "last week's catch-up" — a
+    // pointer at something already logged. Without the determiner, "Call with
+    // them on Tuesday…" is somebody describing a conversation, not editing one,
+    // and the difference matters: one drafts a new entry, the other rewrites
+    // an old one.
+    var ENTRY_REF = /\b(that|this|the|last|latest|previous|first|earlier|yesterday'?s|today'?s)\s+(?:[\w'’-]+\s+){0,4}?(meeting|call|conversation|convo|catch[- ]?up|conference|email|note|log entry|entry|thread|sit[- ]?down)\b/;
+    var TASK_NOUN = /\b(task|to-?do|todo|action item|reminder|item)\b/;
+    var QUESTION = /^(what|whats|who|whos|when|where|which|why|how|do|does|did|is|are|am|can|could|should|show|list|tell|give|find|any|remind me what)\b/;
+
+    var STOP = {};
+    ("the a an and or of to for on in at it its that this with about from please can you agent " +
+     "change edit update fix correct amend revise set make move push delete remove withdraw drop " +
+     "add mark tick close reopen was were is are be been our their his her we they i me my " +
+     "what whats which who whom whose when where why how any some all both show tell find " +
+     "look search see need want got get have has had does did doing into inside under over " +
+     "there here again just still only than then them those these").split(" ")
+      .forEach(function (w) { STOP[w] = 1; });
+
+    function lower(s) { return String(s || "").toLowerCase(); }
+    function iso(d) {
+      return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") +
+             "-" + String(d.getDate()).padStart(2, "0");
+    }
+    function today() { return iso(new Date()); }
+
+    function terms(text) {
+      return lower(text).replace(/[^a-z0-9\s]/g, " ").split(/\s+/)
+        .filter(function (w) { return w.length > 2 && !STOP[w]; });
+    }
+
+    // How many of the message's own words show up in a record's text.
+    function overlap(text, haystack) {
+      var hay = lower(haystack);
+      var hits = 0;
+      terms(text).forEach(function (w) { if (hay.indexOf(w) !== -1) hits++; });
+      return hits;
+    }
+
+    /* ---- dates ---------------------------------------------------
+       A logged conversation points backwards ("on Tuesday" means the
+       one just gone); a task due date points forwards. Same parser,
+       one flag — which is the only difference that ever mattered
+       between the two readers this page already had.
+       ------------------------------------------------------------ */
+    function readDate(text, forward) {
+      var t = lower(text);
+      var now = new Date();
+      var m;
+
+      m = t.match(/\b(\d{4})-(\d{2})-(\d{2})\b/);
+      if (m) return m[0];
+
+      m = t.match(/\b(\d{1,2})\/(\d{1,2})(?:\/(\d{2,4}))?\b/);
+      if (m) {
+        var yr = m[3] ? (m[3].length === 2 ? 2000 + parseInt(m[3], 10) : parseInt(m[3], 10))
+                      : now.getFullYear();
+        var d = new Date(yr, parseInt(m[1], 10) - 1, parseInt(m[2], 10));
+        if (!isNaN(d)) return iso(d);
+      }
+
+      var monthAlt = MONTHS.join("|") + "|" + MONTHS.map(function (x) { return x.slice(0, 3); }).join("|");
+      m = t.match(new RegExp("\\b(" + monthAlt + ")\\.?\\s+(\\d{1,2})(?:st|nd|rd|th)?\\b")) ||
+          t.match(new RegExp("\\b(\\d{1,2})(?:st|nd|rd|th)?\\s+(?:of\\s+)?(" + monthAlt + ")\\b"));
+      if (m) {
+        var name = /^\d/.test(m[1]) ? m[2] : m[1];
+        var day = /^\d/.test(m[1]) ? m[1] : m[2];
+        var mi = -1;
+        MONTHS.forEach(function (x, i) { if (x.indexOf(name) === 0) mi = i; });
+        if (mi >= 0) {
+          var md = new Date(now.getFullYear(), mi, parseInt(day, 10));
+          if (forward && md < now) md.setFullYear(md.getFullYear() + 1);
+          if (!forward && md > now) md.setFullYear(md.getFullYear() - 1);
+          return iso(md);
+        }
+      }
+
+      // "the 14th" — this month, nudged into the right half of the calendar.
+      m = t.match(/\bthe\s+(\d{1,2})(?:st|nd|rd|th)\b/);
+      if (m) {
+        var od = new Date(now.getFullYear(), now.getMonth(), parseInt(m[1], 10));
+        if (forward && od < now) od.setMonth(od.getMonth() + 1);
+        if (!forward && od > now) od.setMonth(od.getMonth() - 1);
+        return iso(od);
+      }
+
+      if (/\btoday\b/.test(t)) return today();
+      if (/\byesterday\b/.test(t)) { var y = new Date(); y.setDate(y.getDate() - 1); return iso(y); }
+      if (/\btomorrow\b/.test(t)) { var tm = new Date(); tm.setDate(tm.getDate() + 1); return iso(tm); }
+      if (/\b(end of week|eow)\b/.test(t)) {
+        var eow = new Date(); eow.setDate(eow.getDate() + ((5 - eow.getDay() + 7) % 7 || 7)); return iso(eow);
+      }
+      if (/\bnext week\b/.test(t)) { var nw = new Date(); nw.setDate(nw.getDate() + 7); return iso(nw); }
+      if (/\blast week\b/.test(t)) { var lw = new Date(); lw.setDate(lw.getDate() - 7); return iso(lw); }
+      if (/\b(end of month|eom)\b/.test(t)) return iso(new Date(now.getFullYear(), now.getMonth() + 1, 0));
+
+      m = t.match(new RegExp("\\b(" + DAYS.join("|") + ")\\b"));
+      if (m) {
+        var target = DAYS.indexOf(m[1]);
+        var shift;
+        if (forward) {
+          shift = (target - now.getDay() + 7) % 7;
+          if (shift === 0) shift = 7;
+          if (/\bnext\s+\w*\s*/.test(t) && shift < 7) shift += 7;
+        } else {
+          shift = -((now.getDay() - target + 7) % 7);
+          if (shift === 0) shift = -7;
+        }
+        var wd = new Date(); wd.setDate(wd.getDate() + shift);
+        return iso(wd);
+      }
+      return null;
+    }
+
+    /* ---- resolving what you pointed at -------------------------- */
+
+    function findEntries(text) {
+      var invHit = Reader.matchInvestor(text);
+      var dealHits = Reader.matchDeals(text);
+      var wanted = readDate(text, false);
+      var t = lower(text);
+
+      var scored = Crm.conversations().map(function (hit) {
+        var e = hit.entry;
+        var score = 0;
+
+        if (invHit.id && invHit.id === hit.investorId) score += 7;
+        else score += Math.min(overlap(text, hit.investorName) * 2, 6);
+
+        dealHits.forEach(function (d) {
+          if ((e.deals || []).indexOf(d) !== -1) score += 5;
+        });
+        (e.deals || []).forEach(function (d) { score += Math.min(overlap(text, d), 3); });
+
+        if (wanted && e.date === wanted) score += 6;
+        if (e.channel && new RegExp("\\b" + lower(e.channel).replace(/\s+/g, "\\s+") + "\\b").test(t)) score += 2;
+
+        score += Math.min(overlap(text, [e.summary, e.subject, e.next, e.who].join(" ")), 4);
+        return { hit: hit, score: score };
+      });
+
+      scored.sort(function (a, b) {
+        if (b.score !== a.score) return b.score - a.score;
+        return String(b.hit.entry.date || "").localeCompare(String(a.hit.entry.date || ""));
+      });
+      return scored.filter(function (s) { return s.score >= 3; });
+    }
+
+    function findTasksIn(text) {
+      var t = lower(text);
+      var scored = Tasks.all().map(function (task) {
+        var score = overlap(text, task.title) * 2;
+        if (task.link) score += overlap(text, task.link);
+        var who = lower(Tasks.personName(task.assignee));
+        if (who && t.indexOf(who.split(/\s+/)[0]) !== -1) score += 1;
+        var quoted = text.match(/["“']([^"”']{3,})["”']/);
+        if (quoted && lower(task.title).indexOf(lower(quoted[1])) !== -1) score += 8;
+        return { task: task, score: score };
+      });
+      scored.sort(function (a, b) { return b.score - a.score; });
+      return scored.filter(function (s) { return s.score >= 2; });
+    }
+
+    function ambiguous(scored) {
+      return scored.length > 1 && (scored[0].score - scored[1].score) < 3;
+    }
+
+    /* ---- turning the rest of the sentence into changes ---------- */
+
+    // "who was on it: JB and DW, and the next step is send the model" is two
+    // instructions in one sentence. Everything that captures free text has to
+    // stop at the seam, or the first field swallows the second.
+    function clause(value) {
+      return String(value || "")
+        .split(/(?:,\s*(?:and|but|then|also|plus)\b|;|\band (?:the|its|their)\s+(?:next|date|channel|summary|subject|check|who|priority|due|title|assignee)\b|\band (?:note|also note|say|add|append)\s+that\b|\band who was (?:on|in) it\b)/i)[0]
+        .trim()
+        .replace(/^["“']+|["”'.,;:]+$/g, "")
+        .trim();
+    }
+
+    function readEntryChanges(text, hit) {
+      var e = hit.entry;
+      var t = lower(text);
+      var out = [];
+      function set(field, value) {
+        if (String(e[field] || "") === String(value || "")) return;
+        out.push({ op: "conversation.set", investorId: hit.investorId, entryId: e.id,
+                   field: field, value: value });
+      }
+
+      // Date — an explicit "date", or any of the move-it verbs.
+      if (/\b(date|dated|reschedul\w*|mov(?:e|ed)|actually (?:was|on|happened)|it was on|happened on)\b/.test(t)) {
+        var d = readDate(text, false);
+        if (d) set("date", d);
+      }
+
+      // Channel — only when the sentence is talking about the medium.
+      if (/\b(channel|it was a|was actually a|not a|make it a|change it to a|over|via)\b/.test(t)) {
+        for (var i = 0; i < CHANNELS.length; i++) {
+          var c = CHANNELS[i];
+          if (new RegExp("\\b" + lower(c).replace(/\s+/g, "\\s+") + "\\b").test(t)) { set("channel", c); break; }
+        }
+      }
+
+      var m;
+
+      m = text.match(/\bsummary\s*(?:to|:|should (?:be|read))\s*(.+)$/i);
+      if (m) set("summary", clause(m[1]));
+      else {
+        m = text.match(/\b(?:add|append|also note|note that|and say)\s+(?:to the summary\s+)?(?:that\s+)?(.+)$/i);
+        if (m && /\b(summary|note that|also note|and say)\b/i.test(text)) {
+          var extra = clause(m[1]);
+          if (extra) set("summary", (e.summary ? e.summary.replace(/\s*$/, "") + " " : "") + extra);
+        }
+      }
+
+      m = text.match(/\bnext(?:\s+step)?\s*(?:to|is|:|should be)\s*(.+)$/i);
+      if (m) set("next", clause(m[1]));
+
+      m = text.match(/\b(?:who was (?:on|in) it|attendees?|participants?|present|people)\s*(?:to|:|was|were)?\s*(.+)$/i);
+      if (m) set("who", clause(m[1]));
+
+      m = text.match(/\bsubject\s*(?:to|:)\s*(.+)$/i);
+      if (m) set("subject", clause(m[1]));
+
+      if (/\bcheck(?:\s+size)?\b/.test(t)) {
+        var check = Reader.matchCheck(text);
+        if (check) set("check", check.text);
+      }
+
+      // Deals discussed on that entry. A deal name is usually how the entry
+      // was found in the first place — "the Bronson Point meeting" — so it
+      // only counts as a change when the sentence actually asks for one.
+      var deals = Reader.matchDeals(text);
+      var dealCue = /\b(add|also|include|plus|discussed|talked about|covered|interested in|remove|drop|take off|delete|without|deals?\s*(?:to|:))\b/.test(t);
+      if (deals.length && dealCue) {
+        var have = (e.deals || []).slice();
+        var next = have.slice();
+        var removing = /\b(remove|drop|take off|delete|without)\b/.test(t);
+        deals.forEach(function (d) {
+          if (removing) next = next.filter(function (x) { return x !== d; });
+          else if (next.indexOf(d) === -1) next.push(d);
+        });
+        if (next.join("|") !== have.join("|")) set("deals", next);
+      }
+
+      return out;
+    }
+
+    function readTaskChanges(text, task) {
+      var t = lower(text);
+      var out = [];
+      function set(field, value) {
+        if (String(task[field] || "") === String(value || "")) return;
+        out.push({ op: "task.set", taskId: task.id, field: field, value: value });
+      }
+
+      if (/\b(done|completed?|finished|tick(?:ed)? off|check(?:ed)? off|close(?:d)? (?:it|this|that|out)?)\b/.test(t)) {
+        set("status", "Done");
+      } else if (/\b(reopen|not done|un-?tick|undo|back on the list)\b/.test(t)) {
+        set("status", "To do");
+      } else if (/\b(in progress|started|working on it|underway)\b/.test(t)) {
+        set("status", "In progress");
+      } else if (/\bblocked\b/.test(t)) {
+        set("status", "Blocked");
+      }
+
+      if (/\b(due|by|push|pushed|move|moved|reschedul\w*|defer|deadline|until)\b/.test(t)) {
+        var d = readDate(text, true);
+        if (d) set("due", d);
+      }
+      if (/\b(no (?:due )?date|undated|remove the (?:due )?date)\b/.test(t)) set("due", null);
+
+      var m = text.match(/\b(?:assign(?:ed)?(?: it)?|reassign(?:ed)?(?: it)?|give (?:it )?|hand (?:it )?(?:over )?)\s*to\s+([A-Za-z][\w.'-]*(?:\s+[A-Z][\w.'-]*)?)/i);
+      if (m) {
+        var who = Tasks.team().filter(function (p) {
+          var full = lower(p.name), first = full.split(/\s+/)[0];
+          return full === lower(m[1]) || first === lower(m[1]).split(/\s+/)[0];
+        })[0];
+        if (who) set("assignee", who.id);
+      }
+
+      if (/\bpriority\b/.test(t) || /\b(make it|mark it)\s+(high|medium|low)\b/.test(t)) {
+        var p = t.match(/\b(high|medium|low)\b/);
+        if (p) set("priority", p[1].charAt(0).toUpperCase() + p[1].slice(1));
+      }
+
+      m = text.match(/\b(?:rename|retitle|call it|title)\s*(?:it\s*)?(?:to\s*)?["“']?(.+?)["”']?$/i);
+      if (m) set("title", clause(m[1]));
+
+      m = text.match(/\bnotes?\s*(?:to|:)\s*(.+)$/i);
+      if (m) set("notes", clause(m[1]));
+
+      m = text.match(/\blink(?:\s+it)?\s+to\s+(.+)$/i);
+      if (m) set("link", clause(m[1]));
+
+      return out;
+    }
+
+    /* ---- read-only answers -------------------------------------- */
+
+    function investorSummary(inv) {
+      var bits = [inv.name + " — " + inv.type + ", " + inv.stage + "."];
+      if (inv.owner) bits.push("Owner " + inv.owner + ".");
+      if (checkText(inv)) bits.push("Check size " + checkText(inv) + ".");
+      if (inv.deals.length) bits.push("Interested in " + inv.deals.join(", ") + ".");
+      var last = inv.conversations[0];
+      bits.push(last
+        ? "Last contact " + (last.date || "undated") + " (" + (last.channel || "note") + ")" +
+          (last.next ? ", next step: " + last.next : "") + "."
+        : "Nothing logged yet.");
+      if (inv.conversations.length > 1) bits.push(inv.conversations.length + " conversations on file.");
+      return bits.join(" ");
+    }
+
+    function taskAnswer(text) {
+      var t = lower(text);
+      var mine = /\b(my|mine|me|i)\b/.test(t);
+      var meId = Tasks.whoAmI();
+      var list = Tasks.all().filter(function (x) { return x.status !== "Done"; });
+      if (mine && meId) list = list.filter(function (x) { return x.assignee === meId; });
+
+      var scope = "open";
+      if (/\boverdue|late|slipped\b/.test(t)) {
+        list = list.filter(function (x) { return x.due && x.due < today(); });
+        scope = "overdue";
+      } else if (/\b(this week|next seven|week|due soon|coming up)\b/.test(t)) {
+        var wk = new Date(); wk.setDate(wk.getDate() + 7);
+        var end = iso(wk);
+        list = list.filter(function (x) { return x.due && x.due <= end; });
+        scope = "due in the next seven days";
+      } else if (/\btoday\b/.test(t)) {
+        list = list.filter(function (x) { return x.due === today(); });
+        scope = "due today";
+      }
+
+      if (!list.length) {
+        return { reply: "Nothing " + scope + (mine ? " for you" : "") + "." };
+      }
+      list.sort(function (a, b) { return (a.due || "9999").localeCompare(b.due || "9999"); });
+      var lines = list.slice(0, 12).map(function (x) {
+        return "• " + x.title +
+          " — " + (x.due ? "due " + x.due : "no date") +
+          ", " + x.priority.toLowerCase() +
+          (x.assignee ? ", " + Tasks.personName(x.assignee) : ", unassigned");
+      });
+      return { reply: list.length + " " + scope + (mine ? " for you" : "") + ":\n" + lines.join("\n") +
+                      (list.length > 12 ? "\n…and " + (list.length - 12) + " more." : "") };
+    }
+
+    // Documents are searched over the whole trail, not the file name. The
+    // deal a document belongs to lives in its folder path — "term sheets for
+    // the Mill" only works if "Mill" can be matched against the path — and
+    // Provider.search matches names alone. So walk the tree Provider.raw()
+    // hands over, the same accessor the reports use.
+    function walkDocs(fn) {
+      var raw = Provider.raw();
+      if (!raw) return;
+      (raw.areas || []).forEach(function (area) {
+        (function descend(nodes, trail) {
+          nodes.forEach(function (node) {
+            fn(node, trail, area);
+            if (node.children) descend(node.children, trail.concat(node.name));
+          });
+        }(area.children || [], []));
+      });
+    }
+
+    // Everything under one deal folder, ranked by the words left over once
+    // the deal's own name is taken out of the question.
+    function docsInDeal(q, parts, deals) {
+      var scope = {};
+      deals.forEach(function (d) { scope[d] = 1; });
+
+      var rest = parts.filter(function (w) {
+        for (var i = 0; i < deals.length; i++) {
+          if (lower(deals[i]).indexOf(w) !== -1) return false;
+        }
+        return true;
+      });
+
+      var inScope = [], folders = {};
+      walkDocs(function (node, trail, area) {
+        var depth = -1;
+        for (var i = 0; i < trail.length; i++) if (scope[trail[i]]) { depth = i; break; }
+        if (depth === -1) return;
+        var rel = trail.slice(depth + 1);
+        if (node.type === "folder" && rel.length === 0) folders[node.name] = 1;
+        inScope.push({ node: node, trail: trail, area: area, rel: rel,
+                       time: node.modified ? node.modified.getTime() : 0 });
+      });
+      if (!inScope.length) return null;
+
+      var dealLabel = deals[0];
+
+      if (!rest.length) {
+        var names = Object.keys(folders);
+        return { reply: dealLabel + " holds " +
+          inScope.filter(function (x) { return x.node.type === "file"; }).length + " files" +
+          (names.length ? ", in: " + names.join(", ") + "." : ".") };
+      }
+
+      var scored = inScope.map(function (x) {
+        var hay = lower(x.rel.join(" ") + " " + x.node.name);
+        var n = 0;
+        rest.forEach(function (w) { if (hay.indexOf(w) !== -1) n++; });
+        var inName = 0;
+        rest.forEach(function (w) { if (lower(x.node.name).indexOf(w) !== -1) inName++; });
+        x.n = n; x.inName = inName;
+        return x;
+      });
+
+      var best = Math.max.apply(null, scored.map(function (x) { return x.n; }));
+      if (!best) {
+        var where = Object.keys(folders);
+        return { reply: "Nothing under " + dealLabel + " matches \u201c" + rest.join(", ") + "\u201d." +
+          (where.length ? " What is there: " + where.join(", ") + "." : "") };
+      }
+
+      var top = scored.filter(function (x) { return x.n === best; });
+      top.sort(function (a, b) {
+        if (b.inName !== a.inName) return b.inName - a.inName;
+        if ((a.node.type === "file") !== (b.node.type === "file")) return a.node.type === "file" ? -1 : 1;
+        return b.time - a.time;
+      });
+
+      var lines = top.slice(0, 8).map(function (x) {
+        return "\u2022 " + x.node.name + (x.node.type === "folder" ? " (folder)" : "") +
+               " \u2014 " + dealLabel + (x.rel.length ? " / " + x.rel.join(" / ") : "");
+      });
+
+      return { reply: top.length + " under " + dealLabel + " for \u201c" + rest.join(", ") + "\u201d:\n" +
+        lines.join("\n") +
+        (top.length > 8 ? "\n\u2026and " + (top.length - 8) + " more." : "") };
+    }
+
+    function docsAnswer(text) {
+      var q = text.replace(/^[^a-z0-9]*(where (?:are|is|can i find)|find|show me|look for|search for)\s*/i, "")
+                  .replace(/\?+\s*$/, "").trim();
+      if (q.length < 3) {
+        return Promise.resolve({ reply: "Tell me what to look for and I will search every category." });
+      }
+
+      var parts = terms(q).filter(function (w) {
+        return ["file", "files", "document", "documents", "folder", "folders", "where", "our"].indexOf(w) === -1;
+      });
+      if (!parts.length) parts = terms(q);
+      if (!parts.length) {
+        return Promise.resolve({ reply: "Tell me what to look for and I will search every category." });
+      }
+
+      // If the question names a deal, that is a scope, not a search term.
+      // "The term sheets for the Mill" means: look inside the Mill's folder.
+      // Ranking a term-sheet in somebody else's deal above anything in the
+      // Mill is the wrong answer however well it scores.
+      var scopeDeals = Reader.matchDeals(q);
+      if (scopeDeals.length) {
+        var scoped = docsInDeal(q, parts, scopeDeals);
+        if (scoped) return Promise.resolve(scoped);
+      }
+
+      // Weight the words by how rare they are in the library. "Model" appears
+      // in hundreds of file names and tells you almost nothing; a deal name
+      // appears in one folder and tells you everything. Counting matches
+      // without this ranks every model in the firm above the right deal.
+      var freq = {};
+      parts.forEach(function (w) { freq[w] = 0; });
+      walkDocs(function (node) {
+        var name = lower(node.name);
+        parts.forEach(function (w) { if (name.indexOf(w) !== -1) freq[w]++; });
+      });
+      var weight = {};
+      parts.forEach(function (w) { weight[w] = 1 / (1 + Math.log(1 + freq[w])); });
+      var perfect = parts.reduce(function (sum, w) { return sum + weight[w]; }, 0);
+
+      var found = [];
+      walkDocs(function (node, trail, area) {
+        var haystack = lower(trail.join(" ") + " " + node.name);
+        var n = 0, matched = 0;
+        parts.forEach(function (w) {
+          if (haystack.indexOf(w) !== -1) { n += weight[w]; matched++; }
+        });
+        if (!matched) return;
+        // A folder counts only when the match is the folder itself; otherwise
+        // its files carry the same score and read better in an answer.
+        if (node.type === "folder" && !new RegExp(parts.join("|")).test(lower(node.name))) return;
+        var inName = 0;
+        parts.forEach(function (w) { if (lower(node.name).indexOf(w) !== -1) inName++; });
+        found.push({ node: node, trail: trail, area: area, n: n, matched: matched, inName: inName,
+                     time: node.modified ? node.modified.getTime() : 0 });
+      });
+
+      if (!found.length) {
+        return Promise.resolve({ reply: "Nothing in the document library matches \u201c" + q + "\u201d." });
+      }
+
+      var best = Math.max.apply(null, found.map(function (f) { return f.n; }));
+      var top = found.filter(function (f) { return f.n > best - 0.0001; });
+      var bestMatched = Math.max.apply(null, top.map(function (f) { return f.matched; }));
+      top.sort(function (a, b) {
+        if (b.inName !== a.inName) return b.inName - a.inName;
+        if ((a.node.type === "file") !== (b.node.type === "file")) return a.node.type === "file" ? -1 : 1;
+        return b.time - a.time;
+      });
+
+      var lines = top.slice(0, 8).map(function (f) {
+        return "\u2022 " + f.node.name + (f.node.type === "folder" ? " (folder)" : "") +
+               " \u2014 " + f.area.label + (f.trail.length ? " / " + f.trail.join(" / ") : "");
+      });
+
+      var head = best < perfect - 0.0001
+        ? "Nothing matches all of \u201c" + parts.join(", ") + "\u201d. The closest \u2014 " +
+          top.length + " on " + bestMatched + " of " + parts.length + ":"
+        : top.length + " match" + (top.length === 1 ? "" : "es") + " for \u201c" + q + "\u201d:";
+
+      return Promise.resolve({
+        reply: head + "\n" + lines.join("\n") +
+               (top.length > 8 ? "\n\u2026and " + (top.length - 8) + " more \u2014 the Documents tab shows them all." : "")
+      });
+    }
+
+    function answerQuestion(text) {
+      var t = lower(text);
+
+      if (TASK_NOUN.test(t) || /\b(due|overdue|on my plate|deadline)\b/.test(t)) {
+        return Promise.resolve(taskAnswer(text));
+      }
+
+      if (/\b(file|files|document|documents|folder|folders|memo|memorandum|model|models|term sheet|sheets?|deck|presentation|report|letters?|statements?|financials|agreement|schedule|chart|invoice|pdf|xlsx|docx|pptx|where is|where are)\b/.test(t)) {
+        return docsAnswer(text);
+      }
+
+      var invHit = Reader.matchInvestor(text);
+      if (invHit.id) {
+        var inv = Crm.get(invHit.id);
+        if (/\blast\s+(spoke|speak|contact|contacted|talk|talked|touch|heard|met|meeting|call)\b/.test(t)) {
+          var last = inv.conversations[0];
+          return Promise.resolve({ reply: last
+            ? "Last contact with " + inv.name + " was " + (last.date || "an unrecorded date") +
+              " — " + lower(last.channel || "note") + (last.who ? " with " + last.who : "") + "." +
+              (last.summary ? "\n\n" + last.summary : "")
+            : "Nothing logged against " + inv.name + " yet." });
+        }
+        return Promise.resolve({ reply: investorSummary(inv) });
+      }
+
+      var deals = Reader.matchDeals(text);
+      if (deals.length) {
+        var name = deals[0];
+        var status = Crm.dealStatus(name);
+        var keen = Crm.all().filter(function (i) { return i.deals.indexOf(name) !== -1; });
+        return Promise.resolve({ reply: name + " — " + (status ? status.status : "Live") + ". " +
+          (keen.length ? keen.length + " investor" + (keen.length === 1 ? "" : "s") + " on it: " +
+             keen.map(function (i) { return i.name; }).join(", ") + "."
+                       : "No investor interest recorded against it yet.") });
+      }
+
+      if (/\bhow many\b/.test(t)) {
+        var open = Tasks.all().filter(function (x) { return x.status !== "Done"; }).length;
+        var convs = Crm.conversations().length;
+        return Promise.resolve({ reply:
+          Crm.all().length + " investor" + (Crm.all().length === 1 ? "" : "s") + " on the list, " +
+          convs + " conversation" + (convs === 1 ? "" : "s") + " logged, " +
+          open + " open task" + (open === 1 ? "" : "s") + ", " +
+          dealNames().length + " deal folders." });
+      }
+
+      return null;
+    }
+
+    /* ---- the pipeline ------------------------------------------- */
+
+    function done(turn) { return Promise.resolve(turn); }
+
+    function entryChoice(hit) {
+      var e = hit.entry;
+      return {
+        label: hit.investorName + " — " + (e.channel || "Note") + " on " + (e.date || "an unrecorded date"),
+        sub: (e.summary || "").slice(0, 110) + ((e.summary || "").length > 110 ? "…" : ""),
+        ref: { kind: "entry", investorId: hit.investorId, entryId: e.id }
+      };
+    }
+
+    function taskChoice(s) {
+      return {
+        label: s.task.title,
+        sub: (s.task.due ? "due " + s.task.due : "no date") + " · " + s.task.priority +
+             (s.task.assignee ? " · " + Tasks.personName(s.task.assignee) : ""),
+        ref: { kind: "task", taskId: s.task.id }
+      };
+    }
+
+    function entryTurn(text, hit) {
+      var changes = readEntryChanges(text, hit);
+      var e = hit.entry;
+      var head = hit.investorName + " — " + lower(e.channel || "note") + " on " + (e.date || "an unrecorded date");
+
+      if (/\b(delete|remove|withdraw|discard|scrap|bin)\b/.test(lower(text)) && !Reader.matchDeals(text).length) {
+        return done({
+          reply: "This would withdraw " + head + " from the record.",
+          actions: [{ op: "conversation.remove", investorId: hit.investorId, entryId: e.id }]
+        });
+      }
+
+      if (!changes.length) {
+        return done({
+          reply: head + ".\n\n" +
+                 (e.who ? "Who: " + e.who + "\n" : "") +
+                 (e.deals && e.deals.length ? "Deals: " + e.deals.join(", ") + "\n" : "") +
+                 (e.check ? "Check: " + e.check + "\n" : "") +
+                 (e.summary ? "\n" + e.summary + "\n" : "") +
+                 (e.next ? "\nNext step: " + e.next : "") +
+                 "\n\nWhat should I change — the date, the channel, who was on it, the summary, the next step, the deals, or the check size?",
+          pending: { type: "entry", ref: { investorId: hit.investorId, entryId: e.id } }
+        });
+      }
+
+      return done({
+        reply: "Here is what that changes on the " + lower(e.channel || "note") +
+               " with " + hit.investorName + ".",
+        actions: changes,
+        pending: { type: "entry", ref: { investorId: hit.investorId, entryId: e.id } }
+      });
+    }
+
+    function taskTurn(text, task) {
+      var changes = readTaskChanges(text, task);
+
+      if (/\b(delete|remove|scrap|cancel|bin|get rid of)\b/.test(lower(text))) {
+        return done({
+          reply: "This deletes “" + task.title + "” outright.",
+          actions: [{ op: "task.remove", taskId: task.id }]
+        });
+      }
+
+      if (!changes.length) {
+        return done({
+          reply: "“" + task.title + "” — " + (task.due ? "due " + task.due : "no date") +
+                 ", " + task.priority.toLowerCase() + " priority, " + lower(task.status) +
+                 (task.assignee ? ", with " + Tasks.personName(task.assignee) : ", unassigned") +
+                 (task.link ? ", against " + task.link : "") + "." +
+                 "\n\nWhat should I change — the date, who has it, the priority, the status, or the title?",
+          pending: { type: "task", ref: { taskId: task.id } }
+        });
+      }
+
+      return done({ reply: "Here is what that changes on “" + task.title + "”.",
+                    actions: changes,
+                    pending: { type: "task", ref: { taskId: task.id } } });
+    }
+
+    function think(text, ctx, pending) {
+      var raw = String(text || "").trim();
+      var t = lower(raw);
+      if (!raw) return done({ reply: "Say what you need and I will look." });
+
+      /* --- answering a question I asked --------------------------- */
+      if (pending && pending.type === "choose") {
+        var pick = null;
+        var n = raw.match(/^\s*(\d{1,2})\b/);
+        if (n && pending.options[parseInt(n[1], 10) - 1]) pick = pending.options[parseInt(n[1], 10) - 1];
+        if (!pick) {
+          var best = -1;
+          pending.options.forEach(function (o) {
+            var score = overlap(raw, o.label + " " + (o.sub || ""));
+            if (score > best && score > 0) { best = score; pick = o; }
+          });
+        }
+        if (pick) {
+          if (pick.ref.kind === "entry") {
+            var hit = null;
+            Crm.conversations().forEach(function (h) {
+              if (h.entry.id === pick.ref.entryId) hit = h;
+            });
+            if (hit) return entryTurn(pending.text || raw, hit);
+          }
+          if (pick.ref.kind === "task") {
+            var task = Tasks.get(pick.ref.taskId);
+            if (task) return taskTurn(pending.text || raw, task);
+          }
+        }
+        // Not an answer to the question — fall through and treat it fresh.
+      }
+
+      /* --- the thing we were just talking about ------------------- */
+      if (pending && pending.type === "entry" && !TASK_NOUN.test(t)) {
+        var e2 = AgentActions.entryOf(pending.ref.investorId, pending.ref.entryId);
+        if (e2) {
+          var hit2 = { entry: e2, investorId: pending.ref.investorId,
+                       investorName: (Crm.get(pending.ref.investorId) || {}).name || "" };
+          var ch = readEntryChanges(raw, hit2);
+          if (ch.length || /\b(delete|remove|withdraw|discard)\b/.test(t)) return entryTurn(raw, hit2);
+        }
+      }
+      if (pending && pending.type === "task") {
+        var t2 = Tasks.get(pending.ref.taskId);
+        if (t2) {
+          var ch2 = readTaskChanges(raw, t2);
+          if (ch2.length || /\b(delete|remove|scrap|cancel)\b/.test(t)) return taskTurn(raw, t2);
+        }
+      }
+
+      /* --- pleasantries and the manual ---------------------------- */
+      if (/^(hi|hey|hello|yo|morning|good morning|good afternoon)\b/.test(t) && raw.length < 24) {
+        return done({ reply: "Morning. I can look things up across the documents, the CRM and the task list, " +
+                             "and change what is already saved — a logged meeting, a task, an investor field, a deal's status. " +
+                             "Everything I would change is shown before it is saved." });
+      }
+      if (/\b(what can you do|help|how do i use|what do you do)\b/.test(t)) {
+        return done({ reply:
+          "Things that work:\n" +
+          "• “edit the Bronson Point meeting” — I find the log entry and ask what to change\n" +
+          "• “change the date on that call to the 14th”, “add that they want the model”, “next step is send the DDQ”\n" +
+          "• “mark the DDQ task done”, “push it to Friday”, “reassign it to Dana”\n" +
+          "• “set North Quay's owner to JB”, “that deal fell through”, “archive them”\n" +
+          "• “what's overdue”, “when did we last speak to them”, “where are the term sheets for the Arden”\n" +
+          "• describe a conversation in plain prose and I will draft a log entry\n\n" +
+          "Nothing saves until you press Apply." });
+      }
+
+      /* --- a change to a logged conversation ---------------------- */
+      var wantsEntry = !TASK_NOUN.test(t) && ENTRY_REF.test(t) &&
+                       (EDIT_VERB.test(t) ||
+                        /^(open|show|find|pull up|look at|about|what happened)\b/.test(t) ||
+                        /^(that|this|the|last|latest)\b/.test(t));
+      if (wantsEntry) {
+        var entries = findEntries(raw);
+        if (!entries.length) {
+          var who = Reader.matchInvestor(raw);
+          return done({ reply: who.id
+            ? "Nothing logged against " + (Crm.get(who.id) || {}).name + " that matches that. " +
+              "Describe the conversation instead and I will draft a new entry."
+            : "I could not find a logged conversation matching that. Try naming the investor or the date." });
+        }
+        if (ambiguous(entries)) {
+          var opts = entries.slice(0, 5).map(function (s) { return entryChoice(s.hit); });
+          return done({
+            reply: "More than one fits. Which did you mean?",
+            choices: opts,
+            pending: { type: "choose", options: opts, text: raw }
+          });
+        }
+        return entryTurn(raw, entries[0].hit);
+      }
+
+      /* --- tasks --------------------------------------------------- */
+      if (/^(add|create|new|log)\s+(a\s+)?(task|to-?do|todo|reminder)\b/.test(t) ||
+          /^remind\s+(me|us|\w+)\s+to\b/.test(t) ||
+          (/\bneeds? to\b/.test(t) && TASK_NOUN.test(t))) {
+        var body = raw.replace(/^(add|create|new|log)\s+(a\s+)?(task|to-?do|todo|reminder)\s*(to\s+|:\s*)?/i, "")
+                      .replace(/^remind\s+(me|us)\s+to\s+/i, "").trim();
+        if (!body) return done({ reply: "What is the task?" });
+        var read = TaskReader.read(body);
+        return done({
+          reply: "New task, ready to add.",
+          actions: [{ op: "task.add", fields: {
+            title: read.title, assignee: read.assignee || Tasks.whoAmI() || "",
+            due: read.due, priority: read.priority, link: read.link
+          } }]
+        });
+      }
+
+      if (TASK_NOUN.test(t) && EDIT_VERB.test(t)) {
+        var tasks = findTasksIn(raw);
+        if (!tasks.length) {
+          return done({ reply: "No task matches that. Say “add a task …” if it is a new one." });
+        }
+        if (ambiguous(tasks)) {
+          var topts = tasks.slice(0, 5).map(taskChoice);
+          return done({ reply: "Which task?", choices: topts,
+                        pending: { type: "choose", options: topts, text: raw } });
+        }
+        return taskTurn(raw, tasks[0].task);
+      }
+
+      /* --- questions ---------------------------------------------- */
+      if (QUESTION.test(t) || /\?\s*$/.test(raw)) {
+        var answer = answerQuestion(raw);
+        if (answer) return Promise.resolve(answer);
+      }
+
+      /* --- investor fields, deal status, archive ------------------- */
+      var command = Interpreter.read(raw);
+      if (command.kind === "actions") {
+        return done({
+          reply: command.notes && command.notes.length ? command.notes.join(" ") : "Here is what that changes.",
+          actions: command.actions.map(fromInterpreter)
+        });
+      }
+      if (command.kind === "none") {
+        return done({ reply: command.notes.join(" ") });
+      }
+
+      /* --- a task named without the word "task" -------------------- */
+      if (EDIT_VERB.test(t)) {
+        var loose = findTasksIn(raw);
+        if (loose.length && loose[0].score >= 4 && !ambiguous(loose)) return taskTurn(raw, loose[0].task);
+      }
+
+      /* --- prose describing a conversation ------------------------- */
+      if (raw.split(/\s+/).length >= 6) {
+        var draft = Reader.read(raw);
+        if (draft.investorName || draft.deals.length) {
+          var acts = [{ op: "conversation.add",
+                        investorId: draft.investorId || "",
+                        investorName: draft.investorName || "",
+                        entry: { date: draft.date, channel: draft.channel, who: draft.who,
+                                 summary: draft.summary, check: draft.check,
+                                 deals: draft.deals, next: draft.next, subject: draft.subject } }];
+
+          // The CRM form rolls the record forward when a draft is saved —
+          // stage, deal interest. Doing that silently here would mean a
+          // change nobody saw, so each one is its own line in the diff.
+          var record = draft.investorId ? Crm.get(draft.investorId) : null;
+          if (record) {
+            draft.deals.forEach(function (d) {
+              if (record.deals.indexOf(d) === -1) {
+                acts.push({ op: "investor.deal", investorId: record.id, deal: d, add: true });
+              }
+            });
+            if (record.stage === "Prospect" && draft.stage && draft.stage !== "Prospect") {
+              acts.push({ op: "investor.set", investorId: record.id, field: "stage", value: draft.stage });
+            }
+          }
+
+          return done({
+            reply: "Reading that as a conversation to log" +
+                   (draft.investorHow ? " — " + draft.investorHow : "") + ".",
+            actions: acts
+          });
+        }
+      }
+
+      /* --- give up honestly ---------------------------------------- */
+      var lastAnswer = answerQuestion(raw);
+      if (lastAnswer) return Promise.resolve(lastAnswer);
+
+      return done({ reply: "I could not place that. Name the investor, the deal or the task and I will find it — " +
+                           "or ask “what can you do” for the phrasings I understand." });
+    }
+
+    // The CRM interpreter predates this chat and speaks its own shape.
+    function fromInterpreter(a) {
+      switch (a.type) {
+        case "field":      return { op: "investor.set", investorId: a.investorId, field: a.field, value: a.to };
+        case "check":      return { op: "investor.check", investorId: a.investorId, value: a.to, min: a.min, max: a.max };
+        case "dealAdd":    return { op: "investor.deal", investorId: a.investorId, deal: a.deal, add: true };
+        case "dealRemove": return { op: "investor.deal", investorId: a.investorId, deal: a.deal, add: false };
+        case "dealStatus": return { op: "deal.status", deal: a.deal, value: a.to, why: a.why };
+        case "archive":    return { op: "investor.archive", investorId: a.investorId, value: a.to };
+        default:           return { op: "unknown" };
+      }
+    }
+
+    return { think: think, readDate: readDate };
+  })();
+
+  /* ---- the remote brain ----------------------------------------
+     Same signature, a model behind it. The key never reaches this
+     page: /api/agent is a small server-side function that holds it
+     and is the only thing that can spend it. The page probes the
+     endpoint once on load — no endpoint, no error, the local engine
+     just keeps answering.
+
+     The model proposes; it does not commit. Anything it returns
+     lands in the same diff, behind the same Apply button, and is
+     re-validated against the live records before it is offered.
+     -------------------------------------------------------------- */
+  var RemoteBrain = (function () {
+    var available = null;
+    var model = "";
+
+    // Remembered for the browser session so a static deployment logs one
+    // 404 when the tab is opened rather than one on every page load. A
+    // newly deployed function is picked up by the next new tab.
+    var PROBE_KEY = "modillion-agent-endpoint";
+
+    function probe() {
+      try {
+        var cached = sessionStorage.getItem(PROBE_KEY);
+        if (cached) {
+          var c = JSON.parse(cached);
+          available = !!c.ok;
+          model = c.model || "";
+          return Promise.resolve(available);
+        }
+      } catch (e) { /* private mode — probe every load instead */ }
+
+      return fetch(AGENT_ENDPOINT, { method: "GET", cache: "no-store" })
+        .then(function (r) { return r.ok ? r.json() : null; })
+        .then(function (j) {
+          available = !!(j && j.ok);
+          model = (j && j.model) || "";
+          return available;
+        })
+        .catch(function () { available = false; return false; })
+        .then(function (ok) {
+          try { sessionStorage.setItem(PROBE_KEY, JSON.stringify({ ok: ok, model: model })); }
+          catch (e) { /* private mode */ }
+          return ok;
+        });
+    }
+
+    function think(text, ctx, history) {
+      return fetch(AGENT_ENDPOINT, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message: text, context: ctx, history: history })
+      }).then(function (r) {
+        if (!r.ok) throw new Error("The agent service answered " + r.status + ".");
+        return r.json();
+      }).then(function (j) {
+        if (j.error) throw new Error(j.error);
+        return {
+          reply: j.reply || "",
+          actions: (j.actions || []).filter(AgentActions.valid),
+          dropped: (j.actions || []).length - (j.actions || []).filter(AgentActions.valid).length
+        };
+      });
+    }
+
+    return {
+      probe: probe, think: think,
+      isAvailable: function () { return available === true; },
+      model: function () { return model; }
+    };
+  })();
+
+  /* ---- the dock ------------------------------------------------- */
+  var Agent = (function () {
+    var LOG_KEY = "modillion-agent-log";
+    var MAX_TURNS = 60;
+
+    var state = { open: false, busy: false, unread: 0, pending: null, messages: [] };
+    var seq = 0;
+
+    function el(id) { return document.getElementById(id); }
+
+    /* ---- persistence ------------------------------------------- */
+    function save() {
+      try {
+        localStorage.setItem(LOG_KEY, JSON.stringify({
+          messages: state.messages.slice(-MAX_TURNS),
+          pending: state.pending
+        }));
+      } catch (e) { /* private mode — this session only */ }
+    }
+
+    function restore() {
+      try {
+        var raw = localStorage.getItem(LOG_KEY);
+        if (!raw) return;
+        var o = JSON.parse(raw);
+        state.messages = (o.messages || []).map(function (m) {
+          // A proposal from an earlier session is re-checked against the
+          // records as they are now. Anything that no longer applies is
+          // marked stale rather than silently left clickable.
+          if (m.actions && m.state === "open") {
+            var live = m.actions.filter(AgentActions.valid);
+            if (live.length !== m.actions.length) { m.state = "stale"; }
+          }
+          return m;
+        });
+        state.pending = o.pending || null;
+      } catch (e) { /* corrupt or unavailable — start clean */ }
+    }
+
+    /* ---- rendering ---------------------------------------------- */
+    function proposalHtml(m) {
+      var lines = m.actions.map(function (a, i) {
+        var d = AgentActions.describe(a);
+        var boxId = "agentAct-" + m.id + "-" + i;
+        return '<li>' +
+          '<input type="checkbox" id="' + boxId + '" data-agent-act="' + i + '" checked' +
+            (m.state && m.state !== "open" ? " disabled" : "") + '>' +
+          '<label class="crm-diff__text" for="' + boxId + '">' +
+            '<span class="crm-diff__what">' + esc(d.what) + '</span>' +
+            '<span class="crm-diff__from">' + esc(d.from) + '</span>' +
+            '<span class="crm-diff__arrow">&rarr;</span>' +
+            '<span class="crm-diff__to">' + esc(d.to) + '</span>' +
+            (d.warn ? '<span class="crm-diff__warn">' + esc(d.warn) + '</span>' : "") +
+          '</label></li>';
+      }).join("");
+
+      var doneLabel = m.state === "applied" ? "Applied"
+                    : m.state === "discarded" ? "Discarded — nothing was changed"
+                    : m.state === "stale" ? "Out of date — the records changed since this was proposed"
+                    : m.state === "superseded" ? "Superseded — a later proposal replaced this one"
+                    : "";
+
+      return '<div class="agent-proposal" id="agentProp-' + m.id + '"' +
+               (m.state && m.state !== "open" ? ' data-done="' + esc(m.state) + '"' : "") + '>' +
+        '<h4>Proposed changes</h4>' +
+        '<p class="agent-proposal__lede">Nothing has been saved yet. Uncheck anything you do not want.</p>' +
+        '<ul class="crm-diff">' + lines + '</ul>' +
+        '<div class="agent-proposal__actions">' +
+          '<button type="button" class="dash-refresh dash-refresh--primary" data-agent-apply="' + m.id + '">Apply</button>' +
+          '<button type="button" class="dash-refresh" data-agent-discard="' + m.id + '">Discard</button>' +
+        '</div>' +
+        '<p class="agent-proposal__done">' + esc(doneLabel) + '</p>' +
+      '</div>';
+    }
+
+    function choicesHtml(m) {
+      return '<ul class="agent-msg__choices">' + m.choices.map(function (c, i) {
+        return '<li><button type="button" class="agent-choice" data-agent-choice="' + i +
+          '" data-agent-msg="' + m.id + '">' +
+          '<strong>' + esc((i + 1) + ". " + c.label) + '</strong>' +
+          (c.sub ? '<span>' + esc(c.sub) + '</span>' : "") +
+          '</button></li>';
+      }).join("") + '</ul>';
+    }
+
+    function render() {
+      var log = el("agentLog");
+      if (!log) return;
+
+      var html = state.messages.map(function (m) {
+        if (m.who === "typing") {
+          return '<div class="agent-msg agent-msg--agent"><span class="agent-msg__who">Agent</span>' +
+            '<div class="agent-msg__body"><span class="agent-typing"><span></span><span></span><span></span></span></div></div>';
+        }
+        return '<div class="agent-msg agent-msg--' + esc(m.who) + '">' +
+          '<span class="agent-msg__who">' + (m.who === "you" ? "You" : m.who === "note" ? "" : "Agent") + '</span>' +
+          '<div class="agent-msg__body">' + esc(m.text || "") + '</div>' +
+          (m.choices && m.choices.length ? choicesHtml(m) : "") +
+          (m.actions && m.actions.length ? proposalHtml(m) : "") +
+        '</div>';
+      }).join("");
+
+      log.innerHTML = html || '<div class="agent-msg agent-msg--note"><div class="agent-msg__body">' +
+        'Ask about anything on these three tabs, or tell me what to change. ' +
+        'Try “what’s overdue”, or “edit the last meeting with North Quay”.' +
+        '</div></div>';
+
+      log.scrollTop = log.scrollHeight;
+      renderFoot();
+    }
+
+    function renderFoot() {
+      var remote = RemoteBrain.isAvailable();
+      var tag = el("agentModeTag");
+      if (tag) {
+        tag.setAttribute("data-mode", remote ? "remote" : "local");
+        tag.textContent = remote ? "Claude" : "In-page";
+      }
+      var foot = el("agentFoot");
+      if (!foot) return;
+      foot.textContent = remote
+        ? "Answers come from " + (RemoteBrain.model() || "Claude") + " via /api/agent. Nothing is saved without Apply."
+        : "Running the in-page engine — no key, no network. Deploy /api/agent to put Claude behind the same box.";
+    }
+
+    function push(msg) {
+      msg.id = ++seq;
+      state.messages.push(msg);
+      if (state.messages.length > MAX_TURNS) state.messages = state.messages.slice(-MAX_TURNS);
+      return msg;
+    }
+
+    function dropTyping() {
+      state.messages = state.messages.filter(function (m) { return m.who !== "typing"; });
+    }
+
+    function badge() {
+      var b = el("agentDockCount");
+      if (!b) return;
+      b.hidden = !state.unread;
+      b.textContent = state.unread ? String(state.unread) : "";
+    }
+
+    /* ---- the turn ------------------------------------------------ */
+    function send(text) {
+      var raw = String(text || "").trim();
+      if (!raw || state.busy) return;
+
+      push({ who: "you", text: raw });
+      push({ who: "typing" });
+      state.busy = true;
+      el("agentSendBtn").disabled = true;
+      render();
+
+      var ctx = AgentContext.build();
+      var pending = state.pending;
+      state.pending = null;
+
+      var history = state.messages
+        .filter(function (m) { return m.who === "you" || m.who === "agent"; })
+        .slice(-12)
+        .map(function (m) { return { role: m.who === "you" ? "user" : "assistant", content: m.text || "" }; });
+
+      var work = RemoteBrain.isAvailable()
+        ? RemoteBrain.think(raw, ctx, history.slice(0, -1)).catch(function (err) {
+            // The endpoint is there but unhappy. Say so, then answer anyway.
+            return LocalBrain.think(raw, ctx, pending).then(function (turn) {
+              turn.reply = "Claude could not be reached (" + err.message +
+                           ") — answering with the in-page engine instead.\n\n" + turn.reply;
+              return turn;
+            });
+          })
+        : LocalBrain.think(raw, ctx, pending);
+
+      work.then(function (turn) {
+        dropTyping();
+        var actions = (turn.actions || []).filter(function (a) {
+          return AgentActions.valid(a) && AgentActions.changes(a);
+        });
+        if (actions.length) {
+          state.messages.forEach(function (m) { if (m.state === "open") m.state = "superseded"; });
+        }
+        push({
+          who: "agent",
+          text: turn.reply || "",
+          choices: turn.choices || null,
+          actions: actions.length ? actions : null,
+          state: actions.length ? "open" : null
+        });
+        state.pending = turn.pending || (turn.choices ? { type: "choose", options: turn.choices, text: raw } : null);
+        if (!state.open) { state.unread++; badge(); }
+      }).catch(function (err) {
+        dropTyping();
+        push({ who: "agent", text: "Something went wrong reading that: " + err.message });
+      }).then(function () {
+        state.busy = false;
+        el("agentSendBtn").disabled = false;
+        render();
+        save();
+      });
+    }
+
+    /* ---- applying ------------------------------------------------ */
+    function applyProposal(msgId) {
+      var m = null;
+      state.messages.forEach(function (x) { if (String(x.id) === String(msgId)) m = x; });
+      if (!m || !m.actions || m.state !== "open") return;
+
+      var chosen = m.actions.filter(function (a, i) {
+        var box = document.getElementById("agentAct-" + m.id + "-" + i);
+        return box && box.checked;
+      }).filter(AgentActions.valid);
+
+      if (!chosen.length) { toast("Nothing selected."); return; }
+
+      var touched = AgentActions.apply(chosen);
+      m.state = "applied";
+
+      // Repaint whatever the change touched.
+      renderCrmFilters();
+      renderCrm();
+      renderMemory();
+      if (crmState.view === "investor") {
+        if (Crm.get(crmState.investorId)) renderInvestor(crmState.investorId);
+        else showCrmView("list");
+      }
+      fillTaskSelects();
+      renderTasks();
+      if (touched.docs) renderGrid();
+
+      push({ who: "note", text: chosen.length + " change" + (chosen.length === 1 ? "" : "s") + " saved." +
+        (Crm.hasLocalEdits() || Tasks.hasLocalEdits()
+          ? " These are local to this browser until you download the data file."
+          : "") });
+
+      render();
+      save();
+      toast(chosen.length + " change" + (chosen.length === 1 ? "" : "s") + " applied.");
+    }
+
+    function discardProposal(msgId) {
+      state.messages.forEach(function (m) {
+        if (String(m.id) === String(msgId) && m.state === "open") m.state = "discarded";
+      });
+      render();
+      save();
+    }
+
+    function chooseOption(msgId, index) {
+      var m = null;
+      state.messages.forEach(function (x) { if (String(x.id) === String(msgId)) m = x; });
+      if (!m || !m.choices || !m.choices[index]) return;
+      send(String(index + 1));
+    }
+
+    /* ---- panel --------------------------------------------------- */
+    function open() {
+      state.open = true;
+      state.unread = 0;
+      badge();
+      el("agentPanel").hidden = false;
+      el("agentDockTab").setAttribute("aria-expanded", "true");
+      el("agentDockTab").hidden = true;
+      render();
+      el("agentAsk").focus();
+    }
+
+    function close() {
+      state.open = false;
+      el("agentPanel").hidden = true;
+      el("agentDockTab").hidden = false;
+      el("agentDockTab").setAttribute("aria-expanded", "false");
+    }
+
+    function reset() {
+      state.messages = [];
+      state.pending = null;
+      seq = 0;
+      render();
+      save();
+      el("agentAsk").focus();
+    }
+
+    /* ---- wiring -------------------------------------------------- */
+    // load() runs again when someone signs out and back in without a page
+    // reload, so this has to be safe to call twice.
+    var wired = false;
+
+    function init() {
+      if (wired) { el("agentDock").hidden = false; render(); badge(); return; }
+      wired = true;
+
+      restore();
+      state.messages.forEach(function (m) { if (m.id > seq) seq = m.id; });
+      el("agentDock").hidden = false;
+      render();
+      badge();
+
+      el("agentDockTab").addEventListener("click", open);
+      el("agentCloseBtn").addEventListener("click", close);
+      el("agentPanel").addEventListener("keydown", function (e) {
+        if (e.key === "Escape") { e.stopPropagation(); close(); el("agentDockTab").focus(); }
+      });
+      el("agentNewBtn").addEventListener("click", reset);
+
+      var ask = el("agentAsk");
+      ask.addEventListener("input", function () {
+        ask.style.height = "auto";
+        ask.style.height = Math.min(ask.scrollHeight, 140) + "px";
+      });
+      ask.addEventListener("keydown", function (e) {
+        if (e.key === "Enter" && !e.shiftKey) {
+          e.preventDefault();
+          el("agentChatForm").dispatchEvent(new Event("submit", { cancelable: true }));
+        }
+      });
+
+      el("agentChatForm").addEventListener("submit", function (e) {
+        e.preventDefault();
+        var text = ask.value;
+        if (!text.trim() || state.busy) return;
+        ask.value = "";
+        ask.style.height = "auto";
+        send(text);
+      });
+
+      el("agentLog").addEventListener("click", function (e) {
+        var apply = e.target.closest("[data-agent-apply]");
+        if (apply) { applyProposal(apply.getAttribute("data-agent-apply")); return; }
+        var discard = e.target.closest("[data-agent-discard]");
+        if (discard) { discardProposal(discard.getAttribute("data-agent-discard")); return; }
+        var choice = e.target.closest("[data-agent-choice]");
+        if (choice) {
+          chooseOption(choice.getAttribute("data-agent-msg"),
+                       parseInt(choice.getAttribute("data-agent-choice"), 10));
+        }
+      });
+
+      // Probe for the model endpoint once. Absent is the normal case.
+      RemoteBrain.probe().then(renderFoot);
+    }
+
+    return { init: init, open: open, send: send };
+  })();
+
+  /* ============================================================
      BOOT
      ============================================================ */
   function describeSource() {
@@ -6564,6 +8497,7 @@ button.link-arrow {
     renderCrm();
     fillTaskSelects();
     renderTasks();
+    Agent.init();
   }
 
   /* ============================================================

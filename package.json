@@ -1,0 +1,11 @@
+{
+  "name": "modillion-website",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Static site for Modillion Partners, plus the one serverless function that puts Claude behind the internal dashboard's agent.",
+  "type": "module",
+  "engines": { "node": ">=20" },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.70.0"
+  }
+}

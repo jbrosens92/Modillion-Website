@@ -22,3 +22,6 @@ crm-inbox/
 # deadlines. Same rule: never commit.
 tasks-data.json
 tasks-data.*.json
+
+# Node dependencies for the /api/agent function.
+node_modules/

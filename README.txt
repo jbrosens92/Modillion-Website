@@ -165,9 +165,9 @@ What the agent learns:
   Learned aliases travel with crm-data.json, so exporting the file shares them with the team.
 - It is a deterministic parser, NOT a language model, and that is deliberate. This page is
   served publicly and can hold no secrets: an API key in page source is a key anyone can spend.
-  To put a real model behind it, keep Reader.read(text) and swap its body for a fetch to a small
-  server-side function that holds the key — the comment block above Reader in dashboard.html has
-  the shape. Nothing else in the page changes; the draft form is the same either way.
+  The chat agent described below is the route to a real model — this box stays deterministic
+  because it is the careful route: every field of the draft is editable before it is saved, and
+  it is what teaches the aliases.
 - Known rough edge: stage is the weakest guess. A message saying "I'll revert with our diligence
   list" reads as "In diligence" when it is really still an intro. Correct it in the draft.
 
@@ -215,6 +215,67 @@ The sharing limit — read this before rolling the task list out to the team:
 - If the team is going to rely on this daily, it needs a real backend — the same piece of work
   that would give the CRM shared state and the mailbox an automatic intake. Until then, treat
   the file as the source of truth and re-export after a working session.
+
+The agent (the chat in the corner) — added 2026-08-17:
+- One conversation, available on all three tabs. It sits outside the tab containers on purpose:
+  the same thread follows you from Documents to the CRM to the Task List, and it knows which tab
+  you are on when you ask. The transcript is kept in localStorage, per browser, and "New" clears it.
+- The difference from the "Tell the agent" box on the CRM tab: that box reads one message and
+  forgets it. This one holds context, asks when it is unsure which record you mean, and can change
+  things that are ALREADY SAVED — a logged meeting, a task, an investor field, a deal's status.
+  Both are kept because they are good at different things; the box gives you a full editable
+  draft form and is what teaches aliases, the chat gives you a back-and-forth.
+- NOTHING IS WRITTEN WITHOUT CONFIRMATION. Every change appears as a before → after line with a
+  checkbox and waits for Apply — the same gate the CRM diff uses. That holds for the model too:
+  a remote answer proposes, it does not commit. Proposing a change that would change nothing is
+  suppressed, and when a newer proposal arrives the older one is marked superseded so an out-of-
+  date diff left in the scrollback cannot be applied over a later correction.
+- What it handles:
+    "edit the Bronson Point meeting"      finds the log entry, shows it, asks what to change
+    "change the date to the 14th, who was on it: JB and DW, next step is send the model"
+                                          three fields off one sentence, on the entry in hand
+    "delete that call"                    withdraws the entry (the record keeps its history)
+    "mark the DDQ task done"              status, due date, assignee, priority, title, notes
+    "push it to Friday and give it to Dana"
+    "add a task to send the DDQ by Friday, high"
+    "set North Quay's owner to JB"        investor fields, deal interest, archive/restore
+    "that deal fell through"              deal status — recorded here, OneDrive untouched
+    "what's overdue" / "what's due this week"
+    "when did we last speak to them"
+    "where are the term sheets for the Mill"
+    a paragraph describing a conversation → a drafted log entry
+- Ambiguity is a question, not a guess. Two conversations fit "the Mill meeting"? It lists them
+  and waits. Same for tasks. Answer with the number or click the option.
+- Logging a conversation from the chat also shows the knock-on changes as their own diff lines —
+  the deal interest it would add, the stage it would move from Prospect. The CRM form does those
+  silently on save; doing that here would be a change nobody saw.
+- Document questions are answered against the whole folder trail, not just file names, because
+  the deal a document belongs to lives in its path. Naming a deal scopes the search to that
+  deal's folder: "term sheets for the Mill" looks inside the Mill and, if there is no term sheet
+  there, says so and lists what is there instead of returning every term sheet in the firm.
+
+Putting Claude behind the chat (api/agent.js):
+- The page probes GET /api/agent once per browser session. If it answers, the panel header
+  switches from "In-page" to "Claude" and messages go there. If it does not — the normal state
+  for a plain static deployment — the in-page engine answers and nothing breaks. The probe result
+  is cached in sessionStorage, so a static deploy logs one 404 per tab rather than one per page
+  load; a newly deployed function is picked up by the next new tab.
+- api/agent.js is a Vercel-style serverless function and is THE ONLY THING THAT HOLDS THE KEY.
+  It never reaches the data: the browser posts a compact snapshot of the three datasets with the
+  message, and the function returns a reply plus proposed actions, which the page validates
+  against the live records and puts behind the same Apply button.
+- To deploy: npm install, set ANTHROPIC_API_KEY in the project's environment variables,
+  optionally set AGENT_ALLOWED_ORIGIN to the site's own domain, deploy. No code change here.
+- Model is claude-opus-5. The action vocabulary is defined twice — as a tool schema in
+  api/agent.js and as the applier in dashboard.html. If you add an operation, add it in both.
+- If the endpoint errors mid-conversation the page says so in the transcript and answers with the
+  in-page engine for that turn rather than dropping the message.
+- SECURITY, READ THIS: once deployed the endpoint is reachable by anyone who finds the URL, and
+  every call spends the key. It carries a small in-memory burst limiter and an optional origin
+  check, but neither is a real control — a serverless instance is recycled and an Origin header
+  is trivially forged. If the dashboard is going to live behind a real sign-in, put the same
+  protection in front of this function (Vercel deployment protection, or a check against the
+  Microsoft 365 token once that lands). Until then, treat the URL as the secret it is not.
 
 Forwarding email into the CRM:
 - Intake address is set in crm-data.json under "intake" (not repeated here — it is a personal
