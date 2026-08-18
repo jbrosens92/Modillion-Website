@@ -1934,6 +1934,30 @@ button.link-arrow {
 .deal-status[data-state="On hold"] { background: rgba(232, 214, 203, 0.6); color: #8A5A3B; }
 .deal-status[data-state="Closed"]  { background: rgba(29, 111, 66, 0.1); color: #1D6F42; }
 
+/* A deal added on the pipeline before its OneDrive folder exists. It sits in
+   the list with the folders it will one day join and says plainly that there
+   is nothing filed behind it — this page mirrors OneDrive and cannot create
+   the folder itself. The dashed edge is the point: it is not a folder. */
+.deal-add { margin: 0 0 8px; }
+.deal-add[hidden] { display: none; }
+.deal-add .crm-edit { margin-top: 0; }
+.deal-pending {
+  display: inline-block; margin-left: 10px;
+  font-size: .62rem; letter-spacing: .1em; text-transform: uppercase;
+  padding: 2px 8px; border-radius: 2px; vertical-align: middle;
+  background: transparent; color: var(--muted);
+  border: 1px dashed var(--rule);
+}
+.fileitem--pending { cursor: default; }
+.fileitem--pending .fileitem__icon { opacity: .45; }
+.filetable tr.is-pending td { background: rgba(45, 58, 81, 0.02); }
+.deal-remove {
+  appearance: none; background: none; border: 0; padding: 0;
+  font-family: var(--sans); font-size: .72rem; color: var(--muted); cursor: pointer;
+}
+.deal-remove:hover { color: #C0392B; text-decoration: underline; }
+.deal-remove[data-armed="1"] { color: #C0392B; }
+
 /* Task list ------------------------------------------------------ */
 #wsTasks[hidden] { display: none; }
 
@@ -2251,7 +2275,7 @@ button.link-arrow {
   /* Everything that is not the report itself */
   .dash-gate, .dash-topbar, .dash-hero, .dash-notice, .dash-summary,
   .dash-toolbar, .dash-browse, .dash-detail, .dash-results, .dash-tabs,
-  .agent-dock,
+  .deal-add, .agent-dock,
   .dash-crm, .dash-investor, #wsTasks, #wsOperators, #wsHome,
   .site-footer, .dash-toast, .dash-report__crumbs, .dash-report__actions {
     display: none !important;
@@ -2475,10 +2499,17 @@ button.link-arrow {
           <label class="visually-hidden" for="searchInput">Search all documents</label>
           <input type="search" id="searchInput" placeholder="Search all documents" autocomplete="off">
         </div>
+        <button class="dash-refresh dash-refresh--primary" id="dealAddBtn">Add deal</button>
         <button class="dash-refresh" id="reportBtn">Portfolio report</button>
         <button class="dash-refresh" id="refreshBtn">Refresh</button>
         <span class="dash-updated" id="lastSynced"></span>
       </div>
+
+      <!-- Adding a deal. The form is written by dealAddForm() when the button
+           is pressed and sits under the toolbar rather than inside a view, so
+           it opens over the card grid, a deal folder or a set of search
+           results without any of them having to be left first. -->
+      <div class="deal-add" id="dealAddPanel" hidden></div>
 
       <!-- Category grid -->
       <div class="dash-browse" id="viewBrowse">
@@ -3525,14 +3556,24 @@ button.link-arrow {
   /* ============================================================
      RENDER — category grid
      ============================================================ */
-  function cardsFor(categories, byId) {
+  function cardsFor(categories, byId, opts) {
+    opts = opts || {};
     return categories.map(function (cat) {
       var s = byId[cat.id] || { count: 0, lastModified: null };
+      // Deals added here have no documents behind them, so they cannot be
+      // counted as documents. They are said separately rather than left off:
+      // a card reading "nothing filed yet" under a deal somebody added this
+      // morning is the card contradicting the list underneath it.
+      var waiting = opts.pending ? pendingDealsFor(cat.id).length : 0;
       var meta = s.count
         ? '<span class="count">' + s.count + ' document' + (s.count === 1 ? '' : 's') + '</span>' +
           '<span class="sep">·</span>' +
           '<span class="muted">Updated ' + esc(fmtRelative(s.lastModified)) + '</span>'
         : '<span class="dash-card__unmapped">Nothing filed yet</span>';
+      if (waiting) {
+        meta += '<span class="sep">·</span>' +
+                '<span class="muted">' + waiting + ' awaiting a folder</span>';
+      }
 
       return '' +
         '<button class="dash-card" type="button" data-cat="' + esc(cat.id) + '">' +
@@ -3617,7 +3658,7 @@ button.link-arrow {
   function renderGrid() {
     var byId = {};
     state.summaries.forEach(function (s) { byId[s.id] = s; });
-    $("areaGrid").innerHTML = cardsFor(areasFor("docs"), byId);
+    $("areaGrid").innerHTML = cardsFor(areasFor("docs"), byId, { pending: true });
     $("typeGrid").innerHTML = cardsFor(DASHBOARD_CONFIG.types, byId);
   }
 
@@ -3771,9 +3812,31 @@ button.link-arrow {
       // At the top of an area every folder is a deal, so a deal the CRM has
       // marked dead or on hold says so here too. The folder is untouched —
       // this is the CRM's note about it, shown where it is useful.
-      var dealState = opts.dealLevel && it.type === "folder" ? Crm.dealStatus(it.name) : null;
+      var dealState = (opts.dealLevel && it.type === "folder") || it.pending
+        ? Crm.dealStatus(it.name) : null;
       var stateTag = dealState && dealState.status !== "Live"
         ? '<span class="deal-status" data-state="' + esc(dealState.status) + '">' + esc(dealState.status) + '</span>' : "";
+
+      // A deal added on this page. It is a name, not a folder, so the row
+      // does not open anything and does not pretend to a modified date or a
+      // size — it carries who runs it, when it was added, and a way to take
+      // it back off the list.
+      if (it.pending) {
+        return '<tr class="is-pending">' +
+          '<td><span class="fileitem fileitem--pending" data-pending-deal="' + esc(it.name) + '">' +
+            iconFor(it) +
+            '<span><span class="fileitem__label' + (stateTag ? " crm-deadtag" : "") + '">' +
+              esc(it.name) + '</span>' + stateTag +
+              '<span class="deal-pending">No folder yet</span>' +
+              (it.note ? '<span class="fileitem__sub">' + esc(it.note) + '</span>' : "") +
+            '</span>' +
+          '</span></td>' +
+          '<td><span class="filetype">Deal</span>' + (catTag ? '<br>' + catTag : "") + '</td>' +
+          '<td>' + (it.addedAt ? "Added " + esc(it.addedAt) : "—") + '</td>' +
+          '<td>' + esc(it.operator || "—") + '</td>' +
+          '<td><button class="deal-remove" type="button" data-deal-remove="' + esc(it.name) + '">Remove</button></td>' +
+        '</tr>';
+      }
 
       return '<tr>' +
         '<td><button class="fileitem" type="button" data-item="' + esc(it.name) + '" data-kind="' + esc(it.type) + '"' +
@@ -3866,13 +3929,21 @@ button.link-arrow {
       if (state.categoryId !== catId) return;   // user navigated away mid-load
       var fileCount = items.filter(function (i) { return i.type === "file"; }).length;
       var dirCount  = items.length - fileCount;
+
+      // Top of an area: these rows are the deals themselves, which is the one
+      // place a deal added here belongs. Counted apart from the folders,
+      // because it is not one.
+      var atDealLevel = state.path.length === 0 &&
+                        DASHBOARD_CONFIG.areas.some(function (a) { return a.id === catId; });
+      var waiting = atDealLevel ? pendingDealsFor(catId) : [];
+
       wsEl("count", ws).innerHTML =
         '<span>' + fileCount + ' file' + (fileCount === 1 ? '' : 's') + '</span>' +
-        (dirCount ? '<span class="sep">·</span><span>' + dirCount + ' folder' + (dirCount === 1 ? '' : 's') + '</span>' : '');
-      wsEl("body", ws).innerHTML = fileTable(items, {
-        // Top of an area: these rows are the deals themselves.
-        dealLevel: state.path.length === 0 &&
-                   DASHBOARD_CONFIG.areas.some(function (a) { return a.id === catId; }),
+        (dirCount ? '<span class="sep">·</span><span>' + dirCount + ' folder' + (dirCount === 1 ? '' : 's') + '</span>' : '') +
+        (waiting.length ? '<span class="sep">·</span><span>' + waiting.length +
+                          ' awaiting a folder</span>' : '');
+      wsEl("body", ws).innerHTML = fileTable(items.concat(waiting), {
+        dealLevel: atDealLevel,
         emptyTitle: "Nothing in this folder",
         emptyBody: "No documents have been filed here yet."
       });
@@ -3901,6 +3972,21 @@ button.link-arrow {
     Provider.search(q).then(function (hits) {
       if (wsEl("search", ws).value.trim() !== q.trim()) return;  // stale response
       hits = hits.filter(function (h) { return wsForCategory(h.categoryId) === ws; });
+
+      // A deal added on this page is not in the folder index, and a search
+      // that answered "no results" for a name sitting on the pipeline would
+      // be the page disagreeing with itself.
+      if (ws === "docs") {
+        var needle = q.trim().toLowerCase();
+        areasFor("docs").forEach(function (area) {
+          pendingDealsFor(area.id).forEach(function (d) {
+            if (d.name.toLowerCase().indexOf(needle) === -1) return;
+            d.categoryId = area.id;
+            hits.push(d);
+          });
+        });
+      }
+
       wsEl("resultsHead", ws).textContent = hits.length
         ? hits.length + " result" + (hits.length === 1 ? "" : "s") + ' for "' + q + '"'
         : 'No results for "' + q + '"';
@@ -3911,6 +3997,187 @@ button.link-arrow {
         emptyBody: "Try a shorter search term, or open a folder and browse instead."
       });
     });
+  }
+
+  /* ============================================================
+     ADDING A DEAL
+
+     The pipeline is a mirror of a OneDrive folder, and a mirror
+     cannot create what it reflects: nothing on this page can make
+     a folder, and nothing on it should try. So a deal added here
+     is a NAME the firm is working on, held beside the folders in
+     the same local overlay every other edit uses, and shown in the
+     list marked "No folder yet" rather than dressed up as one.
+
+     It is the same list the CRM's link offer writes to, so a deal
+     added on either side is one deal, and it joins the deal
+     pickers on both CRMs and the task list straight away.
+
+     When somebody does create the folder, the next snapshot brings
+     it in and the pending row drops out on its own — the folder is
+     the better answer to the same name. Nothing has to be tidied
+     up by hand for that to happen.
+     ============================================================ */
+
+  function pendingDealsFor(catId) {
+    if (!Crm || !Crm.addedDealRecords) return [];
+    var folders = dealNames().map(function (n) { return n.toLowerCase(); });
+    return Crm.addedDealRecords().filter(function (r) {
+      return (r.area || "active-deals") === catId &&
+             folders.indexOf(r.name.toLowerCase()) === -1;
+    }).map(function (r) {
+      return { name: r.name, type: "folder", pending: true,
+               ext: null, size: null, modified: null, modifiedBy: null, url: null,
+               operator: r.operator, note: r.note, addedAt: r.addedAt };
+    });
+  }
+
+  function dealAddForm() {
+    function field(id, label, control, wide) {
+      return '<div class="crm-field' + (wide ? " crm-field--wide" : "") + '">' +
+             '<label for="' + id + '">' + esc(label) + '</label>' + control + '</div>';
+    }
+    function note(text) { return '<span class="crm-field__note">' + esc(text) + '</span>'; }
+    function options(values, labels) {
+      return values.map(function (v, i) {
+        return '<option value="' + esc(v) + '">' + esc(labels ? labels[i] : v) + '</option>';
+      }).join("");
+    }
+
+    var areas = areasFor("docs");
+    var operators = Operators.all().map(function (o) { return o.name; });
+
+    return '<div class="crm-edit">' +
+      '<h3>New deal</h3>' +
+      '<p class="crm-edit__lede">This puts the deal on the pipeline list and into the deal pickers ' +
+        'on both CRMs and the task list. It does <strong>not</strong> create the OneDrive folder — ' +
+        'this page mirrors that folder and cannot write to it. Until somebody creates it, the deal ' +
+        'shows in the list with nothing filed behind it, which is what the row says.</p>' +
+      '<div class="crm-edit__grid">' +
+        field("dealNewName", "Deal name",
+          '<input type="text" id="dealNewName" autocomplete="off" ' +
+            'placeholder="Sponsor - Asset Name (City, ST)">' +
+          note("Name it the way the folder will be named. Matching it is what lets the two meet " +
+               "when the folder is created — the row disappears and the folder takes its place.")) +
+        field("dealNewArea", "Where it sits",
+          '<select id="dealNewArea">' +
+            options(areas.map(function (a) { return a.id; }),
+                    areas.map(function (a) { return a.label; })) +
+          '</select>') +
+        field("dealNewStatus", "Status",
+          '<select id="dealNewStatus">' + options(DEAL_STATES) + '</select>' +
+          note("Anything other than Live is a CRM-side note, shown wherever the deal appears.")) +
+        field("dealNewOperator", "Operator",
+          '<input type="text" id="dealNewOperator" autocomplete="off" list="dealOperatorNames" ' +
+            'placeholder="Who runs it">' +
+          note("Optional. A name already on the Operator CRM picks the deal up on their record; " +
+               "anything else is kept on the deal and no operator is invented.")) +
+        field("dealNewNote", "Note",
+          '<textarea id="dealNewNote" placeholder="Anything worth carrying until the folder exists."></textarea>',
+          true) +
+      '</div>' +
+      '<div class="crm-edit__actions">' +
+        '<button class="dash-refresh dash-refresh--primary" id="dealNewSave">Add deal</button>' +
+        '<button class="dash-refresh" id="dealNewCancel">Cancel</button>' +
+        '<span class="crm-edit__derived">Held in this browser like every other edit here. ' +
+          '“Download crm-data.json” on the Investor CRM tab writes it back to the file.</span>' +
+      '</div>' +
+      '<datalist id="dealOperatorNames">' +
+        operators.map(function (n) { return '<option value="' + esc(n) + '">'; }).join("") +
+      '</datalist>' +
+    '</div>';
+  }
+
+  function openDealAdd() {
+    var panel = $("dealAddPanel");
+    if (!panel.hidden) { closeDealAdd(); return; }   // the button is a toggle
+    panel.innerHTML = dealAddForm();
+    panel.hidden = false;
+    $("dealNewSave").addEventListener("click", saveNewDeal);
+    $("dealNewCancel").addEventListener("click", closeDealAdd);
+    $("dealNewName").addEventListener("keydown", function (e) {
+      if (e.key === "Enter") { e.preventDefault(); saveNewDeal(); }
+    });
+    $("dealNewName").focus();
+  }
+
+  function closeDealAdd() {
+    var panel = $("dealAddPanel");
+    panel.hidden = true;
+    panel.innerHTML = "";
+  }
+
+  function saveNewDeal() {
+    var name = $("dealNewName").value.trim();
+    if (!name) {
+      toast("Give the deal a name first.");
+      $("dealNewName").focus();
+      return;
+    }
+    // Both of these are already-exists rather than errors, so they say which
+    // one it is: one has a folder behind it, the other is on this same list.
+    if (matchesFolder(name)) {
+      toast("“" + name + "” is already a folder in OneDrive — it is in the list already.");
+      return;
+    }
+    if (matchesAddedDeal(name)) {
+      toast("“" + name + "” is already on the deal list.");
+      return;
+    }
+    if (matchesInvestor(name)) {
+      toast("“" + name + "” is an investor on the CRM, not a deal.");
+      return;
+    }
+
+    var area     = $("dealNewArea").value || "active-deals";
+    var status   = $("dealNewStatus").value || "Live";
+    var operator = $("dealNewOperator").value.trim();
+    var note     = $("dealNewNote").value.trim();
+
+    // An operator already on the Operator CRM picks the deal up on their
+    // record, so the two tabs agree without anyone typing the name twice.
+    // The record's own spelling wins over what was typed into the box.
+    var matched = operator ? Operators.all().filter(function (o) {
+      return o.name.toLowerCase() === operator.toLowerCase();
+    })[0] : null;
+    if (matched) operator = matched.name;
+
+    var saved = Crm.addDeal(name, { area: area, operator: operator, note: note });
+    if (status !== "Live") Crm.setDealStatus(saved, status, "set when the deal was added");
+
+    if (matched && matched.deals.indexOf(saved) === -1) {
+      Operators.patch(matched.id, { deals: matched.deals.concat([saved]) });
+      renderOperators();
+    }
+
+    closeDealAdd();
+    afterLinkAdd();      // the pickers, the CRM list and the link offers take it up
+    renderGrid();
+    openCategory(area);
+
+    toast("Added “" + saved + "” to " + ((catById(area) || {}).label || "the pipeline") +
+          (matched ? " under " + matched.name : "") +
+          ". No OneDrive folder yet — this page mirrors that folder, it cannot create one.");
+  }
+
+  // Two clicks, not one — but not a diff either. There is nothing behind the
+  // name to lose, so the second click is a check against a mis-click rather
+  // than a decision worth staging.
+  function removeDealRow(button) {
+    var name = button.getAttribute("data-deal-remove");
+    if (button.getAttribute("data-armed") !== "1") {
+      button.setAttribute("data-armed", "1");
+      button.textContent = "Remove?";
+      toast("Click again to take “" + name + "” off the list. It has no folder and no documents, " +
+            "so nothing else goes with it.");
+      return;
+    }
+    Crm.removeAddedDeal(name);
+    afterLinkAdd();
+    renderGrid();
+    if (state.view === "results") runSearch(wsEl("search").value);
+    else openCategory(state.categoryId, state.path);
+    toast("“" + name + "” is off the deal list.");
   }
 
   /* ============================================================
@@ -4536,7 +4803,7 @@ button.link-arrow {
     var OVERLAY_KEY = "modillion-crm-overlay";
     var overlay = { patches: {}, conversations: {}, created: [],
                     convPatches: {}, convRemoved: {},
-                    dealStatus: {}, dealsAdded: [], archived: {},
+                    dealStatus: {}, dealsAdded: [], dealsDropped: {}, archived: {},
                     learned: { aliases: {} } };
 
     function readOverlay() {
@@ -4551,6 +4818,7 @@ button.link-arrow {
         overlay.convRemoved   = o.convRemoved || {};
         overlay.dealStatus    = o.dealStatus || {};
         overlay.dealsAdded    = o.dealsAdded || [];
+        overlay.dealsDropped  = o.dealsDropped || {};
         overlay.archived      = o.archived || {};
         overlay.learned       = o.learned || { aliases: {} };
         overlay.learned.aliases = overlay.learned.aliases || {};
@@ -4569,6 +4837,7 @@ button.link-arrow {
              Object.keys(overlay.convRemoved).length > 0 ||
              Object.keys(overlay.dealStatus).length > 0 ||
              overlay.dealsAdded.length > 0 ||
+             Object.keys(overlay.dealsDropped).length > 0 ||
              Object.keys(overlay.archived).length > 0 ||
              Object.keys(overlay.learned.aliases || {}).length > 0 ||
              overlay.created.length > 0;
@@ -4805,26 +5074,96 @@ button.link-arrow {
        read it that way. This is a second, smaller list of names the firm
        is working on before — or without — a folder existing, kept here
        so it travels in crm-data.json with everything else. */
-    function addedDeals() {
-      var fromFile = (base && base.dealsAdded) || [];
-      var out = fromFile.slice();
-      overlay.dealsAdded.forEach(function (n) {
-        if (out.indexOf(n) === -1) out.push(n);
-      });
+    // Older files hold bare names; the Add deal button on the pipeline
+    // writes a record. Read both as a record so one shape reaches the page.
+    function normaliseAdded(entry) {
+      if (typeof entry === "string") entry = { name: entry };
+      entry = entry || {};
+      return {
+        name: String(entry.name || "").trim(),
+        area: entry.area || "active-deals",
+        operator: entry.operator || "",
+        note: entry.note || "",
+        addedAt: entry.addedAt || ""
+      };
+    }
+
+    function addedDealRecords() {
+      var out = [], at = {};
+      function take(entry) {
+        var rec = normaliseAdded(entry);
+        if (!rec.name) return;
+        var key = rec.name.toLowerCase();
+        if (overlay.dealsDropped[key]) return;
+        if (at[key] !== undefined) { out[at[key]] = rec; return; }  // the overlay wins
+        at[key] = out.length;
+        out.push(rec);
+      }
+      ((base && base.dealsAdded) || []).forEach(take);
+      overlay.dealsAdded.forEach(take);
       return out;
     }
 
-    function addDeal(name) {
+    // Names only. Everything that already reads this list — the pickers, the
+    // reader's guard, the task link offer — asks "is this a deal we know of",
+    // and the answer is still a name.
+    function addedDeals() {
+      return addedDealRecords().map(function (r) { return r.name; });
+    }
+
+    function addedDeal(name) {
+      var key = String(name || "").trim().toLowerCase();
+      return addedDealRecords().filter(function (r) {
+        return r.name.toLowerCase() === key;
+      })[0] || null;
+    }
+
+    // Adding the same name twice keeps the first spelling and takes whatever
+    // detail the second one carried: the CRM's link offer adds a bare name,
+    // the pipeline form adds a record, and whichever ran first should not
+    // lose what the other knew.
+    function addDeal(name, fields) {
       var clean = String(name || "").trim();
       if (!clean) return "";
-      var already = addedDeals().filter(function (n) {
-        return n.toLowerCase() === clean.toLowerCase();
-      })[0];
-      if (already) return already;
-      overlay.dealsAdded.push(clean);
+      var key = clean.toLowerCase();
+      fields = fields || {};
+      delete overlay.dealsDropped[key];
+      var already = addedDeal(clean);
+      var rec = {
+        name: already ? already.name : clean,
+        area: fields.area || (already && already.area) || "active-deals",
+        operator: fields.operator || (already && already.operator) || "",
+        note: fields.note || (already && already.note) || "",
+        addedAt: (already && already.addedAt) || new Date().toISOString().slice(0, 10)
+      };
+      var at = -1;
+      overlay.dealsAdded.forEach(function (e, i) {
+        if (normaliseAdded(e).name.toLowerCase() === key) at = i;
+      });
+      if (at === -1) overlay.dealsAdded.push(rec);
+      else overlay.dealsAdded[at] = rec;
       writeOverlay();
       rebuild();
-      return clean;
+      return rec.name;
+    }
+
+    // This one genuinely removes, where archiving an investor does not. A
+    // name with no folder carries no documents and no conversation history —
+    // there is nothing behind it to lose. Whatever else the name touched, a
+    // deal status or an investor's interest, is left exactly as it was.
+    function removeAddedDeal(name) {
+      var key = String(name || "").trim().toLowerCase();
+      if (!key) return false;
+      if (!addedDeal(key)) return false;
+      overlay.dealsAdded = overlay.dealsAdded.filter(function (e) {
+        return normaliseAdded(e).name.toLowerCase() !== key;
+      });
+      // One that arrived in crm-data.json cannot be spliced out of the file
+      // from here, so the removal is recorded and applied on the way out.
+      overlay.dealsDropped[key] = new Date().toISOString().slice(0, 10);
+      writeOverlay();
+      rebuild();
+      return true;
     }
 
     /* ---- archive --------------------------------------------------
@@ -4893,7 +5232,7 @@ button.link-arrow {
         intake: meta.intake,
         stages: CRM_STAGES,
         dealStatus: dealStatuses(),
-        dealsAdded: addedDeals(),
+        dealsAdded: addedDealRecords(),
         learned: { aliases: keep },
         investors: merged
       };
@@ -4918,7 +5257,10 @@ button.link-arrow {
       dealStatuses: dealStatuses,
       setDealStatus: setDealStatus,
       addedDeals: addedDeals,
+      addedDealRecords: addedDealRecords,
+      addedDeal: addedDeal,
       addDeal: addDeal,
+      removeAddedDeal: removeAddedDeal,
       archive: archive,
       isArchived: isArchived,
       learned: learned,
@@ -4929,7 +5271,7 @@ button.link-arrow {
       clearOverlay: function () {
         overlay = { patches: {}, conversations: {}, created: [],
                     convPatches: {}, convRemoved: {},
-                    dealStatus: {}, dealsAdded: [], archived: {},
+                    dealStatus: {}, dealsAdded: [], dealsDropped: {}, archived: {},
                     learned: { aliases: {} } };
         writeOverlay();
         rebuild();
@@ -8691,6 +9033,18 @@ button.link-arrow {
       return;
     }
 
+    var removeDeal = e.target.closest("[data-deal-remove]");
+    if (removeDeal) { removeDealRow(removeDeal); return; }
+
+    // A row with no folder behind it opens nothing. Said out loud rather
+    // than left as a click that quietly does not work.
+    var pending = e.target.closest("[data-pending-deal]");
+    if (pending) {
+      toast("“" + pending.getAttribute("data-pending-deal") + "” was added here and has no " +
+            "OneDrive folder yet, so there is nothing to open.");
+      return;
+    }
+
     var item = e.target.closest(".fileitem");
     if (item) {
       var isFolder = item.getAttribute("data-kind") === "folder";
@@ -8722,6 +9076,8 @@ button.link-arrow {
   });
 
   $("refreshBtn").addEventListener("click", function () { load(); });
+
+  $("dealAddBtn").addEventListener("click", openDealAdd);
 
   var assetSearchTimer = null;
   $("assetSearchInput").addEventListener("input", function (e) {

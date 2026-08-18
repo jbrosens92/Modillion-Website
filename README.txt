@@ -94,6 +94,44 @@ The Deal Pipeline tab (dashboard.html) — renamed from "Documents" 2026-08-18:
 - It now carries Active Deals and Closed Deals only. Asset Management moved to its own tab
   (below), so the tiles count the pipeline and the category count reads 2 + 8.
 
+"Add deal", on the Deal Pipeline toolbar — added 2026-08-18:
+- What it does NOT do first, because it is the whole shape of the thing: it does not create the
+  OneDrive folder. This page mirrors that folder and cannot write to it, and nothing here should
+  be able to reach into it. A deal added with this button is a NAME the firm is working on,
+  held in the same local overlay as every other edit on the page.
+- Where it shows: at the top of Active Deals or Closed Deals, whichever the form was set to,
+  sitting with the folders it will one day join and marked "No folder yet". It carries the
+  operator, a note and the date it was added instead of a modified stamp and a size, and clicking
+  it says there is nothing to open rather than opening an empty folder. The area card says
+  "N awaiting a folder" beside the document count, and a search on the tab finds it — a page
+  that let you add a deal and then answered "no results" for its name would be disagreeing
+  with itself.
+- The fields are name, area, status, operator and a note. Status writes the same CRM-side deal
+  status the Investor CRM sets, so marking it On hold or Dead here strikes it through everywhere
+  it appears. An operator already on the Operator CRM picks the deal up on their record, using
+  the record's own spelling rather than what was typed; a name that is not on that CRM is kept
+  on the deal and no operator record is invented.
+- IT IS THE SAME LIST the CRM's "add as a deal" offer writes to (dealsAdded in crm-data.json),
+  so a deal added on either side is one deal. It joins the deal pickers on both CRMs and the
+  task list straight away. That list used to hold bare names and now holds records — name, area,
+  operator, note, date. Old files holding plain strings still read, as Active Deals with the
+  rest blank.
+- Names are checked three ways before anything is saved: one that is already a OneDrive folder,
+  one already on this list, and one that is an investor on the CRM each get their own message
+  and nothing is written. Matching is case-insensitive.
+- Remove takes two clicks (the button arms itself and says so). This one genuinely removes,
+  where archiving an investor does not: a name with no folder carries no documents and no
+  conversation history, so there is nothing behind it to lose. What the name touched elsewhere
+  — a deal status, an investor's interest, an operator's deal list — is left exactly as it was.
+- When somebody creates the folder for real, the next snapshot brings it in and the pending row
+  drops out on its own: the folder is the better answer to the same name. Nothing has to be
+  tidied up by hand, which is why the form says to name it the way the folder will be named.
+- Saved in the browser like every other edit here. "Download crm-data.json" on the Investor CRM
+  tab writes it back to the file — same sharing limit as the rest of the page.
+- Known limits, deliberate: the reports count documents and folders, so a deal with neither does
+  not appear in them; and the chat agent reads deal FOLDERS, so it does not yet know about a deal
+  added here. Both are small additions if they start to matter.
+
 Investor CRM (dashboard.html, "Investor CRM" tab) — added 2026-08-17:
 - Tracks investor conversations: who the investor is, what type (family office, institutional,
   endowment, GP-stakes fund, platform), check size, which deals they are interested in, the
