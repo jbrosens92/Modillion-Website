@@ -6469,12 +6469,14 @@ button.link-arrow {
     // guard as the owner box on an investor record.
     var people = Tasks.team().slice();
     var onRoster = people.some(function (p) { return p.id === t.assignee; });
-    if (t.assignee && !onRoster) people.push({ id: t.assignee, name: Tasks.personName(t.assignee), role: "" });
+    if (t.assignee && !onRoster) people.push({ id: t.assignee, name: Tasks.personName(t.assignee) });
 
+    // Names only. There are four of them and everybody knows who does what,
+    // so the titles were length in a dropdown rather than information.
     var assignee = '<select id="taskEditAssignee"><option value="">Unassigned</option>' +
       people.map(function (p) {
         return '<option value="' + esc(p.id) + '"' + (p.id === t.assignee ? " selected" : "") + '>' +
-               esc(p.name) + (p.role ? " — " + esc(p.role) : "") + '</option>';
+               esc(p.name) + '</option>';
       }).join("") + '</select>';
 
     return '<li class="task-edit">' +
@@ -6570,8 +6572,7 @@ button.link-arrow {
     var me = Tasks.whoAmI();
 
     var people = team.map(function (p) {
-      return '<option value="' + esc(p.id) + '">' + esc(p.name) +
-             (p.role ? " — " + esc(p.role) : "") + '</option>';
+      return '<option value="' + esc(p.id) + '">' + esc(p.name) + '</option>';
     }).join("");
 
     $("taskAssignee").innerHTML = '<option value="">Unassigned</option>' + people;
