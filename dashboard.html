@@ -1576,6 +1576,8 @@ button.link-arrow {
 }
 .crm-fact__value { font-size: 1rem; color: var(--deep-space); line-height: 1.4; }
 .crm-fact__value.is-empty { color: var(--muted); font-style: italic; font-size: .9rem; }
+.crm-fact__value a { color: var(--steel); text-decoration: none; word-break: break-all; }
+.crm-fact__value a:hover { text-decoration: underline; }
 
 /* Editing a record by hand. The panel stands where the facts grid stood,
    so the page does not jump, and it writes nothing until Save — same rule
@@ -5113,6 +5115,13 @@ button.link-arrow {
                    esc(status.status) + '</span>' : "");
   }
 
+  // The main person at the firm. The record can hold several — the People
+  // section lists them all — but one of them is the address you write to,
+  // and that is the one worth showing next to the owner and the stage.
+  function primaryContact(inv) {
+    return (inv.contacts && inv.contacts[0]) || null;
+  }
+
   function lastContact(inv) {
     if (!inv.conversations.length) return null;
     return inv.conversations[0].date || null;
@@ -5142,7 +5151,7 @@ button.link-arrow {
 
       var haystack = [inv.name, inv.type, inv.location, inv.mandate, inv.why,
                       inv.aum, inv.tags.join(" "), inv.deals.join(" "),
-                      inv.contacts.map(function (c) { return c.name + " " + (c.email || ""); }).join(" "),
+                      inv.contacts.map(function (c) { return (c.name || "") + " " + (c.email || ""); }).join(" "),
                       inv.research.map(function (r) { return r.note; }).join(" "),
                       inv.conversations.map(function (c) {
                         return [c.summary, c.next, c.who, c.subject].join(" ");
@@ -5266,6 +5275,11 @@ button.link-arrow {
       ["Location", esc(inv.location)],
       ["Owner", esc(inv.owner)],
       ["Priority", esc(inv.priority)],
+      ["Contact", esc((primaryContact(inv) || {}).name || "")],
+      ["Contact email", (primaryContact(inv) || {}).email
+        ? '<a href="mailto:' + esc(primaryContact(inv).email) + '">' +
+          esc(primaryContact(inv).email) + '</a>'
+        : ""],
       ["Last contact", lastContact(inv) ? esc(lastContact(inv)) : ""]
     ].map(function (pair) {
       var empty = !pair[1];
@@ -5308,7 +5322,10 @@ button.link-arrow {
         '</div></div>');
     }
 
-    if (inv.contacts.length) {
+    // The main contact is already in the facts grid above. Repeating it here
+    // as a one-line roster reads as a bug, so People appears once it has
+    // something to add: a second person, or a title on the first.
+    if (inv.contacts.length > 1 || (inv.contacts.length === 1 && inv.contacts[0].title)) {
       parts.push('<div class="crm-section"><h3>People</h3><ul class="crm-research">' +
         inv.contacts.map(function (c) {
           return '<li><strong>' + esc(c.name || "—") + '</strong>' +
@@ -5394,6 +5411,7 @@ button.link-arrow {
              (extra || "") + '>';
     }
 
+    var contact = primaryContact(inv) || { name: "", email: "", title: "" };
     var records = Crm.allIncludingArchived();
     var types = uniqVals(records.map(function (i) { return i.type; }));
     var owners = uniqVals(records.map(function (i) { return i.owner; }));
@@ -5424,6 +5442,12 @@ button.link-arrow {
         field("editWebsite", "Website",
           '<input type="url" id="editWebsite" value="' + esc(inv.website) +
           '" autocomplete="off" placeholder="https://">') +
+        field("editContactName", "Contact name", text("editContactName", contact.name)) +
+        field("editContactEmail", "Contact email",
+          '<input type="email" id="editContactEmail" value="' + esc(contact.email || "") +
+          '" autocomplete="off" placeholder="name@firm.com">' +
+          note("The address the email reader matches a forwarded thread on, so it is worth " +
+               "filling in even when the name is not known.")) +
         field("editTags", "Tags",
           text("editTags", inv.tags.join(", ")) + note("Separated by commas."), true) +
         field("editDeals", "Deals of interest",
@@ -5440,8 +5464,9 @@ button.link-arrow {
         '<button class="dash-refresh" data-crm-edit-cancel="' + esc(inv.id) + '">Cancel</button>' +
         '<span class="crm-edit__derived">Last contact ' +
           (lastContact(inv) ? esc(lastContact(inv)) : "not recorded") +
-          ' — read from the newest conversation, so it is not typed here. People, research and ' +
-          'the conversation log are edited through the agent.</span>' +
+          ' — read from the newest conversation, so it is not typed here. Anyone at the firm ' +
+          'beyond the main contact, the research notes and the conversation log are edited ' +
+          'through the agent.</span>' +
       '</div></div>';
   }
 
@@ -5474,6 +5499,21 @@ button.link-arrow {
       else check.note = raw;
     }
 
+    // One primary contact, written into the first slot. A title already on
+    // the record is kept, and anyone further down the list is left alone —
+    // this form edits the main contact, it does not own the People section.
+    var contactName = val("editContactName");
+    var contactEmail = val("editContactEmail");
+    var contacts = inv.contacts.slice();
+    if (contactName || contactEmail) {
+      var first = Object.assign({}, contacts[0] || {});
+      first.name = contactName;
+      first.email = contactEmail;
+      contacts[0] = first;
+    } else if (contacts.length) {
+      contacts = contacts.slice(1);   // both boxes cleared — drop it, keep the rest
+    }
+
     Crm.patch(id, {
       name: name,
       type: val("editType") || "Unclassified",
@@ -5486,6 +5526,7 @@ button.link-arrow {
       website: val("editWebsite"),
       tags: commaList("editTags"),
       deals: commaList("editDeals"),
+      contacts: contacts,
       mandate: val("editMandate"),
       why: val("editWhy")
     });
