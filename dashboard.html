@@ -2649,7 +2649,10 @@ button.link-arrow {
               <p class="crm-field__note task-link-new" id="taskLinkNew">
                 <span data-link-why hidden>Not a deal folder or an investor on the CRM. </span>
                 <button type="button" class="task-link-new__btn"
-                        data-task-link-add="taskLink">Add investor</button>
+                        data-task-link-add="taskLink" data-as="investor">Add investor</button>
+                <span aria-hidden="true"> · </span>
+                <button type="button" class="task-link-new__btn"
+                        data-task-link-add="taskLink" data-as="deal">Add deal</button>
               </p>
             </div>
           </div>
@@ -4146,7 +4149,8 @@ button.link-arrow {
     var OVERLAY_KEY = "modillion-crm-overlay";
     var overlay = { patches: {}, conversations: {}, created: [],
                     convPatches: {}, convRemoved: {},
-                    dealStatus: {}, archived: {}, learned: { aliases: {} } };
+                    dealStatus: {}, dealsAdded: [], archived: {},
+                    learned: { aliases: {} } };
 
     function readOverlay() {
       try {
@@ -4159,6 +4163,7 @@ button.link-arrow {
         overlay.convPatches   = o.convPatches || {};
         overlay.convRemoved   = o.convRemoved || {};
         overlay.dealStatus    = o.dealStatus || {};
+        overlay.dealsAdded    = o.dealsAdded || [];
         overlay.archived      = o.archived || {};
         overlay.learned       = o.learned || { aliases: {} };
         overlay.learned.aliases = overlay.learned.aliases || {};
@@ -4176,6 +4181,7 @@ button.link-arrow {
              Object.keys(overlay.convPatches).length > 0 ||
              Object.keys(overlay.convRemoved).length > 0 ||
              Object.keys(overlay.dealStatus).length > 0 ||
+             overlay.dealsAdded.length > 0 ||
              Object.keys(overlay.archived).length > 0 ||
              Object.keys(overlay.learned.aliases || {}).length > 0 ||
              overlay.created.length > 0;
@@ -4403,6 +4409,34 @@ button.link-arrow {
       rebuild();
     }
 
+    /* A deal named here rather than in OneDrive. It is deliberately not
+       folded into dealNames(): that list means "has a folder", and the
+       reader, the agent's context and the deals-of-interest guard all
+       read it that way. This is a second, smaller list of names the firm
+       is working on before — or without — a folder existing, kept here
+       so it travels in crm-data.json with everything else. */
+    function addedDeals() {
+      var fromFile = (base && base.dealsAdded) || [];
+      var out = fromFile.slice();
+      overlay.dealsAdded.forEach(function (n) {
+        if (out.indexOf(n) === -1) out.push(n);
+      });
+      return out;
+    }
+
+    function addDeal(name) {
+      var clean = String(name || "").trim();
+      if (!clean) return "";
+      var already = addedDeals().filter(function (n) {
+        return n.toLowerCase() === clean.toLowerCase();
+      })[0];
+      if (already) return already;
+      overlay.dealsAdded.push(clean);
+      writeOverlay();
+      rebuild();
+      return clean;
+    }
+
     /* ---- archive --------------------------------------------------
        Deliberately not a delete. A record carries the only history of
        who said what, and a typo in a name should not be able to
@@ -4469,6 +4503,7 @@ button.link-arrow {
         intake: meta.intake,
         stages: CRM_STAGES,
         dealStatus: dealStatuses(),
+        dealsAdded: addedDeals(),
         learned: { aliases: keep },
         investors: merged
       };
@@ -4492,6 +4527,8 @@ button.link-arrow {
       dealStatus: dealStatus,
       dealStatuses: dealStatuses,
       setDealStatus: setDealStatus,
+      addedDeals: addedDeals,
+      addDeal: addDeal,
       archive: archive,
       isArchived: isArchived,
       learned: learned,
@@ -4502,7 +4539,8 @@ button.link-arrow {
       clearOverlay: function () {
         overlay = { patches: {}, conversations: {}, created: [],
                     convPatches: {}, convRemoved: {},
-                    dealStatus: {}, archived: {}, learned: { aliases: {} } };
+                    dealStatus: {}, dealsAdded: [], archived: {},
+                    learned: { aliases: {} } };
         writeOverlay();
         rebuild();
       }
@@ -5282,7 +5320,7 @@ button.link-arrow {
     $("crmInvestorNames").innerHTML = Crm.all().map(function (i) {
       return '<option value="' + esc(i.name) + '">';
     }).join("");
-    $("crmDealNames").innerHTML = dealNames().map(function (d) {
+    $("crmDealNames").innerHTML = dealNames().concat(Crm.addedDeals()).map(function (d) {
       return '<option value="' + esc(d) + '">';
     }).join("");
 
@@ -6514,7 +6552,10 @@ button.link-arrow {
           '<p class="crm-field__note task-link-new" id="taskEditLinkNew">' +
             '<span data-link-why hidden>Not a deal folder or an investor on the CRM. </span>' +
             '<button type="button" class="task-link-new__btn" ' +
-                    'data-task-link-add="taskEditLink">Add investor</button>' +
+                    'data-task-link-add="taskEditLink" data-as="investor">Add investor</button>' +
+            '<span aria-hidden="true"> · </span>' +
+            '<button type="button" class="task-link-new__btn" ' +
+                    'data-task-link-add="taskEditLink" data-as="deal">Add deal</button>' +
           '</p>', true) +
         field("taskEditNotes", "Notes",
           '<textarea id="taskEditNotes">' + esc(t.notes) + '</textarea>', true) +
@@ -6619,10 +6660,16 @@ button.link-arrow {
     $("taskWhoAmI").innerHTML = '<option value="">Nobody selected</option>' + people;
     $("taskWhoAmI").value = me;
 
-    // A task hangs off a deal or an investor; offer both.
-    $("taskLinkOptions").innerHTML = dealNames().concat(
-      Crm.all().map(function (i) { return i.name; })
-    ).map(function (v) { return '<option value="' + esc(v) + '">'; }).join("");
+    // A task hangs off a deal or an investor; offer both. Deals named in
+    // the dashboard sit after the folders — the same picker, but they
+    // carry no documents, which the label says.
+    $("taskLinkOptions").innerHTML =
+      dealNames().map(function (v) { return '<option value="' + esc(v) + '">'; })
+      .concat(Crm.addedDeals().map(function (v) {
+        return '<option value="' + esc(v) + '">' + esc(v + " — deal, no folder yet") + '</option>';
+      }))
+      .concat(Crm.all().map(function (i) { return '<option value="' + esc(i.name) + '">'; }))
+      .join("");
   }
 
   /* ---- relating a task to something that does not exist yet ---- */
@@ -6634,9 +6681,20 @@ button.link-arrow {
   // one nobody knows they have. It names what it would add once there is
   // something to name. Deals are not offered — those are OneDrive
   // folders, and one invented here would have no documents behind it.
-  function matchesDeal(name) {
+  // Two lists, and the difference matters: one is folders in OneDrive,
+  // the other is deals named here that have none yet.
+  function matchesFolder(name) {
     var v = name.trim().toLowerCase();
     return !!v && dealNames().some(function (n) { return String(n).toLowerCase() === v; });
+  }
+
+  function matchesAddedDeal(name) {
+    var v = name.trim().toLowerCase();
+    return !!v && Crm.addedDeals().some(function (n) { return String(n).toLowerCase() === v; });
+  }
+
+  function matchesDeal(name) {
+    return matchesFolder(name) || matchesAddedDeal(name);
   }
 
   function matchesInvestor(name) {
@@ -6655,8 +6713,10 @@ button.link-arrow {
     var isNew = name.length > 1 && !matchesDeal(name) && !matchesInvestor(name);
 
     slot.querySelector("[data-link-why]").hidden = !isNew;
-    slot.querySelector("[data-task-link-add]").textContent =
-      isNew ? "Add “" + name + "” as a new investor" : "Add investor";
+    slot.querySelector("[data-as='investor']").textContent =
+      isNew ? "Add “" + name + "” as an investor" : "Add investor";
+    slot.querySelector("[data-as='deal']").textContent =
+      isNew ? "as a deal" : "Add deal";
   }
 
   function refreshLinkOffers() {
@@ -6664,19 +6724,28 @@ button.link-arrow {
     refreshLinkOffer("taskEditLink", "taskEditLinkNew");
   }
 
-  function addInvestorFromLink(inputId) {
+  function addFromLink(inputId, as) {
     var input = $(inputId);
     if (!input) return;
 
     var name = input.value.trim();
     if (!name) {
-      toast("Type the name in Related to first, then press Add investor.");
+      toast("Type the name in Related to first, then press Add " + as + ".");
       input.focus();
       return;
     }
 
-    if (matchesDeal(name)) {
+    if (as === "deal") return addDealFromLink(input, name);
+    return addInvestorFromLink(input, name);
+  }
+
+  function addInvestorFromLink(input, name) {
+    if (matchesFolder(name)) {
       toast("“" + name + "” is a deal folder, not an investor.");
+      return;
+    }
+    if (matchesAddedDeal(name)) {
+      toast("“" + name + "” is already on the list as a deal.");
       return;
     }
 
@@ -6693,13 +6762,41 @@ button.link-arrow {
     // investor form.
     var inv = Crm.create({ name: name });
     input.value = inv.name;
+    afterLinkAdd();
+    toast("Added " + inv.name + " to the CRM at " + inv.stage +
+          " — open the Investor CRM tab to fill in the rest.");
+  }
 
-    fillTaskSelects();                 // the datalist picks the new name up
+  function addDealFromLink(input, name) {
+    if (matchesFolder(name)) {
+      toast("“" + name + "” is already a deal folder in OneDrive.");
+      return;
+    }
+    if (matchesAddedDeal(name)) {
+      toast("“" + name + "” is already on the deal list.");
+      refreshLinkOffers();
+      return;
+    }
+
+    var investor = matchesInvestor(name);
+    if (investor) {
+      toast(investor.name + " is an investor on the CRM, not a deal.");
+      return;
+    }
+
+    // A name, and nothing behind it. Said plainly here rather than found
+    // out later by somebody looking for the documents.
+    input.value = Crm.addDeal(name);
+    afterLinkAdd();
+    toast("Added “" + name + "” as a deal. There is no OneDrive folder behind it — " +
+          "the dashboard mirrors that folder, it cannot create one.");
+  }
+
+  function afterLinkAdd() {
+    fillTaskSelects();                 // the pickers take the new name up
     renderCrmFilters();
     renderCrm();
     refreshLinkOffers();
-    toast("Added " + inv.name + " to the CRM at " + inv.stage +
-          " — open the Investor CRM tab to fill in the rest.");
   }
 
   /* ---- add and edit ------------------------------------------- */
@@ -6857,7 +6954,11 @@ button.link-arrow {
     if (edit) { editTask(edit.getAttribute("data-task-edit")); return; }
 
     var linkAdd = e.target.closest("[data-task-link-add]");
-    if (linkAdd) { addInvestorFromLink(linkAdd.getAttribute("data-task-link-add")); return; }
+    if (linkAdd) {
+      addFromLink(linkAdd.getAttribute("data-task-link-add"),
+                  linkAdd.getAttribute("data-as"));
+      return;
+    }
 
     var save = e.target.closest("[data-task-save]");
     if (save) { saveTaskEdits(save.getAttribute("data-task-save")); return; }
