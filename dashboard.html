@@ -5504,12 +5504,24 @@ button.link-arrow {
     $("viewInvestor").hidden = name !== "investor";
   }
 
+  // Land on the record itself, not the top of the page. The agent box and
+  // the toolbar sit above it and are not what you asked to see; the sticky
+  // topbar is, so leave its height plus a little air above the breadcrumb.
+  function scrollToInvestor() {
+    var el = $("viewInvestor");
+    if (!el) return;
+    var bar = document.querySelector(".dash-topbar");
+    var offset = (bar ? bar.getBoundingClientRect().height : 0) + 20;
+    var top = window.scrollY + el.getBoundingClientRect().top - offset;
+    window.scrollTo({ top: top < 0 ? 0 : top, behavior: "smooth" });
+  }
+
   function openInvestor(id) {
     crmState.investorId = id;
     crmState.editing = false;
     showCrmView("investor");
     renderInvestor(id);
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    scrollToInvestor();
   }
 
   /* ============================================================
