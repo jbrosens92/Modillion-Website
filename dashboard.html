@@ -1959,6 +1959,19 @@ button.link-arrow {
 }
 .task-edit__remove { margin-left: auto; }
 
+/* "Related to" takes a name that is not on either list yet. Offering to
+   put it on the CRM here is cheaper than sending somebody to the other
+   tab and back, so the offer sits under the field, as a note that can
+   be pressed rather than a button competing with Add. */
+.task-link-new { display: block; }
+.task-link-new[hidden] { display: none; }
+.task-link-new__btn {
+  font-family: var(--sans); font-size: .72rem; letter-spacing: .04em;
+  color: var(--steel); background: none; border: 0; padding: 0; cursor: pointer;
+  text-decoration: underline;
+}
+.task-link-new__btn:hover { color: var(--deep-space); }
+
 @media (max-width: 700px) {
   .task-add__row { flex-direction: column; }
   .task__aside { flex-direction: column; align-items: flex-end; gap: 6px; }
@@ -2633,6 +2646,11 @@ button.link-arrow {
               <input type="text" id="taskLink" autocomplete="off" list="taskLinkOptions"
                      placeholder="A deal or an investor (optional)">
               <datalist id="taskLinkOptions"></datalist>
+              <p class="crm-field__note task-link-new" id="taskLinkNew" hidden>
+                Not a deal folder or an investor on the CRM.
+                <button type="button" class="task-link-new__btn"
+                        data-task-link-add="taskLink">Add as a new investor</button>
+              </p>
             </div>
           </div>
           <p class="crm-field__note" id="taskReadNote"></p>
@@ -6492,7 +6510,12 @@ button.link-arrow {
           '<select id="taskEditStatus">' + options(TASK_STATUSES, t.status) + '</select>') +
         field("taskEditLink", "Related to",
           '<input type="text" id="taskEditLink" autocomplete="off" list="taskLinkOptions" ' +
-          'placeholder="A deal or an investor (optional)" value="' + esc(t.link) + '">', true) +
+          'placeholder="A deal or an investor (optional)" value="' + esc(t.link) + '">' +
+          '<p class="crm-field__note task-link-new" id="taskEditLinkNew" hidden>' +
+            'Not a deal folder or an investor on the CRM. ' +
+            '<button type="button" class="task-link-new__btn" ' +
+                    'data-task-link-add="taskEditLink">Add as a new investor</button>' +
+          '</p>', true) +
         field("taskEditNotes", "Notes",
           '<textarea id="taskEditNotes">' + esc(t.notes) + '</textarea>', true) +
       '</div>' +
@@ -6602,6 +6625,68 @@ button.link-arrow {
     ).map(function (v) { return '<option value="' + esc(v) + '">'; }).join("");
   }
 
+  /* ---- relating a task to something that does not exist yet ---- */
+
+  // A name in "Related to" is normally a deal folder or an investor. One
+  // that is neither is still kept — but it is usually an investor nobody
+  // has put on the CRM, so say so and offer to add them. Deals are not
+  // offered: those are OneDrive folders, and a deal invented in the
+  // browser would have no documents behind it.
+  function knownLink(name) {
+    var v = name.trim().toLowerCase();
+    if (!v) return true;
+    return dealNames().concat(Crm.allIncludingArchived().map(function (i) { return i.name; }))
+      .some(function (n) { return String(n).toLowerCase() === v; });
+  }
+
+  function refreshLinkOffer(inputId, slotId) {
+    var input = $(inputId), slot = $(slotId);
+    if (!input || !slot) return;
+    var name = input.value.trim();
+    var offer = name.length > 1 && !knownLink(name);
+    slot.hidden = !offer;
+    if (offer) {
+      slot.querySelector("[data-task-link-add]").textContent =
+        "Add “" + name + "” as a new investor";
+    }
+  }
+
+  function refreshLinkOffers() {
+    refreshLinkOffer("taskLink", "taskLinkNew");
+    refreshLinkOffer("taskEditLink", "taskEditLinkNew");
+  }
+
+  function addInvestorFromLink(inputId) {
+    var input = $(inputId);
+    if (!input) return;
+
+    var name = input.value.trim();
+    if (!name) { toast("Type the name first."); input.focus(); return; }
+
+    var existing = Crm.allIncludingArchived().filter(function (i) {
+      return i.name.toLowerCase() === name.toLowerCase();
+    })[0];
+    if (existing) {
+      toast(existing.name + " is already on the CRM.");
+      refreshLinkOffers();
+      return;
+    }
+
+    // The bare minimum: a name and the first stage. Everything else is
+    // filled in on the record itself, where there is room to do it
+    // properly — this is a way to stop typing a task, not a second
+    // investor form.
+    var inv = Crm.create({ name: name });
+    input.value = inv.name;
+
+    fillTaskSelects();                 // the datalist picks the new name up
+    renderCrmFilters();
+    renderCrm();
+    refreshLinkOffers();
+    toast("Added " + inv.name + " to the CRM at " + inv.stage +
+          " — open the Investor CRM tab to fill in the rest.");
+  }
+
   /* ---- add and edit ------------------------------------------- */
   function readTaskLine() {
     var text = $("taskInput").value.trim();
@@ -6623,6 +6708,7 @@ button.link-arrow {
     $("taskReadNote").textContent = took.length
       ? "Read from what you typed: " + took.join(", ") + ". Correct anything before adding."
       : "Nothing recognised in the text — set the fields yourself.";
+    refreshLinkOffers();
   }
 
   function addTask() {
@@ -6651,6 +6737,7 @@ button.link-arrow {
     $("taskPriority").value = "Medium";
     $("taskAssignee").value = Tasks.whoAmI() || "";
     $("taskReadNote").textContent = "";
+    refreshLinkOffers();
   }
 
   function editTask(id) {
@@ -6659,6 +6746,7 @@ button.link-arrow {
     renderTasks();                              // second editor closes the first
     var title = $("taskEditTitle");
     if (title) { title.focus(); title.select(); }
+    refreshLinkOffers();
   }
 
   function closeTaskEditor() {
@@ -6753,6 +6841,9 @@ button.link-arrow {
     var edit = e.target.closest("[data-task-edit]");
     if (edit) { editTask(edit.getAttribute("data-task-edit")); return; }
 
+    var linkAdd = e.target.closest("[data-task-link-add]");
+    if (linkAdd) { addInvestorFromLink(linkAdd.getAttribute("data-task-link-add")); return; }
+
     var save = e.target.closest("[data-task-save]");
     if (save) { saveTaskEdits(save.getAttribute("data-task-save")); return; }
 
@@ -6790,6 +6881,12 @@ button.link-arrow {
       e.preventDefault();
       saveTaskEdits(taskState.editing);
     }
+  });
+
+  // Delegated: the editor's box is rebuilt on every render.
+  document.addEventListener("input", function (e) {
+    if (e.target.id === "taskLink") refreshLinkOffer("taskLink", "taskLinkNew");
+    if (e.target.id === "taskEditLink") refreshLinkOffer("taskEditLink", "taskEditLinkNew");
   });
 
   var taskSearchTimer = null;
