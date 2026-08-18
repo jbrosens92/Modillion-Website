@@ -2454,8 +2454,8 @@ button.link-arrow {
       <nav class="dash-tabs" aria-label="Workspace">
         <button type="button" data-tab="home" class="is-active" aria-current="page">Home</button>
         <button type="button" data-tab="docs">Deal Pipeline</button>
-        <button type="button" data-tab="crm">Investor CRM<span class="dash-tabs__count" id="tabCrmCount"></span></button>
         <button type="button" data-tab="operators">Operator CRM<span class="dash-tabs__count" id="tabOperatorCount"></span></button>
+        <button type="button" data-tab="crm">Investor CRM<span class="dash-tabs__count" id="tabCrmCount"></span></button>
         <button type="button" data-tab="assets">Asset Management<span class="dash-tabs__count" id="tabAssetCount"></span></button>
         <button type="button" data-tab="tasks">Task List<span class="dash-tabs__count" id="tabTaskCount"></span></button>
       </nav>
@@ -3606,19 +3606,19 @@ button.link-arrow {
         state.summaries.forEach(function (x) { if (ids.indexOf(x.id) !== -1) n += x.count; });
         return n ? n.toLocaleString() + " document" + (n === 1 ? "" : "s") : null;
       } },
-    { tab: "crm", label: "Investor CRM", icon: "handshake",
-      blurb: "Who has been spoken to and where it got to — check size, the deals they are " +
-             "interested in, the research behind them, and a dated log of every conversation.",
-      count: function () {
-        var n = Crm.all().length;
-        return n ? n + " investor" + (n === 1 ? "" : "s") : null;
-      } },
     { tab: "operators", label: "Operator CRM", icon: "shield",
       blurb: "The sponsors running the deals — track record, GP co-invest, vertical " +
              "integration, and which pipeline deals each one is behind.",
       count: function () {
         var n = Operators.all().length;
         return n ? n + " operator" + (n === 1 ? "" : "s") : null;
+      } },
+    { tab: "crm", label: "Investor CRM", icon: "handshake",
+      blurb: "Who has been spoken to and where it got to — check size, the deals they are " +
+             "interested in, the research behind them, and a dated log of every conversation.",
+      count: function () {
+        var n = Crm.all().length;
+        return n ? n + " investor" + (n === 1 ? "" : "s") : null;
       } },
     { tab: "assets", label: "Asset Management", icon: "building",
       blurb: "What the firm already owns, rather than what it is buying. Monthly update " +
@@ -7355,7 +7355,7 @@ button.link-arrow {
       ["Vertical integration", esc(rec.verticalIntegration)],
       ["Active deals", rec.deals.length ? String(rec.deals.length) : ""],
       ["Contact", esc((contact || {}).name || "") +
-        ((contact || {}).title ? '<span class="crm-sub">' + esc(contact.title) + '</span>' : "")],
+        ((contact || {}).title ? '<span class="crm-sub"> · ' + esc(contact.title) + '</span>' : "")],
       ["Contact email", (contact || {}).email
         ? '<a href="mailto:' + esc(contact.email) + '">' + esc(contact.email) + '</a>' : ""],
       ["Last contact", esc(rec.lastContact)]
