@@ -1914,6 +1914,11 @@ button.link-arrow {
 .task__due--soon { color: #8A5A3B; }
 .task__due--late { color: #C0392B; font-weight: 500; }
 .task__aside { flex: 0 0 auto; display: flex; align-items: center; gap: 10px; }
+.task__edit {
+  font-family: var(--sans); font-size: .72rem; letter-spacing: .06em;
+  color: var(--muted); background: none; border: 0; padding: 2px 0; cursor: pointer;
+}
+.task__edit:hover { color: var(--steel); text-decoration: underline; }
 
 .task.is-done .task__title { color: var(--muted); text-decoration: line-through; }
 .task.is-done .task__meta { opacity: .7; }
@@ -1939,8 +1944,20 @@ button.link-arrow {
 .task-pill[data-s="In progress"] { background: rgba(119, 166, 182, .18); color: #3E6C7C; }
 .task-pill[data-s="Blocked"]     { background: rgba(192, 57, 43, .1); color: #C0392B; }
 
-.task-edit { margin-top: 0; }
-.task-edit[hidden] { display: none; }
+/* Editing a task where it sits. The panel stands in the row's place so a
+   long list does not jump under the cursor, and it writes nothing until
+   Save — same rule as editing an investor record. */
+.task-edit { padding: 20px 0 22px; border-bottom: 1px solid var(--rule); }
+.task-edit__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px 22px;
+}
+.task-edit__actions {
+  display: flex; gap: 12px; flex-wrap: wrap; align-items: center;
+  margin-top: 22px;
+}
+.task-edit__remove { margin-left: auto; }
 
 @media (max-width: 700px) {
   .task-add__row { flex-direction: column; }
@@ -2587,8 +2604,9 @@ button.link-arrow {
             Write it the way you would say it. A name, a date and a priority are picked out of
             the sentence — <em>send the DDQ to North Quay by Friday, Dana, high</em> — and shown
             in the fields below so you can correct them before it is added.
-            To change a task that is already on the list, or to ask what is due,
-            talk to the agent in the corner.
+            A task already on the list is changed on the row itself — press Edit
+            beside it, or click its title. To ask what is due, talk to the agent
+            in the corner.
           </p>
 
           <div class="task-add__row">
@@ -5993,21 +6011,27 @@ button.link-arrow {
   var TASK_STATUSES = ["To do", "In progress", "Blocked", "Done"];
   var TASK_PRIORITIES = ["High", "Medium", "Low"];
 
-  // Placeholder content. Every person and task below is invented.
+  // The roster is the four partners, copied from the public team page, so a
+  // task can be assigned to a real person whether or not tasks-data.json is
+  // present — the file is gitignored, and without a roster here the published
+  // page would offer nobody. The two tasks below are invented, and are left
+  // unassigned on purpose: made-up work should not sit against a real name.
   var TASKS_FALLBACK = {
     source: "fallback",
     statuses: TASK_STATUSES,
     priorities: TASK_PRIORITIES,
     team: [
-      { id: "ab", name: "A. Brooks", role: "Partner" },
-      { id: "cd", name: "C. Duarte", role: "Associate" }
+      { id: "dw", name: "David Wolfson", role: "Managing Partner" },
+      { id: "ce", name: "Corey Ernst", role: "Partner" },
+      { id: "ee", name: "Eric Emrich", role: "Partner, CFO" },
+      { id: "jb", name: "John Brosens", role: "Partner" }
     ],
     tasks: [
       { id: "t-sample-1", title: "Circulate the quarterly investor letter",
-        assignee: "ab", due: null, priority: "Medium", status: "To do",
+        assignee: "", due: null, priority: "Medium", status: "To do",
         link: "", notes: "", created: null, done: null },
       { id: "t-sample-2", title: "Refresh the underwriting model template",
-        assignee: "cd", due: null, priority: "Low", status: "In progress",
+        assignee: "", due: null, priority: "Low", status: "In progress",
         link: "", notes: "", created: null, done: null }
     ]
   };
@@ -6369,6 +6393,10 @@ button.link-arrow {
     var f = taskState.filters;
 
     return Tasks.all().filter(function (t) {
+      // A row being edited stays put whatever the filters say — otherwise
+      // changing a filter mid-edit would take the panel out from under you.
+      if (t.id === taskState.editing) return true;
+
       if (f.who === "__mine") {
         if (t.assignee !== Tasks.whoAmI()) return false;
       } else if (f.who === "__none") {
@@ -6389,6 +6417,8 @@ button.link-arrow {
   }
 
   function taskRow(t) {
+    if (taskState.editing === t.id) return taskEditRow(t);
+
     var who = t.assignee
       ? '<span class="task__who" title="' + esc(Tasks.personName(t.assignee)) + '">' +
         esc(Tasks.initials(t.assignee)) + '</span>'
@@ -6410,11 +6440,65 @@ button.link-arrow {
         '<span class="task__meta">' + bits.join("") + '</span>' +
       '</span>' +
       '<span class="task__aside">' +
+        '<button type="button" class="task__edit" data-task-edit="' + esc(t.id) + '">Edit' +
+          '<span class="visually-hidden"> ' + esc(t.title) + '</span></button>' +
         (t.status !== "To do" && t.status !== "Done"
           ? '<span class="task-pill" data-s="' + esc(t.status) + '">' + esc(t.status) + '</span>' : "") +
         '<span class="task-pill" data-p="' + esc(t.priority) + '">' + esc(t.priority) + '</span>' +
         who +
       '</span>' +
+    '</li>';
+  }
+
+  /* The editor stands where the row stood. Everything a task carries is
+     here — including status and notes, which the tick box and the agent
+     were the only way to reach — and nothing is written until Save. */
+  function taskEditRow(t) {
+    function field(id, label, control, wide) {
+      return '<div class="crm-field' + (wide ? " crm-field--wide" : "") + '">' +
+             '<label for="' + id + '">' + esc(label) + '</label>' + control + '</div>';
+    }
+    function options(values, current) {
+      return values.map(function (v) {
+        return '<option' + (v === current ? " selected" : "") + '>' + esc(v) + '</option>';
+      }).join("");
+    }
+
+    // A task carrying somebody who is no longer on the roster keeps that
+    // person selectable, so a save can never silently unassign them. Same
+    // guard as the owner box on an investor record.
+    var people = Tasks.team().slice();
+    var onRoster = people.some(function (p) { return p.id === t.assignee; });
+    if (t.assignee && !onRoster) people.push({ id: t.assignee, name: Tasks.personName(t.assignee), role: "" });
+
+    var assignee = '<select id="taskEditAssignee"><option value="">Unassigned</option>' +
+      people.map(function (p) {
+        return '<option value="' + esc(p.id) + '"' + (p.id === t.assignee ? " selected" : "") + '>' +
+               esc(p.name) + (p.role ? " — " + esc(p.role) : "") + '</option>';
+      }).join("") + '</select>';
+
+    return '<li class="task-edit">' +
+      '<div class="task-edit__grid">' +
+        field("taskEditTitle", "Task",
+          '<input type="text" id="taskEditTitle" autocomplete="off" value="' + esc(t.title) + '">', true) +
+        field("taskEditAssignee", "Assigned to", assignee) +
+        field("taskEditDue", "Due",
+          '<input type="date" id="taskEditDue" value="' + esc(t.due || "") + '">') +
+        field("taskEditPriority", "Priority",
+          '<select id="taskEditPriority">' + options(TASK_PRIORITIES, t.priority) + '</select>') +
+        field("taskEditStatus", "Status",
+          '<select id="taskEditStatus">' + options(TASK_STATUSES, t.status) + '</select>') +
+        field("taskEditLink", "Related to",
+          '<input type="text" id="taskEditLink" autocomplete="off" list="taskLinkOptions" ' +
+          'placeholder="A deal or an investor (optional)" value="' + esc(t.link) + '">', true) +
+        field("taskEditNotes", "Notes",
+          '<textarea id="taskEditNotes">' + esc(t.notes) + '</textarea>', true) +
+      '</div>' +
+      '<div class="task-edit__actions">' +
+        '<button class="dash-refresh dash-refresh--primary" data-task-save="' + esc(t.id) + '">Save changes</button>' +
+        '<button class="dash-refresh" data-task-cancel="' + esc(t.id) + '">Cancel</button>' +
+        '<button class="dash-refresh task-edit__remove" data-task-delete="' + esc(t.id) + '">Delete</button>' +
+      '</div>' +
     '</li>';
   }
 
@@ -6476,7 +6560,8 @@ button.link-arrow {
       ? "Tasks from tasks-data.json — gitignored, local only, never deployed. " +
         "<strong>Ticks are saved in this browser.</strong> Until someone downloads the file and " +
         "puts it back in the folder, two people looking at this page see two different lists."
-      : "Placeholder tasks — the people and the work shown are invented. The real list lives in " +
+      : "Placeholder tasks — the work shown is invented, which is why none of it is assigned " +
+        "to anybody. The roster behind “Assigned to” is the real team. The live list lives in " +
         "tasks-data.json, which is not deployed with this page.";
   }
 
@@ -6543,21 +6628,6 @@ button.link-arrow {
     var title = $("taskInput").value.trim();
     if (!title) { toast("Give the task a title."); $("taskInput").focus(); return; }
 
-    if (taskState.editing) {
-      Tasks.patch(taskState.editing, {
-        title: title,
-        assignee: $("taskAssignee").value,
-        due: $("taskDue").value || null,
-        priority: $("taskPriority").value,
-        link: $("taskLink").value.trim()
-      });
-      var wasEditing = taskState.editing;
-      clearTaskForm();
-      renderTasks();
-      toast("Task updated.");
-      return wasEditing;
-    }
-
     var task = Tasks.create({
       title: title,
       assignee: $("taskAssignee").value,
@@ -6574,50 +6644,59 @@ button.link-arrow {
   }
 
   function clearTaskForm() {
-    taskState.editing = null;
     $("taskInput").value = "";
     $("taskDue").value = "";
     $("taskLink").value = "";
     $("taskPriority").value = "Medium";
     $("taskAssignee").value = Tasks.whoAmI() || "";
     $("taskReadNote").textContent = "";
-    $("taskAddBtn").textContent = "Add";
-    var remove = $("taskDeleteBtn");
-    if (remove) remove.remove();
   }
 
   function editTask(id) {
+    if (!Tasks.get(id)) return;
+    taskState.editing = id;                     // one at a time: opening a
+    renderTasks();                              // second editor closes the first
+    var title = $("taskEditTitle");
+    if (title) { title.focus(); title.select(); }
+  }
+
+  function closeTaskEditor() {
+    if (!taskState.editing) return;
+    taskState.editing = null;
+    renderTasks();
+  }
+
+  function saveTaskEdits(id) {
     var t = Tasks.get(id);
-    if (!t) return;
+    if (!t) { closeTaskEditor(); return; }
 
-    taskState.editing = id;
-    $("taskInput").value = t.title;
-    $("taskAssignee").value = t.assignee;
-    $("taskDue").value = t.due || "";
-    $("taskPriority").value = t.priority;
-    $("taskLink").value = t.link;
-    $("taskAddBtn").textContent = "Save changes";
-    $("taskReadNote").textContent = "Editing an existing task. Press Save changes, or Delete to remove it.";
+    var title = $("taskEditTitle").value.trim();
+    if (!title) { toast("A task needs a title."); $("taskEditTitle").focus(); return; }
 
-    if (!$("taskDeleteBtn")) {
-      var btn = document.createElement("button");
-      btn.className = "dash-refresh";
-      btn.id = "taskDeleteBtn";
-      btn.type = "button";
-      btn.textContent = "Delete";
-      btn.addEventListener("click", function () {
-        var task = Tasks.get(taskState.editing);
-        if (!task) return;
-        Tasks.remove(taskState.editing);
-        clearTaskForm();
-        renderTasks();
-        toast("Deleted “" + task.title + "”.");
-      });
-      $("taskAddBtn").parentNode.appendChild(btn);
-    }
+    var status = $("taskEditStatus").value;
+    var fields = {
+      title: title,
+      assignee: $("taskEditAssignee").value,
+      due: $("taskEditDue").value || null,
+      priority: $("taskEditPriority").value,
+      status: status,
+      link: $("taskEditLink").value.trim(),
+      notes: $("taskEditNotes").value.trim()
+    };
 
-    $("taskInput").focus();
-    $("taskInput").scrollIntoView({ behavior: "smooth", block: "center" });
+    // Closing a task from the Status box stamps the day it happened, the way
+    // the tick box does, and reopening one clears the stamp — a list that
+    // shows a completion date against outstanding work is worse than none.
+    if (status === "Done" && t.status !== "Done") fields.done = today();
+    if (status !== "Done" && t.status === "Done") fields.done = null;
+
+    var was = t.assignee;
+    Tasks.patch(id, fields);
+    taskState.editing = null;
+    renderTasks();
+    toast(fields.assignee && fields.assignee !== was
+      ? "Saved — assigned to " + Tasks.personName(fields.assignee) + "."
+      : "Saved “" + title + "”.");
   }
 
   /* ---- exports ------------------------------------------------- */
@@ -6653,7 +6732,6 @@ button.link-arrow {
   // Read the line as it is typed, so the fields fill in before you commit.
   var taskReadTimer = null;
   $("taskInput").addEventListener("input", function () {
-    if (taskState.editing) return;              // do not re-read an edit in progress
     clearTimeout(taskReadTimer);
     taskReadTimer = setTimeout(readTaskLine, 350);
   });
@@ -6673,6 +6751,44 @@ button.link-arrow {
 
     var edit = e.target.closest("[data-task-edit]");
     if (edit) { editTask(edit.getAttribute("data-task-edit")); return; }
+
+    var save = e.target.closest("[data-task-save]");
+    if (save) { saveTaskEdits(save.getAttribute("data-task-save")); return; }
+
+    if (e.target.closest("[data-task-cancel]")) { closeTaskEditor(); return; }
+
+    var drop = e.target.closest("[data-task-delete]");
+    if (drop) {
+      var doomed = Tasks.get(drop.getAttribute("data-task-delete"));
+      if (!doomed) { closeTaskEditor(); return; }
+
+      // Two presses. Delete now sits on every row, a task cannot be got
+      // back once it is gone, and this page asks in the button rather than
+      // in a browser dialog. Closing the editor resets it.
+      if (drop.getAttribute("data-armed") !== "yes") {
+        drop.setAttribute("data-armed", "yes");
+        drop.textContent = "Delete for good";
+        return;
+      }
+
+      Tasks.remove(doomed.id);
+      taskState.editing = null;
+      renderTasks();
+      toast("Deleted “" + doomed.title + "”.");
+      return;
+    }
+  });
+
+  // Enter saves, Escape walks away — the two keys anybody tries in a form
+  // that opened under the cursor.
+  document.addEventListener("keydown", function (e) {
+    if (!taskState.editing) return;
+    if (e.key === "Escape") { closeTaskEditor(); return; }
+    if (e.key === "Enter" && e.target.id && e.target.id.indexOf("taskEdit") === 0 &&
+        e.target.tagName !== "TEXTAREA") {
+      e.preventDefault();
+      saveTaskEdits(taskState.editing);
+    }
   });
 
   var taskSearchTimer = null;
@@ -8590,12 +8706,13 @@ button.link-arrow {
       renderCrmFilters();
       renderCrm();
       renderMemory();
-      var wasEditing = crmState.editing;
+      var wasEditing = crmState.editing || !!taskState.editing;
       crmState.editing = false;      // same rule as the list: do not type over the typist
       if (crmState.view === "investor") {
         if (Crm.get(crmState.investorId)) renderInvestor(crmState.investorId);
         else showCrmView("list");
       }
+      taskState.editing = null;      // and the same for a task open in its row
       fillTaskSelects();
       renderTasks();
       if (touched.docs) renderGrid();
