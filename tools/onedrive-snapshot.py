@@ -10,8 +10,18 @@ The output file (dashboard-data.json) contains real deal and sponsor names and i
 gitignored. It must never be committed — this repository is public. The script
 itself contains no data and is safe to commit.
 
+The folder it reads is recorded in tools/snapshot-source.txt (gitignored — it is a
+local machine path, and it is the answer to "which folder does the dashboard mirror?").
+That file holds the path, plus optional "only:" lines naming the top-level folders that
+may become dashboard areas. The source folder holds more than the dashboard shows, so
+without an only: list the type cards count documents from folders the dashboard never
+displays. Keep the list in step with DASHBOARD_CONFIG.areas in dashboard.html.
+
+Pass a folder to override the path for one run.
+
 Usage:
-    python3 tools/onedrive-snapshot.py "/path/to/OneDrive folder"
+    python3 tools/onedrive-snapshot.py                       # the recorded source
+    python3 tools/onedrive-snapshot.py "/path/to/folder"     # override for this run
     python3 tools/onedrive-snapshot.py "/path/to/folder" --anonymise -o dashboard-data.demo.json
 
 Only names, sizes and timestamps are read. File contents are never opened.
@@ -22,6 +32,9 @@ import json
 import os
 import sys
 from datetime import datetime, timezone
+
+# Where the recorded source folder lives, relative to this script.
+SOURCE_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "snapshot-source.txt")
 
 # Noise that should never appear in the dashboard.
 SKIP_NAMES = {".DS_Store", "Thumbs.db", "desktop.ini", ".localized"}
@@ -86,13 +99,18 @@ class Anonymiser:
         return f"{deal_alias} — {cleaned or 'Document'}"
 
 
-def walk(root, anon):
-    """Return the top-level areas, each holding deals, each holding a file tree."""
+def walk(root, anon, only=None):
+    """Return the top-level areas, each holding deals, each holding a file tree.
+
+    `only`, if non-empty, limits which top-level folders become areas.
+    """
     areas = []
 
     for area_name in sorted(os.listdir(root)):
         area_path = os.path.join(root, area_name)
         if not os.path.isdir(area_path) or area_name.startswith("."):
+            continue
+        if only and area_name not in only:
             continue
         # The raw OneDrive download folder and its zip are not part of the tree.
         if area_name.lower().startswith("onedrive_"):
@@ -176,21 +194,62 @@ def count_files(nodes):
     return n
 
 
+def read_recorded_source():
+    """(folder, only) as recorded in tools/snapshot-source.txt.
+
+    `only` is the set of top-level folder names allowed to become areas, empty
+    meaning take everything.
+    """
+    folder, only = None, set()
+    try:
+        with open(SOURCE_FILE, encoding="utf-8") as fh:
+            for line in fh:
+                line = line.strip()
+                if not line or line.startswith("#"):
+                    continue
+                if line.lower().startswith("only:"):
+                    only.add(line.split(":", 1)[1].strip())
+                elif folder is None:
+                    folder = os.path.expanduser(line)
+    except FileNotFoundError:
+        pass
+
+    return folder, only
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("folder", help="Folder to snapshot")
+    ap.add_argument("folder", nargs="?",
+                    help="Folder to snapshot (default: the path in tools/snapshot-source.txt)")
+    ap.add_argument("--all-areas", action="store_true",
+                    help="Ignore the recorded only: list and take every top-level folder")
     ap.add_argument("-o", "--out", default="dashboard-data.json",
                     help="Output path (default: dashboard-data.json, gitignored)")
     ap.add_argument("--anonymise", action="store_true",
                     help="Replace deal and sponsor names with stable pseudonyms")
     args = ap.parse_args()
 
-    if not os.path.isdir(args.folder):
-        sys.exit(f"Not a folder: {args.folder}")
+    recorded_folder, only = read_recorded_source()
+    folder = args.folder or recorded_folder
+    if args.all_areas:
+        only = set()
+
+    if folder is None:
+        sys.exit(
+            f"No source folder recorded. Write the folder to mirror into {SOURCE_FILE}, "
+            "or pass one on the command line."
+        )
+
+    if not os.path.isdir(folder):
+        sys.exit(f"Not a folder: {folder}")
+
+    missing = sorted(n for n in only if not os.path.isdir(os.path.join(folder, n)))
+    if missing:
+        print(f"  NOTE: recorded area not found in source: {', '.join(missing)}")
 
     anon = Anonymiser(args.anonymise)
-    areas = walk(args.folder, anon)
+    areas = walk(folder, anon, only)
     total = sum(count_files(a["children"]) for a in areas)
 
     payload = {

@@ -399,3 +399,34 @@ Forwarding email into the CRM:
 - What is NOT built: an always-on mailbox that ingests by itself. That needs a real mailbox plus
   a scheduled fetch (IMAP or the Gmail API) — a small addition, but a server-side one, and it
   cannot live in this static page.
+
+
+Where the project lives, and where the dashboard reads from — 2026-08-18:
+- The project moved into OneDrive. It now lives under "David Wolfson's files - Claude", so it
+  syncs and is shared rather than sitting on one desktop. The old Desktop/Website Modillion copy
+  is retired; it carries a MOVED.txt saying so. Do not edit it — two git working copies of the
+  same repo diverge quietly, and this one is canonical.
+- A note on .git in a synced folder: OneDrive replicating .git while git is mid-write can corrupt
+  an index. It is fine in practice, but let sync settle before and after anything heavy (rebase,
+  large checkout) rather than working through it.
+
+The document snapshot, in one place:
+- The Deal Pipeline and Asset Management tabs mirror a real OneDrive folder. dashboard-data.json
+  is not maintained by hand — tools/onedrive-snapshot.py reads the folder and writes it.
+- Which folder that is used to be a command-line argument nobody wrote down, which made "the
+  dashboard is stale" and "the dashboard is pointed somewhere else" impossible to tell apart.
+  It is now recorded in tools/snapshot-source.txt: the path, then "only:" lines naming the
+  top-level folders allowed to become areas. That file is gitignored — a local machine path,
+  and this repository is public.
+- Refresh the dashboard after the folders change:
+      python3 tools/onedrive-snapshot.py                  # the recorded source
+      python3 tools/onedrive-snapshot.py "/other/folder"  # override for one run
+      python3 tools/onedrive-snapshot.py --all-areas      # ignore the only: list
+- THE only: LIST MATTERS. The source folder holds much more than the dashboard shows — Pitchbook,
+  Dead Deals, Entity Docs, Capital Calls and the rest. Areas the config does not declare never
+  appear as tiles, but buildTypeIndex() reads across EVERY area in the file, so without the list
+  the "By document type" cards quietly count dead deals and pitchbook drafts as live term sheets
+  and models. Scanning the whole folder gives 13 areas and 1194 files; the three declared ones
+  give 23 deals and 952. Keep the list in step with DASHBOARD_CONFIG.areas in dashboard.html.
+- Only names, sizes and timestamps are read; file contents are never opened. The output holds
+  real deal and sponsor names and is gitignored — it must never be committed.
