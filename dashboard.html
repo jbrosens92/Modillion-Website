@@ -1552,6 +1552,20 @@ button.link-arrow {
 .crmtable td { padding: 16px 16px 16px 0; font-size: .9rem; vertical-align: top; }
 .crmtable .crm-name { font-weight: 500; color: var(--deep-space); }
 .crmtable .crm-sub { display: block; font-size: .76rem; color: var(--muted); margin-top: 3px; }
+/* Last contact carries the date, then what the most recent note actually said.
+   Two lines is enough to recognise a conversation; the whole note is on the
+   cell's title and, in full, on the investor's own record. */
+.crmtable .crm-lastnote {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  max-width: 300px;
+  margin-top: 6px;
+  font-size: .82rem;
+  line-height: 1.45;
+  color: var(--deep-space);
+}
 .crmtable .muted { color: var(--muted); }
 
 .crm-pill {
@@ -5666,6 +5680,14 @@ button.link-arrow {
     return inv.conversations[0].date || null;
   }
 
+  // The most recent conversation, and what it said. Same [0] the date comes
+  // from, so the note on a row always belongs to the date above it.
+  function lastNote(inv) {
+    var c = inv.conversations[0];
+    if (!c) return "";
+    return c.summary || c.subject || "";
+  }
+
   function crmSortValue(inv, key) {
     switch (key) {
       case "name":        return inv.name.toLowerCase();
@@ -5726,6 +5748,11 @@ button.link-arrow {
 
     var rows = list.map(function (inv) {
       var last = lastContact(inv);
+      // A date says the relationship is warm; it does not say what about.
+      var summary = lastNote(inv);
+      var note = summary
+        ? '<span class="crm-lastnote" title="' + esc(summary) + '">' + esc(summary) + '</span>'
+        : "";
       var deals = inv.deals.length
         ? inv.deals.slice(0, 2).map(dealTag).join("") +
           (inv.deals.length > 2 ? '<span class="crm-tag">+' + (inv.deals.length - 2) + '</span>' : "")
@@ -5746,8 +5773,10 @@ button.link-arrow {
         '<td><span class="crm-pill" data-stage="' + esc(inv.stage) + '">' + esc(inv.stage) + '</span></td>' +
         '<td>' + (checkText(inv) ? esc(checkText(inv)) : '<span class="muted">—</span>') + '</td>' +
         '<td>' + deals + '</td>' +
-        '<td>' + (last ? esc(last) + '<span class="crm-sub">' + inv.conversations.length +
-                  ' logged</span>' : '<span class="muted">Never</span>') + '</td>' +
+        '<td>' + (last
+          ? esc(last) + note +
+            '<span class="crm-sub">' + inv.conversations.length + ' logged</span>'
+          : '<span class="muted">Never</span>') + '</td>' +
         '</tr>';
     }).join("");
 
