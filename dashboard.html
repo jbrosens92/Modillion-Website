@@ -2378,8 +2378,8 @@ button.link-arrow {
 
       <p class="dash-gate__note">
         This password is a speed bump, not security — it is checked in the browser, so anyone
-        who views the page source can work around it. It keeps casual visitors out of a page
-        that currently shows placeholder content only. Real access control arrives with the
+        who views the page source can work around it. The page ships with no records of its
+        own — the real ones are gitignored and never deployed. Real access control arrives with the
         Microsoft 365 sign-in, which is what must be in place before any live document is
         connected here.
       </p>
@@ -3135,82 +3135,17 @@ button.link-arrow {
                              public repo. Present in local development
                              only; in production the fetch 404s.
 
-       FALLBACK_DATA         the placeholder tree below. Deliberately
-                             generic, safe to publish, and shaped to
-                             mirror the real folder taxonomy.
+       FALLBACK_DATA         an empty tree. The page used to ship an
+                             invented one so the published version had
+                             something to show; it no longer pretends.
+                             With no source connected the tabs render
+                             their empty states.
      ============================================================ */
 
-  // Placeholder tree. Mirrors the real structure; every name is invented.
-  var FALLBACK_DATA = (function () {
-    function f(name, ext, sizeKB, days) {
-      return { name: name, type: "file", ext: ext, size: sizeKB * 1024, modifiedDays: days };
-    }
-    function d(name, days, children) {
-      return { name: name, type: "folder", modifiedDays: days, children: children || [] };
-    }
-    function dealFolders(tag, base) {
-      return [
-        d("Term Sheet", base, [f(tag + " — Term Sheet.pdf", "pdf", 240, base)]),
-        d("Sponsor Materials", base + 4, [
-          f(tag + " — Sponsor Overview.pdf", "pdf", 6200, base + 4),
-          f(tag + " — Track Record.xlsx", "xlsx", 480, base + 6)
-        ]),
-        d("Model", base + 2, [f(tag + " — Underwriting Model.xlsx", "xlsx", 2100, base + 2)]),
-        d("Investment Memo", base + 3, [f(tag + " — Investment Memo.docx", "docx", 190, base + 3)]),
-        d("Deal Due Dilligence", base + 5, [
-          f(tag + " — Property Condition Report.pdf", "pdf", 8400, base + 5),
-          f(tag + " — Environmental Report.pdf", "pdf", 5200, base + 9)
-        ]),
-        d("Org Chart", base + 7, [f(tag + " — Org Chart.pdf", "pdf", 320, base + 7)])
-      ];
-    }
-    return {
-      source: "fallback",
-      anonymised: true,
-      areas: [
-        { id: "active-deals", label: "Active Deals", children: [
-          d("Sample Deal A — Programmatic", 1, dealFolders("Deal A", 1)),
-          d("Sample Deal B — Multifamily", 6, dealFolders("Deal B", 6)),
-          d("Sample Deal C — Mixed-Use", 11, dealFolders("Deal C", 11)),
-          d("Sample Deal D — GP Fund", 18, dealFolders("Deal D", 18)),
-          d("Sample Portfolio E", 24, [
-            d("Asset One", 24, [f("Asset One — Summary.pdf", "pdf", 760, 24)]),
-            d("Asset Two", 27, [f("Asset Two — Summary.pdf", "pdf", 720, 27)]),
-            d("Model", 25, [f("Portfolio E — Consolidated Model.xlsx", "xlsx", 3100, 25)])
-          ])
-        ]},
-        { id: "closed-deals", label: "Closed Deals", children: [
-          d("Sample Closed Deal F", 9, [
-            d("Final Documents", 9, [f("Deal F — Closing Binder.pdf", "pdf", 14200, 9)]),
-            d("Model", 14, [f("Deal F — Final Model.xlsx", "xlsx", 1900, 14)]),
-            d("Org Chart", 14, [f("Deal F — Org Chart.pdf", "pdf", 300, 14)]),
-            d("Quarterly Updates", 3, [
-              f("Deal F — Quarterly Update (Q2).pdf", "pdf", 880, 3),
-              f("Deal F — Quarterly Update (Q1).pdf", "pdf", 860, 95)
-            ])
-          ]),
-          d("Sample Closed Deal G", 21, [
-            d("Financial Statements", 21, [f("Deal G — Quarterly FS.pdf", "pdf", 640, 21)]),
-            d("Investor Letters", 12, [f("Deal G — Investor Letter.pdf", "pdf", 410, 12)]),
-            d("Legal Docs", 30, [f("Deal G — Operating Agreement.pdf", "pdf", 1720, 30)]),
-            d("Model", 30, [f("Deal G — Final Model.xlsx", "xlsx", 1650, 30)])
-          ])
-        ]},
-        { id: "asset-management", label: "Asset Management", children: [
-          d("Sample Asset H", 2, [
-            d("Monthly Update Letters", 2, [
-              f("Asset H — Monthly Update (current).pdf", "pdf", 520, 2),
-              f("Asset H — Monthly Update (prior).pdf", "pdf", 515, 32)
-            ]),
-            d("Quarterly Financials", 8, [f("Asset H — Quarterly FS.pdf", "pdf", 690, 8)])
-          ]),
-          d("Sample Asset I", 16, [
-            d("Monthly Update Letters", 16, [f("Asset I — Monthly Update.pdf", "pdf", 495, 16)])
-          ])
-        ]}
-      ]
-    };
-  }());
+  // No document source in production. The page ships with an empty tree rather
+  // than an invented one: a dashboard that shows made-up deals is worse than a
+  // dashboard that shows none. dashboard-data.json fills this in locally.
+  var FALLBACK_DATA = { areas: [] };
 
   var DatasetProvider = (function () {
     var DATA = null;          // { areas: [...] }
@@ -4247,7 +4182,7 @@ button.link-arrow {
       }) + " · " +
       (m.dataset.source === "local-snapshot"
         ? (m.dataset.anonymised ? "Local snapshot (anonymised)" : "Local snapshot")
-        : "Placeholder content — no document source connected");
+        : "No document source connected");
     wsEl("reportBody").innerHTML = html;
   }
 
@@ -4493,7 +4428,7 @@ button.link-arrow {
         ["Generated", m.generated],
         ["Dataset", m.dataset.source === "local-snapshot"
           ? (m.dataset.anonymised ? "Local snapshot (anonymised)" : "Local snapshot")
-          : "Placeholder content — no source connected"],
+          : "No source connected"],
         [m.rowLabelPlural, m.totals.deals],
         ["Documents", m.totals.documents],
         ["Total volume (bytes)", m.totals.bytes],
@@ -4586,34 +4521,12 @@ button.link-arrow {
                            "Hospitality", "Mixed-use", "Student housing", "Self storage",
                            "Data centres", "Senior housing", "Land"];
 
-  // Placeholder records. Every firm below is invented.
+  // Empty. Real records arrive from crm-data.json, which is never deployed.
   var CRM_FALLBACK = {
     generatedAt: null,
     source: "fallback",
     stages: CRM_STAGES,
-    investors: [
-      { id: "north-quay", name: "North Quay Family Office", type: "Single-family office",
-        stage: "In diligence", location: "Boston, MA", aum: "$1.4B",
-        assetClasses: ["Multifamily", "Industrial"],
-        checkSize: { min: 3000000, max: 6000000, note: "" },
-        mandate: "Direct and fund commitments in US multifamily and industrial.",
-        priority: "High", tags: ["Family office"], deals: [], contacts: [],
-        research: [], why: "", conversations: [] },
-      { id: "ardsley-endowment", name: "Ardsley College Endowment", type: "Endowment",
-        stage: "Contacted", location: "Hartford, CT", aum: "$780M",
-        assetClasses: ["Multifamily", "Retail"],
-        checkSize: { min: 2000000, max: 4000000, note: "" },
-        mandate: "Value-add real estate through commingled funds only.",
-        priority: "Medium", tags: ["Endowment"], deals: [], contacts: [],
-        research: [], why: "", conversations: [] },
-      { id: "brightwater-mfo", name: "Brightwater Multi-Family Office", type: "Multi-family office",
-        stage: "Prospect", location: "Denver, CO", aum: "$6.2B",
-        assetClasses: [],
-        checkSize: { min: null, max: null, note: "Not yet discussed" },
-        mandate: "Alternatives programme across private equity, credit and real assets.",
-        priority: "Medium", tags: ["Wealth channel"], deals: [], contacts: [],
-        research: [], why: "", conversations: [] }
-    ]
+    investors: []
   };
 
   var Crm = (function () {
@@ -5734,8 +5647,12 @@ button.link-arrow {
 
   function crmTable(list) {
     if (!list.length) {
-      return '<div class="dash-state"><h3>No investors match</h3>' +
-             '<p>Clear the filters, or log a conversation above to create the first record.</p></div>';
+      return Crm.all().length
+        ? '<div class="dash-state"><h3>No investors match</h3>' +
+          '<p>Clear the filters, or log a conversation above to create the first record.</p></div>'
+        : '<div class="dash-state"><h3>No investors yet</h3>' +
+          '<p>Records live in crm-data.json, which is never deployed with this page. ' +
+          'Describe a conversation above and the first one is created here.</p></div>';
     }
 
     var head = CRM_COLUMNS.map(function (c) {
@@ -5840,7 +5757,9 @@ button.link-arrow {
         (m.intake && m.intake.address
           ? " Forward investor threads to <strong>" + esc(m.intake.address) + "</strong>, then run tools/crm-ingest.py to fold them in."
           : "")
-      : "Placeholder records — every firm shown is invented. The real list lives in crm-data.json, which is not deployed with this page.";
+      : "No investor file loaded. The records live in crm-data.json, which is gitignored and never " +
+        "deployed; anything shown here was entered in this browser and is held locally until it is " +
+        "downloaded back into the folder.";
   }
 
   function renderInvestor(id) {
@@ -6606,35 +6525,11 @@ button.link-arrow {
   var OPERATOR_STAGES = ["Prospect", "Contacted", "In diligence", "Active partner",
                          "Passed", "Dormant"];
 
-  // Placeholder records. Every firm below is invented.
+  // Empty. Real records arrive from operator-data.json, which is never deployed.
   var OPERATOR_FALLBACK = {
     generatedAt: null,
     source: "fallback",
-    operators: [
-      { id: "sample-operator-a", name: "Sample Operator A",
-        investmentTypes: ["Co-GP Equity"], assetStrategies: ["Multifamily"],
-        markets: ["Southeast", "North Carolina"], deals: ["Sample Deal B — Multifamily"],
-        stage: "Active partner", priority: "High", aum: "$1.8B", location: "Raleigh, NC",
-        checkSize: { min: 5000000, max: 15000000, note: "" }, owner: "", website: "",
-        founded: "2009", trackRecord: "38 assets, $2.1B since inception",
-        coInvest: "10% GP co-invest", verticalIntegration: "In-house property management",
-        tags: ["Repeat sponsor"], lastContact: "", contacts: [], notes: "" },
-      { id: "sample-operator-b", name: "Sample Operator B",
-        investmentTypes: ["Co-GP Equity", "Seed"], assetStrategies: ["Industrial", "Retail"],
-        markets: ["National"], deals: ["Sample Deal A — Programmatic"],
-        stage: "In diligence", priority: "Medium", aum: "$640M", location: "Dallas, TX",
-        checkSize: { min: 3000000, max: 8000000, note: "" }, owner: "", website: "",
-        founded: "2016", trackRecord: "11 assets since inception",
-        coInvest: "5% GP co-invest", verticalIntegration: "Third-party managed",
-        tags: [], lastContact: "", contacts: [], notes: "" },
-      { id: "sample-operator-c", name: "Sample Operator C",
-        investmentTypes: ["Seed"], assetStrategies: ["Multifamily"],
-        markets: ["Texas", "Florida"], deals: [],
-        stage: "Prospect", priority: "Low", aum: "", location: "Austin, TX",
-        checkSize: { min: null, max: null, note: "Not yet discussed" }, owner: "", website: "",
-        founded: "", trackRecord: "", coInvest: "", verticalIntegration: "",
-        tags: [], lastContact: "", contacts: [], notes: "" }
-    ]
+    operators: []
   };
 
   var Operators = (function () {
@@ -6977,8 +6872,12 @@ button.link-arrow {
 
   function operatorTable(list) {
     if (!list.length) {
-      return '<div class="dash-state"><h3>No operators match</h3>' +
-             '<p>Clear the filters, or add one with the button above.</p></div>';
+      return Operators.all().length
+        ? '<div class="dash-state"><h3>No operators match</h3>' +
+          '<p>Clear the filters, or add one with the button above.</p></div>'
+        : '<div class="dash-state"><h3>No operators yet</h3>' +
+          '<p>Records live in operator-data.json, which is never deployed with this page. ' +
+          'Add the first one with the button above.</p></div>';
     }
 
     var head = OPERATOR_COLUMNS.map(function (c) {
@@ -7061,8 +6960,8 @@ button.link-arrow {
     $("opSourceNote").innerHTML = Operators.meta().source === "local"
       ? "Records from operator-data.json — gitignored, local only, never deployed. Deal tags open the " +
         "deal's folder on the Deal Pipeline tab; a blank field is one nobody has filled in yet, not a zero."
-      : "Placeholder records — every firm shown is invented. The real list lives in operator-data.json, " +
-        "which is not deployed with this page.";
+      : "No operator file loaded. The records live in operator-data.json, which is gitignored and " +
+        "never deployed with this page.";
   }
 
   function showOperatorView(name) {
@@ -7554,7 +7453,7 @@ button.link-arrow {
 
      Third dataset, same seam as the other two. Real tasks live in
      tasks-data.json (gitignored); the published page falls back to
-     TASKS_FALLBACK, whose tasks and people are invented.
+     TASKS_FALLBACK, which carries the real roster and no tasks.
 
      The sharing limit matters more here than anywhere else in this
      page. A task list is the one thing everybody is meant to be
@@ -7570,26 +7469,21 @@ button.link-arrow {
   // The roster is the four partners, copied from the public team page, so a
   // task can be assigned to a real person whether or not tasks-data.json is
   // present — the file is gitignored, and without a roster here the published
-  // page would offer nobody. The two tasks below are invented, and are left
-  // unassigned on purpose: made-up work should not sit against a real name.
+  // page would offer nobody. No tasks ship with it — made-up work sitting
+  // against a real name is exactly what this page should not do.
   var TASKS_FALLBACK = {
     source: "fallback",
     statuses: TASK_STATUSES,
     priorities: TASK_PRIORITIES,
+    // The roster is not invented — it is the team as the public site lists it,
+    // and the assignee picker needs it whether or not any task is loaded.
     team: [
       { id: "dw", name: "David Wolfson", role: "Managing Partner" },
       { id: "ce", name: "Corey Ernst", role: "Partner" },
       { id: "ee", name: "Eric Emrich", role: "Partner, CFO" },
       { id: "jb", name: "John Brosens", role: "Partner" }
     ],
-    tasks: [
-      { id: "t-sample-1", title: "Circulate the quarterly investor letter",
-        assignee: "", due: null, priority: "Medium", status: "To do",
-        link: "", notes: "", created: null, done: null },
-      { id: "t-sample-2", title: "Refresh the underwriting model template",
-        assignee: "", due: null, priority: "Low", status: "In progress",
-        link: "", notes: "", created: null, done: null }
-    ]
+    tasks: []
   };
 
   var Tasks = (function () {
@@ -8113,8 +8007,12 @@ button.link-arrow {
             '<h3>' + esc(g.label) + ' <span>(' + g.items.length + ')</span></h3>' +
             '<ul class="task-list">' + g.items.map(taskRow).join("") + '</ul></div>';
         }).join("")
-      : '<div class="dash-state"><h3>Nothing here</h3>' +
-        '<p>Either everything is done, or the filters are hiding it. Add a task above.</p></div>';
+      : Tasks.all().length
+        ? '<div class="dash-state"><h3>Nothing here</h3>' +
+          '<p>Either everything is done, or the filters are hiding it. Add a task above.</p></div>'
+        : '<div class="dash-state"><h3>No tasks yet</h3>' +
+          '<p>The list lives in tasks-data.json, which is never deployed with this page. ' +
+          'Add the first task above.</p></div>';
 
     var open = Tasks.all().filter(function (t) { return t.status !== "Done"; }).length;
     $("tabTaskCount").textContent = open ? "(" + open + ")" : "";
@@ -8126,9 +8024,9 @@ button.link-arrow {
       ? "Tasks from tasks-data.json — gitignored, local only, never deployed. " +
         "<strong>Ticks are saved in this browser.</strong> Until someone downloads the file and " +
         "puts it back in the folder, two people looking at this page see two different lists."
-      : "Placeholder tasks — the work shown is invented, which is why none of it is assigned " +
-        "to anybody. The roster behind “Assigned to” is the real team. The live list lives in " +
-        "tasks-data.json, which is not deployed with this page.";
+      : "No task file loaded. The roster behind “Assigned to” is the real team, so a task can be " +
+        "written here and it is held in this browser; the live list lives in tasks-data.json, " +
+        "which is gitignored and never deployed with this page.";
   }
 
   function fillTaskSelects() {
@@ -10636,8 +10534,9 @@ button.link-arrow {
         "with deal names replaced by pseudonyms.";
     } else {
       el.removeAttribute("data-variant");
-      text.innerHTML = "<strong>Placeholder content.</strong> No document source is connected " +
-        "— the structure below mirrors the real OneDrive layout, but every name is invented.";
+      text.innerHTML = "<strong>No document source connected.</strong> This page carries no " +
+        "documents of its own — the folder mirror lives in dashboard-data.json, which is " +
+        "gitignored and never deployed. Nothing below is invented; there is simply nothing to show.";
     }
     el.hidden = false;
   }
