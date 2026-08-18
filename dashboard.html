@@ -1131,6 +1131,42 @@ button.link-arrow {
   color: var(--muted);
 }
 
+/* Home ---------------------------------------------------------- */
+/* The page the dashboard opens on: one tile per workspace. Same card
+   as the category grid, sized up — this is a front door, not a list
+   of things to skim, so there are five of them and they are bigger. */
+#wsHome[hidden] { display: none; }
+.dash-home__lede {
+  max-width: 620px;
+  margin: 0 0 40px;
+  color: var(--muted);
+  font-size: 1rem;
+  line-height: 1.6;
+}
+.dash-grid--home { grid-template-columns: repeat(auto-fill, minmax(330px, 1fr)); }
+.dash-card--home { padding: 40px 36px 32px; }
+.dash-card--home .dash-card__icon {
+  width: 58px; height: 58px;
+  margin-bottom: 26px;
+}
+.dash-card--home .dash-card__icon svg { width: 26px; height: 26px; }
+.dash-card--home .dash-card__name { font-size: 1.6rem; margin-bottom: 12px; }
+.dash-card--home .dash-card__blurb { font-size: .95rem; margin-bottom: 28px; }
+.dash-card--home .dash-card__meta { justify-content: space-between; }
+.dash-card__go {
+  font-family: var(--sans);
+  font-size: .7rem;
+  letter-spacing: .18em;
+  text-transform: uppercase;
+  color: var(--steel);
+  white-space: nowrap;
+}
+.dash-card--home:hover .dash-card__go { color: var(--deep-space); }
+@media (max-width: 720px) {
+  .dash-grid--home { grid-template-columns: 1fr; }
+  .dash-card--home { padding: 32px 26px 26px; }
+}
+
 /* Detail view --------------------------------------------------- */
 .dash-detail[hidden], .dash-browse[hidden], .dash-results[hidden] { display: none; }
 
@@ -1435,6 +1471,18 @@ button.link-arrow {
   font-size: .68rem;
   letter-spacing: .06em;
   color: var(--steel);
+}
+/* Six labels do not fit a phone — five did not either, which used to drag the
+   whole page sideways. Scroll the bar instead, and keep the page still. */
+@media (max-width: 760px) {
+  .dash-tabs {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+  .dash-tabs::-webkit-scrollbar { display: none; }
+  .dash-tabs button { flex: 0 0 auto; }
 }
 
 /* CRM ------------------------------------------------------------ */
@@ -2190,7 +2238,7 @@ button.link-arrow {
   .dash-gate, .dash-topbar, .dash-hero, .dash-notice, .dash-summary,
   .dash-toolbar, .dash-browse, .dash-detail, .dash-results, .dash-tabs,
   .agent-dock,
-  .dash-crm, .dash-investor, #wsTasks, #wsOperators,
+  .dash-crm, .dash-investor, #wsTasks, #wsOperators, #wsHome,
   .site-footer, .dash-toast, .dash-report__crumbs, .dash-report__actions {
     display: none !important;
   }
@@ -2366,15 +2414,25 @@ button.link-arrow {
 
       <!-- Workspace tabs -->
       <nav class="dash-tabs" aria-label="Workspace">
-        <button type="button" data-tab="docs" class="is-active" aria-current="page">Deal Pipeline</button>
+        <button type="button" data-tab="home" class="is-active" aria-current="page">Home</button>
+        <button type="button" data-tab="docs">Deal Pipeline</button>
         <button type="button" data-tab="crm">Investor CRM<span class="dash-tabs__count" id="tabCrmCount"></span></button>
         <button type="button" data-tab="operators">Operator CRM<span class="dash-tabs__count" id="tabOperatorCount"></span></button>
         <button type="button" data-tab="assets">Asset Management<span class="dash-tabs__count" id="tabAssetCount"></span></button>
         <button type="button" data-tab="tasks">Task List<span class="dash-tabs__count" id="tabTaskCount"></span></button>
       </nav>
 
+      <!-- ========================== HOME ========================== -->
+      <div id="wsHome">
+        <p class="dash-home__lede">
+          Five workspaces, each backed by its own data. The documents are a mirror of
+          the OneDrive folders as they stand; everything else is recorded here.
+        </p>
+        <div class="dash-grid dash-grid--home" id="homeGrid"></div>
+      </div><!-- /#wsHome -->
+
       <!-- ====================== DEAL PIPELINE ====================== -->
-      <div id="wsDocs">
+      <div id="wsDocs" hidden>
 
       <!-- Summary tiles -->
       <div class="dash-summary">
@@ -3533,6 +3591,76 @@ button.link-arrow {
           '<h3 class="dash-card__name">' + esc(cat.label) + '</h3>' +
           '<p class="dash-card__blurb">' + esc(cat.blurb) + '</p>' +
           '<span class="dash-card__meta">' + meta + '</span>' +
+        '</button>';
+    }).join("");
+  }
+
+  /* ============================================================
+     RENDER — Home
+
+     The front door. One tile per workspace, in the order the tabs
+     run. Each count is read from the same place that workspace's
+     own tab count is read from, so a tile can never state a number
+     the tab beside it contradicts. A tile is a [data-tab] button,
+     which is all it takes to switch — the tab bar's own handler
+     picks it up.
+     ============================================================ */
+  var HOME_TILES = [
+    { tab: "docs", label: "Deal Pipeline", icon: "target",
+      blurb: "Every live and closed deal as it stands in OneDrive — term sheets, models, " +
+             "diligence and sponsor materials. Browse by deal, or read across all of them " +
+             "by document type.",
+      count: function () {
+        var ids = areasFor("docs").map(function (a) { return a.id; });
+        var n = 0;
+        state.summaries.forEach(function (x) { if (ids.indexOf(x.id) !== -1) n += x.count; });
+        return n ? n.toLocaleString() + " document" + (n === 1 ? "" : "s") : null;
+      } },
+    { tab: "crm", label: "Investor CRM", icon: "handshake",
+      blurb: "Who has been spoken to and where it got to — check size, the deals they are " +
+             "interested in, the research behind them, and a dated log of every conversation.",
+      count: function () {
+        var n = Crm.all().length;
+        return n ? n + " investor" + (n === 1 ? "" : "s") : null;
+      } },
+    { tab: "operators", label: "Operator CRM", icon: "shield",
+      blurb: "The sponsors running the deals — track record, GP co-invest, vertical " +
+             "integration, and which pipeline deals each one is behind.",
+      count: function () {
+        var n = Operators.all().length;
+        return n ? n + " operator" + (n === 1 ? "" : "s") : null;
+      } },
+    { tab: "assets", label: "Asset Management", icon: "building",
+      blurb: "What the firm already owns, rather than what it is buying. Monthly update " +
+             "letters, financials and property reporting, one folder per operating asset.",
+      count: function () {
+        var n = assetProperties().length;
+        return n ? n + " propert" + (n === 1 ? "y" : "ies") : null;
+      } },
+    { tab: "tasks", label: "Task List", icon: "memo",
+      blurb: "Company to-dos with an owner, a due date and a priority, grouped by when they " +
+             "are due rather than when they were written.",
+      count: function () {
+        var n = Tasks.all().filter(function (t) { return t.status !== "Done"; }).length;
+        return n ? n + " open" : null;
+      } }
+  ];
+
+  function renderHome() {
+    $("homeGrid").innerHTML = HOME_TILES.map(function (t) {
+      // A count that is not in yet reads as blank, not as zero.
+      var n = t.count();
+      var meta = n
+        ? '<span class="count">' + esc(n) + '</span>'
+        : '<span class="dash-card__unmapped">Nothing recorded yet</span>';
+      return '' +
+        '<button class="dash-card dash-card--home" type="button" data-tab="' + esc(t.tab) + '">' +
+          '<span class="dash-card__icon"><svg viewBox="0 0 24 24" aria-hidden="true">' + ICONS[t.icon] + '</svg></span>' +
+          '<h3 class="dash-card__name">' + esc(t.label) + '</h3>' +
+          '<p class="dash-card__blurb">' + esc(t.blurb) + '</p>' +
+          '<span class="dash-card__meta">' + meta +
+            '<span class="dash-card__go">Open</span>' +
+          '</span>' +
         '</button>';
     }).join("");
   }
@@ -5483,6 +5611,7 @@ button.link-arrow {
      CRM — RENDER
      ============================================================ */
   var crmState = {
+    tab: "home",           // the tab the dashboard opens on
     view: "list",          // list | investor
     investorId: null,
     editing: false,        // investor detail: fields open for hand editing
@@ -8396,11 +8525,13 @@ button.link-arrow {
       b.classList.toggle("is-active", on);
       if (on) b.setAttribute("aria-current", "page"); else b.removeAttribute("aria-current");
     });
+    $("wsHome").hidden = tab !== "home";
     $("wsDocs").hidden = tab !== "docs";
     $("wsCrm").hidden = tab !== "crm";
     $("wsOperators").hidden = tab !== "operators";
     $("wsAssets").hidden = tab !== "assets";
     $("wsTasks").hidden = tab !== "tasks";
+    if (tab === "home") renderHome();
     if (tab === "crm") { renderCrmFilters(); renderCrm(); }
     if (tab === "operators") { renderOperatorFilters(); renderOperators(); }
     // The two document tabs share one set of state, so moving between them
@@ -8599,8 +8730,10 @@ button.link-arrow {
      ============================================================ */
   document.addEventListener("click", function (e) {
     // A card is either a category (pipeline) or a property (asset
-    // management); the property carries its own folder name.
-    var card = e.target.closest(".dash-card");
+    // management); the property carries its own folder name. The home
+    // tiles wear the same class and switch tabs instead, so a card only
+    // opens a category when it names one.
+    var card = e.target.closest(".dash-card[data-cat]");
     if (card) {
       var prop = card.getAttribute("data-asset");
       openCategory(card.getAttribute("data-cat"), prop ? [prop] : []);
@@ -10488,6 +10621,7 @@ button.link-arrow {
         .join("").slice(0, 2).toUpperCase();
     });
 
+    renderHome();   // the tab the dashboard opens on
     renderGrid();   // paint the cards immediately, counts fill in after
     renderAssetGrid();
     renderAssetSummary();
@@ -10498,6 +10632,7 @@ button.link-arrow {
       state.summaries = summaries;
       renderSummary();
       renderGrid();
+      renderHome();   // the pipeline tile counts documents, which land here
     });
 
     renderCrmFilters();
