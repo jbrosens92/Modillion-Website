@@ -5414,7 +5414,14 @@ button.link-arrow {
     var contact = primaryContact(inv) || { name: "", email: "", title: "" };
     var records = Crm.allIncludingArchived();
     var types = uniqVals(records.map(function (i) { return i.type; }));
-    var owners = uniqVals(records.map(function (i) { return i.owner; }));
+
+    // The owners are the firm, so they come from the task list's roster
+    // rather than a second copy kept in step by hand — correct the roster
+    // and both tabs follow. Kept in the file's order, seniority first.
+    // A name a record already carries that is not on the roster stays
+    // selectable, so an import can never silently blank an owner.
+    var team = Tasks.team().map(function (p) { return p.name; });
+    if (inv.owner && team.indexOf(inv.owner) === -1) team.push(inv.owner);
     // A record may carry a priority nobody uses any more; keep it selectable
     // rather than silently rewriting it on the first save.
     var priorities = uniqVals(["High", "Medium", "Low"].concat([inv.priority]));
@@ -5436,7 +5443,7 @@ button.link-arrow {
         field("editAum", "Assets", text("editAum", inv.aum, ' placeholder="$1.4B"')) +
         field("editLocation", "Location", text("editLocation", inv.location)) +
         field("editOwner", "Owner",
-          text("editOwner", inv.owner, ' list="editOwnerList"') + datalist("editOwnerList", owners)) +
+          '<select id="editOwner">' + options([""].concat(team), inv.owner) + '</select>') +
         field("editPriority", "Priority",
           '<select id="editPriority">' + options([""].concat(priorities), inv.priority) + '</select>') +
         field("editWebsite", "Website",
