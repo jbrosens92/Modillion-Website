@@ -1577,6 +1577,35 @@ button.link-arrow {
 .crm-fact__value { font-size: 1rem; color: var(--deep-space); line-height: 1.4; }
 .crm-fact__value.is-empty { color: var(--muted); font-style: italic; font-size: .9rem; }
 
+/* Editing a record by hand. The panel stands where the facts grid stood,
+   so the page does not jump, and it writes nothing until Save — same rule
+   as the proposed-changes list: you see it before it happens. */
+.crm-edit {
+  border: 1px solid var(--steel);
+  background: var(--paper);
+  padding: 26px 28px;
+  margin: 36px 0 48px;
+}
+.crm-edit h3 {
+  font-family: var(--sans);
+  font-size: .72rem; font-weight: 500; letter-spacing: .16em; text-transform: uppercase;
+  color: var(--muted); margin: 0 0 4px;
+  border: 0; padding: 0;
+}
+.crm-edit__lede { margin: 0 0 22px; font-size: .84rem; color: var(--muted); }
+.crm-edit__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: 18px 24px;
+}
+.crm-edit__actions {
+  display: flex; gap: 12px; flex-wrap: wrap; align-items: center;
+  margin-top: 26px; padding-top: 22px; border-top: 1px solid var(--rule);
+}
+.crm-edit__derived {
+  margin-left: auto; font-size: .72rem; color: var(--muted); max-width: 42ch;
+}
+
 .crm-section { margin-bottom: 48px; }
 .crm-section > h3 {
   font-family: var(--sans);
@@ -5045,6 +5074,7 @@ button.link-arrow {
   var crmState = {
     view: "list",          // list | investor
     investorId: null,
+    editing: false,        // investor detail: fields open for hand editing
     query: "",
     filters: { type: "", stage: "", deal: "" },
     sortKey: "lastContact",
@@ -5254,10 +5284,16 @@ button.link-arrow {
         esc(inv.website.replace(/^https?:\/\//, "").replace(/\/$/, "")) + '</a>' : "") +
       '</p></div>' +
       '<div class="dash-investor__actions">' +
-        '<button class="dash-refresh dash-refresh--primary" data-crm-log="' + esc(inv.id) + '">Log a conversation</button>' +
+        // While the form is open its own Save and Cancel are the only way
+        // out — leaving by another button would drop what was typed.
+        (crmState.editing ? "" :
+          '<button class="dash-refresh" data-crm-edit="' + esc(inv.id) + '">Edit</button>' +
+          '<button class="dash-refresh dash-refresh--primary" data-crm-log="' + esc(inv.id) + '">Log a conversation</button>') +
       '</div></div>');
 
-    parts.push('<div class="crm-facts">' + facts + '</div>');
+    parts.push(crmState.editing
+      ? investorEditForm(inv)
+      : '<div class="crm-facts">' + facts + '</div>');
 
     if (inv.why) {
       parts.push('<div class="crm-section"><h3>Why they are on the list</h3>' +
@@ -5322,14 +5358,155 @@ button.link-arrow {
     $("investorBody").innerHTML = parts.join("");
   }
 
+  /* ------------------------------------------------------------
+     Editing a record by hand.
+
+     Everything a person types is here. Last contact is not: it is the
+     date of the newest conversation, so it is shown for reference and
+     changes by logging a conversation, not by typing over it.
+
+     Saving goes through Crm.patch, the same overlay the agent writes
+     to — held in this browser, folded into the export, never written
+     back over crm-data.json by the page itself.
+     ------------------------------------------------------------ */
+  function investorEditForm(inv) {
+    function uniqVals(arr) {
+      return arr.filter(function (v, i, a) { return v && a.indexOf(v) === i; }).sort();
+    }
+    function field(id, label, control, wide) {
+      return '<div class="crm-field' + (wide ? " crm-field--wide" : "") + '">' +
+             '<label for="' + id + '">' + esc(label) + '</label>' + control + '</div>';
+    }
+    function note(text) { return '<span class="crm-field__note">' + esc(text) + '</span>'; }
+    function options(values, current) {
+      return values.map(function (v) {
+        return '<option value="' + esc(v) + '"' + (v === current ? " selected" : "") + '>' +
+               esc(v || "not recorded") + '</option>';
+      }).join("");
+    }
+    function datalist(id, values) {
+      return '<datalist id="' + id + '">' + values.map(function (v) {
+        return '<option value="' + esc(v) + '">';
+      }).join("") + '</datalist>';
+    }
+    function text(id, value, extra) {
+      return '<input type="text" id="' + id + '" value="' + esc(value || "") + '" autocomplete="off"' +
+             (extra || "") + '>';
+    }
+
+    var records = Crm.allIncludingArchived();
+    var types = uniqVals(records.map(function (i) { return i.type; }));
+    var owners = uniqVals(records.map(function (i) { return i.owner; }));
+    // A record may carry a priority nobody uses any more; keep it selectable
+    // rather than silently rewriting it on the first save.
+    var priorities = uniqVals(["High", "Medium", "Low"].concat([inv.priority]));
+
+    return '<div class="crm-edit">' +
+      '<h3>Editing this record</h3>' +
+      '<p class="crm-edit__lede">Nothing is written until you press Save, and a save stays in this ' +
+        'browser — use “Download crm-data.json” on the list to put it back in the folder.</p>' +
+      '<div class="crm-edit__grid">' +
+        field("editName", "Name", text("editName", inv.name)) +
+        field("editType", "Type",
+          text("editType", inv.type, ' list="editTypeList"') + datalist("editTypeList", types)) +
+        field("editStage", "Stage",
+          '<select id="editStage">' + options(Crm.stages(), inv.stage) + '</select>') +
+        field("editCheck", "Check size",
+          text("editCheck", checkText(inv) || inv.checkSize.note, ' placeholder="$3m–$6m"') +
+          note("A range or a figure becomes numbers the list can sort on. Anything else — " +
+               "“not yet discussed” — is kept as written.")) +
+        field("editAum", "Assets", text("editAum", inv.aum, ' placeholder="$1.4B"')) +
+        field("editLocation", "Location", text("editLocation", inv.location)) +
+        field("editOwner", "Owner",
+          text("editOwner", inv.owner, ' list="editOwnerList"') + datalist("editOwnerList", owners)) +
+        field("editPriority", "Priority",
+          '<select id="editPriority">' + options([""].concat(priorities), inv.priority) + '</select>') +
+        field("editWebsite", "Website",
+          '<input type="url" id="editWebsite" value="' + esc(inv.website) +
+          '" autocomplete="off" placeholder="https://">') +
+        field("editTags", "Tags",
+          text("editTags", inv.tags.join(", ")) + note("Separated by commas."), true) +
+        field("editDeals", "Deals of interest",
+          text("editDeals", inv.deals.join(", "), ' list="crmDealNames"') +
+          note("Separated by commas. A name that is not a deal folder is still kept — it just " +
+               "will not carry a deal status."), true) +
+        field("editMandate", "Mandate",
+          '<textarea id="editMandate">' + esc(inv.mandate) + '</textarea>', true) +
+        field("editWhy", "Why they are on the list",
+          '<textarea id="editWhy">' + esc(inv.why) + '</textarea>', true) +
+      '</div>' +
+      '<div class="crm-edit__actions">' +
+        '<button class="dash-refresh dash-refresh--primary" data-crm-edit-save="' + esc(inv.id) + '">Save changes</button>' +
+        '<button class="dash-refresh" data-crm-edit-cancel="' + esc(inv.id) + '">Cancel</button>' +
+        '<span class="crm-edit__derived">Last contact ' +
+          (lastContact(inv) ? esc(lastContact(inv)) : "not recorded") +
+          ' — read from the newest conversation, so it is not typed here. People, research and ' +
+          'the conversation log are edited through the agent.</span>' +
+      '</div></div>';
+  }
+
+  function saveInvestorEdits(id) {
+    var inv = Crm.get(id);
+    if (!inv) { crmState.editing = false; showCrmView("list"); renderCrm(); return; }
+
+    function val(fid) { var el = $(fid); return el ? el.value.trim() : ""; }
+    function commaList(fid) {
+      return val(fid).split(",").map(function (s) { return s.trim(); })
+                     .filter(function (s) { return s.length > 0; });
+    }
+
+    var name = val("editName");
+    if (!name) {
+      toast("A record needs a name.");
+      $("editName").focus();
+      return;
+    }
+
+    // One box for check size, read the same way the agent reads it. A range
+    // becomes numbers; anything else is kept verbatim as the note, which is
+    // exactly what the facts grid shows when there are no numbers.
+    var raw = val("editCheck");
+    var check = { min: null, max: null, note: "" };
+    if (raw) {
+      var probe = /\$/.test(raw) ? raw : raw.replace(/(^|[^\w$])(\d)/g, "$1$$$2");
+      var parsed = Reader.matchCheck(probe);
+      if (parsed) check = { min: parsed.min, max: parsed.max, note: "" };
+      else check.note = raw;
+    }
+
+    Crm.patch(id, {
+      name: name,
+      type: val("editType") || "Unclassified",
+      stage: $("editStage").value,
+      checkSize: check,
+      aum: val("editAum"),
+      location: val("editLocation"),
+      owner: val("editOwner"),
+      priority: $("editPriority").value,
+      website: val("editWebsite"),
+      tags: commaList("editTags"),
+      deals: commaList("editDeals"),
+      mandate: val("editMandate"),
+      why: val("editWhy")
+    });
+
+    crmState.editing = false;
+    renderInvestor(id);
+    renderCrmFilters();
+    renderCrm();
+    toast("Saved in this browser. Download crm-data.json to keep it.");
+  }
+
   function showCrmView(name) {
     crmState.view = name;
+    if (name !== "investor") crmState.editing = false;
     $("viewCrm").hidden = name !== "list";
     $("viewInvestor").hidden = name !== "investor";
   }
 
   function openInvestor(id) {
     crmState.investorId = id;
+    crmState.editing = false;
     showCrmView("investor");
     renderInvestor(id);
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -5471,12 +5648,18 @@ button.link-arrow {
     $("agentStatus").textContent = "";
     renderCrmFilters();
     renderCrm();
+    // A change applied from here can land on the record whose edit form is
+    // open. Rewriting the boxes under the cursor would be worse than closing
+    // them, so the form closes and the toast says what happened to it.
+    var wasEditing = crmState.editing;
+    crmState.editing = false;
     if (crmState.view === "investor") {
       if (Crm.get(crmState.investorId)) renderInvestor(crmState.investorId);
       else showCrmView("list");
     }
     renderGrid();          // deal-status badges show on the documents tab too
-    toast(chosen.length + " change" + (chosen.length === 1 ? "" : "s") + " applied.");
+    toast(chosen.length + " change" + (chosen.length === 1 ? "" : "s") + " applied." +
+      (wasEditing ? " The edit form was closed — anything typed in it was not saved." : ""));
   }
 
   /* ============================================================
@@ -6495,6 +6678,24 @@ button.link-arrow {
 
     var crmHome = e.target.closest("[data-action='crm-home']");
     if (crmHome) { showCrmView("list"); renderCrm(); window.scrollTo({ top: 0, behavior: "smooth" }); return; }
+
+    var editBtn = e.target.closest("[data-crm-edit]");
+    if (editBtn) {
+      crmState.editing = true;
+      renderInvestor(editBtn.getAttribute("data-crm-edit"));
+      $("editName").focus();
+      return;
+    }
+
+    var editSave = e.target.closest("[data-crm-edit-save]");
+    if (editSave) { saveInvestorEdits(editSave.getAttribute("data-crm-edit-save")); return; }
+
+    var editCancel = e.target.closest("[data-crm-edit-cancel]");
+    if (editCancel) {
+      crmState.editing = false;
+      renderInvestor(editCancel.getAttribute("data-crm-edit-cancel"));
+      return;
+    }
 
     var logBtn = e.target.closest("[data-crm-log]");
     if (logBtn) {
@@ -8329,6 +8530,8 @@ button.link-arrow {
       renderCrmFilters();
       renderCrm();
       renderMemory();
+      var wasEditing = crmState.editing;
+      crmState.editing = false;      // same rule as the list: do not type over the typist
       if (crmState.view === "investor") {
         if (Crm.get(crmState.investorId)) renderInvestor(crmState.investorId);
         else showCrmView("list");
@@ -8344,7 +8547,8 @@ button.link-arrow {
 
       render();
       save();
-      toast(chosen.length + " change" + (chosen.length === 1 ? "" : "s") + " applied.");
+      toast(chosen.length + " change" + (chosen.length === 1 ? "" : "s") + " applied." +
+        (wasEditing ? " The edit form was closed — anything typed in it was not saved." : ""));
     }
 
     function discardProposal(msgId) {
