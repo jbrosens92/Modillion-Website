@@ -2646,10 +2646,10 @@ button.link-arrow {
               <input type="text" id="taskLink" autocomplete="off" list="taskLinkOptions"
                      placeholder="A deal or an investor (optional)">
               <datalist id="taskLinkOptions"></datalist>
-              <p class="crm-field__note task-link-new" id="taskLinkNew" hidden>
-                Not a deal folder or an investor on the CRM.
+              <p class="crm-field__note task-link-new" id="taskLinkNew">
+                <span data-link-why hidden>Not a deal folder or an investor on the CRM. </span>
                 <button type="button" class="task-link-new__btn"
-                        data-task-link-add="taskLink">Add as a new investor</button>
+                        data-task-link-add="taskLink">Add investor</button>
               </p>
             </div>
           </div>
@@ -6511,10 +6511,10 @@ button.link-arrow {
         field("taskEditLink", "Related to",
           '<input type="text" id="taskEditLink" autocomplete="off" list="taskLinkOptions" ' +
           'placeholder="A deal or an investor (optional)" value="' + esc(t.link) + '">' +
-          '<p class="crm-field__note task-link-new" id="taskEditLinkNew" hidden>' +
-            'Not a deal folder or an investor on the CRM. ' +
+          '<p class="crm-field__note task-link-new" id="taskEditLinkNew">' +
+            '<span data-link-why hidden>Not a deal folder or an investor on the CRM. </span>' +
             '<button type="button" class="task-link-new__btn" ' +
-                    'data-task-link-add="taskEditLink">Add as a new investor</button>' +
+                    'data-task-link-add="taskEditLink">Add investor</button>' +
           '</p>', true) +
         field("taskEditNotes", "Notes",
           '<textarea id="taskEditNotes">' + esc(t.notes) + '</textarea>', true) +
@@ -6629,26 +6629,34 @@ button.link-arrow {
 
   // A name in "Related to" is normally a deal folder or an investor. One
   // that is neither is still kept — but it is usually an investor nobody
-  // has put on the CRM, so say so and offer to add them. Deals are not
-  // offered: those are OneDrive folders, and a deal invented in the
-  // browser would have no documents behind it.
-  function knownLink(name) {
+  // has put on the CRM, so the button is always under the field rather
+  // than appearing once the name is typed: a control you cannot see is
+  // one nobody knows they have. It names what it would add once there is
+  // something to name. Deals are not offered — those are OneDrive
+  // folders, and one invented here would have no documents behind it.
+  function matchesDeal(name) {
     var v = name.trim().toLowerCase();
-    if (!v) return true;
-    return dealNames().concat(Crm.allIncludingArchived().map(function (i) { return i.name; }))
-      .some(function (n) { return String(n).toLowerCase() === v; });
+    return !!v && dealNames().some(function (n) { return String(n).toLowerCase() === v; });
+  }
+
+  function matchesInvestor(name) {
+    var v = name.trim().toLowerCase();
+    if (!v) return null;
+    return Crm.allIncludingArchived().filter(function (i) {
+      return i.name.toLowerCase() === v;
+    })[0] || null;
   }
 
   function refreshLinkOffer(inputId, slotId) {
     var input = $(inputId), slot = $(slotId);
     if (!input || !slot) return;
+
     var name = input.value.trim();
-    var offer = name.length > 1 && !knownLink(name);
-    slot.hidden = !offer;
-    if (offer) {
-      slot.querySelector("[data-task-link-add]").textContent =
-        "Add “" + name + "” as a new investor";
-    }
+    var isNew = name.length > 1 && !matchesDeal(name) && !matchesInvestor(name);
+
+    slot.querySelector("[data-link-why]").hidden = !isNew;
+    slot.querySelector("[data-task-link-add]").textContent =
+      isNew ? "Add “" + name + "” as a new investor" : "Add investor";
   }
 
   function refreshLinkOffers() {
@@ -6661,11 +6669,18 @@ button.link-arrow {
     if (!input) return;
 
     var name = input.value.trim();
-    if (!name) { toast("Type the name first."); input.focus(); return; }
+    if (!name) {
+      toast("Type the name in Related to first, then press Add investor.");
+      input.focus();
+      return;
+    }
 
-    var existing = Crm.allIncludingArchived().filter(function (i) {
-      return i.name.toLowerCase() === name.toLowerCase();
-    })[0];
+    if (matchesDeal(name)) {
+      toast("“" + name + "” is a deal folder, not an investor.");
+      return;
+    }
+
+    var existing = matchesInvestor(name);
     if (existing) {
       toast(existing.name + " is already on the CRM.");
       refreshLinkOffers();
