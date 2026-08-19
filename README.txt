@@ -354,11 +354,55 @@ Asset Management (dashboard.html, "Asset Management" tab) — split out 2026-08-
 - Which tab an area lands on is one property in DASHBOARD_CONFIG.areas: `ws: "assets"`. Nothing
   else knows the split, including the deal tags on the Operator CRM — a tag opens whichever tab
   its area belongs to.
-- Known limit, deliberate: the "By document type" cards on the pipeline still read across EVERY
-  area, asset management included. They are a cross-cutting view of all documents, and the
-  snapshot currently files nothing under asset management, so nothing double-counts today. If
-  the properties fill up and the type cards should stop counting them, the type index needs an
-  area scope — say so and it is a small change.
+- Superseded 2026-08-19 — the type cards now skip asset management. The note below is what
+  used to be here, kept because it is the reasoning that got acted on:
+    "Known limit, deliberate: the 'By document type' cards on the pipeline still read across
+    EVERY area, asset management included. They are a cross-cutting view of all documents, and
+    the snapshot currently files nothing under asset management, so nothing double-counts
+    today. If the properties fill up and the type cards should stop counting them, the type
+    index needs an area scope — say so and it is a small change."
+  The properties filled up, so the scope went in. Not by skipping the area while indexing —
+  that was the first attempt and it silently emptied the Asset report's own "by document type"
+  table, which has every right to those documents. The index still reads EVERY area; each hit
+  now carries the areaId it came from, and the SCOPE IS APPLIED WHERE DOCUMENTS ARE COUNTED:
+  hitsFor(catId, ws) in the provider, and one `ws` per report in buildReport().
+  Unscoped, the pipeline cards read financials 41 instead of 32, investor updates 23 instead of
+  13 and sponsor materials 43 instead of 35 — the same rent rolls and update letters counted
+  once as deal documents and again as property documents. The asset side is the complement:
+  9, 10 and 8. The two add up, which is the check that the split is clean.
+- The portfolio report had the same fault and it is fixed the same way. An unscoped report used
+  to mean "every area", which was right while each tab was one folder; it would now have listed
+  all three properties a second time as deals. A report belongs to one tab.
+
+
+Where Asset Management gets its properties — rebuilt 2026-08-19:
+- IT HAS NO FOLDER OF ITS OWN ANY MORE. It used to be a top-level "Asset Management" folder in
+  the Fund I library, one folder per property; it held a single half-built entry (Mill,
+  Greenwich CT, with an empty Monthly Update Letters inside) and has since been removed. Running
+  the snapshot against the source as it stands printed "recorded area not found in source:
+  Asset Management" and wrote a two-area file — the tab would have gone empty.
+- What replaced it is a better convention: what the firm owns is filed inside the deal folder it
+  closed under. The Arden — reorganised into 1. OM … 6. Asset Management — is the model.
+- So the area is DERIVED. tools/snapshot-source.txt gained an "assets-from:" line naming the area
+  to read it out of (_Closed Deals), and the script builds one property per closed deal that has
+  asset-management material, carrying that material ONLY, not the whole deal folder.
+- Which subfolders count: one named "Asset Management", or one the financials / investor-updates
+  crosscut groups already match. That is what lets the older deals in — they predate the naming
+  and file the same material under its parts. Today: The Arden 21 documents, The Mill 17
+  (Investor Letters, Quarterly Financials, Financial Statements, Depreciation, Percentage
+  Ownership), Gainesville 1 (Quarterly Updates).
+- A folder named "Asset Management" is SPLICED OPEN rather than shown as a step — the tab is
+  asset management, so a breadcrumb reading All properties / The Arden / 6. Asset Management is
+  saying it twice. The Arden opens straight onto Financials, Sponsor Updates and its update
+  workbook. Same reasoning as the area's own name not being a step in the trail.
+- It is a VIEW, not a second copy. Its files live in the closed-deal folders and appear on the
+  Deal Pipeline too, which is the point — the same document read at different times by different
+  people. Two consequences, both deliberate: totalFiles counts the source areas only (958, not
+  997), and the type cards skip the area, as above.
+- --no-assets skips the derivation for one run.
+- If a top-level Asset Management folder ever comes back, this becomes one line: drop the
+  assets-from: line and add "only: Asset Management" again. Nothing in dashboard.html knows the
+  difference — the area arrives with the same id and label either way.
 
 Reading a PDF without leaving the page — added 2026-08-18:
 - Click a PDF anywhere in a file table and it opens in a preview panel over the page rather than
@@ -663,17 +707,23 @@ The document snapshot, in one place:
 - Which folder that is used to be a command-line argument nobody wrote down, which made "the
   dashboard is stale" and "the dashboard is pointed somewhere else" impossible to tell apart.
   It is now recorded in tools/snapshot-source.txt: the path, then "only:" lines naming the
-  top-level folders allowed to become areas. That file is gitignored — a local machine path,
-  and this repository is public.
+  top-level folders allowed to become areas, then the "assets-from:" line that says where the
+  Asset Management area is read out of. That file is gitignored — a local machine path, and this
+  repository is public.
 - Refresh the dashboard after the folders change:
       python3 tools/onedrive-snapshot.py                  # the recorded source
       python3 tools/onedrive-snapshot.py "/other/folder"  # override for one run
       python3 tools/onedrive-snapshot.py --all-areas      # ignore the only: list
+      python3 tools/onedrive-snapshot.py --no-assets      # skip the derived asset area
 - THE only: LIST MATTERS. The source folder holds much more than the dashboard shows — Pitchbook,
   Dead Deals, Entity Docs, Capital Calls and the rest. Areas the config does not declare never
   appear as tiles, but buildTypeIndex() reads across EVERY area in the file, so without the list
   the "By document type" cards quietly count dead deals and pitchbook drafts as live term sheets
-  and models. Scanning the whole folder gives 13 areas and 1194 files; the three declared ones
-  give 23 deals and 952. Keep the list in step with DASHBOARD_CONFIG.areas in dashboard.html.
+  and models. Scanning the whole folder gives 13 areas and 1194 files; the two
+  declared ones give 22 deals and 958. Keep the list in step with DASHBOARD_CONFIG.areas in
+  dashboard.html — allowing for asset management, which is declared there but derived here.
+- The run prints what it did, and the NOTE lines are worth reading: a recorded area that is not
+  in the source, or an assets-from area that produced nothing, both say so rather than quietly
+  writing a short file.
 - Only names, sizes and timestamps are read; file contents are never opened. The output holds
   real deal and sponsor names and is gitignored — it must never be committed.

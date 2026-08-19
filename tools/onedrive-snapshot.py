@@ -17,6 +17,10 @@ may become dashboard areas. The source folder holds more than the dashboard show
 without an only: list the type cards count documents from folders the dashboard never
 displays. Keep the list in step with DASHBOARD_CONFIG.areas in dashboard.html.
 
+It also holds an optional "assets-from:" line naming the area whose deals the Asset
+Management area is read out of. That area has no folder of its own — see the comment on
+ASSET_FOLDER_NAME below for what it is and why it is derived.
+
 Pass a folder to override the path for one run.
 
 Usage:
@@ -57,6 +61,25 @@ CROSSCUT = {
                   "seller documents", "market", "tenant"],
     "sponsor-materials": ["sponsor material", "sponsor agreement", "sponsor"],
 }
+
+# The Asset Management area is DERIVED, not read from a folder of its own.
+#
+# There is no top-level "Asset Management" folder in the source any more: what
+# the firm already owns is filed inside the deal folder it closed under. So the
+# area is built by reading those subfolders back out of the closed deals named
+# on the "assets-from:" line in snapshot-source.txt.
+#
+# A folder called "Asset Management" is the current convention (The Arden). The
+# older deals predate it and file the same material under its parts, which the
+# financials and investor-updates crosscut groups already name.
+#
+# This makes the area a VIEW of files that live elsewhere in the snapshot, not a
+# second copy of them. Two things follow, and both are deliberate: totalFiles
+# counts the source areas only, and the dashboard's "By document type" cards
+# skip this area so a rent roll is not counted once as a deal document and again
+# as a property document.
+ASSET_FOLDER_NAME = "asset management"
+ASSET_GROUPS = {"financials", "investor-updates"}
 
 
 def iso(ts):
@@ -194,13 +217,53 @@ def count_files(nodes):
     return n
 
 
+def asset_area(source_area):
+    """Build the Asset Management area from the deals in `source_area`.
+
+    One property per deal that has asset-management material, carrying that
+    material only — not the whole deal folder. Returns None when there is none,
+    so an empty tab is never written.
+    """
+    properties = []
+
+    for deal in source_area["children"]:
+        kept = []
+        for node in deal["children"]:
+            if node["type"] != "folder":
+                continue
+            if ASSET_FOLDER_NAME in node["name"].lower():
+                # The tab IS asset management, so a folder repeating the name is
+                # not a step in the trail. Its contents stand in for it, the way
+                # the area's own name is not a breadcrumb.
+                kept.extend(node["children"])
+            elif node.get("group") in ASSET_GROUPS:
+                kept.append(node)
+
+        files = count_files(kept)
+        if not files:
+            continue
+
+        properties.append({
+            "name": deal["name"],
+            "type": "folder",
+            "fileCount": files,
+            "children": kept,
+        })
+
+    if not properties:
+        return None
+
+    return {"id": "asset-management", "label": "Asset Management", "children": properties}
+
+
 def read_recorded_source():
-    """(folder, only) as recorded in tools/snapshot-source.txt.
+    """(folder, only, assets_from) as recorded in tools/snapshot-source.txt.
 
     `only` is the set of top-level folder names allowed to become areas, empty
-    meaning take everything.
+    meaning take everything. `assets_from` names the one area whose deals the
+    Asset Management area is read out of, None meaning do not build it.
     """
-    folder, only = None, set()
+    folder, only, assets_from = None, set(), None
     try:
         with open(SOURCE_FILE, encoding="utf-8") as fh:
             for line in fh:
@@ -209,12 +272,14 @@ def read_recorded_source():
                     continue
                 if line.lower().startswith("only:"):
                     only.add(line.split(":", 1)[1].strip())
+                elif line.lower().startswith("assets-from:"):
+                    assets_from = line.split(":", 1)[1].strip()
                 elif folder is None:
                     folder = os.path.expanduser(line)
     except FileNotFoundError:
         pass
 
-    return folder, only
+    return folder, only, assets_from
 
 
 def main():
@@ -224,16 +289,20 @@ def main():
                     help="Folder to snapshot (default: the path in tools/snapshot-source.txt)")
     ap.add_argument("--all-areas", action="store_true",
                     help="Ignore the recorded only: list and take every top-level folder")
+    ap.add_argument("--no-assets", action="store_true",
+                    help="Skip the derived Asset Management area (see assets-from: in the source file)")
     ap.add_argument("-o", "--out", default="dashboard-data.json",
                     help="Output path (default: dashboard-data.json, gitignored)")
     ap.add_argument("--anonymise", action="store_true",
                     help="Replace deal and sponsor names with stable pseudonyms")
     args = ap.parse_args()
 
-    recorded_folder, only = read_recorded_source()
+    recorded_folder, only, assets_from = read_recorded_source()
     folder = args.folder or recorded_folder
     if args.all_areas:
         only = set()
+    if args.no_assets:
+        assets_from = None
 
     if folder is None:
         sys.exit(
@@ -250,7 +319,25 @@ def main():
 
     anon = Anonymiser(args.anonymise)
     areas = walk(folder, anon, only)
+
+    # Counted before the derived area is appended: its files already live in the
+    # area it was read from, and totalFiles answers "how many documents are in
+    # this folder", not "how many rows does the dashboard draw".
     total = sum(count_files(a["children"]) for a in areas)
+    deal_count = sum(len(a["children"]) for a in areas)
+
+    if assets_from:
+        source_area = next((a for a in areas if a["label"] == assets_from.lstrip("_")), None)
+        if source_area is None:
+            print(f"  NOTE: assets-from area not in the snapshot: {assets_from}")
+        else:
+            derived = asset_area(source_area)
+            if derived is None:
+                print(f"  NOTE: no asset-management material under {assets_from}")
+            else:
+                areas.insert(0, derived)
+                print(f"  asset management: {len(derived['children'])} properties, "
+                      f"{count_files(derived['children'])} files (a view of {assets_from})")
 
     payload = {
         "generatedAt": datetime.now(timezone.utc).isoformat(timespec="seconds"),
@@ -264,7 +351,7 @@ def main():
         json.dump(payload, fh, indent=1, ensure_ascii=False)
 
     print(f"Wrote {args.out}")
-    print(f"  areas: {len(areas)}  deals: {sum(len(a['children']) for a in areas)}  files: {total}")
+    print(f"  areas: {len(areas)}  deals: {deal_count}  files: {total}")
     print(f"  anonymised: {args.anonymise}")
     if not args.anonymise:
         print("  WARNING: contains real names — gitignored, do not commit.")

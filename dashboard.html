@@ -3250,7 +3250,7 @@ button.link-arrow {
   var DatasetProvider = (function () {
     var DATA = null;          // { areas: [...] }
     var meta = { source: "fallback", anonymised: true, generatedAt: null };
-    var typeIndex = {};       // categoryId -> [ { key, dealName, areaLabel, node } ]
+    var typeIndex = {};       // categoryId -> [ { key, dealName, areaId, areaLabel, node } ]
 
     function toDate(node) {
       if (node.modified) return new Date(node.modified);
@@ -3317,6 +3317,18 @@ button.link-arrow {
       return null;
     }
 
+    // The type index reads across every area, and areas live on one tab or the
+    // other. Asset Management is a VIEW of files that also sit in the closed
+    // deals — the snapshot reads it back out of them — so anything COUNTING
+    // documents has to pick a workspace or it counts a rent roll once as a deal
+    // document and again as a property document. Anything MATCHING hits against
+    // a list of deals it has already scoped can take them all.
+    function hitsFor(catId, ws) {
+      var hits = typeIndex[catId] || [];
+      if (!ws) return hits;
+      return hits.filter(function (h) { return wsForCategory(h.areaId) === ws; });
+    }
+
     // Walk every deal, collecting folders whose name matches a type category.
     function buildTypeIndex() {
       typeIndex = {};
@@ -3342,6 +3354,7 @@ button.link-arrow {
                   typeIndex[cat.id].push({
                     key: deal.name + " — " + node.name,
                     dealName: deal.name,
+                    areaId: area.id,
                     areaLabel: area.label,
                     kind: "file",
                     node: node
@@ -3357,6 +3370,7 @@ button.link-arrow {
                 typeIndex[cat.id].push({
                   key: deal.name + " — " + node.name,
                   dealName: deal.name,
+                  areaId: area.id,
                   areaLabel: area.label,
                   kind: "folder",
                   node: node
@@ -3420,7 +3434,7 @@ button.link-arrow {
       // folder at a time. A Graph-backed provider would satisfy these by
       // caching its own crawl.
       raw: function () { return DATA; },
-      typeHits: function (catId) { return typeIndex[catId] || []; },
+      typeHits: function (catId, ws) { return hitsFor(catId, ws); },
 
       // NO IDENTITY HERE, and none invented. This provider reads a folder
       // snapshot; it knows which folder it read, not who is reading it.
@@ -3447,7 +3461,8 @@ button.link-arrow {
           out.push({ id: cat.id, count: countFiles(kids), lastModified: latestIn(kids) });
         });
         DASHBOARD_CONFIG.types.forEach(function (cat) {
-          var hits = typeIndex[cat.id] || [];
+          // "By document type" sits on the pipeline and counts each document once.
+          var hits = hitsFor(cat.id, "docs");
           var nodes = hits.map(function (h) { return h.node; });
           out.push({ id: cat.id, count: hitFileCount(hits), lastModified: latestIn(nodes) });
         });
@@ -3460,8 +3475,8 @@ button.link-arrow {
 
         if (area) return Promise.resolve(nodeAt(area.children, pathArr).slice());
 
-        var hits = typeIndex[catId];
-        if (!hits) return Promise.resolve([]);
+        if (!typeIndex[catId]) return Promise.resolve([]);   // not a type category
+        var hits = hitsFor(catId, "docs");
 
         if (!pathArr.length) {
           // Root of a type view: one entry per matching folder, labelled by deal.
@@ -4394,9 +4409,17 @@ button.link-arrow {
     var cat = scopeId ? catById(scopeId) : null;
     var isType = cat && DASHBOARD_CONFIG.types.some(function (t) { return t.id === cat.id; });
 
+    // Which workspace is being reported on. An unscoped report used to mean
+    // "every area", which was right while the tabs were one folder each. Asset
+    // Management is now read back out of the closed deals, so an unscoped
+    // portfolio report would list every property a second time as a deal and
+    // count its documents twice. A report belongs to one tab.
+    var ws = (cat && !isType) ? wsForCategory(cat.id) : state.ws;
+
     // Deal rows in scope
     var deals = [];
     raw.areas.forEach(function (area) {
+      if (wsForCategory(area.id) !== ws) return;
       if (cat && !isType && area.id !== cat.id) return;
       (area.children || []).forEach(function (deal) {
         var files = flattenFiles(deal.children, [], []);
@@ -4419,7 +4442,7 @@ button.link-arrow {
     var byName = {};
     deals.forEach(function (d) { byName[d.area + "|" + d.name] = d; });
     DASHBOARD_CONFIG.types.forEach(function (t) {
-      (Provider.typeHits(t.id) || []).forEach(function (hit) {
+      (Provider.typeHits(t.id, ws) || []).forEach(function (hit) {
         var d = byName[hit.areaLabel + "|" + hit.dealName];
         if (!d) return;
         d.types[t.id] = (d.types[t.id] || 0) +
@@ -4432,7 +4455,7 @@ button.link-arrow {
     // count everything those deals hold, not the documents being reported on.
     if (isType) {
       var scoped = {};
-      (Provider.typeHits(cat.id) || []).forEach(function (hit) {
+      (Provider.typeHits(cat.id, ws) || []).forEach(function (hit) {
         var key = hit.areaLabel + "|" + hit.dealName;
         scoped[key] = (scoped[key] || []).concat(
           hit.kind === "file"
