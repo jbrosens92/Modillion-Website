@@ -373,6 +373,15 @@ Adding a task in one line:
 - There is no real identity in this page yet, so "Mine" and the default assignee need one to be
   picked. It is stored per browser and is a placeholder until the Microsoft 365 sign-in lands,
   at which point it should be replaced by the signed-in account.
+- IT IS ALSO WHAT THE CHIP IN THE TOP RIGHT READS (2026-08-18). That chip used to say
+  "Sample User — Preview mode", left over from when the page shipped invented sample records.
+  It now shows whoever is picked here, and "Not signed in" when nobody is: a name in the corner
+  of a dashboard reads as though somebody is signed in, and until the Microsoft 365 sign-in
+  lands nobody is. The line under it says which document source is loaded — "Local snapshot",
+  or "No document source" on the deployed page — rather than describing a person.
+- getUser() on the DataProvider seam is still where a real name comes from. A GraphProvider
+  returns the signed-in account there and the chip uses it as-is; the Task List fallback is
+  only reached while that name is empty.
 
 The sharing limit — read this before rolling the task list out to the team:
 - Ticks and edits are saved in the browser, not to the file. Two people on two machines will

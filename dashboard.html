@@ -3375,12 +3375,20 @@ button.link-arrow {
       raw: function () { return DATA; },
       typeHits: function (catId) { return typeIndex[catId] || []; },
 
+      // NO IDENTITY HERE, and none invented. This provider reads a folder
+      // snapshot; it knows which folder it read, not who is reading it.
+      // It used to answer "Sample User / Preview mode", from back when the
+      // page shipped invented sample records — that name in the corner
+      // reads as though somebody is signed in when nobody is, and there is
+      // no sign-in in this page yet. A Graph-backed provider returns the
+      // signed-in account here and the chip uses it as-is; until then the
+      // name is left empty and the page falls back to the one place a name
+      // has actually been chosen (the Task List's "Signed in as").
       getUser: function () {
-        var local = meta.source === "local-snapshot";
         return Promise.resolve({
-          name: local ? "Local Preview" : "Sample User",
+          name: "",
           email: "",
-          role: local ? "Local snapshot" : "Preview mode"
+          role: meta.source === "local-snapshot" ? "Local snapshot" : "No document source"
         });
       },
 
@@ -8796,6 +8804,7 @@ button.link-arrow {
     Tasks.setWhoAmI(e.target.value);
     fillTaskSelects();
     renderTasks();
+    renderIdentity();     // the chip in the corner reads this same choice
     toast(e.target.value
       ? "You are " + Tasks.personName(e.target.value) + " on this machine."
       : "Nobody selected.");
@@ -10929,12 +10938,27 @@ button.link-arrow {
     el.hidden = false;
   }
 
+  /* The chip in the top right. There is no sign-in in this page yet, so
+     there are only two honest answers: the account a real provider hands
+     back, or whoever the Task List has been told you are on this machine.
+     With neither it says so, rather than naming somebody who is not there.
+     When the Microsoft 365 sign-in lands, getUser() carries the name and
+     the Task List fallback stops being reached. */
+  var providerUser = { name: "", email: "", role: "" };
+
+  function renderIdentity() {
+    var name = providerUser.name || Tasks.personName(Tasks.whoAmI()) || "";
+    $("userName").textContent = name || "Not signed in";
+    $("userRole").textContent = providerUser.role || "";
+    $("userAvatar").textContent = name
+      ? name.split(/\s+/).map(function (p) { return p[0]; }).join("").slice(0, 2).toUpperCase()
+      : "—";
+  }
+
   function load() {
     Provider.getUser().then(function (user) {
-      $("userName").textContent = user.name;
-      $("userRole").textContent = user.role || "";
-      $("userAvatar").textContent = user.name.split(/\s+/).map(function (p) { return p[0]; })
-        .join("").slice(0, 2).toUpperCase();
+      providerUser = user;
+      renderIdentity();
     });
 
     renderHome();   // the tab the dashboard opens on
