@@ -949,29 +949,6 @@ button.link-arrow {
 }
 .dash-notice[data-variant="live"] strong { color: #FFFFFF; }
 
-/* Summary tiles ------------------------------------------------- */
-.dash-summary {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 28px;
-  padding-bottom: 52px;
-  border-bottom: 1px solid var(--rule);
-  margin-bottom: 44px;
-}
-.dash-summary .stat__num {
-  font-size: clamp(1.6rem, 2.6vw, 2.3rem);
-  /* Numeric and text tiles share one baseline row */
-  display: flex;
-  align-items: flex-end;
-  min-height: clamp(1.6rem, 2.6vw, 2.3rem);
-}
-.dash-summary .stat__num--text {
-  font-family: var(--sans);
-  font-weight: 300;
-  font-size: 1.15rem;
-  line-height: 1.25;
-  letter-spacing: .01em;
-}
 
 /* Toolbar ------------------------------------------------------- */
 .dash-toolbar {
@@ -2273,11 +2250,11 @@ button.link-arrow {
   body { font-size: 10.5pt; }
 
   /* Everything that is not the report itself */
-  .dash-gate, .dash-topbar, .dash-hero, .dash-notice, .dash-summary,
+  .dash-gate, .dash-topbar, .dash-hero, .dash-notice,
   .dash-toolbar, .dash-browse, .dash-detail, .dash-results, .dash-tabs,
   .deal-add, .agent-dock,
   .dash-crm, .dash-investor, #wsTasks, #wsOperators, #wsHome,
-  .site-footer, .dash-toast, .dash-report__crumbs, .dash-report__actions {
+  .site-footer, .dash-toast, .pdf-preview, .dash-report__crumbs, .dash-report__actions {
     display: none !important;
   }
 
@@ -2348,13 +2325,69 @@ button.link-arrow {
   .dash-toast { transition: opacity .25s ease; }
 }
 
+/* PDF preview -----------------------------------------------------
+   Inline rather than a new tab, so a monthly update letter or a report
+   can be read without leaving the page. Only offered for files the
+   provider marks previewable; every other file type still opens in a
+   new tab. One modal, shared by every tab with a file table. */
+.pdf-preview {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 32px;
+}
+.pdf-preview[hidden] { display: none; }
+.pdf-preview__backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(6, 19, 43, 0.55);
+}
+.pdf-preview__panel {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: min(920px, 100%);
+  height: 100%;
+  background: var(--paper);
+  border: 1px solid var(--rule);
+  box-shadow: 0 24px 64px rgba(6, 19, 43, 0.35);
+}
+.pdf-preview__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--rule);
+}
+.pdf-preview__name {
+  font-family: var(--sans);
+  font-size: .84rem;
+  font-weight: 500;
+  color: var(--deep-space);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pdf-preview__actions { display: flex; gap: 10px; flex: 0 0 auto; }
+.pdf-preview__panel iframe {
+  flex: 1 1 auto;
+  width: 100%;
+  border: 0;
+  background: #525659;
+}
+@media (max-width: 560px) {
+  .pdf-preview { padding: 0; }
+  .pdf-preview__panel { width: 100%; border: 0; }
+}
+
 /* Footer trim --------------------------------------------------- */
 .dash-app .site-footer__main { grid-template-columns: 1fr; justify-items: center; gap: 16px; }
 
 /* Responsive ---------------------------------------------------- */
-@media (max-width: 1000px) {
-  .dash-summary { grid-template-columns: repeat(2, 1fr); }
-}
 @media (max-width: 820px) {
   .dash-topbar__label { display: none; }
   .dash-hero { padding: 92px 0 52px; }
@@ -2362,7 +2395,6 @@ button.link-arrow {
   .dash-updated { margin-left: 0; width: 100%; }
 }
 @media (max-width: 560px) {
-  .dash-summary { grid-template-columns: 1fr; gap: 22px; }
   .dash-detail__head { gap: 18px; }
 
   /* The topbar carries brand + identity + sign out in 335px of container */
@@ -2471,26 +2503,6 @@ button.link-arrow {
 
       <!-- ====================== DEAL PIPELINE ====================== -->
       <div id="wsDocs" hidden>
-
-      <!-- Summary tiles -->
-      <div class="dash-summary">
-        <div class="stat">
-          <span class="stat__num" id="statDocs">—</span>
-          <span class="stat__label">Documents indexed</span>
-        </div>
-        <div class="stat">
-          <span class="stat__num" id="statCats">—</span>
-          <span class="stat__label">Categories</span>
-        </div>
-        <div class="stat">
-          <span class="stat__num stat__num--text" id="statRecent">—</span>
-          <span class="stat__label">Most recently updated</span>
-        </div>
-        <div class="stat">
-          <span class="stat__num stat__num--text" id="statSource">—</span>
-          <span class="stat__label">Document source</span>
-        </div>
-      </div>
 
       <!-- Toolbar -->
       <div class="dash-toolbar">
@@ -2801,26 +2813,6 @@ button.link-arrow {
       <!-- ==================== ASSET MANAGEMENT ==================== -->
       <div id="wsAssets" hidden>
 
-        <!-- Summary tiles -->
-        <div class="dash-summary">
-          <div class="stat">
-            <span class="stat__num" id="assetStatProps">—</span>
-            <span class="stat__label">Properties</span>
-          </div>
-          <div class="stat">
-            <span class="stat__num" id="assetStatDocs">—</span>
-            <span class="stat__label">Documents indexed</span>
-          </div>
-          <div class="stat">
-            <span class="stat__num stat__num--text" id="assetStatRecent">—</span>
-            <span class="stat__label">Most recently updated</span>
-          </div>
-          <div class="stat">
-            <span class="stat__num stat__num--text" id="assetStatSource">—</span>
-            <span class="stat__label">Document source</span>
-          </div>
-        </div>
-
         <!-- Toolbar -->
         <div class="dash-toolbar">
           <div class="dash-search">
@@ -3045,6 +3037,28 @@ button.link-arrow {
 
   <div class="dash-toast" id="toast" role="status" aria-live="polite"></div>
 
+  <!-- PDF preview — opens inline rather than a new tab, so a report can be
+       read without leaving the page. Only offered for files the provider
+       marks previewable (see the DATA PROVIDER SEAM comment below); every
+       other file type still opens in a new tab, which stays the safe
+       default for anything a browser cannot render on its own. Shared by
+       every tab that shows a file table — the Deal Pipeline and Asset
+       Management are the same file-table machinery, so this is one modal
+       rather than one per tab. -->
+  <div class="pdf-preview" id="pdfPreview" hidden>
+    <div class="pdf-preview__backdrop" data-pdf-close="1"></div>
+    <div class="pdf-preview__panel" role="dialog" aria-modal="true" aria-label="Document preview">
+      <div class="pdf-preview__head">
+        <span class="pdf-preview__name" id="pdfPreviewName"></span>
+        <div class="pdf-preview__actions">
+          <button class="dash-refresh" type="button" id="pdfPreviewOpen">Open in new tab</button>
+          <button class="dash-refresh" type="button" data-pdf-close="1">Close</button>
+        </div>
+      </div>
+      <iframe id="pdfPreviewFrame" title="Document preview" src="about:blank"></iframe>
+    </div>
+  </div>
+
 </div>
 
 <script>
@@ -3155,7 +3169,15 @@ button.link-arrow {
        search(query)                 -> [ item & { categoryId } ]
 
      item = { name, type: "folder"|"file", ext, size,
-              modified: Date, modifiedBy, url }
+              modified: Date, modifiedBy, url, previewUrl }
+
+     previewUrl is optional and is what the PDF preview modal points an
+     <iframe> at — it needs a direct, framable link to the file's bytes.
+     `url` (webUrl) is SharePoint's own page for the file, which normally
+     refuses to sit inside a frame, so it stays the "Open in new tab"
+     link instead. A GraphProvider should supply previewUrl from Graph's
+     driveItem "@microsoft.graph.downloadUrl" (a short-lived, anonymous,
+     framable link), not from webUrl.
 
      DatasetProvider below serves whichever dataset is loaded:
 
@@ -3203,7 +3225,8 @@ button.link-arrow {
         size: typeof node.size === "number" ? node.size : null,
         modified: toDate(node),
         modifiedBy: node.modifiedBy || null,
-        url: node.webUrl || node.url || null
+        url: node.webUrl || node.url || null,
+        previewUrl: node.previewUrl || node.downloadUrl || null
       };
       if (node.type === "folder") {
         out.children = (node.children || []).map(normalise);
@@ -3392,7 +3415,7 @@ button.link-arrow {
               return {
                 name: h.key, type: "file", ext: h.node.ext, size: h.node.size,
                 modified: h.node.modified, modifiedBy: h.node.modifiedBy,
-                url: h.node.url, subtitle: h.dealName
+                url: h.node.url, previewUrl: h.node.previewUrl, subtitle: h.dealName
               };
             }
             return {
@@ -3422,7 +3445,7 @@ button.link-arrow {
                 hits.push({
                   name: node.name, type: node.type, ext: node.ext, size: node.size,
                   modified: node.modified, modifiedBy: node.modifiedBy, url: node.url,
-                  categoryId: area.id, path: trail
+                  previewUrl: node.previewUrl, categoryId: area.id, path: trail
                 });
               }
               if (node.children) descend(node.children, trail.concat(node.name));
@@ -3551,6 +3574,32 @@ button.link-arrow {
     el.classList.add("is-visible");
     clearTimeout(toastTimer);
     toastTimer = setTimeout(function () { el.classList.remove("is-visible"); }, 3600);
+  }
+
+  /* ============================================================
+     PDF PREVIEW
+
+     One modal, opened from any file table on any tab. previewUrl is
+     what the <iframe> loads — a direct, framable link to the file's
+     bytes (see the DATA PROVIDER SEAM comment). fallbackUrl is the
+     file's normal SharePoint page, used for "Open in new tab" since
+     that is the page people expect for commenting, version history
+     and the rest of the SharePoint chrome the iframe does not carry.
+     ============================================================ */
+  function openPdfPreview(name, previewUrl, fallbackUrl) {
+    $("pdfPreviewName").textContent = name;
+    $("pdfPreviewFrame").src = previewUrl;
+    $("pdfPreviewOpen").onclick = function () {
+      window.open(fallbackUrl || previewUrl, "_blank", "noopener");
+    };
+    $("pdfPreview").hidden = false;
+  }
+
+  function closePdfPreview() {
+    $("pdfPreview").hidden = true;
+    // about:blank, not "" — an empty src resolves to the page's own URL,
+    // which quietly loads the whole dashboard again inside the frame.
+    $("pdfPreviewFrame").src = "about:blank";
   }
 
   /* ============================================================
@@ -3711,20 +3760,6 @@ button.link-arrow {
   }
 
   function renderAssetSummary() {
-    var props = assetProperties();
-    var docs = 0, latest = null, latestName = null;
-    props.forEach(function (p) {
-      docs += p.count;
-      if (p.lastModified && (!latest || p.lastModified > latest)) {
-        latest = p.lastModified;
-        latestName = p.name;
-      }
-    });
-    $("assetStatProps").textContent = props.length ? String(props.length) : "—";
-    $("assetStatDocs").textContent = docs ? docs.toLocaleString() : "—";
-    $("assetStatRecent").textContent = latestName || "—";
-    $("assetStatSource").textContent = Provider.meta().source === "local-snapshot"
-      ? "Local snapshot" : "Not connected";
     $("assetLastSynced").textContent = "Last synced " + new Date().toLocaleTimeString("en-US",
       { hour: "numeric", minute: "2-digit" });
   }
@@ -3733,24 +3768,6 @@ button.link-arrow {
      RENDER — summary tiles
      ============================================================ */
   function renderSummary() {
-    var docs = 0, latest = null, latestCat = null;
-    // Asset Management has its own tab and its own tiles, so the pipeline
-    // counts the pipeline. Type views re-slice the same files, so only
-    // areas contribute to the total.
-    var areaIds = areasFor("docs").map(function (a) { return a.id; });
-    state.summaries.forEach(function (s) {
-      if (areaIds.indexOf(s.id) === -1) return;
-      docs += s.count;
-      if (s.lastModified && (!latest || s.lastModified > latest)) {
-        latest = s.lastModified;
-        latestCat = catById(s.id);
-      }
-    });
-    $("statDocs").textContent = docs ? docs.toLocaleString() : "—";
-    $("statCats").textContent = areasFor("docs").length + " + " + DASHBOARD_CONFIG.types.length;
-    $("statRecent").textContent = latestCat ? latestCat.label : "—";
-    $("statSource").textContent = Provider.meta().source === "local-snapshot"
-      ? "Local snapshot" : "Not connected";
     $("lastSynced").textContent = "Last synced " + new Date().toLocaleTimeString("en-US",
       { hour: "numeric", minute: "2-digit" });
   }
@@ -3838,10 +3855,17 @@ button.link-arrow {
         '</tr>';
       }
 
+      // A PDF with something to point an <iframe> at opens inline instead of
+      // in a new tab. Everything else — other file types, or a PDF whose
+      // provider only gave a webUrl SharePoint will refuse to frame — keeps
+      // the plain "open in a new tab" behaviour below.
+      var previewable = kind === "pdf" && it.previewUrl;
+
       return '<tr>' +
         '<td><button class="fileitem" type="button" data-item="' + esc(it.name) + '" data-kind="' + esc(it.type) + '"' +
             (it.categoryId ? ' data-cat="' + esc(it.categoryId) + '"' : "") +
-            (it.url ? ' data-url="' + esc(it.url) + '"' : "") + '>' +
+            (it.url ? ' data-url="' + esc(it.url) + '"' : "") +
+            (previewable ? ' data-preview-url="' + esc(it.previewUrl) + '"' : "") + '>' +
           iconFor(it) +
           '<span><span class="fileitem__label' + (stateTag ? " crm-deadtag" : "") + '">' +
             esc(it.name) + '</span>' + stateTag + sub + '</span>' +
@@ -8998,6 +9022,8 @@ button.link-arrow {
      EVENTS
      ============================================================ */
   document.addEventListener("click", function (e) {
+    if (e.target.closest("[data-pdf-close]")) { closePdfPreview(); return; }
+
     // A card is either a category (pipeline) or a property (asset
     // management); the property carries its own folder name. The home
     // tiles wear the same class and switch tabs instead, so a card only
@@ -9052,6 +9078,8 @@ button.link-arrow {
       if (isFolder) {
         var cid = item.getAttribute("data-cat") || state.categoryId;
         openCategory(cid, (cid === state.categoryId ? state.path : []).concat([name]));
+      } else if (item.getAttribute("data-preview-url")) {
+        openPdfPreview(name, item.getAttribute("data-preview-url"), item.getAttribute("data-url"));
       } else if (item.getAttribute("data-url")) {
         window.open(item.getAttribute("data-url"), "_blank", "noopener");
       } else {
@@ -9059,6 +9087,10 @@ button.link-arrow {
       }
       return;
     }
+  });
+
+  document.addEventListener("keydown", function (e) {
+    if (e.key === "Escape" && !$("pdfPreview").hidden) closePdfPreview();
   });
 
   var searchTimer = null;

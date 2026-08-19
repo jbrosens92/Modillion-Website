@@ -92,7 +92,12 @@ The Deal Pipeline tab (dashboard.html) — renamed from "Documents" 2026-08-18:
   "Deal Pipeline" says what is on it. The internal id is still "docs" — it is wired through the
   tab switch, the print rules and the agent's context — so only the label changed.
 - It now carries Active Deals and Closed Deals only. Asset Management moved to its own tab
-  (below), so the tiles count the pipeline and the category count reads 2 + 8.
+  (below).
+- The four summary tiles across the top — Documents indexed, Categories, Most recently updated,
+  Document source — were removed 2026-08-18, from this tab and from Asset Management. They
+  restated what the cards underneath already say, and read as a row of dashes whenever no
+  document source was connected, which is the published state. The "Last synced" line stays on
+  the toolbar.
 
 "Add deal", on the Deal Pipeline toolbar — added 2026-08-18:
 - What it does NOT do first, because it is the whole shape of the thing: it does not create the
@@ -313,6 +318,27 @@ Asset Management (dashboard.html, "Asset Management" tab) — split out 2026-08-
   snapshot currently files nothing under asset management, so nothing double-counts today. If
   the properties fill up and the type cards should stop counting them, the type index needs an
   area scope — say so and it is a small change.
+
+Reading a PDF without leaving the page — added 2026-08-18:
+- Click a PDF anywhere in a file table and it opens in a preview panel over the page rather than
+  in a new tab. Built for Asset Management, where the documents are things you read — monthly
+  update letters, quarterly financials, property reports — but it is on the shared file table, so
+  the Deal Pipeline gets it too. Close with the button, the Escape key, or a click outside.
+- "Open in new tab" is on the panel and goes to the file's SharePoint page, not the preview link:
+  that page is where version history, comments and the rest of the SharePoint chrome live, and
+  the frame does not carry any of it.
+- IT NEEDS A PREVIEW LINK AND THERE IS NOT ONE YET. The item shape gained an optional previewUrl
+  (see the DATA PROVIDER SEAM comment in dashboard.html). Nothing sets it today: the snapshot
+  tool records names, sizes and timestamps only, and never file contents or links. So no PDF
+  previews today — every file still opens the way it did.
+- What makes it work is the GraphProvider, whenever that lands. previewUrl must be Graph's
+  "@microsoft.graph.downloadUrl" on the driveItem — a short-lived, pre-authenticated link to the
+  file's bytes, which a browser will render inside a frame. It must NOT be webUrl: that is
+  SharePoint's own page for the file and SharePoint refuses to be framed, so the panel would
+  come up blank. webUrl stays where it already is, on `url`, driving "Open in new tab".
+- Only PDFs preview. Word and Excel files have no in-browser renderer to point a frame at, so
+  they open in a new tab as before, and so does a PDF that arrives without a previewUrl. The
+  fallback is the old behaviour rather than an error.
 
 Task List (dashboard.html, "Task List" tab) — added 2026-08-17:
 - Third workspace, independent of Documents and the CRM. Company to-dos, assigned to a person,
