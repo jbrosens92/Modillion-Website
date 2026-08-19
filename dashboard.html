@@ -1848,6 +1848,13 @@ button.link-arrow {
   color: #FFFFFF;
 }
 .dash-refresh--primary:hover { background: var(--prussian); border-color: var(--prussian); color: #FFFFFF; }
+/* Armed only on the second click — until then it reads as the quietest
+   button in the row, because it is the one that cannot be undone. */
+.dash-refresh--danger { margin-left: 4px; color: var(--muted); }
+.dash-refresh--danger:hover { color: #C0392B; border-color: #C0392B; }
+.dash-refresh--danger[data-armed="1"] {
+  background: #C0392B; border-color: #C0392B; color: #FFFFFF;
+}
 
 /* Proposed changes — the diff */
 .crm-diff { list-style: none; margin: 0; padding: 0; }
@@ -3922,7 +3929,12 @@ button.link-arrow {
           (catTag ? '<br>' + catTag : "") + '</td>' +
         '<td>' + esc(fmtDate(it.modified)) + '</td>' +
         '<td>' + esc(it.modifiedBy || "—") + '</td>' +
-        '<td>' + esc(fmtSize(it.size)) + '</td>' +
+        // A folder has no size worth printing, and at the top of an area it
+        // is a deal — so the column carries the way to take it off the
+        // pipeline, exactly as it does for a deal with no folder yet.
+        '<td>' + (opts.dealLevel && it.type === "folder"
+          ? '<button class="deal-remove" type="button" data-deal-hide="' + esc(it.name) + '">Delete</button>'
+          : esc(fmtSize(it.size))) + '</td>' +
       '</tr>';
     }).join("");
 
@@ -3999,14 +4011,24 @@ button.link-arrow {
 
     Provider.listFolder(catId, state.path).then(function (items) {
       if (state.categoryId !== catId) return;   // user navigated away mid-load
-      var fileCount = items.filter(function (i) { return i.type === "file"; }).length;
-      var dirCount  = items.length - fileCount;
 
       // Top of an area: these rows are the deals themselves, which is the one
       // place a deal added here belongs. Counted apart from the folders,
       // because it is not one.
       var atDealLevel = state.path.length === 0 &&
                         DASHBOARD_CONFIG.areas.some(function (a) { return a.id === catId; });
+
+      // A deal deleted from the pipeline. Only deal rows are checked, so a
+      // document deeper in the tree can never disappear for sharing a name
+      // with one — and the folder itself is still in OneDrive either way.
+      if (atDealLevel) {
+        items = items.filter(function (i) {
+          return !(i.type === "folder" && Crm.isDealHidden(i.name));
+        });
+      }
+
+      var fileCount = items.filter(function (i) { return i.type === "file"; }).length;
+      var dirCount  = items.length - fileCount;
       var waiting = atDealLevel ? pendingDealsFor(catId) : [];
 
       wsEl("count", ws).innerHTML =
@@ -4236,6 +4258,85 @@ button.link-arrow {
     toast("Added “" + saved + "” to " + ((catById(area) || {}).label || "the pipeline") +
           (matched ? " under " + matched.name : "") +
           ". No OneDrive folder yet — this page mirrors that folder, it cannot create one.");
+  }
+
+  /* The second click. Every delete on this page is armed first: the button
+     says what is about to go, and only a click on the same button carries it
+     out. Returns false while it is still asking. Nothing arms itself again
+     on re-render, because the button is drawn fresh without the attribute. */
+  function armed(button, label, warning) {
+    if (button.getAttribute("data-armed") === "1") return true;
+    button.setAttribute("data-armed", "1");
+    button.textContent = label;
+    toast(warning);
+    return false;
+  }
+
+  function countOf(n, one, many) {
+    return n + " " + (n === 1 ? one : (many || one + "s"));
+  }
+
+  // Deleting an investor takes its conversation log with it, and that log is
+  // the only account anywhere of who said what — so the first click reads it
+  // back before the second one destroys it.
+  function deleteInvestorRow(button) {
+    var inv = Crm.get(button.getAttribute("data-crm-delete"));
+    if (!inv) return;
+
+    var goes = [];
+    if (inv.conversations.length) goes.push(countOf(inv.conversations.length, "logged conversation"));
+    if (inv.research.length) goes.push(countOf(inv.research.length, "research note"));
+    if (inv.contacts.length) goes.push(countOf(inv.contacts.length, "contact"));
+
+    if (!armed(button, "Delete?",
+        "Click Delete again to remove " + inv.name +
+        (goes.length ? ", and with it " + goes.join(", ") : "") +
+        ". There is no undo short of clearing every local edit in this browser.")) return;
+
+    var name = inv.name;
+    Crm.remove(inv.id);
+    crmState.editing = false;
+    showCrmView("list");
+    renderCrmFilters();
+    renderCrm();
+    renderGrid();
+    window.scrollTo({ top: 0, behavior: "smooth" });
+    toast("Deleted " + name + ". Download crm-data.json to make it gone in the folder too.");
+  }
+
+  function deleteOperatorRow(button) {
+    var rec = Operators.get(button.getAttribute("data-op-delete"));
+    if (!rec) return;
+    if (!armed(button, "Delete?",
+        "Click Delete again to remove " + rec.name +
+        ". Archiving keeps the record and hides it; this does not keep it.")) return;
+
+    var name = rec.name;
+    Operators.remove(rec.id);
+    opState.editing = false;
+    showOperatorView("list");
+    renderOperatorFilters();
+    renderOperators();
+    window.scrollTo({ top: 0, behavior: "smooth" });
+    toast("Deleted " + name + ". Download operator-data.json to make it gone in the folder too.");
+  }
+
+  // A deal with a folder. The folder is in OneDrive and stays there — this
+  // takes the deal off the pipeline, which is the only part of it this page
+  // owns. Said plainly on the first click, because "delete" reasonably
+  // sounds like it reaches further than it does.
+  function hideDealRow(button) {
+    var name = button.getAttribute("data-deal-hide");
+    if (!armed(button, "Delete?",
+        "Click again to take “" + name + "” off the pipeline. The OneDrive folder and every " +
+        "document in it are untouched — this page mirrors that folder, it cannot delete one.")) return;
+
+    Crm.hideDeal(name, true);
+    afterLinkAdd();
+    renderGrid();
+    if (state.view === "results") runSearch(wsEl("search").value);
+    else openCategory(state.categoryId, state.path);
+    toast("“" + name + "” is off the pipeline. Its folder is still in OneDrive.");
   }
 
   // Two clicks, not one — but not a diff either. There is nothing behind the
@@ -4881,7 +4982,8 @@ button.link-arrow {
     var OVERLAY_KEY = "modillion-crm-overlay";
     var overlay = { patches: {}, conversations: {}, created: [],
                     convPatches: {}, convRemoved: {},
-                    dealStatus: {}, dealsAdded: [], dealsDropped: {}, archived: {},
+                    dealStatus: {}, dealsAdded: [], dealsDropped: {}, dealsHidden: {},
+                    archived: {}, removed: {},
                     learned: { aliases: {} } };
 
     function readOverlay() {
@@ -4897,7 +4999,9 @@ button.link-arrow {
         overlay.dealStatus    = o.dealStatus || {};
         overlay.dealsAdded    = o.dealsAdded || [];
         overlay.dealsDropped  = o.dealsDropped || {};
+        overlay.dealsHidden   = o.dealsHidden || {};
         overlay.archived      = o.archived || {};
+        overlay.removed       = o.removed || {};
         overlay.learned       = o.learned || { aliases: {} };
         overlay.learned.aliases = overlay.learned.aliases || {};
       } catch (e) { /* private mode, or corrupt — start clean */ }
@@ -4916,7 +5020,9 @@ button.link-arrow {
              Object.keys(overlay.dealStatus).length > 0 ||
              overlay.dealsAdded.length > 0 ||
              Object.keys(overlay.dealsDropped).length > 0 ||
+             Object.keys(overlay.dealsHidden).length > 0 ||
              Object.keys(overlay.archived).length > 0 ||
+             Object.keys(overlay.removed).length > 0 ||
              Object.keys(overlay.learned.aliases || {}).length > 0 ||
              overlay.created.length > 0;
     }
@@ -4969,14 +5075,16 @@ button.link-arrow {
     // not already carry, then investors created in the browser.
     function rebuild() {
       var byId = {};
-      merged = (base.investors || []).map(function (inv) {
+      merged = (base.investors || []).filter(function (inv) {
+        return !overlay.removed[inv.id];      // deleted here, still in the file
+      }).map(function (inv) {
         var rec = normalise(inv);
         byId[rec.id] = rec;
         return rec;
       });
 
       overlay.created.forEach(function (inv) {
-        if (byId[inv.id]) return;             // the file has caught up
+        if (byId[inv.id] || overlay.removed[inv.id]) return;   // caught up, or deleted
         var rec = normalise(inv);
         byId[rec.id] = rec;
         merged.push(rec);
@@ -5063,6 +5171,7 @@ button.link-arrow {
         tags: ["Added in dashboard"],
         deals: fields.deals || []
       });
+      delete overlay.removed[rec.id];   // a name deleted before is a new record now
       overlay.created.push(rec);
       writeOverlay();
       rebuild();
@@ -5258,6 +5367,65 @@ button.link-arrow {
 
     function isArchived(id) { return !!overlay.archived[id] || !!(byIdAll(id) || {}).archived; }
 
+    /* ---- delete ---------------------------------------------------
+       What archive is careful not to be. It is here because a CRM
+       also collects mistakes — a duplicate, a misread name, a test
+       record — and archiving those leaves them in the file forever.
+
+       A record made in this browser is spliced out. One that came
+       from crm-data.json cannot be, so a tombstone is recorded and
+       rebuild leaves it out: gone from the list, gone from the
+       export, and back only if every local edit is cleared. Its
+       patches and its conversations go with it, because half a
+       record returning under a reused id would be worse than either.
+       -------------------------------------------------------------- */
+    function removeInvestor(id) {
+      if (!byIdAll(id)) return false;
+      var inFile = (base.investors || []).some(function (inv) { return inv.id === id; });
+      overlay.created = overlay.created.filter(function (r) { return r.id !== id; });
+      delete overlay.patches[id];
+      delete overlay.conversations[id];
+      delete overlay.archived[id];
+      // Only a record the file still holds needs one. Tombstoning an id that
+      // was only ever local would outlive the record and quietly swallow the
+      // next record to be given the same name.
+      if (inFile) overlay.removed[id] = new Date().toISOString().slice(0, 10);
+      writeOverlay();
+      rebuild();
+      return true;
+    }
+
+    /* ---- hiding a deal that has a folder ---------------------------
+       removeAddedDeal takes a name off a list this page owns. A deal
+       with a folder is not ours to remove: the folder is in OneDrive
+       and this page only mirrors it. So the deal is hidden from the
+       pipeline instead — the folder, and every document in it, is
+       untouched and stays exactly where it was. The name also stays
+       a name the reader knows, because an investor may still be
+       interested in a deal the pipeline has stopped showing.
+       -------------------------------------------------------------- */
+    function hiddenDeals() {
+      var out = {};
+      var fromFile = (base && base.dealsHidden) || {};
+      Object.keys(fromFile).forEach(function (k) { out[k] = fromFile[k]; });
+      Object.keys(overlay.dealsHidden).forEach(function (k) { out[k] = overlay.dealsHidden[k]; });
+      return out;
+    }
+
+    function isDealHidden(name) {
+      return !!hiddenDeals()[String(name || "").trim().toLowerCase()];
+    }
+
+    function hideDeal(name, on) {
+      var key = String(name || "").trim().toLowerCase();
+      if (!key) return false;
+      if (on === false) delete overlay.dealsHidden[key];
+      else overlay.dealsHidden[key] = new Date().toISOString().slice(0, 10);
+      writeOverlay();
+      rebuild();
+      return true;
+    }
+
     function byIdAll(id) {
       for (var i = 0; i < merged.length; i++) if (merged[i].id === id) return merged[i];
       return null;
@@ -5311,6 +5479,7 @@ button.link-arrow {
         stages: CRM_STAGES,
         dealStatus: dealStatuses(),
         dealsAdded: addedDealRecords(),
+        dealsHidden: hiddenDeals(),
         learned: { aliases: keep },
         investors: merged
       };
@@ -5339,7 +5508,11 @@ button.link-arrow {
       addedDeal: addedDeal,
       addDeal: addDeal,
       removeAddedDeal: removeAddedDeal,
+      hiddenDeals: hiddenDeals,
+      isDealHidden: isDealHidden,
+      hideDeal: hideDeal,
       archive: archive,
+      remove: removeInvestor,
       isArchived: isArchived,
       learned: learned,
       teach: teach,
@@ -5349,7 +5522,8 @@ button.link-arrow {
       clearOverlay: function () {
         overlay = { patches: {}, conversations: {}, created: [],
                     convPatches: {}, convRemoved: {},
-                    dealStatus: {}, dealsAdded: [], dealsDropped: {}, archived: {},
+                    dealStatus: {}, dealsAdded: [], dealsDropped: {}, dealsHidden: {},
+                    archived: {}, removed: {},
                     learned: { aliases: {} } };
         writeOverlay();
         rebuild();
@@ -6425,11 +6599,12 @@ button.link-arrow {
       '<div class="crm-edit__actions">' +
         '<button class="dash-refresh dash-refresh--primary" data-crm-edit-save="' + esc(inv.id) + '">Save changes</button>' +
         '<button class="dash-refresh" data-crm-edit-cancel="' + esc(inv.id) + '">Cancel</button>' +
+        '<button class="dash-refresh dash-refresh--danger" data-crm-delete="' + esc(inv.id) + '">Delete</button>' +
         '<span class="crm-edit__derived">Last contact ' +
           (lastContact(inv) ? esc(lastContact(inv)) : "not recorded") +
           ' — read from the newest conversation, so it is not typed here. Anyone at the firm ' +
           'beyond the main contact, the research notes and the conversation log are edited ' +
-          'through the agent.</span>' +
+          'through the agent. Delete takes the record and its conversations with it.</span>' +
       '</div></div>';
   }
 
@@ -6997,7 +7172,7 @@ button.link-arrow {
     var meta = { source: "fallback", generatedAt: null, note: "" };
     var merged = [];
     var OVERLAY_KEY = "modillion-operator-overlay";
-    var overlay = { patches: {}, created: [], archived: {} };
+    var overlay = { patches: {}, created: [], archived: {}, removed: {} };
 
     function readOverlay() {
       try {
@@ -7007,6 +7182,7 @@ button.link-arrow {
         overlay.patches  = o.patches || {};
         overlay.created  = o.created || [];
         overlay.archived = o.archived || {};
+        overlay.removed  = o.removed || {};
       } catch (e) { /* private mode, or corrupt — start clean */ }
     }
 
@@ -7018,6 +7194,7 @@ button.link-arrow {
     function hasOverlay() {
       return Object.keys(overlay.patches).length > 0 ||
              Object.keys(overlay.archived).length > 0 ||
+             Object.keys(overlay.removed).length > 0 ||
              overlay.created.length > 0;
     }
 
@@ -7067,7 +7244,8 @@ button.link-arrow {
     }
 
     function rebuild() {
-      var rows = (base && base.operators ? base.operators : []).concat(overlay.created);
+      var rows = (base && base.operators ? base.operators : []).concat(overlay.created)
+        .filter(function (rec) { return !overlay.removed[rec.id]; });
       merged = rows.map(function (rec) {
         var out = normalise(rec);
         var patch = overlay.patches[out.id];
@@ -7118,6 +7296,7 @@ button.link-arrow {
 
     function create(fields) {
       var rec = normalise(Object.assign({ id: slugId(fields.name || "") }, fields));
+      delete overlay.removed[rec.id];   // same name, new record
       overlay.created.push(rec);
       writeOverlay();
       rebuild();
@@ -7130,6 +7309,22 @@ button.link-arrow {
       writeOverlay();
       rebuild();
       return byId(id);
+    }
+
+    // Delete, on the same terms as the Investor CRM: made here, it is
+    // spliced out; from operator-data.json, a tombstone keeps it out of
+    // the list and out of the export until local edits are cleared.
+    function remove(id) {
+      if (!byId(id)) return false;
+      var inFile = (base && base.operators ? base.operators : [])
+        .some(function (rec) { return rec.id === id; });
+      overlay.created = overlay.created.filter(function (r) { return r.id !== id; });
+      delete overlay.patches[id];
+      delete overlay.archived[id];
+      if (inFile) overlay.removed[id] = new Date().toISOString().slice(0, 10);
+      writeOverlay();
+      rebuild();
+      return true;
     }
 
     // Archive is not delete, same rule as the Investor CRM: the record
@@ -7181,6 +7376,7 @@ button.link-arrow {
       create: create,
       patch: patch,
       archive: archive,
+      remove: remove,
       isArchived: function (id) { return !!overlay.archived[id]; },
       investmentTypes: function () { return vocabulary("investmentTypes", OPERATOR_INVESTMENT_TYPES); },
       strategies: function () { return vocabulary("assetStrategies", OPERATOR_STRATEGIES); },
@@ -7190,7 +7386,7 @@ button.link-arrow {
       hasLocalEdits: hasOverlay,
       toFile: toFile,
       clearOverlay: function () {
-        overlay = { patches: {}, created: [], archived: {} };
+        overlay = { patches: {}, created: [], archived: {}, removed: {} };
         writeOverlay();
         rebuild();
       }
@@ -7577,10 +7773,11 @@ button.link-arrow {
             '<button class="dash-refresh" data-op-new-cancel="1">Cancel</button>'
           : '<button class="dash-refresh dash-refresh--primary" data-op-edit-save="' + esc(rec.id) + '">Save changes</button>' +
             '<button class="dash-refresh" data-op-edit-cancel="' + esc(rec.id) + '">Cancel</button>' +
-            '<button class="dash-refresh" data-op-archive="' + esc(rec.id) + '">Archive</button>') +
+            '<button class="dash-refresh" data-op-archive="' + esc(rec.id) + '">Archive</button>' +
+            '<button class="dash-refresh dash-refresh--danger" data-op-delete="' + esc(rec.id) + '">Delete</button>') +
         '<span class="crm-edit__derived">Archiving takes the record off the list and leaves it in the ' +
-          'file — nothing here deletes one. Clearing local edits in this browser brings an archived ' +
-          'operator back.</span>' +
+          'file; deleting takes it out of the file too, on the next download. Clearing local edits in ' +
+          'this browser brings back either one.</span>' +
       '</div></div>';
   }
 
@@ -7893,6 +8090,9 @@ button.link-arrow {
       window.scrollTo({ top: 0, behavior: "smooth" });
       return;
     }
+
+    var opDelete = e.target.closest("[data-op-delete]");
+    if (opDelete) { deleteOperatorRow(opDelete); return; }
 
     var opArchive = e.target.closest("[data-op-archive]");
     if (opArchive) {
@@ -9420,6 +9620,9 @@ button.link-arrow {
     var editSave = e.target.closest("[data-crm-edit-save]");
     if (editSave) { saveInvestorEdits(editSave.getAttribute("data-crm-edit-save")); return; }
 
+    var crmDelete = e.target.closest("[data-crm-delete]");
+    if (crmDelete) { deleteInvestorRow(crmDelete); return; }
+
     var editCancel = e.target.closest("[data-crm-edit-cancel]");
     if (editCancel) {
       crmState.editing = false;
@@ -9625,6 +9828,9 @@ button.link-arrow {
 
     var removeDeal = e.target.closest("[data-deal-remove]");
     if (removeDeal) { removeDealRow(removeDeal); return; }
+
+    var hideDeal = e.target.closest("[data-deal-hide]");
+    if (hideDeal) { hideDealRow(hideDeal); return; }
 
     // A row with no folder behind it opens nothing. Said out loud rather
     // than left as a click that quietly does not work.
