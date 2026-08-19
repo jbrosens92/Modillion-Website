@@ -6314,6 +6314,16 @@ button.link-arrow {
      to — held in this browser, folded into the export, never written
      back over crm-data.json by the page itself.
      ------------------------------------------------------------ */
+  /* Nothing a person has typed. Only the boxes on the edit form are asked
+     about, and only the ones a conversation never fills — stage, deals and
+     a check size can all arrive from the note itself, so a record holding
+     those is still a record holding nothing anyone chose. */
+  function nothingRecorded(inv) {
+    return (!inv.type || inv.type === "Unclassified") &&
+           !inv.assetClasses.length && !inv.location && !inv.owner && !inv.priority &&
+           !inv.website && !inv.aum && !inv.mandate && !inv.why && !inv.contacts.length;
+  }
+
   function investorEditForm(inv) {
     function uniqVals(arr) {
       return arr.filter(function (v, i, a) { return v && a.indexOf(v) === i; }).sort();
@@ -6861,17 +6871,22 @@ button.link-arrow {
     renderCrmFilters();
     renderCrm();
     renderMemory();
+
     // A record the conversation just invented holds a name, a stage and
-    // nothing else. Opening it in the edit form is the difference between
-    // being asked for the rest now and being left to remember later; an
-    // existing record is opened as it is, because it is not a form to fill.
-    openInvestor(inv.id, created);
-    if (created && $("editType")) $("editType").focus();
+    // nothing else, and one added from a task's link field an hour ago is
+    // just as empty — being made by this click is not what matters, having
+    // nothing on it is. Either way the edit form is the difference between
+    // being asked for the rest now and being left to remember later. A
+    // record with anything on it opens as it is: it is not a form to fill.
+    var empty = nothingRecorded(Crm.get(inv.id) || inv);
+    openInvestor(inv.id, empty);
+    if (empty && $("editType")) $("editType").focus();
 
     var message = created
-      ? "Created " + inv.name + " and logged the conversation. Fill in the rest below — " +
-        "nothing is written until you press Save."
+      ? "Created " + inv.name + " and logged the conversation."
       : "Logged against " + inv.name + ".";
+    if (empty) message += " Nothing else is recorded yet — fill it in below, " +
+      "and nothing is written until you press Save.";
     toast(lessons.length ? message + " Learned: " + lessons.join("; ") + "." : message);
   }
 
