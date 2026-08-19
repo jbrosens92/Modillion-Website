@@ -1831,6 +1831,7 @@ button.link-arrow {
   width: 100%;
 }
 .crm-field textarea { min-height: 92px; resize: vertical; line-height: 1.55; }
+.crm-field__other { margin-top: 8px; }
 .crm-field input:focus, .crm-field select:focus, .crm-field textarea:focus {
   outline: none; border-color: var(--steel);
 }
@@ -6340,7 +6341,12 @@ button.link-arrow {
 
     var contact = primaryContact(inv) || { name: "", email: "", title: "" };
     var records = Crm.allIncludingArchived();
-    var types = uniqVals(records.map(function (i) { return i.type; }));
+    // "Unclassified" is what a record without a type is stored as, not a type
+    // anyone chose, so it is not offered — the blank option means the same
+    // thing and reads as what it is.
+    var types = uniqVals(records.map(function (i) { return i.type; })
+      .filter(function (t) { return t !== "Unclassified"; }));
+    var typeNow = inv.type === "Unclassified" ? "" : inv.type;
 
     // The owners are the firm, so they come from the task list's roster
     // rather than a second copy kept in step by hand — correct the roster
@@ -6360,7 +6366,14 @@ button.link-arrow {
       '<div class="crm-edit__grid">' +
         field("editName", "Name", text("editName", inv.name)) +
         field("editType", "Type",
-          text("editType", inv.type, ' list="editTypeList"') + datalist("editTypeList", types)) +
+          // A list, not a box with a list attached: a new record arrives as
+          // "Unclassified", and picking from a dropdown beats deleting that
+          // word first. "Something else" keeps the vocabulary open — it is
+          // the only way a type nobody has used yet gets onto the list.
+          '<select id="editType" data-crm-type>' + options([""].concat(types), typeNow) +
+            '<option value="__other__">Something else…</option></select>' +
+          '<input type="text" id="editTypeOther" class="crm-field__other" value="" ' +
+            'autocomplete="off" placeholder="Family office, endowment, …" hidden>') +
         field("editStage", "Stage",
           '<select id="editStage">' + options(Crm.stages(), inv.stage) + '</select>') +
         field("editCheck", "Check size",
@@ -6420,6 +6433,11 @@ button.link-arrow {
                      .filter(function (s) { return s.length > 0; });
     }
 
+    // The dropdown, unless it is parked on "Something else" — then the box
+    // under it is what was meant, and an empty box is still no type.
+    var typeChoice = $("editType") ? $("editType").value : "";
+    if (typeChoice === "__other__") typeChoice = val("editTypeOther");
+
     var name = val("editName");
     if (!name) {
       toast("A record needs a name.");
@@ -6456,7 +6474,7 @@ button.link-arrow {
 
     Crm.patch(id, {
       name: name,
-      type: val("editType") || "Unclassified",
+      type: typeChoice || "Unclassified",
       stage: $("editStage").value,
       checkSize: check,
       aum: val("editAum"),
@@ -6498,9 +6516,9 @@ button.link-arrow {
     window.scrollTo({ top: top < 0 ? 0 : top, behavior: "smooth" });
   }
 
-  function openInvestor(id) {
+  function openInvestor(id, edit) {
     crmState.investorId = id;
-    crmState.editing = false;
+    crmState.editing = !!edit;
     showCrmView("investor");
     renderInvestor(id);
     scrollToInvestor();
@@ -6843,10 +6861,16 @@ button.link-arrow {
     renderCrmFilters();
     renderCrm();
     renderMemory();
-    openInvestor(inv.id);
+    // A record the conversation just invented holds a name, a stage and
+    // nothing else. Opening it in the edit form is the difference between
+    // being asked for the rest now and being left to remember later; an
+    // existing record is opened as it is, because it is not a form to fill.
+    openInvestor(inv.id, created);
+    if (created && $("editType")) $("editType").focus();
 
     var message = created
-      ? "Created " + inv.name + " and logged the conversation."
+      ? "Created " + inv.name + " and logged the conversation. Fill in the rest below — " +
+        "nothing is written until you press Save."
       : "Logged against " + inv.name + ".";
     toast(lessons.length ? message + " Learned: " + lessons.join("; ") + "." : message);
   }
@@ -9351,6 +9375,17 @@ button.link-arrow {
     if (tab === "tasks") { fillTaskSelects(); renderTasks(); }
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
+
+  // The Type dropdown's escape hatch. The form is drawn with innerHTML, so
+  // the listener sits on the document rather than on a select that stops
+  // existing every time the record is redrawn.
+  document.addEventListener("change", function (e) {
+    if (!e.target.closest("[data-crm-type]")) return;
+    var other = $("editTypeOther");
+    if (!other) return;
+    other.hidden = e.target.value !== "__other__";
+    if (!other.hidden) other.focus();
+  });
 
   document.addEventListener("click", function (e) {
     var tab = e.target.closest("[data-tab]");
