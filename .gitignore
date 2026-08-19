@@ -34,3 +34,6 @@ node_modules/
 # The local path to the OneDrive folder the dashboard mirrors. Machine-specific,
 # and this repository is public — the script reads it, git does not carry it.
 tools/snapshot-source.txt
+
+# Local Claude Code settings and dev-server config. Machine-specific.
+.claude/
