@@ -78,8 +78,49 @@ Connecting the real documents later:
   key, or password should ever be committed here.
 - Note on how the gating works once connected: the HTML shell stays publicly served, but it
   holds no data. Document names and links only ever arrive from Microsoft with a valid token
-  belonging to a Modillion account. A password checked in JavaScript would be readable in
-  view-source and is deliberately not used.
+  belonging to a Modillion account. That is what makes it real access control, and it is why
+  the interim sign-in below is not.
+
+
+The interim sign-in (dashboard.html) — username and password, added 2026-08-18:
+- Four accounts, one per person on the team, with a SHARED password. Usernames are the
+  modillionpartners.com addresses; the password is handed out in person, not written here.
+- IT IS A SPEED BUMP, NOT ACCESS CONTROL, and the gap is bigger than "the password is weak".
+  The check runs in the browser on a page that is publicly served, so getting past it does not
+  mean breaking anything — anyone who opens dev tools can set the session flag directly and
+  skip the form. The page ships no records of its own, which is the only reason that is
+  tolerable. Nothing real is behind it because nothing real is in it.
+- So what is it FOR? Identity, not secrecy. The page never knew who was looking at it: "Mine"
+  on the task list and the name in the corner had to be chosen from a dropdown, per browser.
+  Now they follow whoever signed in. That is a genuine improvement and it is the whole benefit.
+- Stored as PBKDF2-HMAC-SHA256, 310,000 iterations, a random 16-byte salt per account. That is
+  about the FILE, not the gate: it keeps the plaintext out of this public repository and stops
+  the hashes being a rainbow-table lookup. It does not make the gate harder to walk around.
+- TREAT THE PASSWORD AS PUBLIC. It is weak, it is shared, and a hash of it sits in a public
+  repo next to four valid usernames — which is a ready-made list for anyone spraying the real
+  Microsoft 365 tenant. It must never be the password to anything else, and above all not the
+  real M365 password for these accounts. If it ever was, change that one now.
+- To change the password or the roster, regenerate the salts and hashes rather than editing
+  them by hand:
+      python3 - <<'EOF'
+      import hashlib, os
+      pw = "NEW PASSWORD HERE"
+      for u in ["dwolfson", "cernst", "eemrich", "jbrosens"]:
+          salt = os.urandom(16)
+          print(u, salt.hex(),
+                hashlib.pbkdf2_hmac("sha256", pw.encode(), salt, 310000, 32).hex())
+      EOF
+  then paste the salt/hash pair into GATE_USERS in dashboard.html. The `id` on each account
+  matches the task-list roster (dw / ce / ee / jb), which is what lets signing in also answer
+  "who is Mine" without a second list of people to keep in step.
+- An unknown username is still hashed against a throwaway salt before it is rejected, so the
+  box cannot be used to work out who has an account, and the error never says which of the two
+  fields was wrong.
+- Sign out clears the session and the signed-in name, and empties both fields.
+- WHEN THE MICROSOFT 365 SIGN-IN LANDS, DELETE ALL OF THIS. GATE_USERS, the gate form and the
+  session keys go; getUser() on the DataProvider seam starts carrying the real account and the
+  chip uses it as-is. Do not keep this as a fallback — a second way in that is weaker than the
+  first is just the weaker one.
 
 Local preview:
 - MSAL redirects will not work from file://, so serve the folder over http:
@@ -373,15 +414,17 @@ Adding a task in one line:
 - There is no real identity in this page yet, so "Mine" and the default assignee need one to be
   picked. It is stored per browser and is a placeholder until the Microsoft 365 sign-in lands,
   at which point it should be replaced by the signed-in account.
-- IT IS ALSO WHAT THE CHIP IN THE TOP RIGHT READS (2026-08-18). That chip used to say
-  "Sample User — Preview mode", left over from when the page shipped invented sample records.
-  It now shows whoever is picked here, and "Not signed in" when nobody is: a name in the corner
-  of a dashboard reads as though somebody is signed in, and until the Microsoft 365 sign-in
-  lands nobody is. The line under it says which document source is loaded — "Local snapshot",
-  or "No document source" on the deployed page — rather than describing a person.
-- getUser() on the DataProvider seam is still where a real name comes from. A GraphProvider
-  returns the signed-in account there and the chip uses it as-is; the Task List fallback is
-  only reached while that name is empty.
+- SIGNING IN NOW SETS IT (2026-08-18), so in practice the dropdown is a correction, not the
+  way it gets chosen: the interim username sign-in above writes the signed-in person here, on
+  sign-in and on every reload of that session.
+- The chip in the top right reads the same identity. It used to say "Sample User — Preview
+  mode", left over from when the page shipped invented sample records; it now shows whoever
+  signed in, with their username underneath, and "Not signed in" when nobody has. A name in
+  the corner of a dashboard reads as though somebody is signed in, so it should not show one
+  when nobody is.
+- Three sources, in order of how much the page actually knows: getUser() on the DataProvider
+  seam, then the gate sign-in, then this dropdown. A GraphProvider returns the real account at
+  getUser() and the two below it stop being reached.
 
 The sharing limit — read this before rolling the task list out to the team:
 - Ticks and edits are saved in the browser, not to the file. Two people on two machines will

@@ -789,6 +789,9 @@ body[data-state="ready"]  .dash-gate { display: none; }
   margin-bottom: 12px;
 }
 .dash-gate__row { display: flex; gap: 14px; align-items: stretch; }
+/* The username sits on its own row, so the second label needs the gap the
+   submit button gives the password row. */
+.dash-gate__row--single { margin-bottom: 22px; }
 .dash-gate__row input {
   flex: 1 1 auto;
   min-width: 0;
@@ -2422,22 +2425,30 @@ button.link-arrow {
       <p class="eyebrow">Internal</p>
       <h1>Company Dashboard</h1>
       <form class="dash-gate__form" id="gateForm" autocomplete="off">
-        <label class="dash-gate__label" for="gatePassword">Team password</label>
+        <label class="dash-gate__label" for="gateUsername">Username</label>
+        <div class="dash-gate__row dash-gate__row--single">
+          <input type="email" id="gateUsername" name="username"
+                 autocomplete="username" spellcheck="false" autocapitalize="none"
+                 placeholder="name@modillionpartners.com"
+                 aria-describedby="gateError" required>
+        </div>
+        <label class="dash-gate__label" for="gatePassword">Password</label>
         <div class="dash-gate__row">
           <input type="password" id="gatePassword" name="password"
                  autocomplete="current-password" spellcheck="false"
                  aria-describedby="gateError" required>
-          <button type="submit" class="btn btn--light">Enter</button>
+          <button type="submit" class="btn btn--light">Sign in</button>
         </div>
         <p class="dash-gate__error" id="gateError" role="alert" hidden></p>
       </form>
 
       <p class="dash-gate__note">
-        This password is a speed bump, not security — it is checked in the browser, so anyone
-        who views the page source can work around it. The page ships with no records of its
-        own — the real ones are gitignored and never deployed. Real access control arrives with the
-        Microsoft 365 sign-in, which is what must be in place before any live document is
-        connected here.
+        This sign-in is a speed bump, not security — it is checked in the browser, so anyone
+        who views the page source can work around it, and the same password is shared by
+        everyone. It names who you are so the page can say so; it does not keep anybody out.
+        The page ships with no records of its own — the real ones are gitignored and never
+        deployed. Real access control arrives with the Microsoft 365 sign-in, which is what
+        must be in place before any live document is connected here.
       </p>
 
       <a class="dash-gate__back" href="index.html">← modillionpartners.com</a>
@@ -9168,7 +9179,14 @@ button.link-arrow {
   });
 
   $("signOutBtn").addEventListener("click", function () {
-    try { sessionStorage.removeItem(GATE_KEY); } catch (e) { /* private mode */ }
+    try {
+      sessionStorage.removeItem(GATE_KEY);
+      sessionStorage.removeItem(GATE_USER_KEY);
+    } catch (e) { /* private mode */ }
+    // The gate form is reused, so clear what the last person typed.
+    $("gateUsername").value = "";
+    $("gatePassword").value = "";
+    $("gateError").hidden = true;
     document.body.setAttribute("data-state", "locked");
     window.scrollTo({ top: 0 });
   });
@@ -9176,32 +9194,113 @@ button.link-arrow {
   /* ============================================================
      GATE
 
-     A client-side password check. It is a speed bump, not access
-     control: the hash below sits in public page source and the
-     comparison runs in the browser, so it stops casual visitors and
-     nothing more. It is only acceptable while this page shows
-     placeholder content. Before any live document is wired up,
-     replace it with the Microsoft 365 sign-in (real, identity-based)
-     or Vercel edge Basic Auth with the secret in an environment
-     variable — see README.txt.
+     A client-side username and password check. READ THIS BEFORE
+     RELYING ON IT: it is a speed bump, not access control. The
+     credential table below sits in public page source and the
+     comparison runs in the browser, so anyone who opens dev tools
+     is past it — not by cracking anything, just by skipping the
+     check. It stops casual visitors and nothing more, and it is
+     only acceptable while this page ships no records of its own.
 
-     Stored as SHA-256 so the plaintext password is not committed to
-     this public repository.
+     What the sign-in is actually FOR here is identity: the page has
+     never known who is looking at it, so "Mine" on the task list and
+     the name in the corner had to be picked from a dropdown. Now
+     they follow whoever signed in.
+
+     Stored as PBKDF2-HMAC-SHA256, 310k iterations, a random 16-byte
+     salt per account, so the shared password is not sitting in this
+     public repository in plaintext and the hashes are not a
+     rainbow-table lookup. That raises the cost of recovering the
+     password from the file; it does NOT make the gate itself
+     stronger, because the gate can be walked around rather than
+     broken. The password is also weak and shared, so treat it as
+     public: it must never be a password that opens anything else,
+     and in particular must not be the real Microsoft 365 password
+     for these accounts.
+
+     Before any live document is wired up, replace all of this with
+     the Microsoft 365 sign-in (real, identity-based) or Vercel edge
+     Basic Auth with the secret in an environment variable — see
+     README.txt.
      ============================================================ */
-  var GATE_HASH = "bea94987e438eb2a9fdf51b5d96bde986d102e6b109a03640edd341ee599e1d2";
+  var GATE_ITERATIONS = 310000;
   var GATE_KEY = "modillion-dashboard-unlocked";
+  var GATE_USER_KEY = "modillion-dashboard-user";
 
-  function sha256Hex(text) {
-    var bytes = new TextEncoder().encode(text);
-    return crypto.subtle.digest("SHA-256", bytes).then(function (buf) {
-      return Array.prototype.map.call(new Uint8Array(buf), function (b) {
-        return b.toString(16).padStart(2, "0");
-      }).join("");
-    });
+  // id matches the task-list roster, so signing in also answers "who is
+  // Mine" without a second list of people to keep in step.
+  var GATE_USERS = [
+    { id: "dw", name: "David Wolfson",
+      username: "dwolfson@modillionpartners.com",
+      salt: "ca7123d8cd1a13018f42b05965d1ede2",
+      hash: "45a68a3b92fae840a1a7583cba8437bd47c68b34d8b7c862d9c58b893e43e900" },
+    { id: "ce", name: "Corey Ernst",
+      username: "cernst@modillionpartners.com",
+      salt: "04a67e463d1cf87eed7d8ebfa01521e4",
+      hash: "508e0ce21d946e9dd117b384d44967ed5d189ef830c401e1ee53ddd5e589deae" },
+    { id: "ee", name: "Eric Emrich",
+      username: "eemrich@modillionpartners.com",
+      salt: "723a339fbf1f72a7db189f2c88f8490d",
+      hash: "dcb186939453769743e5a216fab3295fbe705c5660ccc29bbc44ce8a51e6f376" },
+    { id: "jb", name: "John Brosens",
+      username: "jbrosens@modillionpartners.com",
+      salt: "8730b5cc6ef90a0364049290d09b1571",
+      hash: "039931db6b65863c0a5dd840c3de236214667400e959ea98c9a0af78c3e1d9d6" }
+  ];
+
+  function hexToBytes(hex) {
+    var out = new Uint8Array(hex.length / 2);
+    for (var i = 0; i < out.length; i++) out[i] = parseInt(hex.substr(i * 2, 2), 16);
+    return out;
   }
 
-  function unlock() {
-    try { sessionStorage.setItem(GATE_KEY, "1"); } catch (e) { /* private mode */ }
+  function bytesToHex(buf) {
+    return Array.prototype.map.call(new Uint8Array(buf), function (b) {
+      return b.toString(16).padStart(2, "0");
+    }).join("");
+  }
+
+  function pbkdf2Hex(password, saltHex) {
+    var enc = new TextEncoder().encode(password);
+    return crypto.subtle.importKey("raw", enc, "PBKDF2", false, ["deriveBits"])
+      .then(function (key) {
+        return crypto.subtle.deriveBits({
+          name: "PBKDF2", salt: hexToBytes(saltHex),
+          iterations: GATE_ITERATIONS, hash: "SHA-256"
+        }, key, 256);
+      })
+      .then(bytesToHex);
+  }
+
+  function gateUserByName(username) {
+    var v = String(username || "").trim().toLowerCase();
+    if (!v) return null;
+    for (var i = 0; i < GATE_USERS.length; i++) {
+      if (GATE_USERS[i].username === v) return GATE_USERS[i];
+    }
+    return null;
+  }
+
+  function signedInUser() {
+    var id;
+    try { id = sessionStorage.getItem(GATE_USER_KEY); } catch (e) { return null; }
+    if (!id) return null;
+    for (var i = 0; i < GATE_USERS.length; i++) {
+      if (GATE_USERS[i].id === id) return GATE_USERS[i];
+    }
+    return null;
+  }
+
+  function unlock(user) {
+    try {
+      sessionStorage.setItem(GATE_KEY, "1");
+      if (user) sessionStorage.setItem(GATE_USER_KEY, user.id);
+    } catch (e) { /* private mode */ }
+    // Signing in answers the question the task list used to ask in a
+    // dropdown. Set it rather than leave a stale pick from last time —
+    // signing in as one person and being told you are another is worse
+    // than not being told at all.
+    if (user) Tasks.setWhoAmI(user.id);
     document.body.setAttribute("data-state", "ready");
     window.scrollTo({ top: 0 });
     load();
@@ -9209,19 +9308,27 @@ button.link-arrow {
 
   $("gateForm").addEventListener("submit", function (e) {
     e.preventDefault();
+    var nameInput = $("gateUsername");
     var input = $("gatePassword");
     var err = $("gateError");
     var btn = e.target.querySelector("button[type=submit]");
+    var user = gateUserByName(nameInput.value);
+
+    // The password is still hashed for an unknown username, against a
+    // throwaway salt. Answering instantly for a name that is not on the
+    // list would turn this box into a way to enumerate who works here.
+    var salt = user ? user.salt : GATE_USERS[0].salt;
 
     btn.disabled = true;
-    sha256Hex(input.value).then(function (hex) {
+    pbkdf2Hex(input.value, salt).then(function (hex) {
       btn.disabled = false;
-      if (hex === GATE_HASH) {
+      if (user && hex === user.hash) {
         err.hidden = true;
         input.value = "";
-        unlock();
+        unlock(user);
       } else {
-        err.textContent = "That password is not recognised.";
+        // Deliberately does not say which of the two was wrong.
+        err.textContent = "That username or password is not recognised.";
         err.hidden = false;
         input.select();
       }
@@ -10938,18 +11045,21 @@ button.link-arrow {
     el.hidden = false;
   }
 
-  /* The chip in the top right. There is no sign-in in this page yet, so
-     there are only two honest answers: the account a real provider hands
-     back, or whoever the Task List has been told you are on this machine.
-     With neither it says so, rather than naming somebody who is not there.
-     When the Microsoft 365 sign-in lands, getUser() carries the name and
-     the Task List fallback stops being reached. */
+  /* The chip in the top right, in order of how much the page actually
+     knows: the account a real provider hands back, then whoever signed in
+     at the gate, then whoever the Task List has been told you are on this
+     machine. With none of them it says so rather than naming somebody who
+     is not there. When the Microsoft 365 sign-in lands, getUser() carries
+     the name and everything below it stops being reached. */
   var providerUser = { name: "", email: "", role: "" };
 
   function renderIdentity() {
-    var name = providerUser.name || Tasks.personName(Tasks.whoAmI()) || "";
+    var signedIn = signedInUser();
+    var name = providerUser.name || (signedIn && signedIn.name) ||
+               Tasks.personName(Tasks.whoAmI()) || "";
+    var sub = providerUser.email || (signedIn && signedIn.username) || providerUser.role || "";
     $("userName").textContent = name || "Not signed in";
-    $("userRole").textContent = providerUser.role || "";
+    $("userRole").textContent = sub;
     $("userAvatar").textContent = name
       ? name.split(/\s+/).map(function (p) { return p[0]; }).join("").slice(0, 2).toUpperCase()
       : "—";
@@ -10995,6 +11105,10 @@ button.link-arrow {
     var unlocked = false;
     try { unlocked = sessionStorage.getItem(GATE_KEY) === "1"; } catch (e) { /* private mode */ }
     if (unlocked) {
+      // A reload inside an open session keeps who you are, so "Mine" and
+      // the chip do not quietly revert to whatever was picked before.
+      var who = signedInUser();
+      if (who) Tasks.setWhoAmI(who.id);
       document.body.setAttribute("data-state", "ready");
       load();
     }
