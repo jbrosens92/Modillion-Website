@@ -217,6 +217,122 @@ def count_files(nodes):
     return n
 
 
+# THE ONE PLACE THIS TOOL OPENS A FILE.
+#
+# Everywhere else the rule holds: names, sizes and timestamps only, never
+# contents. The debt roll-up is the exception, and it has to be — a report of
+# lenders, balances and maturities cannot be assembled from a file name. It
+# reads ONE workbook, the one named on the "debt-from:" line in
+# snapshot-source.txt, and nothing else.
+#
+# What that means for the output: dashboard-data.json now carries loan balances
+# and rates as well as deal names. It was already gitignored and already
+# confidential; it is more so now. Do not commit it, and do not deploy it.
+DEBT_DATE_FMT = "%b %-d, %Y"
+
+
+def fmt_debt_cell(value, number_format):
+    """A workbook cell as the string the report should print."""
+    if value is None:
+        return ""
+    if isinstance(value, datetime):
+        try:
+            return value.strftime(DEBT_DATE_FMT)
+        except ValueError:                      # platform without %-d
+            return value.strftime("%b %d, %Y").replace(" 0", " ")
+    if isinstance(value, (int, float)) and not isinstance(value, bool):
+        fmt = (number_format or "").lower()
+        if "%" in fmt:
+            return f"{value * 100:,.2f}%"
+        if "$" in fmt:
+            return f"${value:,.0f}"
+        if value == int(value):
+            return f"{int(value):,}"
+        return f"{value:,.2f}"
+    return str(value).strip()
+
+
+def read_debt(root, debt_from):
+    """The debt roll-up workbook as {file, modified, columns, rows}, or None.
+
+    Takes the most recently modified spreadsheet in the named folder and reads
+    its first sheet: header row, then every row that names an asset. Cells are
+    formatted here rather than in the browser so the report prints the workbook
+    the way the workbook prints itself.
+    """
+    folder = os.path.join(root, debt_from)
+    if not os.path.isdir(folder):
+        print(f"  NOTE: debt-from folder not in source: {debt_from}")
+        return None
+
+    books = [
+        os.path.join(folder, n) for n in os.listdir(folder)
+        if os.path.splitext(n)[1].lower() in (".xlsx", ".xlsm")
+        and not n.startswith((".", "~$"))
+    ]
+    if not books:
+        print(f"  NOTE: no workbook in {debt_from}")
+        return None
+    book = max(books, key=lambda p: os.stat(p).st_mtime)
+
+    try:
+        import openpyxl
+    except ImportError:
+        print("  NOTE: openpyxl not installed — skipping the debt summary "
+              "(pip3 install openpyxl)")
+        return None
+
+    sheet = openpyxl.load_workbook(book, data_only=True).worksheets[0]
+    rows = list(sheet.iter_rows())
+    if not rows:
+        print(f"  NOTE: {os.path.basename(book)} is empty")
+        return None
+
+    # The header is the first row carrying more than one label — the sheet opens
+    # with a blank row today and could gain a title row tomorrow, and neither is
+    # the thing being read.
+    head_at = next(
+        (n for n, row in enumerate(rows)
+         if sum(1 for c in row if str(c.value or "").strip()) > 1),
+        None,
+    )
+    if head_at is None:
+        print(f"  NOTE: no header row in {os.path.basename(book)}")
+        return None
+
+    headers = [(c.value or "") for c in rows[head_at]]
+    keep = [i for i, h in enumerate(headers) if str(h).strip()]
+
+    out_rows, numeric = [], {i: True for i in keep}
+    for row in rows[head_at + 1:]:
+        if len(row) <= keep[0] or not str(row[keep[0]].value or "").strip():
+            continue
+        cells = []
+        for i in keep:
+            cell = row[i] if i < len(row) else None
+            value = cell.value if cell is not None else None
+            if value is not None and i != keep[0]:
+                is_num = isinstance(value, (int, float, datetime)) and not isinstance(value, bool)
+                if not is_num:
+                    numeric[i] = False
+            cells.append(fmt_debt_cell(value, cell.number_format if cell is not None else None))
+        out_rows.append(cells)
+
+    if not out_rows:
+        print(f"  NOTE: {os.path.basename(book)} has headers but no asset rows")
+        return None
+
+    return {
+        "file": os.path.basename(book),
+        "modified": iso(os.stat(book).st_mtime),
+        "columns": [
+            {"label": str(headers[i]).strip(), "num": bool(numeric[i]) and i != keep[0]}
+            for i in keep
+        ],
+        "rows": out_rows,
+    }
+
+
 def asset_area(source_area):
     """Build the Asset Management area from the deals in `source_area`.
 
@@ -257,13 +373,15 @@ def asset_area(source_area):
 
 
 def read_recorded_source():
-    """(folder, only, assets_from) as recorded in tools/snapshot-source.txt.
+    """(folder, only, assets_from, debt_from) as recorded in snapshot-source.txt.
 
     `only` is the set of top-level folder names allowed to become areas, empty
     meaning take everything. `assets_from` names the one area whose deals the
     Asset Management area is read out of, None meaning do not build it.
+    `debt_from` names the folder holding the debt roll-up workbook, None
+    meaning do not read one.
     """
-    folder, only, assets_from = None, set(), None
+    folder, only, assets_from, debt_from = None, set(), None, None
     try:
         with open(SOURCE_FILE, encoding="utf-8") as fh:
             for line in fh:
@@ -274,12 +392,14 @@ def read_recorded_source():
                     only.add(line.split(":", 1)[1].strip())
                 elif line.lower().startswith("assets-from:"):
                     assets_from = line.split(":", 1)[1].strip()
+                elif line.lower().startswith("debt-from:"):
+                    debt_from = line.split(":", 1)[1].strip()
                 elif folder is None:
                     folder = os.path.expanduser(line)
     except FileNotFoundError:
         pass
 
-    return folder, only, assets_from
+    return folder, only, assets_from, debt_from
 
 
 def main():
@@ -291,18 +411,23 @@ def main():
                     help="Ignore the recorded only: list and take every top-level folder")
     ap.add_argument("--no-assets", action="store_true",
                     help="Skip the derived Asset Management area (see assets-from: in the source file)")
+    ap.add_argument("--no-debt", action="store_true",
+                    help="Skip the debt roll-up (see debt-from: in the source file). "
+                         "This is the only thing that opens a file's contents.")
     ap.add_argument("-o", "--out", default="dashboard-data.json",
                     help="Output path (default: dashboard-data.json, gitignored)")
     ap.add_argument("--anonymise", action="store_true",
                     help="Replace deal and sponsor names with stable pseudonyms")
     args = ap.parse_args()
 
-    recorded_folder, only, assets_from = read_recorded_source()
+    recorded_folder, only, assets_from, debt_from = read_recorded_source()
     folder = args.folder or recorded_folder
     if args.all_areas:
         only = set()
     if args.no_assets:
         assets_from = None
+    if args.no_debt:
+        debt_from = None
 
     if folder is None:
         sys.exit(
@@ -339,6 +464,14 @@ def main():
                 print(f"  asset management: {len(derived['children'])} properties, "
                       f"{count_files(derived['children'])} files (a view of {assets_from})")
 
+    # Never from an anonymised run: pseudonyms exist so a snapshot can be shown
+    # to somebody, and real lenders and balances would walk straight through them.
+    debt = read_debt(folder, debt_from) if (debt_from and not args.anonymise) else None
+    if debt:
+        print(f"  debt summary: {len(debt['rows'])} assets from {debt['file']}")
+    elif debt_from and args.anonymise:
+        print("  NOTE: debt summary skipped — it cannot be anonymised")
+
     payload = {
         "generatedAt": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "source": "local-folder-snapshot",
@@ -346,6 +479,8 @@ def main():
         "totalFiles": total,
         "areas": areas,
     }
+    if debt:
+        payload["debt"] = debt
 
     with open(args.out, "w", encoding="utf-8") as fh:
         json.dump(payload, fh, indent=1, ensure_ascii=False)

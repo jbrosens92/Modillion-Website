@@ -404,6 +404,42 @@ Where Asset Management gets its properties — rebuilt 2026-08-19:
   assets-from: line and add "only: Asset Management" again. Nothing in dashboard.html knows the
   difference — the area arrives with the same id and label either way.
 
+The debt report (Asset Management tab) — added 2026-08-19:
+- "Debt report" on the Asset Management toolbar, beside "Asset report". One row per asset with
+  lender, committed and current balance, rate type, index and spread, cap, floor, maturity and
+  extension options — what the firm owes across everything it owns, on one page. Export PDF and
+  Export Excel work as they do on the other reports.
+- THIS IS THE ONE PLACE THE DASHBOARD READS A DOCUMENT'S CONTENTS. Everywhere else the rule is
+  names, sizes and timestamps only, and it still holds. A debt report cannot be assembled from a
+  file name, so tools/onedrive-snapshot.py opens exactly one workbook — the one named on the
+  "debt-from:" line in snapshot-source.txt — and nothing else. Read the comment above
+  fmt_debt_cell() in that file before extending this; the narrowness is the point.
+- What that costs: dashboard-data.json now carries lenders, balances and rates as well as deal
+  names. It was already gitignored and never deployed. It is more confidential than it was.
+- The workbook drives the report, not the other way round. Columns come from its header row, so
+  adding a column in Excel adds a column here with no code change. The newest .xlsx/.xlsm in the
+  folder wins. The header is found as the first row with more than one label, because the sheet
+  opens with a blank row today and could gain a title row tomorrow.
+- Cells are formatted by the snapshot, from each cell's own number format: a $#,##0 cell prints
+  with a dollar sign and thousands separators, an 0.00% cell prints as a percentage to two
+  places, a date prints as "Mon D, YYYY". The report prints the workbook the way the workbook
+  prints itself, and the browser does no arithmetic on any of it.
+- An asset with nothing filled past the Lender column reads "No debt recorded" rather than a row
+  of dashes — The Mill today. The summary tiles count assets, with debt, and unlevered.
+- It never appears in an anonymised snapshot. Pseudonyms exist so a snapshot can be shown to
+  somebody, and a real lender and balance would walk straight through them, so --anonymise skips
+  the workbook and says so. --no-debt skips it for one run.
+- The button hides itself when the snapshot carried no workbook, which is the published page's
+  state — better than a button that opens an empty report.
+- It needs openpyxl (pip3 install openpyxl). Missing, the snapshot prints a NOTE and writes
+  everything else; the tab simply has no Debt report button.
+- Known limit: the roll-up is matched to nothing. Its "Asset Name" column ("The Arden") is not
+  the property folder name ("The Arden - Raleigh, NC"), and no code joins them today — the report
+  stands on its own. If a property card should show its loan balance, that join is the next step
+  and wants a rule for names that do not match.
+- Noticed in passing, not changed: the workbook spells Greenwich "Greenich". It is their file;
+  the report prints what is in it.
+
 Reading a PDF without leaving the page — added 2026-08-18:
 - Click a PDF anywhere in a file table and it opens in a preview panel over the page rather than
   in a new tab. Built for Asset Management, where the documents are things you read — monthly
@@ -715,6 +751,7 @@ The document snapshot, in one place:
       python3 tools/onedrive-snapshot.py "/other/folder"  # override for one run
       python3 tools/onedrive-snapshot.py --all-areas      # ignore the only: list
       python3 tools/onedrive-snapshot.py --no-assets      # skip the derived asset area
+      python3 tools/onedrive-snapshot.py --no-debt        # skip the debt roll-up
 - THE only: LIST MATTERS. The source folder holds much more than the dashboard shows — Pitchbook,
   Dead Deals, Entity Docs, Capital Calls and the rest. Areas the config does not declare never
   appear as tiles, but buildTypeIndex() reads across EVERY area in the file, so without the list
@@ -725,5 +762,7 @@ The document snapshot, in one place:
 - The run prints what it did, and the NOTE lines are worth reading: a recorded area that is not
   in the source, or an assets-from area that produced nothing, both say so rather than quietly
   writing a short file.
-- Only names, sizes and timestamps are read; file contents are never opened. The output holds
-  real deal and sponsor names and is gitignored — it must never be committed.
+- Only names, sizes and timestamps are read, with ONE exception: the debt roll-up workbook named
+  on the "debt-from:" line, whose rows become the Debt report (see above). No other file is
+  opened. The output holds real deal and sponsor names, and now lenders and loan balances too. It
+  is gitignored — it must never be committed.

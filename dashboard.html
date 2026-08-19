@@ -2858,6 +2858,7 @@ button.link-arrow {
             <input type="search" id="assetSearchInput" placeholder="Search the operating assets" autocomplete="off">
           </div>
           <button class="dash-refresh" id="assetReportBtn">Asset report</button>
+          <button class="dash-refresh" id="assetDebtBtn" hidden>Debt report</button>
           <button class="dash-refresh" id="assetRefreshBtn">Refresh</button>
           <span class="dash-updated" id="assetLastSynced"></span>
         </div>
@@ -3249,6 +3250,7 @@ button.link-arrow {
 
   var DatasetProvider = (function () {
     var DATA = null;          // { areas: [...] }
+    var DEBT = null;          // { file, modified, columns, rows } or null
     var meta = { source: "fallback", anonymised: true, generatedAt: null };
     var typeIndex = {};       // categoryId -> [ { key, dealName, areaId, areaLabel, node } ]
 
@@ -3396,6 +3398,9 @@ button.link-arrow {
           DATA = { areas: json.areas.map(function (a) {
             return { id: a.id, label: a.label, children: (a.children || []).map(normalise) };
           }) };
+          // The debt roll-up, when the snapshot carried one. It is the only
+          // thing here read out of a document rather than off a folder.
+          DEBT = json.debt && json.debt.rows && json.debt.rows.length ? json.debt : null;
           meta = { source: "local-snapshot", anonymised: !!json.anonymised,
                    generatedAt: json.generatedAt || null };
         })
@@ -3403,6 +3408,7 @@ button.link-arrow {
           DATA = { areas: FALLBACK_DATA.areas.map(function (a) {
             return { id: a.id, label: a.label, children: (a.children || []).map(normalise) };
           }) };
+          DEBT = null;
           meta = { source: "fallback", anonymised: true, generatedAt: null };
         })
         .then(function () {
@@ -3434,6 +3440,7 @@ button.link-arrow {
       // folder at a time. A Graph-backed provider would satisfy these by
       // caching its own crawl.
       raw: function () { return DATA; },
+      debt: function () { return DEBT; },
       typeHits: function (catId, ws) { return hitsFor(catId, ws); },
 
       // NO IDENTITY HERE, and none invented. This provider reads a folder
@@ -3832,6 +3839,8 @@ button.link-arrow {
   function renderAssetSummary() {
     $("assetLastSynced").textContent = "Last synced " + new Date().toLocaleTimeString("en-US",
       { hour: "numeric", minute: "2-digit" });
+    // Shown only when the snapshot actually carried a debt workbook.
+    $("assetDebtBtn").hidden = !Provider.debt();
   }
 
   /* ============================================================
@@ -4558,7 +4567,78 @@ button.link-arrow {
       '</table></div>';
   }
 
+  /* The debt roll-up is a different animal from the document reports: its rows
+     are ASSETS with loan terms, not folders with file counts, and every value
+     was formatted by the snapshot out of the workbook rather than derived here.
+     So it gets its own model, and renderReport / exportXlsx branch on kind
+     rather than pretending it is a deal list. */
+  function buildDebtReport() {
+    var debt = Provider.debt();
+    if (!debt) return null;
+    return {
+      kind: "debt",
+      scopeLabel: "Debt summary",
+      generated: new Date(),
+      dataset: Provider.meta(),
+      debt: debt
+    };
+  }
+
+  function renderDebtReport(m) {
+    var d = m.debt;
+    var lenderAt = -1;
+    d.columns.forEach(function (c, i) {
+      if (lenderAt === -1 && /lender/i.test(c.label)) lenderAt = i;
+    });
+
+    // A row with nothing past the descriptive columns is an asset that carries
+    // no debt, which is a fact worth printing rather than a line of dashes.
+    function unlevered(row) {
+      if (lenderAt === -1) return false;
+      return !row.slice(lenderAt).some(function (v) { return v !== ""; });
+    }
+
+    var levered = d.rows.filter(function (r) { return !unlevered(r); });
+    var html = '<div class="report-section"><h3>Summary</h3><div class="report-tiles">' +
+      [[d.rows.length, d.rows.length === 1 ? "Asset" : "Assets"],
+       [levered.length, "With debt"],
+       [d.rows.length - levered.length, "Unlevered"]]
+        .map(function (t) {
+          return '<div><span class="report-tile__num">' + esc(String(t[0])) + '</span>' +
+                 '<span class="report-tile__label">' + esc(t[1]) + '</span></div>';
+        }).join("") + '</div></div>';
+
+    html += '<div class="report-section"><h3>Debt by asset</h3>' +
+      '<p class="report-note">Read from ' + esc(d.file) + ', the debt roll-up in the Fund I ' +
+      'folder, as it stood ' + esc(fmtDate(new Date(d.modified))) + '. This is the one place ' +
+      'the dashboard reports a document\u2019s CONTENTS rather than its name — every figure ' +
+      'below is the workbook\u2019s, unchanged. Correct it there and refresh; nothing here ' +
+      'writes back.</p>' +
+      table(
+        d.columns.map(function (c) { return { label: c.label, num: c.num }; }),
+        d.rows.map(function (row) {
+          var bare = unlevered(row);
+          return row.map(function (v, i) {
+            if (bare && i === lenderAt) {
+              return { v: '<span class="muted">No debt recorded</span>', cls: "" };
+            }
+            if (bare && i > lenderAt) return { v: "", cls: "" };
+            return { v: v === "" ? "—" : esc(v),
+                     cls: (d.columns[i].num ? "num " : "") + (v === "" ? "muted" : "") };
+          });
+        })
+      ) + '</div>';
+
+    wsEl("reportTitle", "assets").textContent = "Debt summary — Asset Management";
+    wsEl("reportMeta", "assets").textContent =
+      "Generated " + m.generated.toLocaleString("en-US", {
+        dateStyle: "long", timeStyle: "short"
+      }) + " · Source: " + d.file;
+    wsEl("reportBody", "assets").innerHTML = html;
+  }
+
   function renderReport(m) {
+    if (m && m.kind === "debt") return renderDebtReport(m);
     var html = "";
 
     // Summary
@@ -4882,6 +4962,21 @@ button.link-arrow {
 
   function exportXlsx(m) {
     var stamp = m.generated.toISOString().slice(0, 10);
+
+    // The debt roll-up is one table and exports as one sheet. Its cells are the
+    // strings the snapshot read out of the workbook, so the export is a copy of
+    // what is on screen rather than a second interpretation of the numbers.
+    if (m.kind === "debt") {
+      var debtSheets = [{
+        name: "Debt by asset",
+        widths: m.debt.columns.map(function (c, i) { return i === 0 ? 30 : 20; }),
+        rows: [m.debt.columns.map(function (c) { return c.label; })].concat(m.debt.rows)
+      }];
+      download(Xlsx.build(debtSheets), "modillion-debt-summary-" + stamp + ".xlsx");
+      toast("Excel workbook downloaded — " + m.debt.rows.length + " assets from " +
+            m.debt.file + ".");
+      return;
+    }
     var cols = DASHBOARD_CONFIG.types.filter(function (t) {
       return EXPECTED_TYPES.indexOf(t.id) !== -1;
     });
@@ -9923,6 +10018,19 @@ button.link-arrow {
   // Scoped to the area on the toolbar, to the open property below it.
   $("assetReportBtn").addEventListener("click", function () { openReport("asset-management"); });
   $("assetCatReportBtn").addEventListener("click", function () { openReport(state.categoryId); });
+
+  // The debt roll-up answers "what do we owe across everything we own", which is
+  // an Asset Management question, so it sits on that toolbar. The button stays
+  // hidden when the snapshot carried no workbook rather than opening an empty
+  // report — the published page has no source at all.
+  $("assetDebtBtn").addEventListener("click", function () {
+    var report = buildDebtReport();
+    if (!report) { toast("No debt summary in this snapshot."); return; }
+    state.report = report;
+    renderReport(report);
+    showView("report", "assets");
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  });
 
   $("assetExportPdfBtn").addEventListener("click", function () { window.print(); });
 
