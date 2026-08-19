@@ -34,6 +34,7 @@ Only names, sizes and timestamps are read. File contents are never opened.
 import argparse
 import json
 import os
+import re
 import sys
 from datetime import datetime, timezone
 
@@ -333,6 +334,81 @@ def read_debt(root, debt_from):
     }
 
 
+def norm_name(name):
+    """A name reduced to what is worth comparing.
+
+    Lowercase, punctuation to spaces, "the" dropped from the front. The folder
+    and the workbook are typed by different people for different purposes and
+    agree on the words, not the formatting.
+    """
+    n = re.sub(r"[^a-z0-9]+", " ", str(name).lower()).strip()
+    return n[4:].strip() if n.startswith("the ") else n
+
+
+def name_head(name):
+    """The part of a folder name before the location: "X - Raleigh, NC" -> "X"."""
+    for sep in (" - ", " \u2014 ", " ("):
+        if sep in name:
+            return name.split(sep, 1)[0]
+    return name
+
+
+def match_property(debt_name, property_names):
+    """The property a debt row belongs to, or None.
+
+    Tried in order, strongest first, because a wrong join here is worse than no
+    join: a loan shown against the wrong building is a number somebody acts on.
+    """
+    want = norm_name(debt_name)
+    if not want:
+        return None
+
+    candidates = [(p, norm_name(p), norm_name(name_head(p))) for p in property_names]
+
+    for prop, full, head in candidates:          # 1. the whole name, or the name
+        if want in (full, head):                 #    with its location trimmed
+            return prop
+
+    for prop, full, head in candidates:          # 2. one name opening the other
+        if full.startswith(want + " ") or want.startswith(full + " "):
+            return prop
+        if head.startswith(want + " ") or want.startswith(head + " "):
+            return prop
+
+    words = set(want.split())                    # 3. every word of one inside
+    hits = [prop for prop, full, _ in candidates #    the other, and only if it
+            if words and words <= set(full.split())]  #   picks out exactly one
+    return hits[0] if len(hits) == 1 else None
+
+
+def join_debt(area, debt):
+    """Point each debt row at its property and each property at its debt row.
+
+    Names are matched, not assumed: the workbook says "The Mill" where the
+    folder says "The Mill - Greenwich, CT". Anything that fails to match is
+    reported rather than dropped quietly — an asset in the roll-up with no
+    folder, or a property with no debt row, are both things worth knowing.
+    """
+    if not area or not debt:
+        return
+
+    properties = {p["name"]: p for p in area["children"]}
+    debt["match"] = []
+
+    for i, row in enumerate(debt["rows"]):
+        prop = match_property(row[0], list(properties))
+        debt["match"].append(prop)
+        if prop:
+            properties[prop]["debtRow"] = i
+
+    unmatched = [r[0] for r, m in zip(debt["rows"], debt["match"]) if not m]
+    if unmatched:
+        print(f"  NOTE: debt rows with no property folder: {', '.join(unmatched)}")
+    no_debt = [n for n, p in properties.items() if "debtRow" not in p]
+    if no_debt:
+        print(f"  NOTE: properties with no row in the debt roll-up: {', '.join(no_debt)}")
+
+
 def asset_area(source_area):
     """Build the Asset Management area from the deals in `source_area`.
 
@@ -469,6 +545,10 @@ def main():
     debt = read_debt(folder, debt_from) if (debt_from and not args.anonymise) else None
     if debt:
         print(f"  debt summary: {len(debt['rows'])} assets from {debt['file']}")
+        asset_ws = next((a for a in areas if a["id"] == "asset-management"), None)
+        join_debt(asset_ws, debt)
+        joined = sum(1 for m in debt["match"] if m)
+        print(f"  joined to properties: {joined} of {len(debt['rows'])}")
     elif debt_from and args.anonymise:
         print("  NOTE: debt summary skipped — it cannot be anonymised")
 

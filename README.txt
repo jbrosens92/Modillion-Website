@@ -433,12 +433,37 @@ The debt report (Asset Management tab) — added 2026-08-19:
   state — better than a button that opens an empty report.
 - It needs openpyxl (pip3 install openpyxl). Missing, the snapshot prints a NOTE and writes
   everything else; the tab simply has no Debt report button.
-- Known limit: the roll-up is matched to nothing. Its "Asset Name" column ("The Arden") is not
-  the property folder name ("The Arden - Raleigh, NC"), and no code joins them today — the report
-  stands on its own. If a property card should show its loan balance, that join is the next step
-  and wants a rule for names that do not match.
-- Noticed in passing, not changed: the workbook spells Greenwich "Greenich". It is their file;
-  the report prints what is in it.
+- The roll-up and the folders are joined by name — see below.
+
+Joining the debt roll-up to the property folders — added 2026-08-19:
+- The two records of the same building are typed by different people for different purposes and
+  agree on the words, not the formatting: the workbook says "The Mill", the folder says "The Mill
+  - Greenwich, CT". join_debt() in onedrive-snapshot.py matches them and writes the link both
+  ways — the property gets `debtRow`, the roll-up gets `match`.
+- Matching is tried strongest first, because a wrong join is worse than no join: a loan shown
+  against the wrong building is a number somebody acts on. In order — the whole name or the name
+  with its location trimmed; one name opening the other; then every word of one appearing in the
+  other, and only if that picks out exactly ONE property. Case, punctuation and a leading "the"
+  are ignored throughout. "Mill", "the mill", "The Mill, Greenwich" and "The Mill - Greenwich,
+  CT" all land on the same folder; "Some Other Asset" lands on nothing.
+- Nothing is dropped quietly. A roll-up row with no folder, and a property with no roll-up row,
+  each print a NOTE on the run, as does the count joined ("joined to properties: 3 of 3").
+- Where the join shows:
+    · the property CARD carries lender, current balance and maturity, above the document counts,
+      because it is the fact somebody came to the tab for;
+    · the property DETAIL view carries the full row — every column the workbook has — on the
+      property itself and not on the folders inside it, the same rule the task panel follows;
+    · the asset name in the Debt report is a BUTTON back to the folder. The join is only worth
+      making if it is walkable in both directions.
+- All three read the row by COLUMN ROLE (/lender/i, /balance/i, /maturity/i) rather than by
+  position, so reordering columns in Excel cannot start showing a rate cap where a lender was.
+- A property in the roll-up with nothing past the Lender column reads "No debt recorded" rather
+  than blanks — The Mill today. A property with no row at all shows no debt line, which is a
+  different statement and deliberately looks different.
+- The workbook itself was corrected on 2026-08-19: it spelled Greenwich "Greenich". Fixed in the
+  file rather than papered over in the report, by replacing the one string in sharedStrings.xml
+  and copying every other part of the .xlsx through untouched — the file carries webextension
+  parts that a rewrite through a spreadsheet library would have dropped.
 
 Reading a PDF without leaving the page — added 2026-08-18:
 - Click a PDF anywhere in a file table and it opens in a preview panel over the page rather than

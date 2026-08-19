@@ -1111,6 +1111,99 @@ button.link-arrow {
   color: var(--muted);
 }
 
+/* The loan under the building, on the card that opens it. Sits above the
+   document counts because it is the fact somebody came to the tab for. */
+.dash-card__debt {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 10px;
+  font-size: .8rem;
+  color: var(--steel);
+  margin-bottom: 18px;
+  padding-left: 11px;
+  border-left: 2px solid var(--steel);
+}
+.dash-card__debt b { font-weight: 600; font-variant-numeric: tabular-nums; color: var(--ink); }
+.dash-card__debt i { font-style: normal; color: var(--muted); white-space: nowrap; }
+.dash-card__debt--none {
+  color: var(--muted);
+  border-left-color: var(--rule);
+}
+
+/* The property's loan, on the property. Same card language as the task panel
+   it sits beside. */
+.debt-panel {
+  background: var(--paper);
+  border: 1px solid var(--rule);
+  border-left: 3px solid var(--steel);
+  padding: 20px 24px;
+  margin-bottom: 22px;
+}
+.debt-panel h4 {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  margin: 0 0 16px;
+  font-family: var(--sans);
+  font-size: .72rem;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.debt-panel h4 button {
+  font: inherit;
+  letter-spacing: .08em;
+  background: none;
+  border: 0;
+  padding: 0;
+  color: var(--steel);
+  cursor: pointer;
+  text-transform: none;
+}
+.debt-panel h4 button:hover { color: var(--ink); text-decoration: underline; }
+.debt-panel dl {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 14px 24px;
+  margin: 0;
+}
+.debt-panel dt {
+  font-size: .72rem;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 3px;
+}
+.debt-panel dd {
+  margin: 0;
+  font-size: .95rem;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+.debt-panel__src {
+  margin: 16px 0 0;
+  font-size: .78rem;
+  color: var(--muted);
+}
+/* The asset name in the debt report, back to its folder. */
+.debt-link {
+  font: inherit;
+  background: none;
+  border: 0;
+  padding: 0;
+  color: var(--ink);
+  cursor: pointer;
+  text-align: left;
+  border-bottom: 1px solid var(--steel);
+}
+.debt-link:hover { color: var(--steel); }
+@media print { .debt-link { border-bottom: 0; color: var(--ink); } }
+
+.debt-panel--none { border-left-color: var(--rule); }
+.debt-panel--none p { margin: 0; font-size: .9rem; color: var(--muted); }
+
 /* Home ---------------------------------------------------------- */
 /* The page the dashboard opens on: one tile per workspace. Same card
    as the category grid, sized up — this is a front door, not a list
@@ -3281,6 +3374,8 @@ button.link-arrow {
         out.children = (node.children || []).map(normalise);
         if (!out.modified) out.modified = latestIn(out.children);
       }
+      // The row this property was joined to in the debt roll-up, if any.
+      if (typeof node.debtRow === "number") out.debtRow = node.debtRow;
       return out;
     }
 
@@ -3808,10 +3903,67 @@ button.link-arrow {
         files.forEach(function (f) {
           if (f.modified && (!latest || f.modified > latest)) latest = f.modified;
         });
-        out.push({ name: node.name, count: files.length, lastModified: latest });
+        out.push({ name: node.name, count: files.length, lastModified: latest,
+                   debt: debtFor(node) });
       });
     });
     return out;
+  }
+
+  /* The debt roll-up and the folders are two records of the same buildings,
+     joined by name in the snapshot (see join_debt in onedrive-snapshot.py) —
+     "The Mill" in the workbook, "The Mill - Greenwich, CT" on disk. A property
+     carries the index of its row; everything below reads that row by COLUMN
+     ROLE rather than by position, so reordering the workbook cannot silently
+     start showing a rate cap where a lender used to be. */
+  var DEBT_FIELDS = {
+    lender:   /lender/i,
+    balance:  /balance/i,
+    rate:     /index \+ spread|spread|rate type/i,
+    maturity: /maturity/i
+  };
+
+  function debtFor(node) {
+    var debt = Provider.debt();
+    if (!debt || typeof node.debtRow !== "number") return null;
+    var row = debt.rows[node.debtRow];
+    if (!row) return null;
+
+    var out = { row: row, columns: debt.columns, file: debt.file, index: node.debtRow };
+    Object.keys(DEBT_FIELDS).forEach(function (key) {
+      for (var i = 0; i < debt.columns.length; i++) {
+        if (DEBT_FIELDS[key].test(debt.columns[i].label) && row[i]) { out[key] = row[i]; return; }
+      }
+    });
+    // No lender is how the roll-up says a property is unlevered.
+    out.unlevered = !out.lender;
+    return out;
+  }
+
+  /* The property's own row from the roll-up, on the property. Every column the
+     workbook carries, because somebody standing in the folder asking about the
+     loan wants the terms, not a headline. */
+  function assetDebtPanel(propertyName) {
+    var props = assetProperties();
+    var hit = null;
+    props.forEach(function (p) { if (p.name === propertyName) hit = p; });
+    if (!hit || !hit.debt) return "";
+    var d = hit.debt;
+
+    if (d.unlevered) {
+      return '<div class="debt-panel debt-panel--none">' +
+        '<h4>Debt</h4><p>No debt recorded for this property in ' + esc(d.file) + '.</p></div>';
+    }
+
+    var pairs = d.columns.map(function (c, i) {
+      return (i === 0 || !d.row[i]) ? "" :
+        '<div><dt>' + esc(c.label) + '</dt><dd>' + esc(d.row[i]) + '</dd></div>';
+    }).join("");
+
+    return '<div class="debt-panel"><h4>Debt<button type="button" data-action="debt-report">' +
+      'Full debt report</button></h4><dl>' + pairs + '</dl>' +
+      '<p class="debt-panel__src">From ' + esc(d.file) + '. Matched to this folder by name.</p>' +
+      '</div>';
   }
 
   function renderAssetGrid() {
@@ -3823,12 +3975,25 @@ button.link-arrow {
               '<span class="sep">·</span>' +
               '<span class="muted">Updated ' + esc(fmtRelative(p.lastModified)) + '</span>'
             : '<span class="dash-card__unmapped">Nothing filed yet</span>';
+          // The loan under the building, on the card that opens it. Shown only
+          // where the roll-up actually has a row — a blank line would read as
+          // "no debt" when it means "not in the workbook".
+          var debtLine = "";
+          if (p.debt) {
+            debtLine = p.debt.unlevered
+              ? '<span class="dash-card__debt dash-card__debt--none">No debt recorded</span>'
+              : '<span class="dash-card__debt">' + esc(p.debt.lender || "Lender not named") +
+                (p.debt.balance ? '<b>' + esc(p.debt.balance) + '</b>' : "") +
+                (p.debt.maturity ? '<i>Matures ' + esc(p.debt.maturity) + '</i>' : "") +
+                '</span>';
+          }
           return '<button class="dash-card" type="button" data-cat="asset-management" ' +
                    'data-asset="' + esc(p.name) + '">' +
             '<span class="dash-card__icon"><svg viewBox="0 0 24 24" aria-hidden="true">' +
               ICONS.building + '</svg></span>' +
             '<h3 class="dash-card__name">' + esc(p.name) + '</h3>' +
             '<p class="dash-card__blurb">Update letters, financials and property reporting.</p>' +
+            debtLine +
             '<span class="dash-card__meta">' + meta + '</span>' +
           '</button>';
         }).join("")
@@ -4066,7 +4231,12 @@ button.link-arrow {
       // level would be noise rather than an answer.
       var tasksPanel = state.path.length === 1 ? recordTaskPanel(state.path[0]) : "";
 
-      wsEl("body", ws).innerHTML = tasksPanel + fileTable(items.concat(waiting), {
+      // Same rule for the loan: it belongs to the property, not to every
+      // folder inside it.
+      var debtPanel = (ws === "assets" && state.path.length === 1)
+        ? assetDebtPanel(state.path[0]) : "";
+
+      wsEl("body", ws).innerHTML = debtPanel + tasksPanel + fileTable(items.concat(waiting), {
         dealLevel: atDealLevel,
         emptyTitle: "Nothing in this folder",
         emptyBody: "No documents have been filed here yet."
@@ -4616,9 +4786,14 @@ button.link-arrow {
       'writes back.</p>' +
       table(
         d.columns.map(function (c) { return { label: c.label, num: c.num }; }),
-        d.rows.map(function (row) {
+        d.rows.map(function (row, r) {
           var bare = unlevered(row);
+          var property = (d.match || [])[r];
           return row.map(function (v, i) {
+            if (i === 0 && property) {
+              return { v: '<button type="button" class="debt-link" data-debt-property="' +
+                          esc(property) + '">' + esc(v) + '</button>', cls: "" };
+            }
             if (bare && i === lenderAt) {
               return { v: '<span class="muted">No debt recorded</span>', cls: "" };
             }
@@ -4733,6 +4908,16 @@ button.link-arrow {
         ? (m.dataset.anonymised ? "Local snapshot (anonymised)" : "Local snapshot")
         : "No document source connected");
     wsEl("reportBody").innerHTML = html;
+  }
+
+  function openDebtReport() {
+    var report = buildDebtReport();
+    if (!report) { toast("No debt summary in this snapshot."); return; }
+    state.ws = "assets";
+    state.report = report;
+    renderReport(report);
+    showView("report", "assets");
+    window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
   function openReport(scopeId) {
@@ -9923,6 +10108,16 @@ button.link-arrow {
     var home = e.target.closest("[data-action='home'], [data-action='assets-home']");
     if (home) { goHome(); return; }
 
+    if (e.target.closest("[data-action='debt-report']")) { openDebtReport(); return; }
+
+    // An asset name in the debt report opens the folder it was joined to —
+    // the join is only worth making if it is walkable in both directions.
+    var debtLink = e.target.closest("[data-debt-property]");
+    if (debtLink) {
+      openCategory("asset-management", [debtLink.getAttribute("data-debt-property")]);
+      return;
+    }
+
     var crumb = e.target.closest("[data-crumb]");
     if (crumb) {
       var idx = parseInt(crumb.getAttribute("data-crumb"), 10);
@@ -10023,14 +10218,7 @@ button.link-arrow {
   // an Asset Management question, so it sits on that toolbar. The button stays
   // hidden when the snapshot carried no workbook rather than opening an empty
   // report — the published page has no source at all.
-  $("assetDebtBtn").addEventListener("click", function () {
-    var report = buildDebtReport();
-    if (!report) { toast("No debt summary in this snapshot."); return; }
-    state.report = report;
-    renderReport(report);
-    showView("report", "assets");
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  });
+  $("assetDebtBtn").addEventListener("click", openDebtReport);
 
   $("assetExportPdfBtn").addEventListener("click", function () { window.print(); });
 
