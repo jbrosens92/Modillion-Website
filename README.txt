@@ -437,6 +437,137 @@ The sharing limit — read this before rolling the task list out to the team:
   that would give the CRM shared state and the mailbox an automatic intake. Until then, treat
   the file as the source of truth and re-export after a working session.
 
+Telling the assignee — email on a new task, added 2026-08-19:
+- A task list only works if the person named on it finds out. When a task is created with
+  somebody assigned, one email goes to that person: what the task is, when it is due, the
+  priority, what it relates to, who assigned it, and a link back to the list.
+- It fires from BOTH places a task can come into being — the Add button and the agent's
+  task.add, after Apply. A task the agent wrote is still a task somebody has been given.
+- It does NOT fire when: nobody is assigned; you assigned it to yourself (you already know);
+  the assignee is a free-hand name with no address on the roster (inventing one would be
+  worse than staying quiet); or the switch under the Add form is off. The switch is on by
+  default and remembered per browser, next to a line saying which of the two routes below
+  the email will take — "opens a draft you press send on" and "sends it" are different
+  promises and the person adding the task should know which one they are making.
+- Changing the assignee on an EXISTING task does not email anybody. Creation only, which is
+  what was asked for. If reassignment should notify too, it is one more announce() call in
+  saveTaskEdits.
+
+Where the address comes from:
+- The roster in tasks-data.json now carries an "email" per person. A file written before that
+  field existed still works: personEmail falls back to GATE_USERS, the sign-in list, because
+  the ids on the two lists are deliberately the same four (dw / ce / ee / jb). The addresses
+  are the same ones already sitting in GATE_USERS, so repeating them in TASKS_FALLBACK
+  publishes nothing that was not already in this repository.
+
+Two routes, and which one runs depends on what is deployed:
+- /api/notify IS DEPLOYED — the email is sent from the firm's address the moment the task is
+  added. Nobody presses anything.
+- NOTHING DEPLOYED — a pre-written draft opens in the sender's own mail client, addressed and
+  filled in, and THEY press send. Same approach the public contact form takes, and the same
+  caveat: somebody on webmail with no default mail handler sees nothing happen, which is why
+  the toast names the recipient either way.
+- The second is not a broken version of the first. It is what a page with no server behind it
+  can honestly do, and it upgrades on its own the day the function is deployed. The page
+  probes GET /api/notify once per browser session, the same way it probes /api/agent.
+
+Deploying /api/notify (Vercel):
+- Set RESEND_API_KEY, and NOTIFY_FROM to a verified sender such as
+  "Modillion Dashboard <dashboard@modillionpartners.com>". Optionally NOTIFY_ALLOWED_ORIGIN,
+  the same fence /api/agent has.
+- Sending FROM @modillionpartners.com needs the domain verified with Resend first — three DNS
+  records. Until that is done the only usable sender is Resend's own onboarding@resend.dev,
+  which delivers to the account owner's address and nowhere else. Do that step before rolling
+  this out, or the team gets mail from a stranger's domain.
+- No key set is a supported state, not a broken one: GET returns 503, the probe fails, and the
+  page keeps opening drafts.
+- WHO IT WILL SEND TO. The endpoint is public — anything on the internet can POST to it, and
+  left open it would be a free spam relay wearing the firm's return address. The recipient is
+  checked before anything is sent: NOTIFY_ALLOWED_DOMAIN (one domain, default
+  modillionpartners.com) plus an optional NOTIFY_ALLOWED_RECIPIENTS list of exact addresses.
+  Anything matching neither is refused with 403. Widen it only as far as the roster needs.
+- There is no queue and no retry. A send that fails says so in the toast and falls back to
+  opening a draft, so the assignee is never left silently un-told. A failed email never stops
+  the task being added — the task is saved and on screen before the email is attempted.
+
+Tested 2026-08-19:
+- Against a local stub standing in for the deployed function: signed in as David Wolfson,
+  added "Confirm the Q2 investor report figures with the auditor by Friday, John, high". The
+  reader picked out John, 2026-08-21 and High; the page POSTed to jbrosens@modillionpartners.com
+  with the right task fields and "Assigned by: David Wolfson".
+- The three quiet cases were checked and all three stayed quiet: assigned to yourself,
+  unassigned, and the switch off. No email was sent to anybody but John.
+- What has NOT been exercised: api/notify.js itself against the live Resend API. That needs
+  the key and the verified domain above. The test above proves the page's half of it.
+
+
+"Related to" now reaches operators too — 2026-08-19:
+- A task could hang off a deal or an investor. It can now hang off an OPERATOR as well, which
+  is the third thing the firm keeps records about and the one most tasks are actually about:
+  chasing a budget, a reforecast, a site visit write-up.
+- The picker now SAYS WHICH IS WHICH. Every option is labelled "— deal", "— deal, no folder
+  yet", "— investor" or "— operator", because three lists in one flat datalist meant a bare
+  name did not tell you whether you were relating a task to the sponsor or to the building
+  they run.
+- The one-line reader picks operators up too, after deals and investors, in that order: a deal
+  is one building, an investor is a firm, an operator is a firm whose name usually turns up in
+  a sentence that is really about one of its deals. Operator matching is WHOLE-NAME ONLY —
+  short names like "Arden" would fire on half the sentences typed here otherwise, and a wrong
+  link is worse than no link.
+- "Add operator" joins "Add investor" and "Add deal" under the field, and creates the record
+  with nothing but a name, same as the investor shortcut.
+- NAMES ARE NOW EXCLUSIVE ACROSS ALL THREE. A name already taken by a deal folder, a pending
+  deal, an investor or an operator is refused by all three shortcuts, each with its own
+  message. This is new for deals, which previously only checked investors. The reason is
+  below: "Related to" holds a NAME, so two records sharing one would both claim the same task
+  and neither would be wrong.
+
+Tasks on a record (Investor CRM, Operator CRM, Deal Pipeline) — added 2026-08-19:
+- "What is still outstanding on this?" gets asked of one deal, one investor or one operator
+  far more often than it gets asked of the whole list. It used to mean leaving the record,
+  changing tab and searching the name. There is now a Tasks panel on all three, built once by
+  recordTaskPanel().
+- Where it sits: on an investor, between Interests and Conversations; on an operator, under
+  Deals; on the Deal Pipeline, above the file table when you are one level into an area — the
+  deal folder itself. Asset Management gets it on the same rule, since a property is the same
+  shape of thing.
+- ONE LEVEL ONLY. Deeper than that is a subfolder of the same deal, and repeating the panel
+  down every level would be noise rather than an answer.
+- What counts as related: the task's "Related to" against the record's NAME, case-insensitive.
+  That is all that field holds, which is what forces the exclusive-names rule above.
+- OPEN TASKS ONLY. The count of closed ones is in the heading ("2 open · 5 done") and
+  "See all in the task list" carries the name across, where the status filter can show them.
+  A record page answers what is left to do; the archive of what was done belongs on the list.
+- The rows are the task list's own rows, so a task looks the same wherever it is read. The
+  tick box works from here, and ticking one redraws the record you are looking at rather than
+  the list hiding behind it. Clicking a title crosses to the Task List with that task's editor
+  already open.
+- "Add a task for X" crosses the other way: Task List, Related to already filled in, cursor in
+  the box.
+
+Known limits, deliberate:
+- A DEAL WITH NO FOLDER YET has nowhere to show its panel — the pipeline says there is nothing
+  to open rather than opening an empty folder, which is the right answer for documents and
+  means the tasks against it are only visible on the Task List. Worth revisiting if pending
+  deals start carrying real work.
+- An operator's panel shows tasks linked to the OPERATOR, not tasks linked to the deals they
+  run. Rolling those up would be useful and is a one-line change to tasksForName, but it would
+  also mean a task appearing on a record nobody linked it to, so it is left explicit.
+- The chat agent still reads deal folders, so it does not know about tasks by record either.
+  Same small addition as the pending-deal gap above.
+
+Tested 2026-08-19:
+- A task linked to Acuspis (operator), one to Bonaccord Capital Partners (investor) and one to
+  Hillridge - Programmatic (deal folder) each appeared on the right record and nowhere else.
+- The panel does not appear one level deeper (inside "Term Sheet"), as intended.
+- Ticking a task off from the operator record redrew that record in place: "1 open" became
+  "0 open · 1 done".
+- Clicking a title crossed to the Task List with the editor open on that task; "See all"
+  crossed with the search set to the name; "Add a task for X" crossed with Related to filled.
+- All six name-collision guards fired with their own message, and a genuinely new name created
+  the operator and joined the picker.
+
+
 The agent (the chat in the corner) — added 2026-08-17:
 - One conversation, available on every tab. It sits outside the tab containers on purpose:
   the same thread follows you from the Deal Pipeline to the two CRMs to Asset Management to the

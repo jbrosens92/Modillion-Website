@@ -1957,6 +1957,24 @@ button.link-arrow {
   gap: 16px 20px;
   margin-top: 18px;
 }
+/* The tasks panel as it appears on a deal, an investor or an operator.
+   It borrows the task list's own row so a task looks the same wherever
+   it is read; only the surrounding spacing is set here. */
+.record-tasks__list { list-style: none; margin: 0; padding: 0; }
+.record-tasks__list .task:first-child { padding-top: 0; }
+.record-tasks__list .task:last-child { border-bottom: 0; }
+.record-tasks__empty { font-size: .85rem; color: var(--muted); margin: 0; }
+.record-tasks__foot { font-size: .72rem; color: var(--muted); margin: 14px 0 0; }
+.task-notify {
+  display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap;
+  margin-top: 16px;
+}
+.task-notify label {
+  display: inline-flex; align-items: center; gap: 7px;
+  color: var(--deep-space); cursor: pointer;
+}
+.task-notify input { accent-color: var(--steel); cursor: pointer; }
+.task-notify span { color: var(--muted); }
 .task-whoami {
   display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
   margin: 40px 0 0; padding-top: 22px; border-top: 1px solid var(--rule);
@@ -2936,18 +2954,28 @@ button.link-arrow {
             <div class="crm-field">
               <label for="taskLink">Related to</label>
               <input type="text" id="taskLink" autocomplete="off" list="taskLinkOptions"
-                     placeholder="A deal or an investor (optional)">
+                     placeholder="A deal, an investor or an operator (optional)">
               <datalist id="taskLinkOptions"></datalist>
               <p class="crm-field__note task-link-new" id="taskLinkNew">
-                <span data-link-why hidden>Not a deal folder or an investor on the CRM. </span>
+                <span data-link-why hidden>Not a deal folder, an investor or an operator. </span>
                 <button type="button" class="task-link-new__btn"
                         data-task-link-add="taskLink" data-as="investor">Add investor</button>
                 <span aria-hidden="true"> · </span>
                 <button type="button" class="task-link-new__btn"
                         data-task-link-add="taskLink" data-as="deal">Add deal</button>
+                <span aria-hidden="true"> · </span>
+                <button type="button" class="task-link-new__btn"
+                        data-task-link-add="taskLink" data-as="operator">Add operator</button>
               </p>
             </div>
           </div>
+          <p class="crm-field__note task-notify">
+            <label for="taskNotify">
+              <input type="checkbox" id="taskNotify" checked>
+              Email the person it is assigned to
+            </label>
+            <span id="taskNotifyHow"></span>
+          </p>
           <p class="crm-field__note" id="taskReadNote"></p>
         </div>
 
@@ -3985,7 +4013,13 @@ button.link-arrow {
         (dirCount ? '<span class="sep">·</span><span>' + dirCount + ' folder' + (dirCount === 1 ? '' : 's') + '</span>' : '') +
         (waiting.length ? '<span class="sep">·</span><span>' + waiting.length +
                           ' awaiting a folder</span>' : '');
-      wsEl("body", ws).innerHTML = fileTable(items.concat(waiting), {
+      // One level into an area is the deal itself (or, on Asset Management,
+      // the property), so that is where its tasks belong. Deeper than that
+      // is a subfolder of the same deal, and repeating the panel down every
+      // level would be noise rather than an answer.
+      var tasksPanel = state.path.length === 1 ? recordTaskPanel(state.path[0]) : "";
+
+      wsEl("body", ws).innerHTML = tasksPanel + fileTable(items.concat(waiting), {
         dealLevel: atDealLevel,
         emptyTitle: "Nothing in this folder",
         emptyBody: "No documents have been filed here yet."
@@ -6239,6 +6273,8 @@ button.link-arrow {
         }).join("") + '</ul></div>');
     }
 
+    parts.push(recordTaskPanel(inv.name));
+
     parts.push('<div class="crm-section"><h3>Conversations' +
       '<span class="crm-section__aside">' + inv.conversations.length + ' logged</span></h3>' +
       (inv.conversations.length
@@ -7592,6 +7628,8 @@ button.link-arrow {
         : '<span class="crm-tag">No deals recorded against this operator yet</span>') +
       '</div></div>');
 
+    parts.push(recordTaskPanel(rec.name));
+
     if (rec.tags.length) {
       parts.push('<div class="crm-section"><h3>Tags</h3><div>' +
         rec.tags.map(function (t) { return '<span class="crm-tag">' + esc(t) + '</span>'; }).join("") +
@@ -7862,11 +7900,20 @@ button.link-arrow {
     priorities: TASK_PRIORITIES,
     // The roster is not invented — it is the team as the public site lists it,
     // and the assignee picker needs it whether or not any task is loaded.
+    //
+    // The addresses are the same four already sitting in GATE_USERS below, so
+    // nothing new is published by repeating them here. They are what the
+    // assignment notification is sent to; a person with no email on the roster
+    // simply does not get one.
     team: [
-      { id: "dw", name: "David Wolfson", role: "Managing Partner" },
-      { id: "ce", name: "Corey Ernst", role: "Partner" },
-      { id: "ee", name: "Eric Emrich", role: "Partner, CFO" },
-      { id: "jb", name: "John Brosens", role: "Partner" }
+      { id: "dw", name: "David Wolfson", role: "Managing Partner",
+        email: "dwolfson@modillionpartners.com" },
+      { id: "ce", name: "Corey Ernst", role: "Partner",
+        email: "cernst@modillionpartners.com" },
+      { id: "ee", name: "Eric Emrich", role: "Partner, CFO",
+        email: "eemrich@modillionpartners.com" },
+      { id: "jb", name: "John Brosens", role: "Partner",
+        email: "jbrosens@modillionpartners.com" }
     ],
     tasks: []
   };
@@ -8024,6 +8071,25 @@ button.link-arrow {
       return id;                                   // a name typed in free-hand
     }
 
+    // Where the assignment notification is addressed. The roster in
+    // tasks-data.json is the first answer; a file written before this field
+    // existed has none, so the sign-in list is the second — the ids on the two
+    // lists are deliberately the same four (dw / ce / ee / jb), which is what
+    // lets one answer for the other. A free-hand name matches neither and gets
+    // no email, which is the honest outcome: there is no address to use.
+    function personEmail(id) {
+      if (!id) return "";
+      for (var i = 0; i < team.length; i++) {
+        if (team[i].id === id && team[i].email) return team[i].email;
+      }
+      if (typeof GATE_USERS !== "undefined") {
+        for (var j = 0; j < GATE_USERS.length; j++) {
+          if (GATE_USERS[j].id === id) return GATE_USERS[j].username;
+        }
+      }
+      return "";
+    }
+
     function initials(id) {
       var name = personName(id);
       if (!name) return "?";
@@ -8058,9 +8124,187 @@ button.link-arrow {
       whoAmI: whoAmI,
       setWhoAmI: setWhoAmI,
       personName: personName,
+      personEmail: personEmail,
       initials: initials,
       hasLocalEdits: hasOverlay,
       toFile: toFile
+    };
+  })();
+
+  /* ============================================================
+     TASKS — TELLING THE PERSON IT WAS ASSIGNED TO
+
+     A task list only works if the person it names finds out. This
+     sends one email when a task is created with somebody on it.
+
+     Two ways, and which one is used depends on what is deployed:
+
+       /api/notify is up     the email is SENT, from the firm's
+                             address, without anybody pressing
+                             anything. The page probes the endpoint
+                             once per browser session, the same way
+                             it probes /api/agent.
+
+       nothing deployed      a pre-written draft is opened in the
+                             sender's own mail client, addressed and
+                             filled in, and THEY press send. Same
+                             approach the public contact form takes,
+                             and the same caveat: somebody on webmail
+                             with no default mail handler will see
+                             nothing happen, so the toast says who it
+                             was meant for either way.
+
+     The second is not a broken version of the first. It is what
+     this page can honestly do with no server behind it, and it
+     upgrades on its own the day the function is deployed.
+
+     WHEN IT DOES NOT SEND
+     - Nobody is assigned. There is no one to tell.
+     - You assigned it to yourself. You already know.
+     - The assignee is a free-hand name with no address on the
+       roster. Inventing one would be worse than staying quiet.
+     - The switch beside the Add button is off.
+     ============================================================ */
+  var NOTIFY_ENDPOINT = "/api/notify";
+
+  var TaskNotify = (function () {
+    var available = null;
+    var PROBE_KEY = "modillion-notify-endpoint";
+    var PREF_KEY = "modillion-notify-assignees";
+
+    /* Remembered for the browser session so a static deployment logs one
+       404 when the tab is opened rather than one per task added. */
+    function probe() {
+      try {
+        var cached = sessionStorage.getItem(PROBE_KEY);
+        if (cached) {
+          available = JSON.parse(cached).ok === true;
+          return Promise.resolve(available);
+        }
+      } catch (e) { /* private mode — probe every load instead */ }
+
+      return fetch(NOTIFY_ENDPOINT, { method: "GET", cache: "no-store" })
+        .then(function (r) { return r.ok ? r.json() : null; })
+        .then(function (j) { available = !!(j && j.ok); return available; })
+        .catch(function () { available = false; return false; })
+        .then(function (ok) {
+          try { sessionStorage.setItem(PROBE_KEY, JSON.stringify({ ok: ok })); }
+          catch (e) { /* private mode */ }
+          return ok;
+        });
+    }
+
+    // On by default: the whole point is that somebody hears about the work.
+    // Only an explicit "off" turns it off.
+    function enabled() {
+      try { return localStorage.getItem(PREF_KEY) !== "off"; } catch (e) { return true; }
+    }
+
+    function setEnabled(on) {
+      try { localStorage.setItem(PREF_KEY, on ? "on" : "off"); } catch (e) { /* private mode */ }
+    }
+
+    function senderName() {
+      var u = typeof signedInUser === "function" ? signedInUser() : null;
+      if (u && u.name) return u.name;
+      return Tasks.personName(Tasks.whoAmI()) || "";
+    }
+
+    function listHref() {
+      return location.origin + location.pathname;
+    }
+
+    /* The wording is written once, here, and the server composes the same
+       thing for the sent version — one email that reads the same whichever
+       route it took. */
+    function lines(task, toName, from) {
+      var rows = [
+        ["Task", task.title],
+        ["Due", task.due || "No date set"],
+        ["Priority", task.priority || "Medium"],
+        ["Related to", task.link || "—"],
+        ["Assigned by", from || "the dashboard"]
+      ];
+      if (task.notes) rows.push(["Notes", task.notes]);
+      return (toName ? toName.split(/\s+/)[0] + "," : "Hello,") + "\n\n" +
+             "A task has been assigned to you on the Modillion dashboard.\n\n" +
+             rows.map(function (r) { return r[0] + ": " + r[1]; }).join("\n") + "\n\n" +
+             "Open the task list: " + listHref() + "\n";
+    }
+
+    function subjectFor(task) {
+      return (task.priority === "High" ? "[High] " : "") + "New task for you: " + task.title;
+    }
+
+    function draft(to, task, toName, from) {
+      var url = "mailto:" + encodeURIComponent(to) +
+                "?subject=" + encodeURIComponent(subjectFor(task)) +
+                "&body=" + encodeURIComponent(lines(task, toName, from));
+      // Same mechanism as the contact form: hand it to the mail client and
+      // let the person press send. A window that never opens is silent, which
+      // is why the toast names the recipient rather than claiming it was sent.
+      window.location.href = url;
+    }
+
+    function send(to, task, toName, from) {
+      return fetch(NOTIFY_ENDPOINT, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          to: to, toName: toName, fromName: from,
+          dashboardUrl: listHref(),
+          task: {
+            title: task.title, due: task.due, priority: task.priority,
+            link: task.link, notes: task.notes
+          }
+        })
+      }).then(function (r) {
+        return r.json().catch(function () { return {}; }).then(function (j) {
+          if (!r.ok || j.error) throw new Error(j.error || ("The notifier answered " + r.status + "."));
+          return j;
+        });
+      });
+    }
+
+    /* One call, made wherever a task comes into being. Returns nothing —
+       a notification that fails must never stop a task being added, so
+       everything below reports through the toast and swallows the rest. */
+    function announce(task) {
+      if (!task || !enabled()) return;
+
+      var to = Tasks.personEmail(task.assignee);
+      if (!task.assignee || !to) return;
+      if (task.assignee === Tasks.whoAmI()) return;      // you already know
+
+      var toName = Tasks.personName(task.assignee);
+      var from = senderName();
+
+      probe().then(function (ok) {
+        if (!ok) {
+          draft(to, task, toName, from);
+          toast("Opened an email to " + toName + " (" + to + ") — press send in your mail client.");
+          return;
+        }
+        send(to, task, toName, from)
+          .then(function () { toast("Emailed " + toName + " at " + to + "."); })
+          .catch(function (err) {
+            // Say what went wrong and still give a way through, rather than
+            // leaving the assignee un-told and nobody any the wiser.
+            toast("Could not email " + toName + ": " + err.message + " Opening a draft instead.");
+            draft(to, task, toName, from);
+          });
+      });
+    }
+
+    return {
+      probe: probe, announce: announce,
+      enabled: enabled, setEnabled: setEnabled,
+      isAvailable: function () { return available === true; },
+      preview: function (task) {
+        return { to: Tasks.personEmail(task.assignee),
+                 subject: subjectFor(task),
+                 body: lines(task, Tasks.personName(task.assignee), senderName()) };
+      }
     };
   })();
 
@@ -8172,13 +8416,34 @@ button.link-arrow {
       return "Medium";
     }
 
-    // Deals first, then investors — both are things a task hangs off.
+    // Deals first, then investors, then operators — all three are things a
+    // task hangs off. The order is how specific the name usually is: a deal
+    // is one building, an investor is a firm, an operator is a firm whose
+    // name often appears in a sentence that is really about one of its deals.
     function findLink(text) {
       var deals = Reader.matchDeals(text);
       if (deals.length) return deals[0];
       var hit = Reader.matchInvestor(text);
       if (hit.id) return (Crm.get(hit.id) || {}).name || "";
+      var op = findOperator(text);
+      if (op) return op.name;
       return "";
+    }
+
+    // Whole-name match only. Operator names are firm names — short ones like
+    // "Arden" would fire on half the sentences typed here if this matched
+    // loosely, and a wrong link is worse than none.
+    function findOperator(text) {
+      var t = " " + text.toLowerCase() + " ";
+      var best = null;
+      Operators.all().forEach(function (o) {
+        var n = o.name.trim().toLowerCase();
+        if (n.length < 3) return;
+        if (t.indexOf(" " + n + " ") === -1 && t.indexOf(" " + n + ",") === -1 &&
+            t.indexOf(" " + n + ".") === -1) return;
+        if (!best || n.length > best.name.trim().length) best = o;   // longest wins
+      });
+      return best;
     }
 
     function read(text) {
@@ -8221,6 +8486,119 @@ button.link-arrow {
     if (task.due < t) return "Overdue — " + task.due;
     if (task.due === t) return "Due today";
     return "Due " + task.due;
+  }
+
+  /* ============================================================
+     TASKS ON A RECORD
+
+     "What is still outstanding on this?" gets asked of one deal,
+     one investor or one operator far more often than it gets asked
+     of the whole list, and answering it used to mean leaving the
+     record, changing tab and searching for the name. The same panel
+     now sits on all three, built once here.
+
+     WHAT COUNTS AS RELATED: the task's "Related to" against the
+     record's NAME, case-insensitively, because a name is all that
+     field holds. That is also why the three add-a-name shortcuts
+     refuse a name another record has already taken — two records
+     sharing one would both claim the same task, and neither would
+     be wrong.
+
+     Only OPEN tasks are listed. The count of closed ones is in the
+     heading, and "See all" carries the name to the task list, where
+     the status filter can show them. A record page answers what is
+     left to do; the archive of what was done belongs on the list.
+     ============================================================ */
+  function tasksForName(name) {
+    var v = String(name || "").trim().toLowerCase();
+    if (!v) return [];
+    return Tasks.all().filter(function (t) {
+      return String(t.link || "").trim().toLowerCase() === v;
+    });
+  }
+
+  function recordTaskPanel(name) {
+    var all = tasksForName(name);
+    var open = all.filter(function (t) { return t.status !== "Done"; });
+    var done = all.length - open.length;
+
+    var rank = { High: 0, Medium: 1, Low: 2 };
+    open.sort(function (a, b) {
+      var ad = a.due || "9999-99-99", bd = b.due || "9999-99-99";
+      if (ad !== bd) return ad.localeCompare(bd);
+      return (rank[a.priority] || 1) - (rank[b.priority] || 1);
+    });
+
+    var aside = all.length
+      ? open.length + " open" + (done ? " · " + done + " done" : "")
+      : "None yet";
+
+    var body = open.length
+      ? '<ul class="record-tasks__list">' + open.map(function (t) {
+          var bits = ['<span class="' + dueClass(t) + '">' + esc(dueLabel(t)) + '</span>',
+                      '<span>' + esc(t.assignee ? Tasks.personName(t.assignee) : "Unassigned") + '</span>'];
+          return '<li class="task">' +
+            '<input type="checkbox" class="task__check" data-task-check="' + esc(t.id) + '"' +
+              ' aria-label="Mark “' + esc(t.title) + '” done">' +
+            '<span class="task__main">' +
+              '<button type="button" class="task__title" data-task-open="' + esc(t.id) + '">' +
+                esc(t.title) + '</button>' +
+              '<span class="task__meta">' + bits.join("") + '</span>' +
+            '</span>' +
+            '<span class="task__aside">' +
+              (t.status !== "To do"
+                ? '<span class="task-pill" data-s="' + esc(t.status) + '">' + esc(t.status) + '</span>' : "") +
+              '<span class="task-pill" data-p="' + esc(t.priority) + '">' + esc(t.priority) + '</span>' +
+            '</span>' +
+          '</li>';
+        }).join("") + '</ul>'
+      : '<p class="record-tasks__empty">' +
+        (done ? "Everything logged against " + esc(name) + " is done."
+              : "No tasks reference " + esc(name) + " yet.") + '</p>';
+
+    return '<div class="crm-section record-tasks">' +
+      '<h3>Tasks<span class="crm-section__aside">' + esc(aside) + '</span></h3>' +
+      body +
+      '<p class="record-tasks__foot">' +
+        '<button type="button" class="task-link-new__btn" data-task-add-for="' + esc(name) + '">' +
+          'Add a task for ' + esc(name) + '</button>' +
+        (all.length ? '<span aria-hidden="true"> · </span>' +
+          '<button type="button" class="task-link-new__btn" data-task-see-all="' + esc(name) + '">' +
+            'See all in the task list</button>' : "") +
+      '</p></div>';
+  }
+
+  /* Ticking a task off from a record page has to redraw that page, not the
+     task list hiding behind it. Which record is open is the only question,
+     and each tab already knows. */
+  function refreshOpenRecordTasks() {
+    if (crmState.tab === "crm" && crmState.view === "investor" && crmState.investorId) {
+      renderInvestor(crmState.investorId);
+    } else if (crmState.tab === "operators" && opState.view === "operator" && opState.operatorId) {
+      renderOperator(opState.operatorId);
+    } else if ((crmState.tab === "docs" || crmState.tab === "assets") &&
+               state.view === "detail" && state.path.length === 1) {
+      openCategory(state.categoryId, state.path);
+    }
+  }
+
+  /* Both shortcuts land on the task list with the name already carried
+     across — one to write a new task against it, one to see everything
+     including what is closed. */
+  function addTaskFor(name) {
+    switchTab("tasks");
+    $("taskLink").value = name;
+    refreshLinkOffers();
+    $("taskInput").focus();
+    toast("Related to " + name + " — write the task and press Add.");
+  }
+
+  function seeTasksFor(name) {
+    taskState.query = name;
+    taskState.filters = { who: "", status: "", priority: "" };
+    switchTab("tasks");
+    $("taskSearch").value = name;
+    renderTasks();
   }
 
   function taskFiltered() {
@@ -8327,14 +8705,17 @@ button.link-arrow {
           '<select id="taskEditStatus">' + options(TASK_STATUSES, t.status) + '</select>') +
         field("taskEditLink", "Related to",
           '<input type="text" id="taskEditLink" autocomplete="off" list="taskLinkOptions" ' +
-          'placeholder="A deal or an investor (optional)" value="' + esc(t.link) + '">' +
+          'placeholder="A deal, an investor or an operator (optional)" value="' + esc(t.link) + '">' +
           '<p class="crm-field__note task-link-new" id="taskEditLinkNew">' +
-            '<span data-link-why hidden>Not a deal folder or an investor on the CRM. </span>' +
+            '<span data-link-why hidden>Not a deal folder, an investor or an operator. </span>' +
             '<button type="button" class="task-link-new__btn" ' +
                     'data-task-link-add="taskEditLink" data-as="investor">Add investor</button>' +
             '<span aria-hidden="true"> · </span>' +
             '<button type="button" class="task-link-new__btn" ' +
                     'data-task-link-add="taskEditLink" data-as="deal">Add deal</button>' +
+            '<span aria-hidden="true"> · </span>' +
+            '<button type="button" class="task-link-new__btn" ' +
+                    'data-task-link-add="taskEditLink" data-as="operator">Add operator</button>' +
           '</p>', true) +
         field("taskEditNotes", "Notes",
           '<textarea id="taskEditNotes">' + esc(t.notes) + '</textarea>', true) +
@@ -8443,15 +8824,23 @@ button.link-arrow {
     $("taskWhoAmI").innerHTML = '<option value="">Nobody selected</option>' + people;
     $("taskWhoAmI").value = me;
 
-    // A task hangs off a deal or an investor; offer both. Deals named in
-    // the dashboard sit after the folders — the same picker, but they
+    // A task hangs off a deal, an investor or an operator; offer all three.
+    // Every option says which it is, because the three lists are one flat
+    // picker and a bare name does not tell you whether you are about to
+    // relate a task to the sponsor or to the building they run. Deals named
+    // in the dashboard sit after the folders — the same picker, but they
     // carry no documents, which the label says.
+    function linkOption(value, kind) {
+      return '<option value="' + esc(value) + '">' + esc(value + " — " + kind) + '</option>';
+    }
+
     $("taskLinkOptions").innerHTML =
-      dealNames().map(function (v) { return '<option value="' + esc(v) + '">'; })
+      dealNames().map(function (v) { return linkOption(v, "deal"); })
       .concat(Crm.addedDeals().map(function (v) {
-        return '<option value="' + esc(v) + '">' + esc(v + " — deal, no folder yet") + '</option>';
+        return linkOption(v, "deal, no folder yet");
       }))
-      .concat(Crm.all().map(function (i) { return '<option value="' + esc(i.name) + '">'; }))
+      .concat(Crm.all().map(function (i) { return linkOption(i.name, "investor"); }))
+      .concat(Operators.all().map(function (o) { return linkOption(o.name, "operator"); }))
       .join("");
   }
 
@@ -8488,18 +8877,32 @@ button.link-arrow {
     })[0] || null;
   }
 
+  // Archived operators count as a match for the same reason archived
+  // investors do: the name is taken, and a task written against it should
+  // find the record rather than quietly propose making a second one.
+  function matchesOperator(name) {
+    var v = name.trim().toLowerCase();
+    if (!v) return null;
+    return Operators.allIncludingArchived().filter(function (o) {
+      return o.name.toLowerCase() === v;
+    })[0] || null;
+  }
+
   function refreshLinkOffer(inputId, slotId) {
     var input = $(inputId), slot = $(slotId);
     if (!input || !slot) return;
 
     var name = input.value.trim();
-    var isNew = name.length > 1 && !matchesDeal(name) && !matchesInvestor(name);
+    var isNew = name.length > 1 && !matchesDeal(name) &&
+                !matchesInvestor(name) && !matchesOperator(name);
 
     slot.querySelector("[data-link-why]").hidden = !isNew;
     slot.querySelector("[data-as='investor']").textContent =
       isNew ? "Add “" + name + "” as an investor" : "Add investor";
     slot.querySelector("[data-as='deal']").textContent =
       isNew ? "as a deal" : "Add deal";
+    slot.querySelector("[data-as='operator']").textContent =
+      isNew ? "as an operator" : "Add operator";
   }
 
   function refreshLinkOffers() {
@@ -8519,7 +8922,40 @@ button.link-arrow {
     }
 
     if (as === "deal") return addDealFromLink(input, name);
+    if (as === "operator") return addOperatorFromLink(input, name);
     return addInvestorFromLink(input, name);
+  }
+
+  // Same three-way name check the deal form does, from the other side: a
+  // name that is already something else on this page gets its own message
+  // and nothing is written.
+  function addOperatorFromLink(input, name) {
+    if (matchesFolder(name)) {
+      toast("“" + name + "” is a deal folder, not an operator.");
+      return;
+    }
+    if (matchesAddedDeal(name)) {
+      toast("“" + name + "” is already on the list as a deal.");
+      return;
+    }
+    if (matchesInvestor(name)) {
+      toast("“" + name + "” is an investor on the CRM, not an operator.");
+      return;
+    }
+
+    var already = matchesOperator(name);
+    if (already) {
+      toast(already.name + " is already on the Operator CRM.");
+      refreshLinkOffers();
+      return;
+    }
+
+    // A name and nothing else, same as the investor shortcut above. The
+    // record is filled in properly on the Operator CRM, where there is room.
+    var op = Operators.create({ name: name });
+    input.value = op.name;
+    afterLinkAdd();
+    toast("Added " + op.name + " to the Operator CRM — open that tab to fill in the rest.");
   }
 
   function addInvestorFromLink(input, name) {
@@ -8529,6 +8965,10 @@ button.link-arrow {
     }
     if (matchesAddedDeal(name)) {
       toast("“" + name + "” is already on the list as a deal.");
+      return;
+    }
+    if (matchesOperator(name)) {
+      toast("“" + name + "” is an operator on the Operator CRM, not an investor.");
       return;
     }
 
@@ -8567,6 +9007,15 @@ button.link-arrow {
       return;
     }
 
+    // A task's "Related to" is a NAME, so two records sharing one would make
+    // "tasks about this" ambiguous — the same task would surface on both.
+    // Cheaper to refuse the collision here than to guess later.
+    var operator = matchesOperator(name);
+    if (operator) {
+      toast(operator.name + " is an operator on the Operator CRM, not a deal.");
+      return;
+    }
+
     // A name, and nothing behind it. Said plainly here rather than found
     // out later by somebody looking for the documents.
     input.value = Crm.addDeal(name);
@@ -8579,6 +9028,8 @@ button.link-arrow {
     fillTaskSelects();                 // the pickers take the new name up
     renderCrmFilters();
     renderCrm();
+    renderOperatorFilters();
+    renderOperators();
     refreshLinkOffers();
   }
 
@@ -8623,6 +9074,11 @@ button.link-arrow {
     toast(task.assignee
       ? "Added and assigned to " + Tasks.personName(task.assignee) + "."
       : "Added — nobody is assigned to it yet.");
+
+    // Tell the person whose name is on it. Runs after the toast above on
+    // purpose — the task is already saved and on screen by the time the
+    // email is attempted, so nothing about it depends on the email working.
+    TaskNotify.announce(task);
   }
 
   function clearTaskForm() {
@@ -8726,12 +9182,30 @@ button.link-arrow {
       var id = check.getAttribute("data-task-check");
       Tasks.setDone(id, check.checked);
       renderTasks();
+      // The same box appears on a record page, where the list behind it is
+      // not what needs redrawing.
+      refreshOpenRecordTasks();
       var done = Tasks.get(id);
       toast(check.checked
         ? "Ticked off" + (done ? " — " + done.title : "") + "."
         : "Reopened.");
       return;
     }
+
+    // Opening a task from a record page: cross to the task list and put the
+    // task in its editor, so the row you clicked is the row you land on.
+    var openTask = e.target.closest("[data-task-open]");
+    if (openTask) {
+      switchTab("tasks");
+      editTask(openTask.getAttribute("data-task-open"));
+      return;
+    }
+
+    var addFor = e.target.closest("[data-task-add-for]");
+    if (addFor) { addTaskFor(addFor.getAttribute("data-task-add-for")); return; }
+
+    var seeAll = e.target.closest("[data-task-see-all]");
+    if (seeAll) { seeTasksFor(seeAll.getAttribute("data-task-see-all")); return; }
 
     var edit = e.target.closest("[data-task-edit]");
     if (edit) { editTask(edit.getAttribute("data-task-edit")); return; }
@@ -8827,6 +9301,26 @@ button.link-arrow {
   });
 
   $("taskSaveFileBtn").addEventListener("click", exportTaskFile);
+
+  /* The switch, and the line beside it that says which of the two routes
+     the email will actually take. Worth saying out loud: "opens a draft
+     you press send on" and "sends it" are different promises, and the
+     person adding the task should know which one they are making. */
+  function renderNotifyNote() {
+    var box = $("taskNotify");
+    var how = $("taskNotifyHow");
+    if (!box || !how) return;
+    box.checked = TaskNotify.enabled();
+    if (!box.checked) { how.textContent = "— off. Nobody is told."; return; }
+    how.textContent = TaskNotify.isAvailable()
+      ? "— sent from the firm's address as soon as the task is added."
+      : "— opens a draft in your mail client for you to send. Deploy /api/notify to send it automatically.";
+  }
+
+  $("taskNotify").addEventListener("change", function (e) {
+    TaskNotify.setEnabled(e.target.checked);
+    renderNotifyNote();
+  });
 
   /* ============================================================
      CRM — EVENTS
@@ -9707,7 +10201,10 @@ button.link-arrow {
             break;
 
           case "task.add":
-            Tasks.create(a.fields);
+            // Same notification as the Add button — a task created through
+            // the agent is still a task somebody has been given. It runs
+            // after Apply, so it is a person's decision that sent it.
+            TaskNotify.announce(Tasks.create(a.fields));
             touched.tasks = true;
             break;
 
@@ -11091,6 +11588,10 @@ button.link-arrow {
     renderOperators();
     fillTaskSelects();
     renderTasks();
+    // Same one-probe-per-session rule as the agent endpoint. Absent is the
+    // normal case; the switch just says "opens a draft" instead of "sends".
+    renderNotifyNote();
+    TaskNotify.probe().then(renderNotifyNote);
     Agent.init();
   }
 
