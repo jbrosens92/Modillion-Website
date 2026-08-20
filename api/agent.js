@@ -392,7 +392,7 @@ export default async function handler(req, res) {
         "<context>\n" + clip(JSON.stringify(context), 400_000) + "\n</context>\n\n" +
         "The person is on the " +
         ({ home: "Home", docs: "Deal Pipeline", crm: "Investor CRM",
-           operators: "Operator CRM", assets: "Asset Management",
+           operators: "Operator CRM",
            tasks: "Task List" }[context.tab] || "Deal Pipeline") +
         " tab. They said:\n\n" + message
     });

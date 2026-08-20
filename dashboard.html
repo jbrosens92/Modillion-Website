@@ -952,7 +952,6 @@ button.link-arrow {
 }
 .dash-notice[data-variant="live"] strong { color: #FFFFFF; }
 
-
 /* Toolbar ------------------------------------------------------- */
 .dash-toolbar {
   display: flex;
@@ -1113,23 +1112,6 @@ button.link-arrow {
 
 /* The loan under the building, on the card that opens it. Sits above the
    document counts because it is the fact somebody came to the tab for. */
-.dash-card__debt {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: 4px 10px;
-  font-size: .8rem;
-  color: var(--steel);
-  margin-bottom: 18px;
-  padding-left: 11px;
-  border-left: 2px solid var(--steel);
-}
-.dash-card__debt b { font-weight: 600; font-variant-numeric: tabular-nums; color: var(--ink); }
-.dash-card__debt i { font-style: normal; color: var(--muted); white-space: nowrap; }
-.dash-card__debt--none {
-  color: var(--muted);
-  border-left-color: var(--rule);
-}
 
 /* The property's loan, on the property. Same card language as the task panel
    it sits beside. */
@@ -1323,48 +1305,6 @@ button.link-arrow {
 .filetable td:first-child { white-space: normal; }
 .filetable .col-name { width: 42%; }
 
-.fileitem {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  color: var(--ink);
-  font-weight: 400;
-  background: none;
-  border: 0;
-  padding: 0;
-  font-family: var(--sans);
-  font-size: .95rem;
-  text-align: left;
-  cursor: pointer;
-}
-.fileitem:hover .fileitem__label { color: var(--steel); }
-.fileitem__icon {
-  width: 34px; height: 34px;
-  flex: 0 0 auto;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border: 1px solid var(--rule);
-  color: var(--steel);
-  background: rgba(119, 166, 182, 0.07);
-}
-.fileitem__icon svg {
-  width: 17px; height: 17px;
-  stroke: currentColor; fill: none;
-  stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round;
-}
-.fileitem__icon[data-kind="folder"] { color: var(--deep-space); background: rgba(45, 58, 81, 0.07); }
-.fileitem__icon[data-kind="xlsx"]   { color: #1D6F42; background: rgba(29, 111, 66, 0.08); border-color: rgba(29, 111, 66, 0.2); }
-.fileitem__icon[data-kind="docx"]   { color: #2B579A; background: rgba(43, 87, 154, 0.08); border-color: rgba(43, 87, 154, 0.2); }
-.fileitem__icon[data-kind="pptx"]   { color: #C43E1C; background: rgba(196, 62, 28, 0.08); border-color: rgba(196, 62, 28, 0.2); }
-.fileitem__icon[data-kind="pdf"]    { color: #B02A1F; background: rgba(176, 42, 31, 0.08); border-color: rgba(176, 42, 31, 0.2); }
-.fileitem__label { transition: color .2s ease; }
-.fileitem__sub {
-  display: block;
-  font-size: .76rem;
-  color: var(--muted);
-  margin-top: 2px;
-}
 .filetype {
   font-size: .72rem;
   letter-spacing: .12em;
@@ -2029,8 +1969,7 @@ button.link-arrow {
   background: transparent; color: var(--muted);
   border: 1px dashed var(--rule);
 }
-.fileitem--pending { cursor: default; }
-.fileitem--pending .fileitem__icon { opacity: .45; }
+
 .filetable tr.is-pending td { background: rgba(45, 58, 81, 0.02); }
 .deal-remove {
   appearance: none; background: none; border: 0; padding: 0;
@@ -2376,15 +2315,13 @@ button.link-arrow {
   .dash-toolbar, .dash-browse, .dash-detail, .dash-results, .dash-tabs,
   .deal-add, .agent-dock,
   .dash-crm, .dash-investor, #wsTasks, #wsOperators, #wsHome,
-  .site-footer, .dash-toast, .pdf-preview, .dash-report__crumbs, .dash-report__actions {
-    display: none !important;
-  }
+  .site-footer, .dash-toast, 
 
   /* Force the app visible even if the gate is locked in this window */
   body[data-state="locked"] .dash-app { display: block !important; }
 
   /* The report lives inside the Deal Pipeline workspace, which the CRM tabs hide */
-  #wsDocs[hidden], #wsAssets[hidden] { display: block !important; }
+  #wsDocs[hidden] { display: block !important; }
   #wsCrm, #wsOperators { display: none !important; }
 
   section { padding: 0 !important; }
@@ -2452,58 +2389,10 @@ button.link-arrow {
    can be read without leaving the page. Only offered for files the
    provider marks previewable; every other file type still opens in a
    new tab. One modal, shared by every tab with a file table. */
-.pdf-preview {
-  position: fixed;
-  inset: 0;
-  z-index: 200;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 32px;
-}
-.pdf-preview[hidden] { display: none; }
-.pdf-preview__backdrop {
-  position: absolute;
-  inset: 0;
-  background: rgba(6, 19, 43, 0.55);
-}
-.pdf-preview__panel {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  width: min(920px, 100%);
-  height: 100%;
-  background: var(--paper);
-  border: 1px solid var(--rule);
-  box-shadow: 0 24px 64px rgba(6, 19, 43, 0.35);
-}
-.pdf-preview__head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  padding: 16px 20px;
-  border-bottom: 1px solid var(--rule);
-}
-.pdf-preview__name {
-  font-family: var(--sans);
-  font-size: .84rem;
-  font-weight: 500;
-  color: var(--deep-space);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.pdf-preview__actions { display: flex; gap: 10px; flex: 0 0 auto; }
-.pdf-preview__panel iframe {
-  flex: 1 1 auto;
-  width: 100%;
-  border: 0;
-  background: #525659;
-}
+
 @media (max-width: 560px) {
-  .pdf-preview { padding: 0; }
-  .pdf-preview__panel { width: 100%; border: 0; }
+  
+  
 }
 
 /* Footer trim --------------------------------------------------- */
@@ -2615,10 +2504,9 @@ button.link-arrow {
       <!-- Workspace tabs -->
       <nav class="dash-tabs" aria-label="Workspace">
         <button type="button" data-tab="home" class="is-active" aria-current="page">Home</button>
-        <button type="button" data-tab="docs">Deal Pipeline</button>
+        <button type="button" data-tab="docs">Deal Pipeline<span class="dash-tabs__count" id="tabDealCount"></span></button>
         <button type="button" data-tab="operators">Operator CRM<span class="dash-tabs__count" id="tabOperatorCount"></span></button>
         <button type="button" data-tab="crm">Investor CRM<span class="dash-tabs__count" id="tabCrmCount"></span></button>
-        <button type="button" data-tab="assets">Asset Management<span class="dash-tabs__count" id="tabAssetCount"></span></button>
         <button type="button" data-tab="tasks">Task List<span class="dash-tabs__count" id="tabTaskCount"></span></button>
       </nav>
 
@@ -2634,83 +2522,83 @@ button.link-arrow {
       <!-- ====================== DEAL PIPELINE ====================== -->
       <div id="wsDocs" hidden>
 
-      <!-- Toolbar -->
-      <div class="dash-toolbar">
-        <div class="dash-search">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
-          <label class="visually-hidden" for="searchInput">Search all documents</label>
-          <input type="search" id="searchInput" placeholder="Search all documents" autocomplete="off">
-        </div>
-        <button class="dash-refresh dash-refresh--primary" id="dealAddBtn">Add deal</button>
-        <button class="dash-refresh" id="reportBtn">Portfolio report</button>
-        <button class="dash-refresh" id="refreshBtn">Refresh</button>
-        <span class="dash-updated" id="lastSynced"></span>
-      </div>
+        <p class="report-note" id="dealSourceNote"></p>
 
-      <!-- Adding a deal. The form is written by dealAddForm() when the button
-           is pressed and sits under the toolbar rather than inside a view, so
-           it opens over the card grid, a deal folder or a set of search
-           results without any of them having to be left first. -->
-      <div class="deal-add" id="dealAddPanel" hidden></div>
-
-      <!-- Category grid -->
-      <div class="dash-browse" id="viewBrowse">
-        <h2 class="dash-group">By area<span>Mirrors the OneDrive folder structure</span></h2>
-        <div class="dash-grid" id="areaGrid"></div>
-
-        <h2 class="dash-group">By document type<span>Reads across every deal at once</span></h2>
-        <div class="dash-grid" id="typeGrid"></div>
-      </div>
-
-      <!-- Category detail -->
-      <div class="dash-detail" id="viewDetail" hidden>
-        <nav class="dash-crumbs" id="crumbs" aria-label="Breadcrumb"></nav>
-        <div class="dash-detail__head">
-          <div>
-            <h2 id="detailTitle"></h2>
-            <p id="detailBlurb"></p>
+        <!-- Toolbar -->
+        <div class="dash-toolbar">
+          <div class="dash-search">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+            <label class="visually-hidden" for="dealSearch">Search deals</label>
+            <input type="search" id="dealSearch" placeholder="Search deals, operators and markets" autocomplete="off">
           </div>
-          <div class="dash-detail__aside">
-            <span class="dash-card__meta" id="detailCount"></span>
-            <button class="dash-refresh" id="catReportBtn">Report</button>
-          </div>
-        </div>
-        <div id="detailBody"></div>
-      </div>
-
-      <!-- Report -->
-      <div class="dash-report" id="viewReport" hidden>
-        <nav class="dash-crumbs dash-report__crumbs" aria-label="Breadcrumb">
-          <button type="button" data-action="home">All categories</button>
-          <span class="sep">/</span>
-          <span class="current">Report</span>
-        </nav>
-
-        <div class="dash-report__head">
-          <div>
-            <p class="eyebrow">Modillion Partners — Internal</p>
-            <h2 id="reportTitle"></h2>
-            <p class="dash-report__meta" id="reportMeta"></p>
-          </div>
-          <div class="dash-report__actions">
-            <button class="dash-refresh" id="exportPdfBtn">Export PDF</button>
-            <button class="dash-refresh" id="exportXlsxBtn">Export Excel</button>
-          </div>
+          <button class="dash-refresh dash-refresh--primary" id="dealAddBtn">Add deal</button>
+          <button class="dash-refresh" id="dealDebtBtn" hidden>Debt report</button>
+          <button class="dash-refresh" id="dealExportBtn">Export Excel</button>
+          <button class="dash-refresh" id="dealPublishBtn">Publish to team</button>
+          <button class="dash-refresh" id="dealSaveFileBtn">Download deals-data.json</button>
+          <span class="crm-unsaved" id="dealUnsaved" hidden>Unsaved local edits</span>
         </div>
 
-        <div id="reportBody"></div>
-      </div>
+        <!-- Adding a deal. The form is written by dealAddForm() when the button
+             is pressed and sits under the toolbar rather than inside a view, so
+             it opens over the list or a deal without either having to be left
+             first. -->
+        <div class="deal-add" id="dealAddPanel" hidden></div>
 
-      <!-- Search results -->
-      <div class="dash-results" id="viewResults" hidden>
-        <nav class="dash-crumbs" aria-label="Breadcrumb">
-          <button type="button" data-action="home">All categories</button>
-          <span class="sep">/</span>
-          <span class="current">Search</span>
-        </nav>
-        <p class="dash-results__head" id="resultsHead"></p>
-        <div id="resultsBody"></div>
-      </div>
+        <!-- List -->
+        <div class="dash-crm" id="viewDeals">
+          <div class="dash-crm__filters">
+            <label class="visually-hidden" for="dealFilterArea">Filter by area</label>
+            <select id="dealFilterArea"><option value="">Active and closed</option></select>
+
+            <label class="visually-hidden" for="dealFilterStatus">Filter by status</label>
+            <select id="dealFilterStatus"><option value="">Any status</option></select>
+
+            <label class="visually-hidden" for="dealFilterOperator">Filter by operator</label>
+            <select id="dealFilterOperator"><option value="">All operators</option></select>
+
+            <button type="button" class="dash-crm__clear" id="dealClearFilters">Clear</button>
+            <span class="dash-crm__shown" id="dealShown"></span>
+          </div>
+          <div id="dealBody"></div>
+        </div>
+
+        <!-- Deal detail -->
+        <div class="dash-investor" id="viewDeal" hidden>
+          <nav class="dash-crumbs" aria-label="Breadcrumb">
+            <button type="button" data-action="deal-home">All deals</button>
+            <span class="sep">/</span>
+            <span class="current" id="dealCrumb"></span>
+          </nav>
+          <div id="dealDetailBody"></div>
+        </div>
+
+        <!-- Debt report. Same chrome the Asset Management tab used to carry,
+             reading the debt fields on the closed deals rather than a
+             workbook. -->
+        <div class="dash-report" id="dealReport" hidden>
+          <nav class="dash-crumbs dash-report__crumbs" aria-label="Breadcrumb">
+            <button type="button" data-action="deal-home">All deals</button>
+            <span class="sep">/</span>
+            <span class="current">Debt report</span>
+          </nav>
+
+          <div class="dash-report__head">
+            <div>
+              <p class="eyebrow">Modillion Partners — Internal</p>
+              <h2 id="dealReportTitle"></h2>
+              <p class="dash-report__meta" id="dealReportMeta"></p>
+            </div>
+            <div class="dash-report__actions">
+              <button class="dash-refresh" id="dealReportPdfBtn">Export PDF</button>
+              <button class="dash-refresh" id="dealReportXlsxBtn">Export Excel</button>
+            </div>
+          </div>
+
+          <div id="dealReportBody"></div>
+        </div>
+
+        <datalist id="dealOperatorNames"></datalist>
 
       </div><!-- /#wsDocs -->
 
@@ -2833,6 +2721,7 @@ button.link-arrow {
             <input type="search" id="crmSearch" placeholder="Search investors, notes and conversations" autocomplete="off">
           </div>
           <button class="dash-refresh" id="crmExportBtn">Export Excel</button>
+          <button class="dash-refresh" id="crmPublishBtn">Publish to team</button>
           <button class="dash-refresh" id="crmSaveFileBtn">Download crm-data.json</button>
           <span class="crm-unsaved" id="crmUnsaved" hidden>Unsaved local edits</span>
         </div>
@@ -2895,6 +2784,7 @@ button.link-arrow {
           </div>
           <button class="dash-refresh dash-refresh--primary" id="opAddBtn">Add operator</button>
           <button class="dash-refresh" id="opExportBtn">Export Excel</button>
+          <button class="dash-refresh" id="opPublishBtn">Publish to team</button>
           <button class="dash-refresh" id="opSaveFileBtn">Download operator-data.json</button>
           <span class="crm-unsaved" id="opUnsaved" hidden>Unsaved local edits</span>
         </div>
@@ -2941,78 +2831,6 @@ button.link-arrow {
       </div><!-- /#wsOperators -->
 
       <!-- ==================== ASSET MANAGEMENT ==================== -->
-      <div id="wsAssets" hidden>
-
-        <!-- Toolbar -->
-        <div class="dash-toolbar">
-          <div class="dash-search">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
-            <label class="visually-hidden" for="assetSearchInput">Search asset management</label>
-            <input type="search" id="assetSearchInput" placeholder="Search the operating assets" autocomplete="off">
-          </div>
-          <button class="dash-refresh" id="assetReportBtn">Asset report</button>
-          <button class="dash-refresh" id="assetDebtBtn" hidden>Debt report</button>
-          <button class="dash-refresh" id="assetRefreshBtn">Refresh</button>
-          <span class="dash-updated" id="assetLastSynced"></span>
-        </div>
-
-        <!-- Property grid -->
-        <div class="dash-browse" id="assetBrowse">
-          <h2 class="dash-group">Operating assets<span>One card per property, as the folders stand</span></h2>
-          <div class="dash-grid" id="assetGrid"></div>
-        </div>
-
-        <!-- Property detail -->
-        <div class="dash-detail" id="assetDetail" hidden>
-          <nav class="dash-crumbs" id="assetCrumbs" aria-label="Breadcrumb"></nav>
-          <div class="dash-detail__head">
-            <div>
-              <h2 id="assetDetailTitle"></h2>
-              <p id="assetDetailBlurb"></p>
-            </div>
-            <div class="dash-detail__aside">
-              <span class="dash-card__meta" id="assetDetailCount"></span>
-              <button class="dash-refresh" id="assetCatReportBtn">Report</button>
-            </div>
-          </div>
-          <div id="assetDetailBody"></div>
-        </div>
-
-        <!-- Report -->
-        <div class="dash-report" id="assetReport" hidden>
-          <nav class="dash-crumbs dash-report__crumbs" aria-label="Breadcrumb">
-            <button type="button" data-action="assets-home">All properties</button>
-            <span class="sep">/</span>
-            <span class="current">Report</span>
-          </nav>
-
-          <div class="dash-report__head">
-            <div>
-              <p class="eyebrow">Modillion Partners — Internal</p>
-              <h2 id="assetReportTitle"></h2>
-              <p class="dash-report__meta" id="assetReportMeta"></p>
-            </div>
-            <div class="dash-report__actions">
-              <button class="dash-refresh" id="assetExportPdfBtn">Export PDF</button>
-              <button class="dash-refresh" id="assetExportXlsxBtn">Export Excel</button>
-            </div>
-          </div>
-
-          <div id="assetReportBody"></div>
-        </div>
-
-        <!-- Search results -->
-        <div class="dash-results" id="assetResults" hidden>
-          <nav class="dash-crumbs" aria-label="Breadcrumb">
-            <button type="button" data-action="assets-home">All properties</button>
-            <span class="sep">/</span>
-            <span class="current">Search</span>
-          </nav>
-          <p class="dash-results__head" id="assetResultsHead"></p>
-          <div id="assetResultsBody"></div>
-        </div>
-
-      </div><!-- /#wsAssets -->
 
       <!-- ======================== TASK LIST ======================== -->
       <div id="wsTasks" hidden>
@@ -3091,6 +2909,7 @@ button.link-arrow {
             <input type="search" id="taskSearch" placeholder="Search tasks" autocomplete="off">
           </div>
           <button class="dash-refresh" id="taskExportBtn">Export Excel</button>
+          <button class="dash-refresh" id="taskPublishBtn">Publish to team</button>
           <button class="dash-refresh" id="taskSaveFileBtn">Download tasks-data.json</button>
           <span class="crm-unsaved" id="taskUnsaved" hidden>Unsaved local edits</span>
         </div>
@@ -3122,7 +2941,6 @@ button.link-arrow {
 
     </div>
   </section>
-
 
   <!-- ============================================================
        AGENT — the chat dock
@@ -3186,19 +3004,6 @@ button.link-arrow {
        every tab that shows a file table — the Deal Pipeline and Asset
        Management are the same file-table machinery, so this is one modal
        rather than one per tab. -->
-  <div class="pdf-preview" id="pdfPreview" hidden>
-    <div class="pdf-preview__backdrop" data-pdf-close="1"></div>
-    <div class="pdf-preview__panel" role="dialog" aria-modal="true" aria-label="Document preview">
-      <div class="pdf-preview__head">
-        <span class="pdf-preview__name" id="pdfPreviewName"></span>
-        <div class="pdf-preview__actions">
-          <button class="dash-refresh" type="button" id="pdfPreviewOpen">Open in new tab</button>
-          <button class="dash-refresh" type="button" data-pdf-close="1">Close</button>
-        </div>
-      </div>
-      <iframe id="pdfPreviewFrame" title="Document preview" src="about:blank"></iframe>
-    </div>
-  </div>
 
 </div>
 
@@ -3268,10 +3073,6 @@ button.link-arrow {
     ]
   };
 
-  function allCategories() {
-    return DASHBOARD_CONFIG.areas.concat(DASHBOARD_CONFIG.types);
-  }
-
   /* ============================================================
      ICONS
      ============================================================ */
@@ -3336,313 +3137,16 @@ button.link-arrow {
                              their empty states.
      ============================================================ */
 
-  // No document source in production. The page ships with an empty tree rather
-  // than an invented one: a dashboard that shows made-up deals is worse than a
-  // dashboard that shows none. dashboard-data.json fills this in locally.
+  // The published document index. /api/documents returns the snapshot schema
+  // straight from Vercel Blob, so the tree below is fed the same shape whether
+  // it came from the network or from a local file. Names, sizes and dates only
+  // — no document is stored, so nothing here opens a file.
+  var DOCUMENTS_ENDPOINT = "/api/documents";
+
+  // The last resort, when neither the endpoint nor a local snapshot answers.
+  // The page ships with an empty tree rather than an invented one: a dashboard
+  // that shows made-up deals is worse than a dashboard that shows none.
   var FALLBACK_DATA = { areas: [] };
-
-  var DatasetProvider = (function () {
-    var DATA = null;          // { areas: [...] }
-    var DEBT = null;          // { file, modified, columns, rows } or null
-    var meta = { source: "fallback", anonymised: true, generatedAt: null };
-    var typeIndex = {};       // categoryId -> [ { key, dealName, areaId, areaLabel, node } ]
-
-    function toDate(node) {
-      if (node.modified) return new Date(node.modified);
-      if (typeof node.modifiedDays === "number") {
-        var t = new Date();
-        t.setDate(t.getDate() - node.modifiedDays);
-        t.setHours(9 + (node.modifiedDays % 8), (node.modifiedDays * 7) % 60, 0, 0);
-        return t;
-      }
-      return null;
-    }
-
-    // Normalise both dataset shapes into one in-memory form.
-    function normalise(node) {
-      var out = {
-        name: node.name,
-        type: node.type,
-        ext: node.ext || null,
-        size: typeof node.size === "number" ? node.size : null,
-        modified: toDate(node),
-        modifiedBy: node.modifiedBy || null,
-        url: node.webUrl || node.url || null,
-        previewUrl: node.previewUrl || node.downloadUrl || null
-      };
-      if (node.type === "folder") {
-        out.children = (node.children || []).map(normalise);
-        if (!out.modified) out.modified = latestIn(out.children);
-      }
-      // The row this property was joined to in the debt roll-up, if any.
-      if (typeof node.debtRow === "number") out.debtRow = node.debtRow;
-      return out;
-    }
-
-    function latestIn(nodes) {
-      var latest = null;
-      nodes.forEach(function (n) {
-        if (n.modified && (!latest || n.modified > latest)) latest = n.modified;
-        if (n.children) {
-          var sub = latestIn(n.children);
-          if (sub && (!latest || sub > latest)) latest = sub;
-        }
-      });
-      return latest;
-    }
-
-    function countFiles(nodes) {
-      var n = 0;
-      nodes.forEach(function (item) {
-        if (item.type === "file") n++;
-        else n += countFiles(item.children || []);
-      });
-      return n;
-    }
-
-    // A folder hit contributes its whole subtree; a file hit contributes itself.
-    function hitFileCount(hits) {
-      return hits.reduce(function (n, h) {
-        return n + (h.kind === "file" ? 1 : countFiles(h.node.children || []));
-      }, 0);
-    }
-
-    function areaById(id) {
-      for (var i = 0; i < DATA.areas.length; i++) {
-        if (DATA.areas[i].id === id) return DATA.areas[i];
-      }
-      return null;
-    }
-
-    // The type index reads across every area, and areas live on one tab or the
-    // other. Asset Management is a VIEW of files that also sit in the closed
-    // deals — the snapshot reads it back out of them — so anything COUNTING
-    // documents has to pick a workspace or it counts a rent roll once as a deal
-    // document and again as a property document. Anything MATCHING hits against
-    // a list of deals it has already scoped can take them all.
-    function hitsFor(catId, ws) {
-      var hits = typeIndex[catId] || [];
-      if (!ws) return hits;
-      return hits.filter(function (h) { return wsForCategory(h.areaId) === ws; });
-    }
-
-    // Walk every deal, collecting folders whose name matches a type category.
-    function buildTypeIndex() {
-      typeIndex = {};
-      DASHBOARD_CONFIG.types.forEach(function (cat) { typeIndex[cat.id] = []; });
-
-      DATA.areas.forEach(function (area) {
-        (area.children || []).forEach(function (deal) {
-          // `claimed` carries the categories an ancestor already matched, so a
-          // matching folder nested inside another match (Due Diligence > Market)
-          // is not collected twice and its files are not counted twice.
-          (function descend(nodes, claimed) {
-            nodes.forEach(function (node) {
-              var low = node.name.toLowerCase();
-
-              // Loose files count too. Most deals file flat — a model often
-              // sits at the deal root as "… Model 29 - Base.xlsx" rather than
-              // inside a folder called Model. Matching folders only made the
-              // coverage report read as though those documents did not exist.
-              if (node.type === "file") {
-                DASHBOARD_CONFIG.types.forEach(function (cat) {
-                  if (claimed.indexOf(cat.id) !== -1) return;  // counted via its folder
-                  if (!cat.match.some(function (m) { return low.indexOf(m) !== -1; })) return;
-                  typeIndex[cat.id].push({
-                    key: deal.name + " — " + node.name,
-                    dealName: deal.name,
-                    areaId: area.id,
-                    areaLabel: area.label,
-                    kind: "file",
-                    node: node
-                  });
-                });
-                return;
-              }
-
-              var claimedHere = [];
-              DASHBOARD_CONFIG.types.forEach(function (cat) {
-                if (claimed.indexOf(cat.id) !== -1) return;   // outermost match wins
-                if (!cat.match.some(function (m) { return low.indexOf(m) !== -1; })) return;
-                typeIndex[cat.id].push({
-                  key: deal.name + " — " + node.name,
-                  dealName: deal.name,
-                  areaId: area.id,
-                  areaLabel: area.label,
-                  kind: "folder",
-                  node: node
-                });
-                claimedHere.push(cat.id);
-              });
-
-              descend(node.children || [], claimed.concat(claimedHere));
-            });
-          }(deal.children || [], []));
-        });
-      });
-    }
-
-    function load() {
-      // Try the local snapshot first; fall back to the safe placeholder tree.
-      return fetch("dashboard-data.json", { cache: "no-store" })
-        .then(function (r) {
-          if (!r.ok) throw new Error("no local dataset");
-          return r.json();
-        })
-        .then(function (json) {
-          DATA = { areas: json.areas.map(function (a) {
-            return { id: a.id, label: a.label, children: (a.children || []).map(normalise) };
-          }) };
-          // The debt roll-up, when the snapshot carried one. It is the only
-          // thing here read out of a document rather than off a folder.
-          DEBT = json.debt && json.debt.rows && json.debt.rows.length ? json.debt : null;
-          meta = { source: "local-snapshot", anonymised: !!json.anonymised,
-                   generatedAt: json.generatedAt || null };
-        })
-        .catch(function () {
-          DATA = { areas: FALLBACK_DATA.areas.map(function (a) {
-            return { id: a.id, label: a.label, children: (a.children || []).map(normalise) };
-          }) };
-          DEBT = null;
-          meta = { source: "fallback", anonymised: true, generatedAt: null };
-        })
-        .then(function () {
-          buildTypeIndex();
-          return meta;
-        });
-    }
-
-    function nodeAt(nodes, pathArr) {
-      var items = nodes;
-      for (var i = 0; i < pathArr.length; i++) {
-        var next = null;
-        for (var j = 0; j < items.length; j++) {
-          if (items[j].name === pathArr[i] && items[j].children) { next = items[j].children; break; }
-        }
-        if (!next) return [];
-        items = next;
-      }
-      return items;
-    }
-
-    return {
-      id: "dataset",
-      load: load,
-      meta: function () { return meta; },
-      isConnected: function () { return false; },
-
-      // Reporting needs the whole tree and the type index, not just one
-      // folder at a time. A Graph-backed provider would satisfy these by
-      // caching its own crawl.
-      raw: function () { return DATA; },
-      debt: function () { return DEBT; },
-      typeHits: function (catId, ws) { return hitsFor(catId, ws); },
-
-      // NO IDENTITY HERE, and none invented. This provider reads a folder
-      // snapshot; it knows which folder it read, not who is reading it.
-      // It used to answer "Sample User / Preview mode", from back when the
-      // page shipped invented sample records — that name in the corner
-      // reads as though somebody is signed in when nobody is, and there is
-      // no sign-in in this page yet. A Graph-backed provider returns the
-      // signed-in account here and the chip uses it as-is; until then the
-      // name is left empty and the page falls back to the one place a name
-      // has actually been chosen (the Task List's "Signed in as").
-      getUser: function () {
-        return Promise.resolve({
-          name: "",
-          email: "",
-          role: meta.source === "local-snapshot" ? "Local snapshot" : "No document source"
-        });
-      },
-
-      getCategories: function () {
-        var out = [];
-        DASHBOARD_CONFIG.areas.forEach(function (cat) {
-          var area = areaById(cat.id);
-          var kids = area ? area.children : [];
-          out.push({ id: cat.id, count: countFiles(kids), lastModified: latestIn(kids) });
-        });
-        DASHBOARD_CONFIG.types.forEach(function (cat) {
-          // "By document type" sits on the pipeline and counts each document once.
-          var hits = hitsFor(cat.id, "docs");
-          var nodes = hits.map(function (h) { return h.node; });
-          out.push({ id: cat.id, count: hitFileCount(hits), lastModified: latestIn(nodes) });
-        });
-        return Promise.resolve(out);
-      },
-
-      listFolder: function (catId, pathArr) {
-        pathArr = pathArr || [];
-        var area = areaById(catId);
-
-        if (area) return Promise.resolve(nodeAt(area.children, pathArr).slice());
-
-        if (!typeIndex[catId]) return Promise.resolve([]);   // not a type category
-        var hits = hitsFor(catId, "docs");
-
-        if (!pathArr.length) {
-          // Root of a type view: one entry per matching folder, labelled by deal.
-          return Promise.resolve(hits.map(function (h) {
-            if (h.kind === "file") {
-              return {
-                name: h.key, type: "file", ext: h.node.ext, size: h.node.size,
-                modified: h.node.modified, modifiedBy: h.node.modifiedBy,
-                url: h.node.url, previewUrl: h.node.previewUrl, subtitle: h.dealName
-              };
-            }
-            return {
-              name: h.key, type: "folder", ext: null, size: null,
-              modified: h.node.modified, modifiedBy: null, url: null,
-              subtitle: h.areaLabel, children: h.node.children || []
-            };
-          }));
-        }
-
-        var match = null;
-        for (var i = 0; i < hits.length; i++) {
-          if (hits[i].key === pathArr[0] && hits[i].kind !== "file") { match = hits[i]; break; }
-        }
-        if (!match) return Promise.resolve([]);
-        return Promise.resolve(nodeAt(match.node.children || [], pathArr.slice(1)).slice());
-      },
-
-      search: function (query) {
-        var q = query.trim().toLowerCase();
-        if (!q) return Promise.resolve([]);
-        var hits = [];
-        DATA.areas.forEach(function (area) {
-          (function descend(nodes, trail) {
-            nodes.forEach(function (node) {
-              if (node.name.toLowerCase().indexOf(q) !== -1) {
-                hits.push({
-                  name: node.name, type: node.type, ext: node.ext, size: node.size,
-                  modified: node.modified, modifiedBy: node.modifiedBy, url: node.url,
-                  previewUrl: node.previewUrl, categoryId: area.id, path: trail
-                });
-              }
-              if (node.children) descend(node.children, trail.concat(node.name));
-            });
-          }(area.children || [], []));
-        });
-        hits.sort(function (a, b) {
-          return (b.modified ? b.modified.getTime() : 0) - (a.modified ? a.modified.getTime() : 0);
-        });
-        return Promise.resolve(hits.slice(0, 60));
-      }
-    };
-  }());
-
-  var Provider = DatasetProvider;
-
-  /* ============================================================
-     FORMATTING
-     ============================================================ */
-  function fmtSize(bytes) {
-    if (bytes === null || bytes === undefined) return "—";
-    var units = ["B", "KB", "MB", "GB"], i = 0, n = bytes;
-    while (n >= 1024 && i < units.length - 1) { n /= 1024; i++; }
-    return (n >= 10 || i === 0 ? Math.round(n) : n.toFixed(1)) + " " + units[i];
-  }
 
   function fmtRelative(date) {
     if (!date) return "—";
@@ -3661,41 +3165,10 @@ button.link-arrow {
     return date.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
   }
 
-  function extOf(item) {
-    if (item.type === "folder") return "folder";
-    if (item.ext) return item.ext;
-    var m = /\.([a-z0-9]+)$/i.exec(item.name);
-    return m ? m[1].toLowerCase() : "file";
-  }
-
-  function iconFor(item) {
-    var kind = extOf(item);
-    if (kind === "folder") return icon("folder", "folder");
-    return icon("file", kind);
-  }
-
   function esc(s) {
     return String(s).replace(/[&<>"']/g, function (c) {
       return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
     });
-  }
-
-  // Areas are split across two tabs. Everything without a `ws` is pipeline.
-  function areasFor(ws) {
-    return DASHBOARD_CONFIG.areas.filter(function (a) { return (a.ws || "docs") === ws; });
-  }
-
-  function wsForCategory(catId) {
-    var cat = catById(catId);
-    return cat && cat.ws ? cat.ws : "docs";
-  }
-
-  function catById(id) {
-    var all = allCategories();
-    for (var i = 0; i < all.length; i++) {
-      if (all[i].id === id) return all[i];
-    }
-    return null;
   }
 
   /* ============================================================
@@ -3717,28 +3190,6 @@ button.link-arrow {
   /* The Deal Pipeline and Asset Management tabs are the same machinery
      pointed at different folders, so the views are addressed by role
      rather than by id. Adding a third document tab is one more row. */
-  var WORKSPACE_VIEWS = {
-    docs: {
-      browse: "viewBrowse", detail: "viewDetail", results: "viewResults", report: "viewReport",
-      crumbs: "crumbs", title: "detailTitle", blurb: "detailBlurb",
-      count: "detailCount", body: "detailBody", search: "searchInput",
-      resultsHead: "resultsHead", resultsBody: "resultsBody",
-      reportTitle: "reportTitle", reportMeta: "reportMeta", reportBody: "reportBody",
-      homeAction: "home", homeLabel: "All categories"
-    },
-    assets: {
-      browse: "assetBrowse", detail: "assetDetail", results: "assetResults", report: "assetReport",
-      crumbs: "assetCrumbs", title: "assetDetailTitle", blurb: "assetDetailBlurb",
-      count: "assetDetailCount", body: "assetDetailBody", search: "assetSearchInput",
-      resultsHead: "assetResultsHead", resultsBody: "assetResultsBody",
-      reportTitle: "assetReportTitle", reportMeta: "assetReportMeta", reportBody: "assetReportBody",
-      homeAction: "assets-home", homeLabel: "All properties"
-    }
-  };
-
-  function wsView(ws) { return WORKSPACE_VIEWS[ws || state.ws]; }
-  function wsEl(name, ws) { return $(wsView(ws)[name]); }
-
   var toastTimer = null;
   function toast(message) {
     var el = $("toast");
@@ -3746,64 +3197,6 @@ button.link-arrow {
     el.classList.add("is-visible");
     clearTimeout(toastTimer);
     toastTimer = setTimeout(function () { el.classList.remove("is-visible"); }, 3600);
-  }
-
-  /* ============================================================
-     PDF PREVIEW
-
-     One modal, opened from any file table on any tab. previewUrl is
-     what the <iframe> loads — a direct, framable link to the file's
-     bytes (see the DATA PROVIDER SEAM comment). fallbackUrl is the
-     file's normal SharePoint page, used for "Open in new tab" since
-     that is the page people expect for commenting, version history
-     and the rest of the SharePoint chrome the iframe does not carry.
-     ============================================================ */
-  function openPdfPreview(name, previewUrl, fallbackUrl) {
-    $("pdfPreviewName").textContent = name;
-    $("pdfPreviewFrame").src = previewUrl;
-    $("pdfPreviewOpen").onclick = function () {
-      window.open(fallbackUrl || previewUrl, "_blank", "noopener");
-    };
-    $("pdfPreview").hidden = false;
-  }
-
-  function closePdfPreview() {
-    $("pdfPreview").hidden = true;
-    // about:blank, not "" — an empty src resolves to the page's own URL,
-    // which quietly loads the whole dashboard again inside the frame.
-    $("pdfPreviewFrame").src = "about:blank";
-  }
-
-  /* ============================================================
-     RENDER — category grid
-     ============================================================ */
-  function cardsFor(categories, byId, opts) {
-    opts = opts || {};
-    return categories.map(function (cat) {
-      var s = byId[cat.id] || { count: 0, lastModified: null };
-      // Deals added here have no documents behind them, so they cannot be
-      // counted as documents. They are said separately rather than left off:
-      // a card reading "nothing filed yet" under a deal somebody added this
-      // morning is the card contradicting the list underneath it.
-      var waiting = opts.pending ? pendingDealsFor(cat.id).length : 0;
-      var meta = s.count
-        ? '<span class="count">' + s.count + ' document' + (s.count === 1 ? '' : 's') + '</span>' +
-          '<span class="sep">·</span>' +
-          '<span class="muted">Updated ' + esc(fmtRelative(s.lastModified)) + '</span>'
-        : '<span class="dash-card__unmapped">Nothing filed yet</span>';
-      if (waiting) {
-        meta += '<span class="sep">·</span>' +
-                '<span class="muted">' + waiting + ' awaiting a folder</span>';
-      }
-
-      return '' +
-        '<button class="dash-card" type="button" data-cat="' + esc(cat.id) + '">' +
-          '<span class="dash-card__icon"><svg viewBox="0 0 24 24" aria-hidden="true">' + ICONS[cat.icon] + '</svg></span>' +
-          '<h3 class="dash-card__name">' + esc(cat.label) + '</h3>' +
-          '<p class="dash-card__blurb">' + esc(cat.blurb) + '</p>' +
-          '<span class="dash-card__meta">' + meta + '</span>' +
-        '</button>';
-    }).join("");
   }
 
   /* ============================================================
@@ -3818,14 +3211,11 @@ button.link-arrow {
      ============================================================ */
   var HOME_TILES = [
     { tab: "docs", label: "Deal Pipeline", icon: "target",
-      blurb: "Every live and closed deal as it stands in OneDrive — term sheets, models, " +
-             "diligence and sponsor materials. Browse by deal, or read across all of them " +
-             "by document type.",
+      blurb: "Every live and closed deal, with the operator behind it, where it stands, " +
+             "and the debt on the ones the firm already owns.",
       count: function () {
-        var ids = areasFor("docs").map(function (a) { return a.id; });
-        var n = 0;
-        state.summaries.forEach(function (x) { if (ids.indexOf(x.id) !== -1) n += x.count; });
-        return n ? n.toLocaleString() + " document" + (n === 1 ? "" : "s") : null;
+        var n = Deals.all().length;
+        return n ? n + " deal" + (n === 1 ? "" : "s") : null;
       } },
     { tab: "operators", label: "Operator CRM", icon: "shield",
       blurb: "The sponsors running the deals — track record, GP co-invest, vertical " +
@@ -3841,13 +3231,6 @@ button.link-arrow {
         var n = Crm.all().length;
         return n ? n + " investor" + (n === 1 ? "" : "s") : null;
       } },
-    { tab: "assets", label: "Asset Management", icon: "building",
-      blurb: "What the firm already owns, rather than what it is buying. Monthly update " +
-             "letters, financials and property reporting, one folder per operating asset.",
-      count: function () {
-        var n = assetProperties().length;
-        return n ? n + " propert" + (n === 1 ? "y" : "ies") : null;
-      } },
     { tab: "tasks", label: "Task List", icon: "memo",
       blurb: "Company to-dos with an owner, a due date and a priority, grouped by when they " +
              "are due rather than when they were written.",
@@ -3856,6 +3239,401 @@ button.link-arrow {
         return n ? n + " open" : null;
       } }
   ];
+
+  /* ============================================================
+     DEAL PIPELINE — RENDER
+
+     This tab used to be a folder browser: a card grid of areas, a
+     breadcrumb, a file table, and a search across document names.
+     All of it is gone with the document mirror, and what stands here
+     now is the same shape as the two CRMs — a filtered list of
+     records and a detail view — because a deal is a record now.
+
+     The debt roll-up moved here too. It was the Asset Management
+     tab's report, built from the one workbook this project ever
+     opened; it reads the debt fields on the closed deals instead.
+     ============================================================ */
+
+  var dealState = {
+    view: "list",              // list | deal | report
+    dealId: null,
+    query: "",
+    filters: { area: "", status: "", operator: "" },
+    sortKey: "name",
+    sortDir: "asc"
+  };
+
+  var DEAL_COLUMNS = [
+    { key: "name",       label: "Deal" },
+    { key: "operator",   label: "Operator" },
+    { key: "area",       label: "Where" },
+    { key: "status",     label: "Status" },
+    { key: "market",     label: "Market" },
+    { key: "assetClass", label: "Asset class" }
+  ];
+
+  function dealAreaLabel(id) {
+    var areas = Deals.areas();
+    for (var i = 0; i < areas.length; i++) if (areas[i].id === id) return areas[i].label;
+    return id || "";
+  }
+
+  function dealFiltered() {
+    var q = dealState.query.trim().toLowerCase();
+    var f = dealState.filters;
+    var list = Deals.all().filter(function (r) {
+      if (f.area && r.area !== f.area) return false;
+      if (f.status && r.status !== f.status) return false;
+      if (f.operator && r.operator !== f.operator) return false;
+      if (!q) return true;
+      return [r.name, r.operator, r.market, r.assetClass, r.note, r.status]
+        .join(" ").toLowerCase().indexOf(q) !== -1;
+    });
+
+    var k = dealState.sortKey, dir = dealState.sortDir === "asc" ? 1 : -1;
+    list.sort(function (a, b) {
+      var av = String(a[k] == null ? "" : a[k]);
+      var bv = String(b[k] == null ? "" : b[k]);
+      // A blank sorts last whichever way the column is pointing: an
+      // unfilled field is not a small value, it is an absent one.
+      if (!av && bv) return 1;
+      if (av && !bv) return -1;
+      return av.localeCompare(bv) * dir;
+    });
+    return list;
+  }
+
+  function dealTable(list) {
+    if (!list.length) {
+      return Deals.all().length
+        ? '<div class="dash-state"><h3>No deals match</h3>' +
+          '<p>Clear the filters, or add one with the button above.</p></div>'
+        : '<div class="dash-state"><h3>No deals yet</h3>' +
+          '<p>Deals live in the shared store, seeded from deals-data.json. ' +
+          'Add the first one with the button above.</p></div>';
+    }
+
+    var head = DEAL_COLUMNS.map(function (c) {
+      var sorted = dealState.sortKey === c.key;
+      return '<th class="' + (sorted ? "is-sorted" : "") + '">' +
+             '<button type="button" data-dealsort="' + c.key + '">' + c.label +
+             '<span class="arrow">' + (sorted && dealState.sortDir === "asc" ? "↑" : "↓") + '</span>' +
+             '</button></th>';
+    }).join("");
+
+    var rows = list.map(function (rec) {
+      return '<tr data-deal="' + esc(rec.id) + '">' +
+        '<td><span class="crm-name">' + esc(rec.name) + '</span>' +
+          (rec.note ? '<span class="crm-sub">' + esc(rec.note) + '</span>' : "") + '</td>' +
+        '<td>' + (rec.operator ? esc(rec.operator) : '<span class="muted">—</span>') + '</td>' +
+        '<td>' + esc(dealAreaLabel(rec.area)) + '</td>' +
+        '<td><span class="crm-pill" data-stage="' + esc(rec.status) + '">' + esc(rec.status) + '</span>' +
+          (rec.statusWhy ? '<span class="crm-sub">' + esc(rec.statusWhy) + '</span>' : "") + '</td>' +
+        '<td>' + (rec.market ? esc(rec.market) : '<span class="muted">—</span>') + '</td>' +
+        '<td>' + (rec.assetClass ? esc(rec.assetClass) : '<span class="muted">—</span>') +
+          (rec.debt ? '<span class="crm-sub">debt on file</span>' : "") + '</td>' +
+        '</tr>';
+    }).join("");
+
+    return '<div class="crmtable-wrap"><table class="crmtable">' +
+           '<thead><tr>' + head + '</tr></thead><tbody>' + rows + '</tbody></table></div>';
+  }
+
+  function fillDealFilters() {
+    function fill(id, values, blank) {
+      var sel = $(id);
+      if (!sel) return;
+      var current = sel.value;
+      sel.innerHTML = '<option value="">' + esc(blank) + '</option>' +
+        values.map(function (v) {
+          return '<option value="' + esc(v.value) + '">' + esc(v.label) + '</option>';
+        }).join("");
+      sel.value = current;
+    }
+    fill("dealFilterArea", Deals.areas().map(function (a) {
+      return { value: a.id, label: a.label };
+    }), "Active and closed");
+    fill("dealFilterStatus", Deals.statuses().map(function (s) {
+      return { value: s, label: s };
+    }), "Any status");
+
+    var ops = [];
+    Deals.all().forEach(function (r) {
+      if (r.operator && ops.indexOf(r.operator) === -1) ops.push(r.operator);
+    });
+    ops.sort();
+    fill("dealFilterOperator", ops.map(function (o) {
+      return { value: o, label: o };
+    }), "All operators");
+
+    var dl = $("dealOperatorNames");
+    if (dl) {
+      dl.innerHTML = Operators.all().map(function (o) {
+        return '<option value="' + esc(o.name) + '">';
+      }).join("");
+    }
+  }
+
+  function renderDeals() {
+    var all = Deals.all();
+    var list = dealFiltered();
+    $("dealBody").innerHTML = dealTable(list);
+    $("dealShown").textContent = list.length === all.length
+      ? list.length + " deal" + (list.length === 1 ? "" : "s")
+      : list.length + " of " + all.length + " shown";
+    $("tabDealCount").textContent = all.length ? "(" + all.length + ")" : "";
+    $("dealUnsaved").hidden = !Deals.hasLocalEdits();
+    $("dealDebtBtn").hidden = !Deals.withDebt().length;
+
+    fillDealFilters();
+
+    var m = Deals.meta();
+    $("dealSourceNote").innerHTML = m.source !== "fallback"
+      ? (m.source === "shared"
+          ? "Deals from the shared store — the same pipeline everyone sees. "
+          : "Deals from deals-data.json in this site folder, not from the shared store. ") +
+        "Nothing here is read from a folder: a deal exists because somebody entered it." +
+        SharedOverlay.note()
+      : "No deals loaded — neither the shared store nor a local deals-data.json answered." +
+        SharedOverlay.note();
+  }
+
+  function showDealView(name) {
+    dealState.view = name;
+    $("viewDeals").hidden  = name !== "list";
+    $("viewDeal").hidden   = name !== "deal";
+    $("dealReport").hidden = name !== "report";
+  }
+
+  function dealHome() {
+    dealState.view = "list";
+    dealState.dealId = null;
+    showDealView("list");
+    renderDeals();
+  }
+
+  function openDeal(id) {
+    var rec = Deals.get(id);
+    if (!rec) { dealHome(); return; }
+    dealState.dealId = id;
+    $("dealCrumb").textContent = rec.name;
+    $("dealDetailBody").innerHTML = dealDetail(rec);
+    showDealView("deal");
+  }
+
+  /* Open a deal by NAME, which is how everything outside this tab
+     refers to one — an operator's deal tag, an investor's linked
+     deals, a task. A name that matches nothing lands on the list
+     rather than on an error. */
+  function openDealByName(name) {
+    var rec = Deals.byName(name);
+    if (rec) openDeal(rec.id);
+    else dealHome();
+  }
+
+  function dealField(label, value, wide) {
+    return '<div class="crm-field' + (wide ? " crm-field--wide" : "") + '">' +
+           '<label>' + esc(label) + '</label>' +
+           '<p class="crm-read">' + (value ? esc(value) : '<span class="muted">—</span>') + '</p>' +
+           '</div>';
+  }
+
+  var DEBT_LABELS = [
+    ["lender", "Lender"], ["loanCommitted", "Loan committed"], ["loanBalance", "Loan balance"],
+    ["rateType", "Rate type"], ["index", "Index"], ["indexSpread", "Index + spread"],
+    ["rateCap", "Rate cap"], ["rateFloor", "Rate floor"], ["maturity", "Maturity"],
+    ["extensionOptions", "Extension options"], ["acquisitionDate", "Acquired"]
+  ];
+
+  function dealDetail(rec) {
+    var head =
+      '<div class="dash-detail__head"><div>' +
+        '<h2>' + esc(rec.name) + '</h2>' +
+        '<p>' + esc(dealAreaLabel(rec.area)) +
+          (rec.operator ? ' · ' + esc(rec.operator) : "") +
+          (rec.market ? ' · ' + esc(rec.market) : "") + '</p>' +
+      '</div><div class="dash-detail__aside">' +
+        '<span class="crm-pill" data-stage="' + esc(rec.status) + '">' + esc(rec.status) + '</span>' +
+      '</div></div>';
+
+    var fields = '<div class="crm-edit__grid">' +
+      dealField("Operator", rec.operator) +
+      dealField("Where", dealAreaLabel(rec.area)) +
+      dealField("Status", rec.status + (rec.statusWhy ? " — " + rec.statusWhy : "")) +
+      dealField("Market", rec.market) +
+      dealField("Asset class", rec.assetClass) +
+      dealField("Added", rec.addedAt) +
+      dealField("Note", rec.note, true) +
+      '</div>';
+
+    var debt = "";
+    if (rec.debt) {
+      var rows = DEBT_LABELS.filter(function (f) { return rec.debt[f[0]]; })
+        .map(function (f) {
+          return '<dt>' + esc(f[1]) + '</dt><dd>' + esc(rec.debt[f[0]]) + '</dd>';
+        }).join("");
+      debt = '<div class="debt-panel"><h4>Debt</h4><dl>' + rows + '</dl>' +
+             (rec.debt.source
+               ? '<p class="debt-panel__src">Originally from ' + esc(rec.debt.source) +
+                 '. Typed in here now — nothing is read from a folder.</p>'
+               : "") + '</div>';
+    }
+
+    var actions = '<div class="dash-toolbar">' +
+      '<button class="dash-refresh dash-refresh--primary" data-deal-edit="' + esc(rec.id) + '">Edit deal</button>' +
+      '<button class="dash-refresh" data-deal-task="' + esc(rec.name) + '">Add a task</button>' +
+      '<button class="dash-refresh" data-deal-remove="' + esc(rec.id) + '">Delete</button>' +
+      '</div>';
+
+    return head + fields + debt + actions;
+  }
+
+  /* The edit form. Deliberately the same fields the add form
+     collects, plus the debt block, so there is one vocabulary for a
+     deal however it got here. */
+  function dealEditForm(rec) {
+    function field(id, label, control, wide) {
+      return '<div class="crm-field' + (wide ? " crm-field--wide" : "") + '">' +
+             '<label for="' + id + '">' + esc(label) + '</label>' + control + '</div>';
+    }
+    function options(values, current) {
+      return values.map(function (v) {
+        return '<option value="' + esc(v.value) + '"' +
+               (v.value === current ? " selected" : "") + '>' + esc(v.label) + '</option>';
+      }).join("");
+    }
+    function text(id, value, placeholder) {
+      return '<input type="text" id="' + id + '" value="' + esc(value || "") + '"' +
+             (placeholder ? ' placeholder="' + esc(placeholder) + '"' : "") + ' autocomplete="off">';
+    }
+
+    var debt = rec.debt || {};
+    var debtFields = DEBT_LABELS.map(function (f) {
+      return field("dealEditDebt_" + f[0], f[1], text("dealEditDebt_" + f[0], debt[f[0]]));
+    }).join("");
+
+    return '<div class="crm-edit"><h3>Edit deal</h3>' +
+      '<div class="crm-edit__grid">' +
+        field("dealEditName", "Deal name", text("dealEditName", rec.name)) +
+        field("dealEditOperator", "Operator",
+          '<input type="text" id="dealEditOperator" list="dealOperatorNames" value="' +
+          esc(rec.operator) + '" autocomplete="off">') +
+        field("dealEditArea", "Where it sits",
+          '<select id="dealEditArea">' + options(Deals.areas().map(function (a) {
+            return { value: a.id, label: a.label };
+          }), rec.area) + '</select>') +
+        field("dealEditStatus", "Status",
+          '<select id="dealEditStatus">' + options(Deals.statuses().map(function (s) {
+            return { value: s, label: s };
+          }), rec.status) + '</select>') +
+        field("dealEditStatusWhy", "Why", text("dealEditStatusWhy", rec.statusWhy,
+          "Only needed when it is not simply live")) +
+        field("dealEditMarket", "Market", text("dealEditMarket", rec.market, "City, ST")) +
+        field("dealEditAssetClass", "Asset class", text("dealEditAssetClass", rec.assetClass)) +
+        field("dealEditNote", "Note", text("dealEditNote", rec.note), true) +
+      '</div>' +
+      '<h4 class="crm-edit__sub">Debt</h4>' +
+      '<p class="crm-edit__lede">Typed in, not read from a workbook. Blank is blank — ' +
+        'these are printed exactly as written and nothing is calculated from them.</p>' +
+      '<div class="crm-edit__grid">' + debtFields + '</div>' +
+      '<div class="crm-edit__actions">' +
+        '<button class="dash-refresh dash-refresh--primary" data-deal-save="' + esc(rec.id) + '">Save</button>' +
+        '<button class="dash-refresh" data-deal-cancel="' + esc(rec.id) + '">Cancel</button>' +
+      '</div></div>';
+  }
+
+  function saveDealEdit(id) {
+    var rec = Deals.get(id);
+    if (!rec) return;
+    function v(sel) { var el = $(sel); return el ? el.value.trim() : ""; }
+
+    var debt = {}, anyDebt = false;
+    DEBT_LABELS.forEach(function (f) {
+      debt[f[0]] = v("dealEditDebt_" + f[0]);
+      if (debt[f[0]]) anyDebt = true;
+    });
+    if (anyDebt) debt.source = (rec.debt && rec.debt.source) || "";
+
+    var name = v("dealEditName") || rec.name;
+    var status = v("dealEditStatus");
+    Deals.patch(id, {
+      name: name,
+      operator: v("dealEditOperator"),
+      area: v("dealEditArea"),
+      status: status,
+      statusWhy: v("dealEditStatusWhy"),
+      statusSetAt: status !== rec.status
+        ? new Date().toISOString().slice(0, 10) : rec.statusSetAt,
+      market: v("dealEditMarket"),
+      assetClass: v("dealEditAssetClass"),
+      note: v("dealEditNote"),
+      debt: anyDebt ? debt : null
+    });
+    openDeal(id);
+    renderDeals();
+    toast("Saved. " + (SharedOverlay.state() === "shared"
+      ? "The team sees this on their next load."
+      : "In this browser only — the shared store is not reachable."));
+  }
+
+  /* ============================================================
+     DEBT REPORT
+
+     What the Asset Management tab used to build from a workbook.
+     Every value is a string somebody typed, printed as written: no
+     arithmetic, no reformatting, and a blank stays blank. A loan
+     shown against the wrong building is a number somebody acts on,
+     so nothing here infers anything.
+     ============================================================ */
+  function openDealDebtReport() {
+    var list = Deals.withDebt();
+    $("dealReportTitle").textContent = "Debt summary";
+    $("dealReportMeta").textContent =
+      list.length + " propert" + (list.length === 1 ? "y" : "ies") +
+      " · " + new Date().toLocaleDateString(undefined,
+        { year: "numeric", month: "long", day: "numeric" });
+
+    if (!list.length) {
+      $("dealReportBody").innerHTML =
+        '<div class="dash-state"><h3>Nothing to report</h3>' +
+        '<p>No deal carries debt yet. Open a deal and fill in its debt block.</p></div>';
+    } else {
+      var head = ["Deal", "Market"].concat(DEBT_LABELS.map(function (f) { return f[1]; }));
+      var rows = list.map(function (r) {
+        return ['<button type="button" class="debt-link" data-deal-open="' + esc(r.id) + '">' +
+                esc(r.name) + '</button>', esc(r.market)]
+          .concat(DEBT_LABELS.map(function (f) { return esc(r.debt[f[0]] || ""); }));
+      });
+      $("dealReportBody").innerHTML = table(head, rows);
+    }
+    showDealView("report");
+  }
+
+  function exportDealsXlsx() {
+    var list = Deals.all();
+    var sheets = [{
+      name: "Deals",
+      rows: [["Deal", "Operator", "Where", "Status", "Why", "Market", "Asset class", "Note", "Added"]]
+        .concat(list.map(function (r) {
+          return [r.name, r.operator, dealAreaLabel(r.area), r.status, r.statusWhy,
+                  r.market, r.assetClass, r.note, r.addedAt];
+        }))
+    }];
+    var withDebt = Deals.withDebt();
+    if (withDebt.length) {
+      sheets.push({
+        name: "Debt",
+        rows: [["Deal", "Market"].concat(DEBT_LABELS.map(function (f) { return f[1]; }))]
+          .concat(withDebt.map(function (r) {
+            return [r.name, r.market].concat(DEBT_LABELS.map(function (f) { return r.debt[f[0]] || ""; }));
+          }))
+      });
+    }
+    download(Xlsx.build(sheets),
+      "modillion-pipeline-" + new Date().toISOString().slice(0, 10) + ".xlsx");
+    toast("Excel workbook downloaded — " + list.length + " deals" +
+          (withDebt.length ? ", " + withDebt.length + " with debt" : "") + ".");
+  }
 
   function renderHome() {
     $("homeGrid").innerHTML = HOME_TILES.map(function (t) {
@@ -3876,40 +3654,6 @@ button.link-arrow {
     }).join("");
   }
 
-  function renderGrid() {
-    var byId = {};
-    state.summaries.forEach(function (s) { byId[s.id] = s; });
-    $("areaGrid").innerHTML = cardsFor(areasFor("docs"), byId, { pending: true });
-    $("typeGrid").innerHTML = cardsFor(DASHBOARD_CONFIG.types, byId);
-  }
-
-  /* ============================================================
-     RENDER — Asset Management
-
-     The tab browses a single area, so its front page is not a list
-     of categories but the properties themselves. Everything below
-     that level is the same detail view the pipeline uses.
-     ============================================================ */
-  function assetProperties() {
-    var raw = Provider.raw();
-    var out = [];
-    if (!raw) return out;
-    (raw.areas || []).forEach(function (area) {
-      if (wsForCategory(area.id) !== "assets") return;
-      (area.children || []).forEach(function (node) {
-        if (node.type !== "folder") return;
-        var files = flattenFiles(node.children, [], []);
-        var latest = node.modified || null;
-        files.forEach(function (f) {
-          if (f.modified && (!latest || f.modified > latest)) latest = f.modified;
-        });
-        out.push({ name: node.name, count: files.length, lastModified: latest,
-                   debt: debtFor(node) });
-      });
-    });
-    return out;
-  }
-
   /* The debt roll-up and the folders are two records of the same buildings,
      joined by name in the snapshot (see join_debt in onedrive-snapshot.py) —
      "The Mill" in the workbook, "The Mill - Greenwich, CT" on disk. A property
@@ -3923,99 +3667,6 @@ button.link-arrow {
     maturity: /maturity/i
   };
 
-  function debtFor(node) {
-    var debt = Provider.debt();
-    if (!debt || typeof node.debtRow !== "number") return null;
-    var row = debt.rows[node.debtRow];
-    if (!row) return null;
-
-    var out = { row: row, columns: debt.columns, file: debt.file, index: node.debtRow };
-    Object.keys(DEBT_FIELDS).forEach(function (key) {
-      for (var i = 0; i < debt.columns.length; i++) {
-        if (DEBT_FIELDS[key].test(debt.columns[i].label) && row[i]) { out[key] = row[i]; return; }
-      }
-    });
-    // No lender is how the roll-up says a property is unlevered.
-    out.unlevered = !out.lender;
-    return out;
-  }
-
-  /* The property's own row from the roll-up, on the property. Every column the
-     workbook carries, because somebody standing in the folder asking about the
-     loan wants the terms, not a headline. */
-  function assetDebtPanel(propertyName) {
-    var props = assetProperties();
-    var hit = null;
-    props.forEach(function (p) { if (p.name === propertyName) hit = p; });
-    if (!hit || !hit.debt) return "";
-    var d = hit.debt;
-
-    if (d.unlevered) {
-      return '<div class="debt-panel debt-panel--none">' +
-        '<h4>Debt</h4><p>No debt recorded for this property in ' + esc(d.file) + '.</p></div>';
-    }
-
-    var pairs = d.columns.map(function (c, i) {
-      return (i === 0 || !d.row[i]) ? "" :
-        '<div><dt>' + esc(c.label) + '</dt><dd>' + esc(d.row[i]) + '</dd></div>';
-    }).join("");
-
-    return '<div class="debt-panel"><h4>Debt<button type="button" data-action="debt-report">' +
-      'Full debt report</button></h4><dl>' + pairs + '</dl>' +
-      '<p class="debt-panel__src">From ' + esc(d.file) + '. Matched to this folder by name.</p>' +
-      '</div>';
-  }
-
-  function renderAssetGrid() {
-    var props = assetProperties();
-    $("assetGrid").innerHTML = props.length
-      ? props.map(function (p) {
-          var meta = p.count
-            ? '<span class="count">' + p.count + ' document' + (p.count === 1 ? '' : 's') + '</span>' +
-              '<span class="sep">·</span>' +
-              '<span class="muted">Updated ' + esc(fmtRelative(p.lastModified)) + '</span>'
-            : '<span class="dash-card__unmapped">Nothing filed yet</span>';
-          // The loan under the building, on the card that opens it. Shown only
-          // where the roll-up actually has a row — a blank line would read as
-          // "no debt" when it means "not in the workbook".
-          var debtLine = "";
-          if (p.debt) {
-            debtLine = p.debt.unlevered
-              ? '<span class="dash-card__debt dash-card__debt--none">No debt recorded</span>'
-              : '<span class="dash-card__debt">' + esc(p.debt.lender || "Lender not named") +
-                (p.debt.balance ? '<b>' + esc(p.debt.balance) + '</b>' : "") +
-                (p.debt.maturity ? '<i>Matures ' + esc(p.debt.maturity) + '</i>' : "") +
-                '</span>';
-          }
-          return '<button class="dash-card" type="button" data-cat="asset-management" ' +
-                   'data-asset="' + esc(p.name) + '">' +
-            '<span class="dash-card__icon"><svg viewBox="0 0 24 24" aria-hidden="true">' +
-              ICONS.building + '</svg></span>' +
-            '<h3 class="dash-card__name">' + esc(p.name) + '</h3>' +
-            '<p class="dash-card__blurb">Update letters, financials and property reporting.</p>' +
-            debtLine +
-            '<span class="dash-card__meta">' + meta + '</span>' +
-          '</button>';
-        }).join("")
-      : '<div class="dash-state"><h3>No properties yet</h3>' +
-        '<p>Nothing is filed under Asset Management in the folder snapshot.</p></div>';
-  }
-
-  function renderAssetSummary() {
-    $("assetLastSynced").textContent = "Last synced " + new Date().toLocaleTimeString("en-US",
-      { hour: "numeric", minute: "2-digit" });
-    // Shown only when the snapshot actually carried a debt workbook.
-    $("assetDebtBtn").hidden = !Provider.debt();
-  }
-
-  /* ============================================================
-     RENDER — summary tiles
-     ============================================================ */
-  function renderSummary() {
-    $("lastSynced").textContent = "Last synced " + new Date().toLocaleTimeString("en-US",
-      { hour: "numeric", minute: "2-digit" });
-  }
-
   /* ============================================================
      RENDER — file table
      ============================================================ */
@@ -4026,305 +3677,6 @@ button.link-arrow {
     { key: "modifiedBy", label: "Modified by" },
     { key: "size",       label: "Size" }
   ];
-
-  function sortItems(items) {
-    var k = state.sortKey, dir = state.sortDir === "asc" ? 1 : -1;
-    return items.slice().sort(function (a, b) {
-      // Folders always lead, regardless of sort.
-      if ((a.type === "folder") !== (b.type === "folder")) return a.type === "folder" ? -1 : 1;
-      var av, bv;
-      if (k === "modified")   { av = a.modified ? a.modified.getTime() : 0; bv = b.modified ? b.modified.getTime() : 0; }
-      else if (k === "size")  { av = a.size || 0; bv = b.size || 0; }
-      else if (k === "type")  { av = extOf(a); bv = extOf(b); }
-      else                    { av = (a[k] || "").toString().toLowerCase(); bv = (b[k] || "").toString().toLowerCase(); }
-      if (av < bv) return -1 * dir;
-      if (av > bv) return 1 * dir;
-      return 0;
-    });
-  }
-
-  function fileTable(items, opts) {
-    opts = opts || {};
-    if (!items.length) {
-      return '<div class="dash-state">' +
-               '<h3>' + esc(opts.emptyTitle || "Nothing here yet") + '</h3>' +
-               '<p>' + esc(opts.emptyBody || "This folder is empty.") + '</p>' +
-             '</div>';
-    }
-
-    var head = COLUMNS.map(function (c) {
-      var sorted = state.sortKey === c.key;
-      var arrow = state.sortDir === "asc" ? "↑" : "↓";
-      return '<th class="' + (c.cls || "") + (sorted ? " is-sorted" : "") + '" ' +
-             (sorted ? 'aria-sort="' + (state.sortDir === "asc" ? "ascending" : "descending") + '"' : "") + '>' +
-               '<button type="button" data-sort="' + c.key + '">' + c.label +
-                 '<span class="arrow" aria-hidden="true">' + arrow + '</span>' +
-               '</button>' +
-             '</th>';
-    }).join("");
-
-    var rows = sortItems(items).map(function (it) {
-      var kind = extOf(it);
-      var sub = opts.showPath && it.path && it.path.length
-        ? '<span class="fileitem__sub">' + esc(it.path.join(" / ")) + '</span>' : "";
-      var catTag = opts.showCategory && it.categoryId
-        ? '<span class="dash-results__cat">' + esc((catById(it.categoryId) || {}).label || "") + '</span>' : "";
-
-      // At the top of an area every folder is a deal, so a deal the CRM has
-      // marked dead or on hold says so here too. The folder is untouched —
-      // this is the CRM's note about it, shown where it is useful.
-      var dealState = (opts.dealLevel && it.type === "folder") || it.pending
-        ? Crm.dealStatus(it.name) : null;
-      var stateTag = dealState && dealState.status !== "Live"
-        ? '<span class="deal-status" data-state="' + esc(dealState.status) + '">' + esc(dealState.status) + '</span>' : "";
-
-      // A deal added on this page. It is a name, not a folder, so the row
-      // does not open anything and does not pretend to a modified date or a
-      // size — it carries who runs it, when it was added, and a way to take
-      // it back off the list.
-      if (it.pending) {
-        return '<tr class="is-pending">' +
-          '<td><span class="fileitem fileitem--pending" data-pending-deal="' + esc(it.name) + '">' +
-            iconFor(it) +
-            '<span><span class="fileitem__label' + (stateTag ? " crm-deadtag" : "") + '">' +
-              esc(it.name) + '</span>' + stateTag +
-              '<span class="deal-pending">No folder yet</span>' +
-              (it.note ? '<span class="fileitem__sub">' + esc(it.note) + '</span>' : "") +
-            '</span>' +
-          '</span></td>' +
-          '<td><span class="filetype">Deal</span>' + (catTag ? '<br>' + catTag : "") + '</td>' +
-          '<td>' + (it.addedAt ? "Added " + esc(it.addedAt) : "—") + '</td>' +
-          '<td>' + esc(it.operator || "—") + '</td>' +
-          '<td><button class="deal-remove" type="button" data-deal-remove="' + esc(it.name) + '">Remove</button></td>' +
-        '</tr>';
-      }
-
-      // A PDF with something to point an <iframe> at opens inline instead of
-      // in a new tab. Everything else — other file types, or a PDF whose
-      // provider only gave a webUrl SharePoint will refuse to frame — keeps
-      // the plain "open in a new tab" behaviour below.
-      var previewable = kind === "pdf" && it.previewUrl;
-
-      return '<tr>' +
-        '<td><button class="fileitem" type="button" data-item="' + esc(it.name) + '" data-kind="' + esc(it.type) + '"' +
-            (it.categoryId ? ' data-cat="' + esc(it.categoryId) + '"' : "") +
-            (it.url ? ' data-url="' + esc(it.url) + '"' : "") +
-            (previewable ? ' data-preview-url="' + esc(it.previewUrl) + '"' : "") + '>' +
-          iconFor(it) +
-          '<span><span class="fileitem__label' + (stateTag ? " crm-deadtag" : "") + '">' +
-            esc(it.name) + '</span>' + stateTag + sub + '</span>' +
-        '</button></td>' +
-        '<td><span class="filetype">' + (it.type === "folder" ? "Folder" : esc(kind)) + '</span>' +
-          (catTag ? '<br>' + catTag : "") + '</td>' +
-        '<td>' + esc(fmtDate(it.modified)) + '</td>' +
-        '<td>' + esc(it.modifiedBy || "—") + '</td>' +
-        // A folder has no size worth printing, and at the top of an area it
-        // is a deal — so the column carries the way to take it off the
-        // pipeline, exactly as it does for a deal with no folder yet.
-        '<td>' + (opts.dealLevel && it.type === "folder"
-          ? '<button class="deal-remove" type="button" data-deal-hide="' + esc(it.name) + '">Delete</button>'
-          : esc(fmtSize(it.size))) + '</td>' +
-      '</tr>';
-    }).join("");
-
-    return '<div class="filetable-wrap"><table class="filetable">' +
-             '<thead><tr>' + head + '</tr></thead>' +
-             '<tbody>' + rows + '</tbody>' +
-           '</table></div>';
-  }
-
-  function loadingTable() {
-    var rows = "";
-    for (var i = 0; i < 5; i++) {
-      rows += '<tr><td colspan="5" style="padding:18px 0;"><div class="skeleton" style="width:' +
-              (55 + (i * 7) % 35) + '%"></div></td></tr>';
-    }
-    return '<div class="filetable-wrap"><table class="filetable"><tbody>' + rows + '</tbody></table></div>';
-  }
-
-  /* ============================================================
-     RENDER — views
-     ============================================================ */
-  function showView(name, ws) {
-    ws = ws || state.ws;
-    if (ws === state.ws) state.view = name;
-    ["browse", "detail", "results", "report"].forEach(function (v) {
-      var el = wsEl(v, ws);
-      if (el) el.hidden = v !== name;
-    });
-  }
-
-  function renderCrumbs() {
-    var view = wsView();
-    var cat = catById(state.categoryId);
-    var parts = ['<button type="button" data-action="' + view.homeAction + '">' +
-                 esc(view.homeLabel) + '</button>'];
-    parts.push('<span class="sep">/</span>');
-
-    // On the Asset Management tab the category IS the tab, so its own name
-    // is not a step in the trail — the properties sit directly under home.
-    var showCat = state.ws !== "assets";
-
-    if (state.path.length) {
-      if (showCat) parts.push('<button type="button" data-crumb="-1">' + esc(cat.label) + '</button>');
-      state.path.forEach(function (seg, i) {
-        if (showCat || i > 0) parts.push('<span class="sep">/</span>');
-        if (i === state.path.length - 1) {
-          parts.push('<span class="current">' + esc(seg) + '</span>');
-        } else {
-          parts.push('<button type="button" data-crumb="' + i + '">' + esc(seg) + '</button>');
-        }
-      });
-    } else {
-      parts.push('<span class="current">' + esc(cat.label) + '</span>');
-    }
-    wsEl("crumbs").innerHTML = parts.join(" ");
-  }
-
-  function openCategory(catId, path) {
-    // The category decides the tab, not the other way round: a deal tag on
-    // the Operator CRM can point at either one and land in the right place.
-    state.ws = wsForCategory(catId);
-    var ws = state.ws;
-    state.categoryId = catId;
-    state.path = path || [];
-    var cat = catById(catId);
-
-    showView("detail");
-    renderCrumbs();
-    wsEl("title").textContent = state.path.length ? state.path[state.path.length - 1] : cat.label;
-    wsEl("blurb").textContent = state.path.length ? "" : cat.blurb;
-    wsEl("count").textContent = "";
-    wsEl("body").innerHTML = loadingTable();
-    window.scrollTo({ top: 0, behavior: "smooth" });
-
-    Provider.listFolder(catId, state.path).then(function (items) {
-      if (state.categoryId !== catId) return;   // user navigated away mid-load
-
-      // Top of an area: these rows are the deals themselves, which is the one
-      // place a deal added here belongs. Counted apart from the folders,
-      // because it is not one.
-      var atDealLevel = state.path.length === 0 &&
-                        DASHBOARD_CONFIG.areas.some(function (a) { return a.id === catId; });
-
-      // A deal deleted from the pipeline. Only deal rows are checked, so a
-      // document deeper in the tree can never disappear for sharing a name
-      // with one — and the folder itself is still in OneDrive either way.
-      if (atDealLevel) {
-        items = items.filter(function (i) {
-          return !(i.type === "folder" && Crm.isDealHidden(i.name));
-        });
-      }
-
-      var fileCount = items.filter(function (i) { return i.type === "file"; }).length;
-      var dirCount  = items.length - fileCount;
-      var waiting = atDealLevel ? pendingDealsFor(catId) : [];
-
-      wsEl("count", ws).innerHTML =
-        '<span>' + fileCount + ' file' + (fileCount === 1 ? '' : 's') + '</span>' +
-        (dirCount ? '<span class="sep">·</span><span>' + dirCount + ' folder' + (dirCount === 1 ? '' : 's') + '</span>' : '') +
-        (waiting.length ? '<span class="sep">·</span><span>' + waiting.length +
-                          ' awaiting a folder</span>' : '');
-      // One level into an area is the deal itself (or, on Asset Management,
-      // the property), so that is where its tasks belong. Deeper than that
-      // is a subfolder of the same deal, and repeating the panel down every
-      // level would be noise rather than an answer.
-      var tasksPanel = state.path.length === 1 ? recordTaskPanel(state.path[0]) : "";
-
-      // Same rule for the loan: it belongs to the property, not to every
-      // folder inside it.
-      var debtPanel = (ws === "assets" && state.path.length === 1)
-        ? assetDebtPanel(state.path[0]) : "";
-
-      wsEl("body", ws).innerHTML = debtPanel + tasksPanel + fileTable(items.concat(waiting), {
-        dealLevel: atDealLevel,
-        emptyTitle: "Nothing in this folder",
-        emptyBody: "No documents have been filed here yet."
-      });
-    });
-  }
-
-  function goHome() {
-    // Asset Management browses one area, so its home is the property grid
-    // and the area stays selected underneath it.
-    state.categoryId = state.ws === "assets" ? "asset-management" : null;
-    state.path = [];
-    wsEl("search").value = "";
-    showView("browse");
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  }
-
-  // Each tab searches its own folders. One index underneath, filtered by the
-  // area a hit came from — a search on the pipeline that turned up an
-  // operating property would be answering a question nobody asked.
-  function runSearch(q) {
-    var ws = state.ws;
-    showView("results", ws);
-    wsEl("resultsHead", ws).textContent = "Searching…";
-    wsEl("resultsBody", ws).innerHTML = loadingTable();
-
-    Provider.search(q).then(function (hits) {
-      if (wsEl("search", ws).value.trim() !== q.trim()) return;  // stale response
-      hits = hits.filter(function (h) { return wsForCategory(h.categoryId) === ws; });
-
-      // A deal added on this page is not in the folder index, and a search
-      // that answered "no results" for a name sitting on the pipeline would
-      // be the page disagreeing with itself.
-      if (ws === "docs") {
-        var needle = q.trim().toLowerCase();
-        areasFor("docs").forEach(function (area) {
-          pendingDealsFor(area.id).forEach(function (d) {
-            if (d.name.toLowerCase().indexOf(needle) === -1) return;
-            d.categoryId = area.id;
-            hits.push(d);
-          });
-        });
-      }
-
-      wsEl("resultsHead", ws).textContent = hits.length
-        ? hits.length + " result" + (hits.length === 1 ? "" : "s") + ' for "' + q + '"'
-        : 'No results for "' + q + '"';
-      wsEl("resultsBody", ws).innerHTML = fileTable(hits, {
-        showPath: true,
-        showCategory: ws !== "assets",
-        emptyTitle: "No matches",
-        emptyBody: "Try a shorter search term, or open a folder and browse instead."
-      });
-    });
-  }
-
-  /* ============================================================
-     ADDING A DEAL
-
-     The pipeline is a mirror of a OneDrive folder, and a mirror
-     cannot create what it reflects: nothing on this page can make
-     a folder, and nothing on it should try. So a deal added here
-     is a NAME the firm is working on, held beside the folders in
-     the same local overlay every other edit uses, and shown in the
-     list marked "No folder yet" rather than dressed up as one.
-
-     It is the same list the CRM's link offer writes to, so a deal
-     added on either side is one deal, and it joins the deal
-     pickers on both CRMs and the task list straight away.
-
-     When somebody does create the folder, the next snapshot brings
-     it in and the pending row drops out on its own — the folder is
-     the better answer to the same name. Nothing has to be tidied
-     up by hand for that to happen.
-     ============================================================ */
-
-  function pendingDealsFor(catId) {
-    if (!Crm || !Crm.addedDealRecords) return [];
-    var folders = dealNames().map(function (n) { return n.toLowerCase(); });
-    return Crm.addedDealRecords().filter(function (r) {
-      return (r.area || "active-deals") === catId &&
-             folders.indexOf(r.name.toLowerCase()) === -1;
-    }).map(function (r) {
-      return { name: r.name, type: "folder", pending: true,
-               ext: null, size: null, modified: null, modifiedBy: null, url: null,
-               operator: r.operator, note: r.note, addedAt: r.addedAt };
-    });
-  }
 
   function dealAddForm() {
     function field(id, label, control, wide) {
@@ -4338,7 +3690,7 @@ button.link-arrow {
       }).join("");
     }
 
-    var areas = areasFor("docs");
+    var areas = Deals.areas();
     var operators = Operators.all().map(function (o) { return o.name; });
 
     return '<div class="crm-edit">' +
@@ -4436,8 +3788,8 @@ button.link-arrow {
     })[0] : null;
     if (matched) operator = matched.name;
 
-    var saved = Crm.addDeal(name, { area: area, operator: operator, note: note });
-    if (status !== "Live") Crm.setDealStatus(saved, status, "set when the deal was added");
+    var saved = Deals.addDeal(name, { area: area, operator: operator, note: note });
+    if (status !== "Live") Deals.setDealStatus(saved, status, "set when the deal was added");
 
     if (matched && matched.deals.indexOf(saved) === -1) {
       Operators.patch(matched.id, { deals: matched.deals.concat([saved]) });
@@ -4446,12 +3798,11 @@ button.link-arrow {
 
     closeDealAdd();
     afterLinkAdd();      // the pickers, the CRM list and the link offers take it up
-    renderGrid();
-    openCategory(area);
+    renderDeals();
+    dealHome();
 
-    toast("Added “" + saved + "” to " + ((catById(area) || {}).label || "the pipeline") +
-          (matched ? " under " + matched.name : "") +
-          ". No OneDrive folder yet — this page mirrors that folder, it cannot create one.");
+    toast("Added “" + saved + "” to " + esc(dealAreaLabel(area)) +
+          (matched ? " under " + matched.name : "") + ".");
   }
 
   /* The second click. Every delete on this page is armed first: the button
@@ -4493,9 +3844,9 @@ button.link-arrow {
     showCrmView("list");
     renderCrmFilters();
     renderCrm();
-    renderGrid();
+    renderDeals();
     window.scrollTo({ top: 0, behavior: "smooth" });
-    toast("Deleted " + name + ". Download crm-data.json to make it gone in the folder too.");
+    toast("Deleted " + name + ". “Publish to team” makes that everyone's copy.");
   }
 
   function deleteOperatorRow(button) {
@@ -4522,15 +3873,14 @@ button.link-arrow {
   function hideDealRow(button) {
     var name = button.getAttribute("data-deal-hide");
     if (!armed(button, "Delete?",
-        "Click again to take “" + name + "” off the pipeline. The OneDrive folder and every " +
-        "document in it are untouched — this page mirrors that folder, it cannot delete one.")) return;
+        "Click again to take “" + name + "” off the pipeline. It is archived, not destroyed — " +
+        "the record stays in the file and can be brought back.")) return;
 
-    Crm.hideDeal(name, true);
+    Deals.hideDeal(name, true);
     afterLinkAdd();
-    renderGrid();
-    if (state.view === "results") runSearch(wsEl("search").value);
-    else openCategory(state.categoryId, state.path);
-    toast("“" + name + "” is off the pipeline. Its folder is still in OneDrive.");
+    renderDeals();
+    dealHome();
+    toast("“" + name + "” is off the pipeline.");
   }
 
   // Two clicks, not one — but not a diff either. There is nothing behind the
@@ -4545,11 +3895,10 @@ button.link-arrow {
             "so nothing else goes with it.");
       return;
     }
-    Crm.removeAddedDeal(name);
+    Deals.removeAddedDeal(name);
     afterLinkAdd();
-    renderGrid();
-    if (state.view === "results") runSearch(wsEl("search").value);
-    else openCategory(state.categoryId, state.path);
+    renderDeals();
+    dealHome();
     toast("“" + name + "” is off the deal list.");
   }
 
@@ -4571,150 +3920,6 @@ button.link-arrow {
   // limited to things that genuinely should exist for a live deal.
   var EXPECTED_TYPES = ["models", "term-sheets", "investment-memos", "legal-org"];
 
-  function flattenFiles(nodes, trail, out) {
-    (nodes || []).forEach(function (n) {
-      if (n.type === "file") {
-        out.push({ name: n.name, ext: extOf(n), size: n.size || 0,
-                   modified: n.modified, path: trail.join(" / ") });
-      } else {
-        flattenFiles(n.children, trail.concat(n.name), out);
-      }
-    });
-    return out;
-  }
-
-  function buildReport(scopeId) {
-    var raw = Provider.raw();
-    var cat = scopeId ? catById(scopeId) : null;
-    var isType = cat && DASHBOARD_CONFIG.types.some(function (t) { return t.id === cat.id; });
-
-    // Which workspace is being reported on. An unscoped report used to mean
-    // "every area", which was right while the tabs were one folder each. Asset
-    // Management is now read back out of the closed deals, so an unscoped
-    // portfolio report would list every property a second time as a deal and
-    // count its documents twice. A report belongs to one tab.
-    var ws = (cat && !isType) ? wsForCategory(cat.id) : state.ws;
-
-    // Deal rows in scope
-    var deals = [];
-    raw.areas.forEach(function (area) {
-      if (wsForCategory(area.id) !== ws) return;
-      if (cat && !isType && area.id !== cat.id) return;
-      (area.children || []).forEach(function (deal) {
-        var files = flattenFiles(deal.children, [], []);
-        deals.push({
-          area: area.label,
-          name: deal.name,
-          files: files,
-          count: files.length,
-          bytes: files.reduce(function (a, f) { return a + f.size; }, 0),
-          modified: files.reduce(function (a, f) {
-            return (f.modified && (!a || f.modified > a)) ? f.modified : a;
-          }, null),
-          types: {}
-        });
-      });
-    });
-
-    // Which document types each deal carries, from the same index the
-    // "by document type" views use, so the two can never disagree.
-    var byName = {};
-    deals.forEach(function (d) { byName[d.area + "|" + d.name] = d; });
-    DASHBOARD_CONFIG.types.forEach(function (t) {
-      (Provider.typeHits(t.id, ws) || []).forEach(function (hit) {
-        var d = byName[hit.areaLabel + "|" + hit.dealName];
-        if (!d) return;
-        d.types[t.id] = (d.types[t.id] || 0) +
-          (hit.kind === "file" ? 1 : flattenFiles(hit.node.children, [], []).length);
-      });
-    });
-
-    // A type-scoped report narrows to deals that have that type, and narrows
-    // each deal's files to that type's documents — otherwise the totals would
-    // count everything those deals hold, not the documents being reported on.
-    if (isType) {
-      var scoped = {};
-      (Provider.typeHits(cat.id, ws) || []).forEach(function (hit) {
-        var key = hit.areaLabel + "|" + hit.dealName;
-        scoped[key] = (scoped[key] || []).concat(
-          hit.kind === "file"
-            ? [{ name: hit.node.name, ext: extOf(hit.node), size: hit.node.size || 0,
-                 modified: hit.node.modified, path: "" }]
-            : flattenFiles(hit.node.children, [hit.node.name], []));
-      });
-      deals = deals.filter(function (d) { return scoped[d.area + "|" + d.name]; })
-        .map(function (d) {
-          var files = scoped[d.area + "|" + d.name];
-          d.files = files;
-          d.count = files.length;
-          d.bytes = files.reduce(function (a, f) { return a + f.size; }, 0);
-          d.modified = files.reduce(function (a, f) {
-            return (f.modified && (!a || f.modified > a)) ? f.modified : a;
-          }, null);
-          return d;
-        });
-    }
-
-    // Document-type totals
-    var typeRows = DASHBOARD_CONFIG.types.map(function (t) {
-      var n = 0, withIt = 0;
-      deals.forEach(function (d) {
-        if (d.types[t.id]) { n += d.types[t.id]; withIt++; }
-      });
-      return { id: t.id, label: t.label, count: n, deals: withIt };
-    });
-
-    // File-format mix
-    var extMap = {};
-    var allFiles = [];
-    deals.forEach(function (d) {
-      d.files.forEach(function (f) {
-        allFiles.push({ deal: d.name, area: d.area, file: f });
-        extMap[f.ext] = extMap[f.ext] || { ext: f.ext, count: 0, bytes: 0 };
-        extMap[f.ext].count++;
-        extMap[f.ext].bytes += f.size;
-      });
-    });
-    var extRows = Object.keys(extMap).map(function (k) { return extMap[k]; })
-      .sort(function (a, b) { return b.count - a.count; });
-
-    // Coverage gaps
-    var gapRows = deals.map(function (d) {
-      var missing = EXPECTED_TYPES.filter(function (id) { return !d.types[id]; });
-      return { deal: d.name, area: d.area, missing: missing };
-    });
-
-    // An operating property is not a deal, and the questions the coverage
-    // matrix asks — term sheet, memo — are the wrong ones for something the
-    // firm already owns. One flag decides both the wording and the section.
-    var isAssets = !!cat && !isType && (cat.ws === "assets");
-
-    return {
-      scopeId: scopeId || null,
-      scopeLabel: cat ? cat.label : "Full portfolio",
-      isType: !!isType,
-      isAssets: isAssets,
-      rowLabel: isAssets ? "Property" : "Deal",
-      rowLabelPlural: isAssets ? "Properties" : "Deals",
-      generated: new Date(),
-      dataset: Provider.meta(),
-      deals: deals.sort(function (a, b) { return b.count - a.count; }),
-      typeRows: typeRows,
-      extRows: extRows,
-      gapRows: gapRows,
-      allFiles: allFiles,
-      totals: {
-        deals: deals.length,
-        documents: allFiles.length,
-        bytes: allFiles.reduce(function (a, r) { return a + r.file.size; }, 0),
-        areas: (function () {
-          var s = {}; deals.forEach(function (d) { s[d.area] = 1; });
-          return Object.keys(s).length;
-        }())
-      }
-    };
-  }
-
   /* ---------- render ---------- */
 
   function table(head, rows, foot) {
@@ -4735,196 +3940,6 @@ button.link-arrow {
         return '<td' + (cls ? ' class="' + cls + '"' : '') + '>' + val + '</td>';
       }).join("") + '</tr></tfoot>' : "") +
       '</table></div>';
-  }
-
-  /* The debt roll-up is a different animal from the document reports: its rows
-     are ASSETS with loan terms, not folders with file counts, and every value
-     was formatted by the snapshot out of the workbook rather than derived here.
-     So it gets its own model, and renderReport / exportXlsx branch on kind
-     rather than pretending it is a deal list. */
-  function buildDebtReport() {
-    var debt = Provider.debt();
-    if (!debt) return null;
-    return {
-      kind: "debt",
-      scopeLabel: "Debt summary",
-      generated: new Date(),
-      dataset: Provider.meta(),
-      debt: debt
-    };
-  }
-
-  function renderDebtReport(m) {
-    var d = m.debt;
-    var lenderAt = -1;
-    d.columns.forEach(function (c, i) {
-      if (lenderAt === -1 && /lender/i.test(c.label)) lenderAt = i;
-    });
-
-    // A row with nothing past the descriptive columns is an asset that carries
-    // no debt, which is a fact worth printing rather than a line of dashes.
-    function unlevered(row) {
-      if (lenderAt === -1) return false;
-      return !row.slice(lenderAt).some(function (v) { return v !== ""; });
-    }
-
-    var levered = d.rows.filter(function (r) { return !unlevered(r); });
-    var html = '<div class="report-section"><h3>Summary</h3><div class="report-tiles">' +
-      [[d.rows.length, d.rows.length === 1 ? "Asset" : "Assets"],
-       [levered.length, "With debt"],
-       [d.rows.length - levered.length, "Unlevered"]]
-        .map(function (t) {
-          return '<div><span class="report-tile__num">' + esc(String(t[0])) + '</span>' +
-                 '<span class="report-tile__label">' + esc(t[1]) + '</span></div>';
-        }).join("") + '</div></div>';
-
-    html += '<div class="report-section"><h3>Debt by asset</h3>' +
-      '<p class="report-note">Read from ' + esc(d.file) + ', the debt roll-up in the Fund I ' +
-      'folder, as it stood ' + esc(fmtDate(new Date(d.modified))) + '. This is the one place ' +
-      'the dashboard reports a document\u2019s CONTENTS rather than its name — every figure ' +
-      'below is the workbook\u2019s, unchanged. Correct it there and refresh; nothing here ' +
-      'writes back.</p>' +
-      table(
-        d.columns.map(function (c) { return { label: c.label, num: c.num }; }),
-        d.rows.map(function (row, r) {
-          var bare = unlevered(row);
-          var property = (d.match || [])[r];
-          return row.map(function (v, i) {
-            if (i === 0 && property) {
-              return { v: '<button type="button" class="debt-link" data-debt-property="' +
-                          esc(property) + '">' + esc(v) + '</button>', cls: "" };
-            }
-            if (bare && i === lenderAt) {
-              return { v: '<span class="muted">No debt recorded</span>', cls: "" };
-            }
-            if (bare && i > lenderAt) return { v: "", cls: "" };
-            return { v: v === "" ? "—" : esc(v),
-                     cls: (d.columns[i].num ? "num " : "") + (v === "" ? "muted" : "") };
-          });
-        })
-      ) + '</div>';
-
-    wsEl("reportTitle", "assets").textContent = "Debt summary — Asset Management";
-    wsEl("reportMeta", "assets").textContent =
-      "Generated " + m.generated.toLocaleString("en-US", {
-        dateStyle: "long", timeStyle: "short"
-      }) + " · Source: " + d.file;
-    wsEl("reportBody", "assets").innerHTML = html;
-  }
-
-  function renderReport(m) {
-    if (m && m.kind === "debt") return renderDebtReport(m);
-    var html = "";
-
-    // Summary
-    html += '<div class="report-section"><h3>Summary</h3><div class="report-tiles">' +
-      [[m.totals.deals, m.totals.deals === 1 ? m.rowLabel : m.rowLabelPlural],
-       [m.totals.documents.toLocaleString(), "Documents"],
-       [fmtSize(m.totals.bytes), "Total volume"],
-       [m.totals.areas, m.totals.areas === 1 ? "Area" : "Areas"]]
-      .map(function (t) {
-        return '<div><span class="report-tile__num">' + esc(String(t[0])) + '</span>' +
-               '<span class="report-tile__label">' + esc(t[1]) + '</span></div>';
-      }).join("") + '</div></div>';
-
-    // Coverage matrix — only meaningful for area / portfolio scope
-    if (!m.isType && !m.isAssets && m.deals.length) {
-      var cols = DASHBOARD_CONFIG.types.filter(function (t) {
-        return EXPECTED_TYPES.indexOf(t.id) !== -1;
-      });
-      html += '<div class="report-section"><h3>Coverage</h3>' +
-        '<p class="report-note">Which of the expected document types each deal currently holds. ' +
-        'Detection is by folder and file name only — nothing here reads a document. A gap means ' +
-        'no folder or file names itself that way, which is a filing signal rather than proof the ' +
-        'document is missing. Treat it as a prompt to check, not a finding.</p>' +
-        table(
-          [{ label: "Deal" }, { label: "Area" }].concat(
-            cols.map(function (c) { return { label: c.label, num: true }; }),
-            [{ label: "Gaps", num: true }]),
-          m.deals.map(function (d) {
-            var missing = 0;
-            var cells = cols.map(function (c) {
-              var n = d.types[c.id] || 0;
-              if (!n) missing++;
-              return { v: n ? String(n) : "—", cls: "num " + (n ? "cell-yes" : "cell-no") };
-            });
-            return [esc(d.name), { v: esc(d.area), cls: "muted" }].concat(cells, [
-              { v: missing ? String(missing) : "0",
-                cls: "num report-gap" + (missing ? "" : " report-gap--none") }
-            ]);
-          })
-        ) + '</div>';
-    }
-
-    // Deals — properties, when the scope is something the firm already owns
-    if (m.deals.length) {
-      html += '<div class="report-section"><h3>' + m.rowLabelPlural + '</h3>' +
-        table(
-          [{ label: m.rowLabel }, { label: "Area" }, { label: "Documents", num: true },
-           { label: "Volume", num: true }, { label: "Last updated", num: true }],
-          m.deals.map(function (d) {
-            return [esc(d.name), { v: esc(d.area), cls: "muted" },
-                    { v: String(d.count), cls: "num" },
-                    { v: fmtSize(d.bytes), cls: "num" },
-                    { v: esc(fmtDate(d.modified)), cls: "num muted" }];
-          }),
-          ["Total", "", { v: String(m.totals.documents), cls: "num" },
-           { v: fmtSize(m.totals.bytes), cls: "num" }, ""]
-        ) + '</div>';
-    }
-
-    // Document types
-    html += '<div class="report-section"><h3>By document type</h3>' +
-      table(
-        [{ label: "Document type" }, { label: "Documents", num: true },
-         { label: m.rowLabelPlural, num: true }],
-        m.typeRows.map(function (t) {
-          return [esc(t.label), { v: String(t.count), cls: "num" },
-                  { v: String(t.deals), cls: "num" }];
-        })
-      ) + '</div>';
-
-    // Formats
-    html += '<div class="report-section"><h3>File formats</h3>' +
-      table(
-        [{ label: "Format" }, { label: "Files", num: true }, { label: "Volume", num: true }],
-        m.extRows.map(function (e) {
-          return [esc(e.ext.toUpperCase()), { v: String(e.count), cls: "num" },
-                  { v: fmtSize(e.bytes), cls: "num" }];
-        })
-      ) + '</div>';
-
-    if (!m.deals.length) {
-      html += '<div class="dash-state"><h3>Nothing to report</h3>' +
-              '<p>No documents are filed in this scope yet.</p></div>';
-    }
-
-    wsEl("reportTitle").textContent = m.scopeLabel + " — Document Report";
-    wsEl("reportMeta").textContent =
-      "Generated " + m.generated.toLocaleString("en-US", {
-        dateStyle: "long", timeStyle: "short"
-      }) + " · " +
-      (m.dataset.source === "local-snapshot"
-        ? (m.dataset.anonymised ? "Local snapshot (anonymised)" : "Local snapshot")
-        : "No document source connected");
-    wsEl("reportBody").innerHTML = html;
-  }
-
-  function openDebtReport() {
-    var report = buildDebtReport();
-    if (!report) { toast("No debt summary in this snapshot."); return; }
-    state.ws = "assets";
-    state.report = report;
-    renderReport(report);
-    showView("report", "assets");
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  }
-
-  function openReport(scopeId) {
-    state.report = buildReport(scopeId);
-    renderReport(state.report);
-    showView("report");
-    window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
   /* ============================================================
@@ -5145,112 +4160,236 @@ button.link-arrow {
     return s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
   }
 
-  function exportXlsx(m) {
-    var stamp = m.generated.toISOString().slice(0, 10);
+  /* ============================================================
+     SHARED OVERLAY — /api/overlay
 
-    // The debt roll-up is one table and exports as one sheet. Its cells are the
-    // strings the snapshot read out of the workbook, so the export is a copy of
-    // what is on screen rather than a second interpretation of the numbers.
-    if (m.kind === "debt") {
-      var debtSheets = [{
-        name: "Debt by asset",
-        widths: m.debt.columns.map(function (c, i) { return i === 0 ? 30 : 20; }),
-        rows: [m.debt.columns.map(function (c) { return c.label; })].concat(m.debt.rows)
-      }];
-      download(Xlsx.build(debtSheets), "modillion-debt-summary-" + stamp + ".xlsx");
-      toast("Excel workbook downloaded — " + m.debt.rows.length + " assets from " +
-            m.debt.file + ".");
-      return;
+     The three record tabs below (investors, operators, tasks) each
+     load a base file and keep EDITS in a separate overlay of patches
+     keyed by record id. That overlay used to live only in
+     localStorage, which meant edits were per browser and per person:
+     two people working the same investor produced two divergent
+     copies, and whoever last clicked "Download crm-data.json"
+     silently overwrote the other one's afternoon.
+
+     This is the client half of fixing that. Each module still reads
+     and writes its localStorage overlay exactly as before — that is
+     what makes the page work with no network and no configuration —
+     and additionally merges the SHARED overlay in on load and pushes
+     its own back on save.
+
+     DEGRADING IS THE NORMAL CASE, NOT THE ERROR CASE. With no
+     endpoint deployed, or no blob store configured, load() resolves
+     null and push() gives up quietly, and every tab behaves exactly
+     as it did before any of this existed. Nothing tells the reader
+     off about it.
+
+     THE MERGE HERE MUST STAY IDENTICAL TO deepMerge IN api/_store.js.
+     The server merges other people's edits with one rule; if the page
+     merges them in with a different one, the two copies of the same
+     overlay drift and the tabs start disagreeing about what was
+     deleted. They are duplicated for the same reason the CROSSCUT map
+     is duplicated, and they carry the same warning.
+     ============================================================ */
+  var SharedOverlay = (function () {
+    var ENDPOINT = "/api/records";
+    var KEY_STORE = "modillion-write-key";
+
+    // unknown until something answers; "local" after a refusal, which
+    // is what stops every keystroke POSTing into a 503.
+    var state = "unknown";
+
+    function writeKey() {
+      try { return localStorage.getItem(KEY_STORE) || ""; } catch (e) { return ""; }
     }
-    var cols = DASHBOARD_CONFIG.types.filter(function (t) {
-      return EXPECTED_TYPES.indexOf(t.id) !== -1;
-    });
 
-    var sheets = [];
+    function headers() {
+      var h = { "Content-Type": "application/json" };
+      var k = writeKey();
+      if (k) h["x-dashboard-key"] = k;
+      return h;
+    }
 
-    sheets.push({
-      name: "Summary",
-      widths: [34, 26],
-      rows: [
-        ["Metric", "Value"],
-        ["Report", m.scopeLabel + " — Document Report"],
-        ["Generated", m.generated],
-        ["Dataset", m.dataset.source === "local-snapshot"
-          ? (m.dataset.anonymised ? "Local snapshot (anonymised)" : "Local snapshot")
-          : "No source connected"],
-        [m.rowLabelPlural, m.totals.deals],
-        ["Documents", m.totals.documents],
-        ["Total volume (bytes)", m.totals.bytes],
-        ["Total volume", fmtSize(m.totals.bytes)],
-        ["Areas", m.totals.areas],
-        [],
-        ["Note", "Built from document metadata only. No document contents were read."]
-      ]
-    });
+    function isPlainObject(v) {
+      return !!v && typeof v === "object" && !(v instanceof Array);
+    }
 
-    sheets.push({
-      name: m.rowLabelPlural,
-      widths: [46, 20, 13, 15, 14],
-      rows: [[m.rowLabel, "Area", "Documents", "Volume (bytes)", "Last updated"]].concat(
-        m.deals.map(function (d) {
-          return [d.name, d.area, d.count, d.bytes, d.modified || ""];
-        }))
-    });
+    function mergeArrays(a, b) {
+      var out = (a instanceof Array) ? a.slice() : [];
+      var at = {};
+      out.forEach(function (v, i) {
+        if (isPlainObject(v) && v.id != null) at[v.id] = i;
+      });
+      ((b instanceof Array) ? b : []).forEach(function (v) {
+        if (isPlainObject(v) && v.id != null) {
+          if (at[v.id] != null) out[at[v.id]] = merge(out[at[v.id]], v);
+          else { at[v.id] = out.length; out.push(v); }
+        } else if (out.indexOf(v) === -1) {
+          out.push(v);
+        }
+      });
+      return out;
+    }
 
-    if (!m.isType && !m.isAssets) {
-      sheets.push({
-        name: "Coverage",
-        widths: [46, 20].concat(cols.map(function () { return 16; }), [9]),
-        rows: [["Deal", "Area"].concat(cols.map(function (c) { return c.label; }), ["Gaps"])].concat(
-          m.deals.map(function (d) {
-            var missing = 0;
-            var cells = cols.map(function (c) {
-              var n = d.types[c.id] || 0;
-              if (!n) missing++;
-              return n;
-            });
-            return [d.name, d.area].concat(cells, [missing]);
-          }))
+    function merge(a, b) {
+      if ((a instanceof Array) || (b instanceof Array)) return mergeArrays(a, b);
+      if (isPlainObject(a) && isPlainObject(b)) {
+        var out = {};
+        Object.keys(a).forEach(function (k) { out[k] = a[k]; });
+        Object.keys(b).forEach(function (k) {
+          out[k] = (k in out) ? merge(out[k], b[k]) : b[k];
+        });
+        return out;
+      }
+      return b === undefined ? a : b;
+    }
+
+    // Merges a shared overlay onto a module's own overlay object, in
+    // place, whatever keys it happens to carry. Generic on purpose:
+    // the three overlays hold different keys and none of them need to
+    // be named here.
+    function mergeInto(target, incoming) {
+      Object.keys(incoming || {}).forEach(function (k) {
+        target[k] = merge(target[k], incoming[k]);
+      });
+      return target;
+    }
+
+    /* Returns { base, overlay } — the stored records and everyone's
+       edits — or null when the store is not reachable, which is the
+       signal to fall back to the local JSON file. */
+    function load(set) {
+      return fetch(ENDPOINT + "?set=" + encodeURIComponent(set), { cache: "no-store" })
+        .then(function (r) {
+          if (!r.ok) throw new Error("no shared records");
+          return r.json();
+        })
+        .then(function (j) {
+          state = "shared";
+          return { base: j.base || null, overlay: j.overlay || null };
+        })
+        .catch(function () {
+          if (state !== "shared") state = "local";
+          return null;
+        });
+    }
+
+    function push(set, overlay, who) {
+      if (state === "local") return Promise.resolve(false);
+      return fetch(ENDPOINT + "?set=" + encodeURIComponent(set), {
+        method: "POST",
+        headers: headers(),
+        body: JSON.stringify({ overlay: overlay, by: who || "" })
+      }).then(function (r) {
+        if (!r.ok && r.status === 503) state = "local";
+        return r.ok;
+      }).catch(function () { return false; });
+    }
+
+    /* PUBLISH — what used to be "download the file, drop it in the
+       repo, commit, push, redeploy", as one call. The page already
+       computes the fully merged document (toFile()); this stores it
+       as the new base and drops the edits it accounted for.
+
+       Unlike push() this REPORTS FAILURE to the caller, because it is
+       a deliberate act with a button behind it. A silently dropped
+       save is tolerable; a silently dropped publish would leave
+       somebody believing the team can see their work. */
+    function publish(set, doc, who) {
+      if (state === "local") {
+        return Promise.resolve({ ok: false, reason: "The shared store is not reachable." });
+      }
+      return fetch(ENDPOINT + "?set=" + encodeURIComponent(set) + "&op=publish", {
+        method: "POST",
+        headers: headers(),
+        body: JSON.stringify({ doc: doc, by: who || "" })
+      }).then(function (r) {
+        if (r.ok) return { ok: true };
+        if (r.status === 403) {
+          return { ok: false, reason: writeKey()
+            ? "This browser's write key was refused."
+            : "No write key set in this browser — run modillionWriteKey(\"...\") in the console." };
+        }
+        if (r.status === 503) { state = "local"; return { ok: false, reason: "No records store configured." }; }
+        return { ok: false, reason: "The store answered " + r.status + "." };
+      }).catch(function () {
+        return { ok: false, reason: "Could not reach the store." };
       });
     }
 
-    sheets.push({
-      name: "By type",
-      widths: [30, 13, 9],
-      rows: [["Document type", "Documents", m.rowLabelPlural]].concat(
-        m.typeRows.map(function (t) { return [t.label, t.count, t.deals]; }))
-    });
+    /* The one thing the team genuinely needs to know at a glance: is
+       what I am typing going to reach anybody else? Rendered into the
+       source line on all three record tabs. */
+    function note() {
+      return state === "shared"
+        ? " <strong>Edits are shared.</strong> They save to the whole team, and other people's " +
+          "arrive when this page is reloaded."
+        : " <strong>Edits stay in this browser.</strong> The shared store is not reachable, " +
+          "so nobody else can see them — “Publish to team” will say the same until it is.";
+    }
 
-    sheets.push({
-      name: "Formats",
-      widths: [12, 10, 16],
-      rows: [["Format", "Files", "Volume (bytes)"]].concat(
-        m.extRows.map(function (e) { return [e.ext.toUpperCase(), e.count, e.bytes]; }))
-    });
+    /* The write key is TYPED IN ONCE PER BROWSER and kept in
+       localStorage — it is deliberately not baked into this page,
+       which is served publicly. That keeps it out of view-source; it
+       does not make it a password. It is one shared string with no
+       identity attached, readable from the dev tools of any browser
+       that has it, and it says nothing about WHO is writing. It stops
+       anonymous strangers, not colleagues and not anyone determined.
 
-    sheets.push({
-      name: "Documents",
-      widths: [60, 40, 20, 10, 14, 14, 40],
-      rows: [["File", "Deal", "Area", "Type", "Size (bytes)", "Modified", "Folder"]].concat(
-        m.allFiles.map(function (r) {
-          return [r.file.name, r.deal, r.area, r.file.ext, r.file.size,
-                  r.file.modified || "", r.file.path];
-        }))
-    });
+           modillionWriteKey("the-string")     to set it
+           modillionWriteKey()                 to see whether one is set
+    */
+    function setKey(v) {
+      try {
+        if (v === undefined) return writeKey() ? "A write key is set in this browser." : "No write key set.";
+        if (v) localStorage.setItem(KEY_STORE, String(v));
+        else localStorage.removeItem(KEY_STORE);
+        return v ? "Write key saved in this browser." : "Write key cleared.";
+      } catch (e) { return "This browser will not store it (private mode)."; }
+    }
 
-    download(Xlsx.build(sheets),
-             "modillion-" + slug(m.scopeLabel) + "-report-" + stamp + ".xlsx");
-    toast("Excel workbook downloaded — " + sheets.length + " sheets, " +
-          m.totals.documents.toLocaleString() + " documents.");
+    return {
+      load: load, push: push, publish: publish,
+      merge: merge, mergeInto: mergeInto, setKey: setKey,
+      note: note, state: function () { return state; }
+    };
+  })();
+
+  window.modillionWriteKey = SharedOverlay.setKey;
+
+  /* PUBLISH — what "Download, drop it in the folder, commit, push,
+     redeploy" used to be. The page already computes the fully merged
+     document, so publishing is just storing that as the new base.
+
+     It reports failure out loud, unlike an ordinary save. A save that
+     does not reach the store is recoverable — the edit is still in
+     this browser and the next save carries it. A publish that quietly
+     failed would leave somebody believing the team can see their
+     work, which is the one wrong belief this whole change exists to
+     prevent. */
+  function publishRecords(set, label, toFile, btnId) {
+    var btn = $(btnId);
+    var who = typeof signedInUser === "function" ? signedInUser() : null;
+    if (btn) { btn.disabled = true; btn.textContent = "Publishing…"; }
+    return SharedOverlay.publish(set, toFile(), who ? (who.name || who.username || "") : "")
+      .then(function (res) {
+        if (btn) { btn.disabled = false; btn.textContent = "Publish to team"; }
+        if (res.ok) {
+          toast(label + " published. This is what everyone loads now — reload to see it as they will.");
+        } else {
+          toast("Not published: " + res.reason + " Your edits are still safe in this browser.");
+        }
+        return res;
+      });
   }
 
   /* ============================================================
      CRM — DATA
 
-     Same seam as the documents above. Real records live in
-     crm-data.json, which is gitignored and never deployed; the
-     published page falls back to CRM_FALLBACK, whose firms are
-     invented. Nothing real reaches the public repository.
+     Same seam as the documents above. Real records live in the
+     SHARED STORE, read through /api/records; crm-data.json in this
+     folder is the seed behind it and the offline path when the store
+     is unreachable. CRM_FALLBACK is the empty state behind both.
+     Nothing real is committed — see .gitignore.
 
      Edits made in the browser are held in a localStorage overlay
      keyed by investor id, not written back over the file — a static
@@ -5270,7 +4409,7 @@ button.link-arrow {
                            "Hospitality", "Mixed-use", "Student housing", "Self storage",
                            "Data centres", "Senior housing", "Land"];
 
-  // Empty. Real records arrive from crm-data.json, which is never deployed.
+  // Empty. Real records arrive from the shared store, or from crm-data.json behind it.
   var CRM_FALLBACK = {
     generatedAt: null,
     source: "fallback",
@@ -5313,6 +4452,12 @@ button.link-arrow {
     function writeOverlay() {
       try { localStorage.setItem(OVERLAY_KEY, JSON.stringify(overlay)); }
       catch (e) { /* private mode — edits live for this page view only */ }
+      // Fire and forget, and deliberately so. The localStorage copy above is
+      // what THIS browser reads, so a push that fails costs the team the
+      // edit, not the person who made it — and because the whole overlay
+      // goes up every time, the next successful save carries it anyway.
+      var who = typeof signedInUser === "function" ? signedInUser() : null;
+      SharedOverlay.push("crm", overlay, who ? (who.name || who.username || "") : "");
     }
 
     function hasOverlay() {
@@ -5432,14 +4577,26 @@ button.link-arrow {
 
     function load() {
       readOverlay();
-      return fetch("crm-data.json", { cache: "no-store" })
-        .then(function (r) {
-          if (!r.ok) throw new Error("no local CRM file");
-          return r.json();
+      // Where the base records came from, decided below and reported in
+      // the source line: the shared store, or the local file behind it.
+      var origin = "local";
+      // The shared overlay merges ON TOP of this browser's own, so an edit
+      // made while the store was unreachable survives, and everyone else's
+      // edits arrive alongside it. With no store configured this resolves
+      // null and the tab behaves exactly as it did before any of it existed.
+      return SharedOverlay.load("crm")
+        .then(function (shared) {
+          if (shared && shared.overlay) SharedOverlay.mergeInto(overlay, shared.overlay);
+          if (shared && shared.base) { origin = "shared"; return shared.base; }
+          return fetch("crm-data.json", { cache: "no-store" })
+            .then(function (r) {
+              if (!r.ok) throw new Error("no local CRM file");
+              return r.json();
+            });
         })
         .then(function (json) {
           base = json;
-          meta = { source: "local", generatedAt: json.generatedAt || null, intake: json.intake || null };
+          meta = { source: origin, generatedAt: json.generatedAt || null, intake: json.intake || null };
         })
         .catch(function () {
           base = CRM_FALLBACK;
@@ -5777,7 +4934,7 @@ button.link-arrow {
       return {
         generatedAt: new Date().toISOString().slice(0, 10),
         source: "local",
-        note: "Exported from the dashboard. Replaces crm-data.json in the site folder. Gitignored — never commit.",
+        note: "Exported from the dashboard. A backup, or a seed for tools/publish.py — the live copy is in the shared store. Gitignored — never commit.",
         intake: meta.intake,
         stages: CRM_STAGES,
         dealStatus: dealStatuses(),
@@ -6316,7 +5473,7 @@ button.link-arrow {
       if (deals.length && DEAL_DEATH.test(clause)) {
         var state = stateFrom(clause);
         deals.forEach(function (deal) {
-          var current = Crm.dealStatus(deal);
+          var current = Deals.dealStatus(deal);
           out.push({ type: "dealStatus", deal: deal,
                      from: current ? current.status : "Live", to: state || "Dead",
                      why: clause });
@@ -6418,18 +5575,10 @@ button.link-arrow {
     return { read: read, states: DEAL_STATES };
   })();
 
-  // Every deal folder in the loaded dataset — what the reader matches against.
-  function dealNames() {
-    var out = [];
-    var raw = Provider.raw();
-    if (!raw) return out;
-    (raw.areas || []).forEach(function (area) {
-      (area.children || []).forEach(function (deal) {
-        if (deal.type === "folder") out.push(deal.name);
-      });
-    });
-    return out;
-  }
+  // Every deal on the pipeline — what the reader matches against. This used
+  // to mean "has a OneDrive folder"; there are no folders now, so it simply
+  // means every deal record.
+  function dealNames() { return Deals.names(); }
 
   /* ============================================================
      CRM — RENDER
@@ -6470,7 +5619,7 @@ button.link-arrow {
 
   // A deal tag, struck through and labelled when the deal is no longer live.
   function dealTag(name) {
-    var status = Crm.dealStatus(name);
+    var status = Deals.dealStatus(name);
     var dead = status && status.status !== "Live";
     return '<span class="crm-tag crm-tag--deal' + (dead ? " crm-deadtag" : "") + '">' +
            esc(name) + '</span>' +
@@ -6548,7 +5697,7 @@ button.link-arrow {
         ? '<div class="dash-state"><h3>No investors match</h3>' +
           '<p>Clear the filters, or log a conversation above to create the first record.</p></div>'
         : '<div class="dash-state"><h3>No investors yet</h3>' +
-          '<p>Records live in crm-data.json, which is never deployed with this page. ' +
+          '<p>Records live in the shared store, seeded from crm-data.json. ' +
           'Describe a conversation above and the first one is created here.</p></div>';
     }
 
@@ -6624,7 +5773,7 @@ button.link-arrow {
     var allDeals = uniq([].concat.apply([], list.map(function (i) { return i.deals; })));
     var el = $("crmFilterDeal");
     el.innerHTML = '<option value="">All deals</option>' + allDeals.map(function (d) {
-      var status = Crm.dealStatus(d);
+      var status = Deals.dealStatus(d);
       var suffix = status && status.status !== "Live" ? "  (" + status.status.toLowerCase() + ")" : "";
       return '<option value="' + esc(d) + '"' + (d === crmState.filters.deal ? " selected" : "") + '>' +
              esc(d + suffix) + '</option>';
@@ -6642,21 +5791,24 @@ button.link-arrow {
     $("crmInvestorNames").innerHTML = Crm.all().map(function (i) {
       return '<option value="' + esc(i.name) + '">';
     }).join("");
-    $("crmDealNames").innerHTML = dealNames().concat(Crm.addedDeals()).map(function (d) {
+    $("crmDealNames").innerHTML = dealNames().map(function (d) {
       return '<option value="' + esc(d) + '">';
     }).join("");
 
     renderMemory();
 
     var m = Crm.meta();
-    $("crmSourceNote").innerHTML = m.source === "local"
-      ? "Records from crm-data.json — gitignored, local only, never deployed. Research notes come from public sources and carry the date they were checked." +
+    $("crmSourceNote").innerHTML = m.source !== "fallback"
+      ? (m.source === "shared"
+          ? "Records from the shared store — the same set everyone sees. "
+          : "Records from crm-data.json in this site folder, not from the shared store. ") +
+        "Research notes come from public sources and carry the date they were checked." +
+        SharedOverlay.note() +
         (m.intake && m.intake.address
           ? " Forward investor threads to <strong>" + esc(m.intake.address) + "</strong>, then run tools/crm-ingest.py to fold them in."
           : "")
-      : "No investor file loaded. The records live in crm-data.json, which is gitignored and never " +
-        "deployed; anything shown here was entered in this browser and is held locally until it is " +
-        "downloaded back into the folder.";
+      : "No investor records loaded — neither the shared store nor a local crm-data.json " +
+        "answered. Anything shown here was entered in this browser." + SharedOverlay.note();
   }
 
   function renderInvestor(id) {
@@ -7035,7 +6187,7 @@ button.link-arrow {
     $("draftCheck").value = draft.check || "";
     $("draftDeals").value = (draft.deals || []).join(", ");
     $("draftDealsNote").textContent = draft.deals.length
-      ? "Matched against the deal folders in the document library."
+      ? "Matched against the deals on the pipeline."
       : "No deal name recognised — type one if it was discussed.";
     $("draftSummary").value = draft.summary || "";
     $("draftNext").value = draft.next || "";
@@ -7135,7 +6287,7 @@ button.link-arrow {
           touched[a.investorId] = 1;
           break;
         case "dealStatus":
-          Crm.setDealStatus(a.deal, a.to, a.why);
+          Deals.setDealStatus(a.deal, a.to, a.why);
           break;
         case "archive":
           Crm.archive(a.investorId, a.to);
@@ -7157,7 +6309,7 @@ button.link-arrow {
       if (Crm.get(crmState.investorId)) renderInvestor(crmState.investorId);
       else showCrmView("list");
     }
-    renderGrid();          // deal-status badges show on the Deal Pipeline tab too
+    renderDeals();         // deal-status badges show on the Deal Pipeline tab too
     toast(chosen.length + " change" + (chosen.length === 1 ? "" : "s") + " applied." +
       (wasEditing ? " The edit form was closed — anything typed in it was not saved." : ""));
   }
@@ -7374,7 +6526,7 @@ button.link-arrow {
   function exportCrmFile() {
     var blob = new Blob([JSON.stringify(Crm.toFile(), null, 2)], { type: "application/json" });
     download(blob, "crm-data.json");
-    toast("Downloaded. Replace crm-data.json in the site folder to make these edits the new baseline.");
+    toast("Downloaded — a backup of the records as they stand. \u201CPublish to team\u201D is what makes them everyone's.");
   }
 
   function exportCrmXlsx() {
@@ -7435,11 +6587,11 @@ button.link-arrow {
      them (Co-GP equity, seed), what they build, where they build
      it, and which live deals are theirs.
 
-     Real records live in operator-data.json, which is gitignored
-     and never deployed — operator names are live counterparties.
-     The published page falls back to OPERATOR_FALLBACK, whose firms
-     are invented. A line above the table always says which of the
-     two is loaded.
+     Real records live in the SHARED STORE, read through
+     /api/records; operator-data.json in this folder is the seed
+     behind it — operator names are live counterparties, and nothing
+     real is committed. OPERATOR_FALLBACK is the empty state behind
+     both. A line above the table always says which is loaded.
 
      Edits are held in a localStorage overlay keyed by operator id,
      exactly as the Investor CRM holds them, and "Download
@@ -7463,12 +6615,358 @@ button.link-arrow {
   var OPERATOR_STAGES = ["Prospect", "Contacted", "In diligence", "Active partner",
                          "Passed", "Dormant"];
 
-  // Empty. Real records arrive from operator-data.json, which is never deployed.
+  // Empty. Real records arrive from the shared store, or from operator-data.json behind it.
   var OPERATOR_FALLBACK = {
     generatedAt: null,
     source: "fallback",
     operators: []
   };
+
+  /* ============================================================
+     DEAL PIPELINE — DATA
+
+     The fourth record set, and the newest: until 2026-08-20 the
+     pipeline was not records at all. It was a listing of OneDrive
+     folders, and a deal existed because a folder existed. Deals the
+     firm was working on before anybody made a folder lived in a
+     second, smaller list inside the INVESTOR CRM's overlay
+     (`dealsAdded`), shown on the pipeline marked "No folder yet".
+
+     That is inverted now. The folder mirror is gone — see README.txt
+     — so a deal is a record like an investor or an operator, and the
+     pipeline is a list of them. Nothing is read from any folder.
+
+     The old home is worth knowing about because it explains the
+     shape: `dealStatus`, `dealsAdded`, `dealsHidden` and
+     `dealsDropped` all used to hang off Crm, and the CRMs and the
+     task list still reference deals BY NAME. So byName() is not a
+     convenience here, it is the join everything else depends on.
+     ============================================================ */
+
+  var DEAL_AREAS = [
+    { id: "active-deals", label: "Active Deals" },
+    { id: "closed-deals", label: "Closed Deals" }
+  ];
+
+  // Empty. Real records arrive from the shared store, or from
+  // deals-data.json behind it.
+  var DEALS_FALLBACK = { generatedAt: null, source: "fallback", areas: DEAL_AREAS,
+                         stages: DEAL_STATES, deals: [] };
+
+  var Deals = (function () {
+    var base = null;
+    var meta = { source: "fallback", generatedAt: null, note: "" };
+    var merged = [];
+    var OVERLAY_KEY = "modillion-deals-overlay";
+    var overlay = { patches: {}, created: [], archived: {}, removed: {} };
+
+    function readOverlay() {
+      try {
+        var raw = localStorage.getItem(OVERLAY_KEY);
+        if (!raw) return;
+        var o = JSON.parse(raw);
+        overlay.patches  = o.patches || {};
+        overlay.created  = o.created || [];
+        overlay.archived = o.archived || {};
+        overlay.removed  = o.removed || {};
+      } catch (e) { /* private mode, or corrupt — start clean */ }
+    }
+
+    function writeOverlay() {
+      try { localStorage.setItem(OVERLAY_KEY, JSON.stringify(overlay)); }
+      catch (e) { /* private mode — edits live for this page view only */ }
+      // Fire and forget, and deliberately so. The localStorage copy above is
+      // what THIS browser reads, so a push that fails costs the team the
+      // edit, not the person who made it — and because the whole overlay
+      // goes up every time, the next successful save carries it anyway.
+      var who = typeof signedInUser === "function" ? signedInUser() : null;
+      SharedOverlay.push("deals", overlay, who ? (who.name || who.username || "") : "");
+    }
+
+    function hasOverlay() {
+      return Object.keys(overlay.patches).length > 0 ||
+             Object.keys(overlay.archived).length > 0 ||
+             Object.keys(overlay.removed).length > 0 ||
+             overlay.created.length > 0;
+    }
+
+    /* The debt roll-up, per deal. It used to be read out of one
+       workbook — the only file whose CONTENTS this project ever
+       opened — and joined to a folder by name. It is typed in now,
+       which is why every field is a plain string: they carry
+       "$16,650,000" and "Oct 15, 2029" as somebody wrote them, and
+       no arithmetic is done on any of them. A blank is a blank, not
+       a zero. */
+    function normaliseDebt(d) {
+      if (!d) return null;
+      var out = {}, any = false;
+      ["acquisitionDate", "lender", "loanCommitted", "loanBalance", "rateType",
+       "index", "indexSpread", "rateCap", "rateFloor", "maturity",
+       "extensionOptions", "source"].forEach(function (k) {
+        out[k] = String(d[k] == null ? "" : d[k]).trim();
+        if (out[k] && k !== "source") any = true;
+      });
+      return any ? out : null;
+    }
+
+    function normalise(rec) {
+      var area = rec.area || "active-deals";
+      return {
+        id: rec.id || slug(rec.name || "") || "deal",
+        name: rec.name || "",
+        area: area,
+        operator: rec.operator || "",
+        status: rec.status || (area === "closed-deals" ? "Closed" : "Live"),
+        // Why a deal stopped being live, and when it was recorded. Kept
+        // beside the status because "Dead" without a reason is a fact
+        // nobody can act on six months later.
+        statusWhy: rec.statusWhy || "",
+        statusSetAt: rec.statusSetAt || "",
+        market: rec.market || "",
+        assetClass: rec.assetClass || "",
+        note: rec.note || "",
+        addedAt: rec.addedAt || "",
+        lastActivity: rec.lastActivity || "",
+        debt: normaliseDebt(rec.debt),
+        archived: !!rec.archived
+      };
+    }
+
+    function rebuild() {
+      var rows = (base && base.deals ? base.deals : []).concat(overlay.created)
+        .filter(function (rec) { return !overlay.removed[rec.id]; });
+      merged = rows.map(function (rec) {
+        var out = normalise(rec);
+        var patch = overlay.patches[out.id];
+        if (patch) out = normalise(Object.assign({}, out, patch));
+        return out;
+      });
+      merged.sort(function (a, b) { return a.name.localeCompare(b.name); });
+    }
+
+    function load() {
+      readOverlay();
+      // Where the base records came from, decided below and reported in
+      // the source line: the shared store, or the local file behind it.
+      var origin = "local";
+      return SharedOverlay.load("deals")
+        .then(function (shared) {
+          if (shared && shared.overlay) SharedOverlay.mergeInto(overlay, shared.overlay);
+          if (shared && shared.base) { origin = "shared"; return shared.base; }
+          return fetch("deals-data.json", { cache: "no-store" })
+            .then(function (r) {
+              if (!r.ok) throw new Error("no local deals file");
+              return r.json();
+            });
+        })
+        .then(function (json) {
+          base = json;
+          meta = { source: origin, generatedAt: json.generatedAt || null, note: json.note || "" };
+        })
+        .catch(function () {
+          base = DEALS_FALLBACK;
+          meta = { source: "fallback", generatedAt: null, note: "" };
+        })
+        .then(function () {
+          if (base.areas && base.areas.length) DEAL_AREAS = base.areas;
+          if (base.stages && base.stages.length) DEAL_STATES = base.stages;
+          rebuild();
+        });
+    }
+
+    function byId(id) {
+      for (var i = 0; i < merged.length; i++) if (merged[i].id === id) return merged[i];
+      return null;
+    }
+
+    /* THE JOIN EVERYTHING ELSE DEPENDS ON. Investors, operators and
+       tasks all reference a deal by its NAME, because that is what
+       they referenced when a deal was a folder. Matching is
+       case-insensitive and trims, and nothing else — a deal renamed
+       on this tab is a deal those references stop finding, which is
+       the same as it always was. */
+    function byName(name) {
+      var want = String(name || "").trim().toLowerCase();
+      if (!want) return null;
+      for (var i = 0; i < merged.length; i++) {
+        if (merged[i].name.trim().toLowerCase() === want) return merged[i];
+      }
+      return null;
+    }
+
+    function slugId(name) {
+      var s = slug(name) || "deal";
+      var n = s, i = 2;
+      while (byId(n)) { n = s + "-" + i; i++; }
+      return n;
+    }
+
+    function create(fields) {
+      var rec = normalise(Object.assign({ id: slugId(fields.name || "") }, fields));
+      delete overlay.removed[rec.id];   // same name, new record
+      overlay.created.push(rec);
+      writeOverlay();
+      rebuild();
+      return byId(rec.id);
+    }
+
+    function patch(id, fields) {
+      var existing = overlay.patches[id] || {};
+      overlay.patches[id] = Object.assign({}, existing, fields);
+      writeOverlay();
+      rebuild();
+      return byId(id);
+    }
+
+    /* Status by NAME rather than by id, because that is how the
+       agent and the CRMs ask ("that deal fell through"). A name that
+       matches nothing is ignored rather than creating a record —
+       inventing a deal from a typo is worse than doing nothing. */
+    function setStatus(name, status, why) {
+      var rec = byName(name);
+      if (!rec) return false;
+      patch(rec.id, {
+        status: status,
+        statusWhy: why || "",
+        statusSetAt: new Date().toISOString().slice(0, 10)
+      });
+      return true;
+    }
+
+    function status(name) {
+      var rec = byName(name);
+      if (!rec) return null;
+      /* "Live" with nothing recorded against it is the ABSENCE of a
+         status, not a status. The callers render a pill only when
+         something has actually been said about the deal, and that is
+         how this read before deals were records — a deal with no
+         entry in dealStatus returned null. */
+      if (rec.status === "Live" && !rec.statusWhy && !rec.statusSetAt) return null;
+      return { status: rec.status, why: rec.statusWhy, setAt: rec.statusSetAt };
+    }
+
+    // Archive is not delete, same rule as both CRMs: the record leaves
+    // the list and stays in the file.
+    function archive(id, on) {
+      if (on === false) delete overlay.archived[id];
+      else overlay.archived[id] = true;
+      writeOverlay();
+      rebuild();
+    }
+
+    function remove(id) {
+      if (!byId(id)) return false;
+      var inFile = (base && base.deals ? base.deals : [])
+        .some(function (rec) { return rec.id === id; });
+      overlay.created = overlay.created.filter(function (r) { return r.id !== id; });
+      delete overlay.patches[id];
+      delete overlay.archived[id];
+      if (inFile) overlay.removed[id] = new Date().toISOString().slice(0, 10);
+      writeOverlay();
+      rebuild();
+      return true;
+    }
+
+    function all() {
+      return merged.filter(function (r) { return !overlay.archived[r.id] && !r.archived; });
+    }
+
+    function toFile() {
+      return {
+        generatedAt: new Date().toISOString().slice(0, 10),
+        source: "local",
+        note: "Exported from the dashboard. A backup, or a seed for tools/publish.py — the live copy is in the shared store. Gitignored — never commit.",
+        areas: DEAL_AREAS,
+        stages: DEAL_STATES,
+        deals: merged.map(function (r) {
+          var out = Object.assign({}, r);
+          if (overlay.archived[r.id]) out.archived = true;
+          return out;
+        })
+      };
+    }
+
+    return {
+      load: load,
+      meta: function () { return meta; },
+      all: all,
+      allIncludingArchived: function () { return merged; },
+      get: byId,
+      byName: byName,
+      names: function () { return all().map(function (r) { return r.name; }); },
+      inArea: function (areaId) {
+        return all().filter(function (r) { return r.area === areaId; });
+      },
+      withDebt: function () {
+        return all().filter(function (r) { return !!r.debt; });
+      },
+      create: create,
+      patch: patch,
+      setStatus: setStatus,
+      status: status,
+      archive: archive,
+      remove: remove,
+      isArchived: function (id) { return !!overlay.archived[id]; },
+      areas: function () { return DEAL_AREAS.slice(); },
+      statuses: function () { return DEAL_STATES.slice(); },
+
+      /* ---- compatibility surface ---------------------------------
+         These names are historical. They belong to the arrangement
+         where deals were FOLDERS and a deal record was the exception,
+         kept in the investor CRM's overlay as `dealsAdded` — hence
+         "added". Both CRMs, the task list and the agent still speak
+         this vocabulary across fifteen call sites, so the names live
+         on here rather than in a rename touching all of them at once.
+         Signatures match the Crm methods they replaced exactly.
+         ------------------------------------------------------------ */
+      dealStatus: status,
+      setDealStatus: setStatus,
+      dealStatuses: function () {
+        var out = {};
+        all().forEach(function (r) {
+          if (r.status === "Live" && !r.statusWhy && !r.statusSetAt) return;
+          out[r.name] = { status: r.status, why: r.statusWhy, setAt: r.statusSetAt };
+        });
+        return out;
+      },
+      addedDeals: function () { return all().map(function (r) { return r.name; }); },
+      addedDealRecords: all,
+      addedDeal: byName,
+      addDeal: function (name, fields) {
+        var clean = String(name || "").trim();
+        if (!clean) return "";
+        var existing = byName(clean);
+        if (existing) {
+          if (fields) patch(existing.id, fields);
+          return existing.name;
+        }
+        var rec = create(Object.assign(
+          { name: clean, addedAt: new Date().toISOString().slice(0, 10) }, fields || {}));
+        return rec ? rec.name : clean;
+      },
+      removeAddedDeal: function (name) {
+        var rec = byName(name);
+        return rec ? remove(rec.id) : false;
+      },
+      hideDeal: function (name, on) {
+        var rec = byName(name);
+        if (!rec) return false;
+        archive(rec.id, on);
+        return true;
+      },
+      isDealHidden: function (name) {
+        var rec = byName(name);
+        return rec ? !!overlay.archived[rec.id] : false;
+      },
+      hasLocalEdits: hasOverlay,
+      toFile: toFile,
+      clearOverlay: function () {
+        overlay = { patches: {}, created: [], archived: {}, removed: {} };
+        writeOverlay();
+        rebuild();
+      }
+    };
+  })();
 
   var Operators = (function () {
     var base = null;
@@ -7492,6 +6990,12 @@ button.link-arrow {
     function writeOverlay() {
       try { localStorage.setItem(OVERLAY_KEY, JSON.stringify(overlay)); }
       catch (e) { /* private mode — edits live for this page view only */ }
+      // Fire and forget, and deliberately so. The localStorage copy above is
+      // what THIS browser reads, so a push that fails costs the team the
+      // edit, not the person who made it — and because the whole overlay
+      // goes up every time, the next successful save carries it anyway.
+      var who = typeof signedInUser === "function" ? signedInUser() : null;
+      SharedOverlay.push("operators", overlay, who ? (who.name || who.username || "") : "");
     }
 
     function hasOverlay() {
@@ -7560,14 +7064,26 @@ button.link-arrow {
 
     function load() {
       readOverlay();
-      return fetch("operator-data.json", { cache: "no-store" })
-        .then(function (r) {
-          if (!r.ok) throw new Error("no local operator file");
-          return r.json();
+      // Where the base records came from, decided below and reported in
+      // the source line: the shared store, or the local file behind it.
+      var origin = "local";
+      // The shared overlay merges ON TOP of this browser's own, so an edit
+      // made while the store was unreachable survives, and everyone else's
+      // edits arrive alongside it. With no store configured this resolves
+      // null and the tab behaves exactly as it did before any of it existed.
+      return SharedOverlay.load("operators")
+        .then(function (shared) {
+          if (shared && shared.overlay) SharedOverlay.mergeInto(overlay, shared.overlay);
+          if (shared && shared.base) { origin = "shared"; return shared.base; }
+          return fetch("operator-data.json", { cache: "no-store" })
+            .then(function (r) {
+              if (!r.ok) throw new Error("no local operator file");
+              return r.json();
+            });
         })
         .then(function (json) {
           base = json;
-          meta = { source: "local", generatedAt: json.generatedAt || null, note: json.note || "" };
+          meta = { source: origin, generatedAt: json.generatedAt || null, note: json.note || "" };
         })
         .catch(function () {
           base = OPERATOR_FALLBACK;
@@ -7721,27 +7237,17 @@ button.link-arrow {
   ];
 
   // Only the live pipeline. A deal tag is a link into the Deal Pipeline tab,
-  // and Active Deals is the folder it lands in — a name from Closed Deals
-  // or Asset Management would take you somewhere the link does not claim
-  // to go, so it stays a plain tag.
+  // and a closed deal would take you somewhere the link does not claim to
+  // go, so it stays a plain tag.
   function activeDealNames() {
-    var raw = Provider.raw();
-    var out = [];
-    if (!raw) return out;
-    (raw.areas || []).forEach(function (area) {
-      if (area.id !== "active-deals") return;
-      (area.children || []).forEach(function (deal) {
-        if (deal.type === "folder") out.push(deal.name);
-      });
-    });
-    return out;
+    return Deals.inArea("active-deals").map(function (r) { return r.name; });
   }
 
   // The deal's own folder, opened on the Deal Pipeline tab. Deals marked dead
   // or closed in the CRM carry the same strike-through they carry there —
   // one deal status, read everywhere.
   function opDealChip(name) {
-    var status = Crm.dealStatus(name);
+    var status = Deals.dealStatus(name);
     var dead = status && status.status !== "Live";
     var badge = dead ? '<span class="deal-status" data-state="' + esc(status.status) + '">' +
                        esc(status.status) + '</span>' : "";
@@ -7835,7 +7341,7 @@ button.link-arrow {
         ? '<div class="dash-state"><h3>No operators match</h3>' +
           '<p>Clear the filters, or add one with the button above.</p></div>'
         : '<div class="dash-state"><h3>No operators yet</h3>' +
-          '<p>Records live in operator-data.json, which is never deployed with this page. ' +
+          '<p>Records live in the shared store, seeded from operator-data.json. ' +
           'Add the first one with the button above.</p></div>';
     }
 
@@ -7916,11 +7422,14 @@ button.link-arrow {
 
     fillOperatorDatalists();
 
-    $("opSourceNote").innerHTML = Operators.meta().source === "local"
-      ? "Records from operator-data.json — gitignored, local only, never deployed. Deal tags open the " +
-        "deal's folder on the Deal Pipeline tab; a blank field is one nobody has filled in yet, not a zero."
-      : "No operator file loaded. The records live in operator-data.json, which is gitignored and " +
-        "never deployed with this page.";
+    $("opSourceNote").innerHTML = Operators.meta().source !== "fallback"
+      ? (Operators.meta().source === "shared"
+          ? "Records from the shared store — the same set everyone sees. "
+          : "Records from operator-data.json in this site folder, not from the shared store. ") +
+        "Deal tags open the deal's folder on the Deal Pipeline tab; a blank field is one " +
+        "nobody has filled in yet, not a zero." + SharedOverlay.note()
+      : "No operator records loaded — neither the shared store nor a local " +
+        "operator-data.json answered." + SharedOverlay.note();
   }
 
   function showOperatorView(name) {
@@ -8245,7 +7754,7 @@ button.link-arrow {
   function exportOperatorFile() {
     var blob = new Blob([JSON.stringify(Operators.toFile(), null, 2)], { type: "application/json" });
     download(blob, "operator-data.json");
-    toast("Downloaded. Replace operator-data.json in the site folder to make these edits the new baseline.");
+    toast("Downloaded — a backup of the records as they stand. \u201CPublish to team\u201D is what makes them everyone's.");
   }
 
   function exportOperatorXlsx() {
@@ -8273,7 +7782,7 @@ button.link-arrow {
     var byDeal = [];
     list.forEach(function (r) {
       r.deals.forEach(function (d) {
-        var status = Crm.dealStatus(d);
+        var status = Deals.dealStatus(d);
         byDeal.push([d, r.name, r.stage, r.investmentTypes.join(", "),
                      r.assetStrategies.join(", "), r.markets.join(", "),
                      (status && status.status) || "Live"]);
@@ -8332,6 +7841,9 @@ button.link-arrow {
   });
 
   $("opSaveFileBtn").addEventListener("click", exportOperatorFile);
+  $("opPublishBtn").addEventListener("click", function () {
+    publishRecords("operators", "Operator CRM", Operators.toFile, "opPublishBtn");
+  });
 
   document.addEventListener("click", function (e) {
     // A deal tag is inside a row that opens the operator, so it has to be
@@ -8341,7 +7853,7 @@ button.link-arrow {
       e.stopPropagation();
       var name = dealChip.getAttribute("data-op-deal");
       switchTab("docs");
-      openCategory("active-deals", [name]);
+      openDealByName(name);
       return;
     }
 
@@ -8483,6 +7995,12 @@ button.link-arrow {
     function writeOverlay() {
       try { localStorage.setItem(OVERLAY_KEY, JSON.stringify(overlay)); }
       catch (e) { /* private mode — edits live for this page view only */ }
+      // Fire and forget, and deliberately so. The localStorage copy above is
+      // what THIS browser reads, so a push that fails costs the team the
+      // edit, not the person who made it — and because the whole overlay
+      // goes up every time, the next successful save carries it anyway.
+      var who = typeof signedInUser === "function" ? signedInUser() : null;
+      SharedOverlay.push("tasks", overlay, who ? (who.name || who.username || "") : "");
     }
 
     function hasOverlay() {
@@ -8533,14 +8051,26 @@ button.link-arrow {
 
     function load() {
       readOverlay();
-      return fetch("tasks-data.json", { cache: "no-store" })
-        .then(function (r) {
-          if (!r.ok) throw new Error("no local task file");
-          return r.json();
+      // Where the base records came from, decided below and reported in
+      // the source line: the shared store, or the local file behind it.
+      var origin = "local";
+      // The shared overlay merges ON TOP of this browser's own, so an edit
+      // made while the store was unreachable survives, and everyone else's
+      // edits arrive alongside it. With no store configured this resolves
+      // null and the tab behaves exactly as it did before any of it existed.
+      return SharedOverlay.load("tasks")
+        .then(function (shared) {
+          if (shared && shared.overlay) SharedOverlay.mergeInto(overlay, shared.overlay);
+          if (shared && shared.base) { origin = "shared"; return shared.base; }
+          return fetch("tasks-data.json", { cache: "no-store" })
+            .then(function (r) {
+              if (!r.ok) throw new Error("no local task file");
+              return r.json();
+            });
         })
         .then(function (json) {
           base = json;
-          meta = { source: "local", generatedAt: json.generatedAt || null };
+          meta = { source: origin, generatedAt: json.generatedAt || null };
         })
         .catch(function () {
           base = TASKS_FALLBACK;
@@ -9118,9 +8648,8 @@ button.link-arrow {
       renderInvestor(crmState.investorId);
     } else if (crmState.tab === "operators" && opState.view === "operator" && opState.operatorId) {
       renderOperator(opState.operatorId);
-    } else if ((crmState.tab === "docs" || crmState.tab === "assets") &&
-               state.view === "detail" && state.path.length === 1) {
-      openCategory(state.categoryId, state.path);
+    } else if (crmState.tab === "docs" && dealState.view === "deal" && dealState.dealId) {
+      openDeal(dealState.dealId);
     }
   }
 
@@ -9319,7 +8848,7 @@ button.link-arrow {
         ? '<div class="dash-state"><h3>Nothing here</h3>' +
           '<p>Either everything is done, or the filters are hiding it. Add a task above.</p></div>'
         : '<div class="dash-state"><h3>No tasks yet</h3>' +
-          '<p>The list lives in tasks-data.json, which is never deployed with this page. ' +
+          '<p>The list lives in the shared store, seeded from tasks-data.json. ' +
           'Add the first task above.</p></div>';
 
     var open = Tasks.all().filter(function (t) { return t.status !== "Done"; }).length;
@@ -9328,13 +8857,13 @@ button.link-arrow {
     $("taskUnsaved").hidden = !Tasks.hasLocalEdits();
 
     var m = Tasks.meta();
-    $("taskSourceNote").innerHTML = m.source === "local"
-      ? "Tasks from tasks-data.json — gitignored, local only, never deployed. " +
-        "<strong>Ticks are saved in this browser.</strong> Until someone downloads the file and " +
-        "puts it back in the folder, two people looking at this page see two different lists."
-      : "No task file loaded. The roster behind “Assigned to” is the real team, so a task can be " +
-        "written here and it is held in this browser; the live list lives in tasks-data.json, " +
-        "which is gitignored and never deployed with this page.";
+    $("taskSourceNote").innerHTML = m.source !== "fallback"
+      ? (m.source === "shared"
+          ? "Tasks from the shared store — the same list everyone sees."
+          : "Tasks from tasks-data.json in this site folder, not from the shared store.") +
+        SharedOverlay.note()
+      : "No task list loaded. The roster behind “Assigned to” is the real team, so a task can " +
+        "be written here and held in this browser." + SharedOverlay.note();
   }
 
   function fillTaskSelects() {
@@ -9376,11 +8905,11 @@ button.link-arrow {
       return '<option value="' + esc(value) + '">' + esc(value + " — " + kind) + '</option>';
     }
 
+    /* One list of deals now. There used to be two — folders, and names
+       added here without one — and they were shown apart because the
+       difference mattered. It does not exist any more. */
     $("taskLinkOptions").innerHTML =
       dealNames().map(function (v) { return linkOption(v, "deal"); })
-      .concat(Crm.addedDeals().map(function (v) {
-        return linkOption(v, "deal, no folder yet");
-      }))
       .concat(Crm.all().map(function (i) { return linkOption(i.name, "investor"); }))
       .concat(Operators.all().map(function (o) { return linkOption(o.name, "operator"); }))
       .join("");
@@ -9404,7 +8933,7 @@ button.link-arrow {
 
   function matchesAddedDeal(name) {
     var v = name.trim().toLowerCase();
-    return !!v && Crm.addedDeals().some(function (n) { return String(n).toLowerCase() === v; });
+    return !!v && Deals.addedDeals().some(function (n) { return String(n).toLowerCase() === v; });
   }
 
   function matchesDeal(name) {
@@ -9560,7 +9089,7 @@ button.link-arrow {
 
     // A name, and nothing behind it. Said plainly here rather than found
     // out later by somebody looking for the documents.
-    input.value = Crm.addDeal(name);
+    input.value = Deals.addDeal(name);
     afterLinkAdd();
     toast("Added “" + name + "” as a deal. There is no OneDrive folder behind it — " +
           "the dashboard mirrors that folder, it cannot create one.");
@@ -9685,7 +9214,7 @@ button.link-arrow {
   function exportTaskFile() {
     var blob = new Blob([JSON.stringify(Tasks.toFile(), null, 2)], { type: "application/json" });
     download(blob, "tasks-data.json");
-    toast("Downloaded. Replace tasks-data.json in the site folder so the team sees these.");
+    toast("Downloaded — a backup of the list as it stands. \u201CPublish to team\u201D is what makes it everyone's.");
   }
 
   function exportTaskXlsx() {
@@ -9843,6 +9372,9 @@ button.link-arrow {
   });
 
   $("taskSaveFileBtn").addEventListener("click", exportTaskFile);
+  $("taskPublishBtn").addEventListener("click", function () {
+    publishRecords("tasks", "Task list", Tasks.toFile, "taskPublishBtn");
+  });
 
   /* The switch, and the line beside it that says which of the two routes
      the email will actually take. Worth saying out loud: "opens a draft
@@ -9878,18 +9410,11 @@ button.link-arrow {
     $("wsDocs").hidden = tab !== "docs";
     $("wsCrm").hidden = tab !== "crm";
     $("wsOperators").hidden = tab !== "operators";
-    $("wsAssets").hidden = tab !== "assets";
     $("wsTasks").hidden = tab !== "tasks";
     if (tab === "home") renderHome();
     if (tab === "crm") { renderCrmFilters(); renderCrm(); }
     if (tab === "operators") { renderOperatorFilters(); renderOperators(); }
-    // The two document tabs share one set of state, so moving between them
-    // starts at the top of the one you asked for rather than showing the
-    // other tab's folder under this tab's heading.
-    if (tab === "docs" || tab === "assets") {
-      if (state.ws !== tab) { state.ws = tab; goHome(); }
-    }
-    if (tab === "assets") { renderAssetSummary(); renderAssetGrid(); }
+    if (tab === "docs") { renderDeals(); }
     if (tab === "tasks") { fillTaskSelects(); renderTasks(); }
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
@@ -10087,164 +9612,119 @@ button.link-arrow {
   });
 
   $("crmSaveFileBtn").addEventListener("click", exportCrmFile);
+  $("crmPublishBtn").addEventListener("click", function () {
+    publishRecords("crm", "Investor CRM", Crm.toFile, "crmPublishBtn");
+  });
 
   /* ============================================================
      EVENTS
      ============================================================ */
   document.addEventListener("click", function (e) {
-    if (e.target.closest("[data-pdf-close]")) { closePdfPreview(); return; }
 
-    // A card is either a category (pipeline) or a property (asset
-    // management); the property carries its own folder name. The home
-    // tiles wear the same class and switch tabs instead, so a card only
-    // opens a category when it names one.
-    var card = e.target.closest(".dash-card[data-cat]");
-    if (card) {
-      var prop = card.getAttribute("data-asset");
-      openCategory(card.getAttribute("data-cat"), prop ? [prop] : []);
-      return;
-    }
+    /* ---- Deal Pipeline ------------------------------------------
+       All of this used to be folder navigation: cards into areas,
+       breadcrumbs, a file table, a PDF preview. A deal is a record
+       now, so the tab behaves like the two CRMs beside it. */
 
-    var home = e.target.closest("[data-action='home'], [data-action='assets-home']");
-    if (home) { goHome(); return; }
+    var dealRow = e.target.closest("tr[data-deal]");
+    if (dealRow) { openDeal(dealRow.getAttribute("data-deal")); return; }
 
-    if (e.target.closest("[data-action='debt-report']")) { openDebtReport(); return; }
+    var dealOpen = e.target.closest("[data-deal-open]");
+    if (dealOpen) { openDeal(dealOpen.getAttribute("data-deal-open")); return; }
 
-    // An asset name in the debt report opens the folder it was joined to —
-    // the join is only worth making if it is walkable in both directions.
-    var debtLink = e.target.closest("[data-debt-property]");
-    if (debtLink) {
-      openCategory("asset-management", [debtLink.getAttribute("data-debt-property")]);
-      return;
-    }
+    if (e.target.closest("[data-action='deal-home']")) { dealHome(); return; }
 
-    var crumb = e.target.closest("[data-crumb]");
-    if (crumb) {
-      var idx = parseInt(crumb.getAttribute("data-crumb"), 10);
-      openCategory(state.categoryId, idx < 0 ? [] : state.path.slice(0, idx + 1));
-      return;
-    }
-
-    var sortBtn = e.target.closest("[data-sort]");
-    if (sortBtn) {
-      var key = sortBtn.getAttribute("data-sort");
-      if (state.sortKey === key) {
-        state.sortDir = state.sortDir === "asc" ? "desc" : "asc";
+    var dealSort = e.target.closest("[data-dealsort]");
+    if (dealSort) {
+      var dk = dealSort.getAttribute("data-dealsort");
+      if (dealState.sortKey === dk) {
+        dealState.sortDir = dealState.sortDir === "asc" ? "desc" : "asc";
       } else {
-        state.sortKey = key;
-        state.sortDir = key === "modified" || key === "size" ? "desc" : "asc";
+        dealState.sortKey = dk;
+        dealState.sortDir = "asc";
       }
-      if (state.view === "detail") openCategory(state.categoryId, state.path);
-      else if (state.view === "results") runSearch(wsEl("search").value);
+      renderDeals();
       return;
     }
+
+    var dealEdit = e.target.closest("[data-deal-edit]");
+    if (dealEdit) {
+      var editing = Deals.get(dealEdit.getAttribute("data-deal-edit"));
+      if (editing) $("dealDetailBody").innerHTML = dealEditForm(editing);
+      return;
+    }
+
+    var dealSave = e.target.closest("[data-deal-save]");
+    if (dealSave) { saveDealEdit(dealSave.getAttribute("data-deal-save")); return; }
+
+    var dealCancel = e.target.closest("[data-deal-cancel]");
+    if (dealCancel) { openDeal(dealCancel.getAttribute("data-deal-cancel")); return; }
+
+    var dealTask = e.target.closest("[data-deal-task]");
+    if (dealTask) { addTaskFor(dealTask.getAttribute("data-deal-task")); return; }
 
     var removeDeal = e.target.closest("[data-deal-remove]");
     if (removeDeal) { removeDealRow(removeDeal); return; }
 
     var hideDeal = e.target.closest("[data-deal-hide]");
     if (hideDeal) { hideDealRow(hideDeal); return; }
-
-    // A row with no folder behind it opens nothing. Said out loud rather
-    // than left as a click that quietly does not work.
-    var pending = e.target.closest("[data-pending-deal]");
-    if (pending) {
-      toast("“" + pending.getAttribute("data-pending-deal") + "” was added here and has no " +
-            "OneDrive folder yet, so there is nothing to open.");
-      return;
-    }
-
-    var item = e.target.closest(".fileitem");
-    if (item) {
-      var isFolder = item.getAttribute("data-kind") === "folder";
-      var name = item.getAttribute("data-item");
-      if (isFolder) {
-        var cid = item.getAttribute("data-cat") || state.categoryId;
-        openCategory(cid, (cid === state.categoryId ? state.path : []).concat([name]));
-      } else if (item.getAttribute("data-preview-url")) {
-        openPdfPreview(name, item.getAttribute("data-preview-url"), item.getAttribute("data-url"));
-      } else if (item.getAttribute("data-url")) {
-        window.open(item.getAttribute("data-url"), "_blank", "noopener");
-      } else {
-        toast("“" + name + "” is sample content — no document source is connected yet.");
-      }
-      return;
-    }
   });
 
-  document.addEventListener("keydown", function (e) {
-    if (e.key === "Escape" && !$("pdfPreview").hidden) closePdfPreview();
-  });
+  /* ---- Deal Pipeline toolbar ---------------------------------- */
 
-  var searchTimer = null;
-  $("searchInput").addEventListener("input", function (e) {
+  var dealSearchTimer = null;
+  $("dealSearch").addEventListener("input", function (e) {
     var q = e.target.value;
-    clearTimeout(searchTimer);
-    searchTimer = setTimeout(function () {
-      if (q.trim().length >= 2) runSearch(q);
-      else if (state.view === "results") showView("browse");
-    }, 300);
+    clearTimeout(dealSearchTimer);
+    dealSearchTimer = setTimeout(function () {
+      dealState.query = q;
+      renderDeals();
+    }, 200);
   });
 
-  $("searchInput").addEventListener("keydown", function (e) {
-    if (e.key === "Escape") { e.target.value = ""; goHome(); }
+  $("dealSearch").addEventListener("keydown", function (e) {
+    if (e.key === "Escape") {
+      e.target.value = "";
+      dealState.query = "";
+      renderDeals();
+    }
   });
 
-  $("refreshBtn").addEventListener("click", function () { load(); });
+  ["dealFilterArea", "dealFilterStatus", "dealFilterOperator"].forEach(function (id) {
+    $(id).addEventListener("change", function () {
+      dealState.filters.area     = $("dealFilterArea").value;
+      dealState.filters.status   = $("dealFilterStatus").value;
+      dealState.filters.operator = $("dealFilterOperator").value;
+      renderDeals();
+    });
+  });
+
+  $("dealClearFilters").addEventListener("click", function () {
+    dealState.filters = { area: "", status: "", operator: "" };
+    dealState.query = "";
+    $("dealSearch").value = "";
+    renderDeals();
+  });
 
   $("dealAddBtn").addEventListener("click", openDealAdd);
 
-  var assetSearchTimer = null;
-  $("assetSearchInput").addEventListener("input", function (e) {
-    var q = e.target.value;
-    clearTimeout(assetSearchTimer);
-    assetSearchTimer = setTimeout(function () {
-      if (q.trim().length >= 2) runSearch(q);
-      else if (state.view === "results") showView("browse");
-    }, 300);
-  });
+  // Hidden when no deal carries debt, rather than opening an empty report.
+  $("dealDebtBtn").addEventListener("click", openDealDebtReport);
 
-  $("assetSearchInput").addEventListener("keydown", function (e) {
-    if (e.key === "Escape") { e.target.value = ""; goHome(); }
-  });
-
-  $("assetRefreshBtn").addEventListener("click", function () { load(); });
-
-  // Scoped to the area on the toolbar, to the open property below it.
-  $("assetReportBtn").addEventListener("click", function () { openReport("asset-management"); });
-  $("assetCatReportBtn").addEventListener("click", function () { openReport(state.categoryId); });
-
-  // The debt roll-up answers "what do we owe across everything we own", which is
-  // an Asset Management question, so it sits on that toolbar. The button stays
-  // hidden when the snapshot carried no workbook rather than opening an empty
-  // report — the published page has no source at all.
-  $("assetDebtBtn").addEventListener("click", openDebtReport);
-
-  $("assetExportPdfBtn").addEventListener("click", function () { window.print(); });
-
-  $("assetExportXlsxBtn").addEventListener("click", function () {
-    if (!state.report) return;
-    try {
-      exportXlsx(state.report);
-    } catch (err) {
-      toast("Could not build the workbook: " + err.message);
-    }
-  });
-
-  // Portfolio-wide report from the toolbar; category-scoped from the detail view.
-  $("reportBtn").addEventListener("click", function () { openReport(null); });
-  $("catReportBtn").addEventListener("click", function () { openReport(state.categoryId); });
+  $("dealExportBtn").addEventListener("click", exportDealsXlsx);
+  $("dealReportXlsxBtn").addEventListener("click", exportDealsXlsx);
 
   // The print stylesheet is the PDF: it hides everything but the report.
-  $("exportPdfBtn").addEventListener("click", function () { window.print(); });
+  $("dealReportPdfBtn").addEventListener("click", function () { window.print(); });
 
-  $("exportXlsxBtn").addEventListener("click", function () {
-    if (!state.report) return;
-    try {
-      exportXlsx(state.report);
-    } catch (err) {
-      toast("Could not build the workbook: " + err.message);
-    }
+  $("dealSaveFileBtn").addEventListener("click", function () {
+    var blob = new Blob([JSON.stringify(Deals.toFile(), null, 2)], { type: "application/json" });
+    download(blob, "deals-data.json");
+    toast("Downloaded — a backup of the pipeline as it stands. “Publish to team” is what makes it everyone's.");
+  });
+
+  $("dealPublishBtn").addEventListener("click", function () {
+    publishRecords("deals", "Deal pipeline", Deals.toFile, "dealPublishBtn");
   });
 
   $("signOutBtn").addEventListener("click", function () {
@@ -10268,8 +9748,32 @@ button.link-arrow {
      credential table below sits in public page source and the
      comparison runs in the browser, so anyone who opens dev tools
      is past it — not by cracking anything, just by skipping the
-     check. It stops casual visitors and nothing more, and it is
-     only acceptable while this page ships no records of its own.
+     check. It stops casual visitors and nothing more.
+
+     THE CONDITION THIS USED TO REST ON IS GONE, and moving the data
+     to Vercel did not bring it back. It said the gate was "only
+     acceptable while this page ships no records of its own", which
+     was true while the data files were gitignored and undeployed.
+     The files are gitignored again — but the records are now LIVE,
+     served to this page by /api/records and /api/documents, which
+     answer anyone who asks. No document is stored, and that decision
+     is recorded in README.txt. Deal names, sponsor names, investor
+     firms and conversation notes are all behind this form, and it can
+     be stepped over from dev tools.
+
+     Where the data lives changed twice. Who can read it has not
+     changed once.
+
+     That is a deliberate decision, not an oversight: the endpoint was
+     asked for as readable by anyone with the URL, and it is. But it
+     means the gate is no longer protecting anything, because there is
+     nothing left for it to protect — /api/onedrive answers the browser
+     directly, with no reference to whether this form was passed. Anyone
+     who fetches the endpoint gets the whole tree, gate or no gate.
+
+     So keep it for what it still does — identity, below — and do not
+     read it as a control on the documents. If the documents should stop
+     being public, the fix is in api/onedrive.js, not here.
 
      What the sign-in is actually FOR here is identity: the page has
      never known who is looking at it, so "Mine" on the task list and
@@ -10287,9 +9791,12 @@ button.link-arrow {
      and in particular must not be the real Microsoft 365 password
      for these accounts.
 
-     Before any live document is wired up, replace all of this with
-     the Microsoft 365 sign-in (real, identity-based) or Vercel edge
-     Basic Auth with the secret in an environment variable — see
+     If this page should become private again, the two ways that
+     actually work are Vercel edge Basic Auth or Vercel Authentication
+     with the secret in an environment variable, in FRONT of both the
+     page and /api/onedrive — the endpoint is the thing that has to be
+     covered. A sign-in inside this file cannot do it, whatever it is
+     built out of, because it runs in the reader's own browser. See
      README.txt.
      ============================================================ */
   var GATE_ITERATIONS = 310000;
@@ -10489,7 +9996,7 @@ button.link-arrow {
     }
 
     function deals() {
-      var statuses = Crm.dealStatuses();
+      var statuses = Deals.dealStatuses();
       return dealNames().map(function (name) {
         return { name: name, status: (statuses[name] || {}).status || "Live" };
       });
@@ -10611,7 +10118,7 @@ button.link-arrow {
 
         case "deal.status":
           return { what: a.deal + " · deal status",
-                   from: (Crm.dealStatus(a.deal) || {}).status || "Live", to: a.value,
+                   from: (Deals.dealStatus(a.deal) || {}).status || "Live", to: a.value,
                    warn: "Recorded here only. The OneDrive folder is not touched." };
 
         case "task.set":
@@ -10683,7 +10190,7 @@ button.link-arrow {
           entry = entryOf(a.investorId, a.entryId) || {};
           return text(entry[a.field]) !== text(a.value);
         case "deal.status":
-          return ((Crm.dealStatus(a.deal) || {}).status || "Live") !== a.value;
+          return ((Deals.dealStatus(a.deal) || {}).status || "Live") !== a.value;
         case "task.set":
           task = Tasks.get(a.taskId) || {};
           return String(task[a.field] || "") !== String(a.value == null ? "" : a.value);
@@ -10761,7 +10268,7 @@ button.link-arrow {
             break;
 
           case "deal.status":
-            Crm.setDealStatus(a.deal, a.value, a.why || "");
+            Deals.setDealStatus(a.deal, a.value, a.why || "");
             touched.crm = true; touched.docs = true;
             break;
 
@@ -11342,8 +10849,14 @@ button.link-arrow {
         return Promise.resolve(taskAnswer(text));
       }
 
-      if (/\b(file|files|document|documents|folder|folders|memo|memorandum|model|models|term sheet|sheets?|deck|presentation|report|letters?|statements?|financials|agreement|schedule|chart|invoice|pdf|xlsx|docx|pptx|where is|where are)\b/.test(t)) {
-        return docsAnswer(text);
+      /* Document questions used to be answered from the folder mirror.
+         There is no mirror now, so rather than fail to find anything and
+         look broken, say what changed — the reader asking "where is the
+         Arden term sheet" deserves better than an empty list. */
+      if (/\b(file|files|document|documents|folder|folders|memo|memorandum|model|models|term sheet|deck|presentation|letters?|statements?|pdf|xlsx|docx|pptx|where is|where are)\b/.test(t)) {
+        return Promise.resolve({ reply:
+          "This dashboard no longer carries documents — it tracks deals, operators, " +
+          "investors and tasks. Files live in OneDrive and are not mirrored here." });
       }
 
       var invHit = Reader.matchInvestor(text);
@@ -11363,7 +10876,7 @@ button.link-arrow {
       var deals = Reader.matchDeals(text);
       if (deals.length) {
         var name = deals[0];
-        var status = Crm.dealStatus(name);
+        var status = Deals.dealStatus(name);
         var keen = Crm.all().filter(function (i) { return i.deals.indexOf(name) !== -1; });
         return Promise.resolve({ reply: name + " — " + (status ? status.status : "Live") + ". " +
           (keen.length ? keen.length + " investor" + (keen.length === 1 ? "" : "s") + " on it: " +
@@ -11378,7 +10891,7 @@ button.link-arrow {
           Crm.all().length + " investor" + (Crm.all().length === 1 ? "" : "s") + " on the list, " +
           convs + " conversation" + (convs === 1 ? "" : "s") + " logged, " +
           open + " open task" + (open === 1 ? "" : "s") + ", " +
-          dealNames().length + " deal folders." });
+          Deals.all().length + " deal" + (Deals.all().length === 1 ? "" : "s") + "." });
       }
 
       return null;
@@ -11973,7 +11486,7 @@ button.link-arrow {
       taskState.editing = null;      // and the same for a task open in its row
       fillTaskSelects();
       renderTasks();
-      if (touched.docs) renderGrid();
+      if (touched.docs) renderDeals();
 
       push({ who: "note", text: chosen.length + " change" + (chosen.length === 1 ? "" : "s") + " saved." +
         (Crm.hasLocalEdits() || Tasks.hasLocalEdits()
@@ -12094,25 +11607,31 @@ button.link-arrow {
   /* ============================================================
      BOOT
      ============================================================ */
+  /* The bar above the hero. It used to say which of three document
+     sources had answered. There are no documents now, so it says the
+     thing that actually matters to somebody about to type into this
+     page: are these records the team's, or only this browser's? */
   function describeSource() {
-    var m = Provider.meta();
+    var m = Deals.meta();
     var el = $("sampleNotice");
     var text = el.querySelector(".dash-notice__text");
+    var shared = SharedOverlay.state() === "shared";
 
-    if (m.source === "local-snapshot" && !m.anonymised) {
+    if (m.source === "shared") {
       el.setAttribute("data-variant", "live");
-      text.innerHTML = "<strong>Local snapshot — real file names.</strong> Loaded from " +
-        "dashboard-data.json, which is gitignored and never deployed. The published page " +
-        "shows placeholder content instead.";
-    } else if (m.source === "local-snapshot") {
-      el.removeAttribute("data-variant");
-      text.innerHTML = "<strong>Local snapshot — anonymised.</strong> Real folder structure " +
-        "with deal names replaced by pseudonyms.";
+      text.innerHTML = "<strong>Live records — the team's copy.</strong> Deals, operators, " +
+        "investors and tasks come from the shared store, and edits save back to it. " +
+        "This page is public: anyone with the URL sees these names.";
+    } else if (m.source === "local") {
+      el.setAttribute("data-variant", "live");
+      text.innerHTML = "<strong>Local records — real names.</strong> Loaded from the JSON " +
+        "files in this site folder, not from the shared store" +
+        (shared ? "" : ", which is not reachable") + ". Run tools/publish.py to seed the " +
+        "store, or use “Publish to team” once it answers.";
     } else {
       el.removeAttribute("data-variant");
-      text.innerHTML = "<strong>No document source connected.</strong> This page carries no " +
-        "documents of its own — the folder mirror lives in dashboard-data.json, which is " +
-        "gitignored and never deployed. Nothing below is invented; there is simply nothing to show.";
+      text.innerHTML = "<strong>No records loaded.</strong> Neither the shared store nor the " +
+        "local JSON files answered. Nothing below is invented; there is simply nothing to show.";
     }
     el.hidden = false;
   }
@@ -12123,13 +11642,11 @@ button.link-arrow {
      machine. With none of them it says so rather than naming somebody who
      is not there. When the Microsoft 365 sign-in lands, getUser() carries
      the name and everything below it stops being reached. */
-  var providerUser = { name: "", email: "", role: "" };
 
   function renderIdentity() {
     var signedIn = signedInUser();
-    var name = providerUser.name || (signedIn && signedIn.name) ||
-               Tasks.personName(Tasks.whoAmI()) || "";
-    var sub = providerUser.email || (signedIn && signedIn.username) || providerUser.role || "";
+    var name = (signedIn && signedIn.name) || Tasks.personName(Tasks.whoAmI()) || "";
+    var sub = (signedIn && signedIn.username) || "";
     $("userName").textContent = name || "Not signed in";
     $("userRole").textContent = sub;
     $("userAvatar").textContent = name
@@ -12138,24 +11655,10 @@ button.link-arrow {
   }
 
   function load() {
-    Provider.getUser().then(function (user) {
-      providerUser = user;
-      renderIdentity();
-    });
+    renderIdentity();
 
     renderHome();   // the tab the dashboard opens on
-    renderGrid();   // paint the cards immediately, counts fill in after
-    renderAssetGrid();
-    renderAssetSummary();
-    $("tabAssetCount").textContent = assetProperties().length
-      ? "(" + assetProperties().length + ")" : "";
-
-    Provider.getCategories().then(function (summaries) {
-      state.summaries = summaries;
-      renderSummary();
-      renderGrid();
-      renderHome();   // the pipeline tile counts documents, which land here
-    });
+    renderDeals();
 
     renderCrmFilters();
     renderCrm();
@@ -12176,7 +11679,7 @@ button.link-arrow {
      session. There is deliberately no query-string bypass — that
      would make the gate pointless.
      ============================================================ */
-  Promise.all([Provider.load(), Crm.load(), Operators.load(), Tasks.load()]).then(function () {
+  Promise.all([Deals.load(), Crm.load(), Operators.load(), Tasks.load()]).then(function () {
     describeSource();
     var unlocked = false;
     try { unlocked = sessionStorage.getItem(GATE_KEY) === "1"; } catch (e) { /* private mode */ }

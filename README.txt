@@ -49,38 +49,194 @@ Company Dashboard (dashboard.html) — internal, added 2026-08-17:
   footer nav; reached by direct URL or bookmark. Carries <meta name="robots" content=
   "noindex, nofollow">, and robots.txt disallows it. Neither is access control — they only
   keep it out of search results.
-- NO DOCUMENT SOURCE IS CONNECTED YET. The page is a working shell: everything it displays
-  comes from SampleProvider, a block of made-up placeholder content near the bottom of the
-  file. A tan "Sample data" bar sits above the hero saying so. Nothing real is exposed.
-- Two states. It opens on a gate ("Sign in with Microsoft", currently disabled) and switches
-  to the dashboard via the "Preview with sample data" button. dashboard.html?preview=1 skips
-  straight to the dashboard, which is the quickest way to review layout.
-- What it does: eight category cards with document counts and last-updated stamps; click one
-  to browse its folders with a breadcrumb; a sortable file table (Name / Type / Modified /
-  Modified by / Size, folders always first); and search across every category at once.
-- Adding or renaming a category is one object in DASHBOARD_CONFIG.categories at the top of
-  the <script>. Nothing else needs editing. Icons come from the ICONS map just below it.
+- IT IS NOT A DOCUMENT DASHBOARD ANY MORE — see "No documents at all" below, which supersedes
+  every arrangement above it. There is no folder mirror, no document index, and nothing is read
+  from OneDrive, Graph, Dropbox, Drive or object storage. Four record sets: deals, operators,
+  investors, tasks.
+- Two states. It opens on a gate and switches to the dashboard once signed in.
+- What it does: a deal pipeline with the operator behind each deal, where it stands and the
+  debt on the ones the firm owns; two CRMs; a task list; and an agent across all of them.
 
-Connecting the real documents later:
-- Everything the page displays goes through one interface — the DataProvider seam, documented
-  in a comment block in the script. Four methods: getUser, getCategories, listFolder, search.
-- Connecting OneDrive means writing a GraphProvider with those same four methods and changing
-  the single line "var Provider = SampleProvider;". No rendering code changes.
-- That work needs a Microsoft Entra ID (Azure AD) app registration from whoever administers
-  the Microsoft 365 tenant: single-tenant, platform type "Single-page application", redirect
-  URIs for modillionpartners.com/dashboard.html (plus www and localhost:8000 for dev),
-  delegated read-only Graph permissions (User.Read, Files.Read.All, Sites.Read.All), admin
-  consent granted, and "Assignment required = Yes" on the enterprise app with a staff security
-  group assigned — that last setting is what actually controls who gets in.
-- They return an Application (client) ID and a Directory (tenant) ID. Both are public
-  identifiers that appear in the page source of every Microsoft single-page app, so they are
-  safe in this repository. NO CLIENT SECRET — a public SPA must not have one, and no secret,
-  key, or password should ever be committed here.
-- Note on how the gating works once connected: the HTML shell stays publicly served, but it
-  holds no data. Document names and links only ever arrive from Microsoft with a valid token
-  belonging to a Modillion account. That is what makes it real access control, and it is why
-  the interim sign-in below is not.
+No documents at all — 2026-08-20, and it SUPERSEDES every document section in this file:
+- THE DECISION: the dashboard tracks DEALS, OPERATORS, INVESTORS AND TASKS. It does not carry
+  documents, does not index them, and does not read any folder. The Asset Management tab is
+  gone and the Deal Pipeline is a list of deal records, like the two CRMs beside it.
+- WHY, and it is about adoption rather than engineering. A tool that needs a synced OneDrive
+  folder, a snapshot script and a published index is a tool ONE PERSON MAINTAINS. Four people
+  can open a tool backed only by records. The document side can come back later if it earns
+  its keep; nothing in this design prevents it.
+- The two days before this went into serving the documents — Microsoft Graph against a
+  consumer account, then Dropbox, then Google Drive, then object storage — and every route hit
+  the same wall from a different side: an OAuth flow with no tenant behind it, or a 2.47 GB
+  copy that outgrew the free tier holding it. The last arrangement published a 244 KB index of
+  997 file NAMES and stored no file contents. This removes that too.
+- WHAT WAS ACTUALLY LOST, said plainly, because it worked: folder browsing, the sortable file
+  tables, search across document names, the eight "By document type" cards, the PDF preview
+  modal, and the Excel exports that walked the tree. About 1,700 lines of dashboard.html.
+- WHAT WAS KEPT. tools/extract-deals.py read the index before it was deleted and produced
+  deals-data.json: 22 deals (19 active, 3 closed), 17 of them matched to an operator by the
+  folder naming convention, and the three debt rows joined onto the closed deals they belong
+  to. The debt roll-up — lenders, balances, rates, maturities — survives as FIELDS ON A DEAL
+  RECORD that people type into. That script has done its job and can go whenever; it is kept
+  because it documents where the records came from.
+- THE ONE FILE WHOSE CONTENTS WERE EVER OPENED was the debt workbook, and it is not opened any
+  more. openpyxl, exceljs and @vercel/blob all left with it.
+- The debt values are STRINGS, printed exactly as written — "$16,650,000", "Oct 15, 2029". No
+  arithmetic is done on any of them and a blank stays blank. A loan shown against the wrong
+  building is a number somebody acts on, so nothing here infers anything.
 
+Deals are a record set now (?set=deals) — 2026-08-20:
+- They used to live in the INVESTOR CRM's overlay as `dealsAdded`: a deal existed because a
+  OneDrive folder existed, and a deal without one was the exception, shown marked "No folder
+  yet". With no folders left, that exception is the only case, so deals became the fourth set
+  alongside crm, operators and tasks. Adding a set to /api/records is one whitelist entry.
+- The eleven deal methods that hung off Crm — dealStatus, setDealStatus, addedDealRecords,
+  addDeal, hideDeal and the rest — moved to Deals, and the twenty-three call sites across both
+  CRMs, the task list and the agent were repointed. THE OLD NAMES SURVIVE ON PURPOSE, in a
+  compatibility block at the bottom of the Deals module: everything outside this tab refers to
+  a deal BY NAME because that is what it referenced when a deal was a folder, and Deals.byName()
+  is the join all of it depends on. Rename a deal and those references stop finding it — which
+  is exactly as true as it was before.
+- Deals.status() returns null for a deal that is simply Live with nothing recorded against it.
+  "Live" with no reason and no date is the ABSENCE of a status, not a status, and the callers
+  render a pill only when something has actually been said. That is how dealStatus read when it
+  was a map with no entry for most deals; keeping it that way kept nine call sites honest.
+
+Everything lives in Vercel now — 2026-08-20, and it SUPERSEDES "The shared edit layer
+(/api/overlay)" which stood here for one day:
+- WHAT WAS WRONG WITH THE ARRANGEMENT IT REPLACES. Base records were committed to git; edits
+  lived in a shared overlay. Making an edit permanent therefore meant: download crm-data.json,
+  drop it in the site folder, commit, push, wait for a deploy. Every person, every time. And it
+  only worked at all because the repository had been made private, since those files carry real
+  investor and sponsor names — which left a standing hazard, that making it public again without
+  purging history publishes every one of them.
+- Both problems have the same fix: take the data out of git. The loop disappears, because a
+  button can write to a store and cannot write to a git repository. The hazard disappears rather
+  than being managed, because the names never enter history in the first place. THE REPOSITORY
+  IS PUBLIC AGAIN AND HOLDS ONLY CODE.
+
+One store — UPSTASH REDIS, read and written by /api/records. About 35 KB across all four sets,
+edited by hand, written by several people at once. There was briefly a second store, Vercel
+Blob, holding the document index; it went with the documents on 2026-08-20 and
+BLOB_READ_WRITE_TOKEN is no longer read by anything — the Blob store can be deleted in Vercel.
+Redis was chosen over Blob for two specific reasons, and both were REAL DEFECTS in the version
+it replaced, not preferences:
+    1. A Vercel Blob object has a public URL that never changes. Nothing hands it to the browser,
+       but it would keep answering from OUTSIDE any sign-in wall added later — a gate that looks
+       like it protects records while the store sits open beside it.
+    2. Read-modify-write over a blob loses concurrent writes. Edits are now RPUSHed onto a Redis
+       list, which is atomic, so simultaneous writers cannot clobber each other AT ALL. That is
+       not a narrowed race. There is none.
+
+Base and overlay are still separate, and that is deliberate:
+- It would look tidier to fold every edit into the base and serve one document. It would also
+  mean re-implementing, on the server, the several hundred lines in dashboard.html that know how
+  a patch applies to an investor, how a conversation is appended, how a tombstone hides a deal.
+  So the split stays and THE SERVER STAYS IGNORANT: it stores two documents and unions the
+  deltas; the page merges base + overlay exactly as it always has. Nothing that understands a
+  record had to move, which is why this change was small enough to trust.
+- PUBLISH is the seam where they meet, and it is the dumbest possible operation. The page
+  already computes the fully merged document — that is what "Download" hands you, from toFile()
+  — so publish stores that as the new base and drops the deltas it accounted for. The server
+  still never has to understand a record.
+- The order is the cautious way round: base first, overlay cleared second. A failure between the
+  two leaves edits applied twice, which the union merge makes a no-op. The other order loses them.
+- "Publish to team" sits next to "Download" on all three record tabs. Download is now a BACKUP,
+  not a step anybody has to take.
+
+Why concurrent editing needs no locking, which is luck rather than design:
+- The overlays already recorded DELETIONS AS TOMBSTONES rather than as absent keys — removed[id],
+  convRemoved, dealsHidden, an alias marked { forgotten: true } — so that re-loading a newer
+  crm-data.json would not resurrect what people had withdrawn. That makes every edit, including
+  every delete, an ADDITION. Merging is therefore a union, a union needs no lock and no conflict
+  UI, and last-write-wins applies per FIELD rather than per file.
+- ITS COST: an overlay only ever grows. A key removed locally comes back on the next merge,
+  because "absent" is not a statement this format can make. Right for withdrawing a record,
+  wrong for undoing one, which is why there is no undo. Read that before adding one.
+- Overlay lists are compacted at 40 entries, by a Lua script that trims exactly the entries that
+  went into the fold and pushes the fold in their place, atomically. It has to be exactly that:
+  a DEL-then-RPUSH lets a reader see an empty overlay — every edit apparently withdrawn at once
+  — and a blind trim silently discards whatever was saved while the fold was being computed.
+
+Server environment (Vercel project settings, not files):
+    KV_REST_API_URL           from the Upstash integration
+    KV_REST_API_TOKEN         from the Upstash integration          <- credential
+    DASHBOARD_WRITE_KEY       optional, and see below                <- shared secret
+    DASHBOARD_ALLOWED_ORIGIN  optional, same meaning as in notify.js
+- UPSTASH_REDIS_REST_URL / _TOKEN are accepted as alternatives, because which pair you get
+  depends on whether the store was created through Vercel's integration or directly at Upstash,
+  and that is not worth a support conversation later.
+- With no store configured /api/records returns 503 and the dashboard falls back to the local
+  JSON files and its own localStorage overlay — behaving exactly as it did before any of this
+  existed. That is the NORMAL unconfigured state, not a failure, which is why the page falls
+  through it quietly and tells the reader nothing.
+
+Setting it up, in order:
+  1. Vercel dashboard -> Storage -> Upstash Redis (Marketplace) -> connect to this project.
+     KV_REST_API_URL and KV_REST_API_TOKEN are injected; nothing to copy.
+  2. Optionally set DASHBOARD_WRITE_KEY, then have each person run modillionWriteKey("...") once
+     in their browser console.
+  3. Redeploy, then seed the store from this folder:
+         export DASHBOARD_WRITE_KEY=...        # only if you set one
+         python3 tools/publish.py --dry-run    # says what it would send, sends nothing
+         python3 tools/publish.py
+- tools/publish.py TALKS TO THE SITE, NOT TO THE STORE. This machine holds only the write key;
+  the one place that speaks to Redis is the server, where the credentials already live.
+- PUBLISHING REPLACES THE BASE AND CLEARS THE SHARED EDITS, because the file being sent already
+  contains them. Send a STALE export and you roll the team back to it. Prefer the dashboard's
+  "Publish to team" button — it sends what is on screen and cannot be out of date. publish.py is
+  for the initial seed.
+
+DASHBOARD_WRITE_KEY IS A LOCK, NOT AUTHENTICATION:
+- One shared string, typed into each browser once and kept in localStorage, so it is NOT baked
+  into the published page and does not appear in view-source. It is still readable from the dev
+  tools of any browser holding it, and it says nothing about WHO is writing.
+- What it buys: a URL turning up in a log does not let a stranger rewrite the firm's investor
+  records anonymously. That is worth ten lines and it is all it is worth.
+- READS ARE NOT GATED AT ALL. Anyone with the URL gets the records, conversation notes included.
+  Same posture as the rest of the dashboard — a decision, deferred deliberately, not an oversight
+  — and the first thing to fix if this ever needs to be private. Moving to Redis makes that
+  easier later, because the store itself is no longer reachable from outside the functions.
+
+Verified 2026-08-20, with no deployment and no store:
+- /api/records driven through 45 cases with REDIS FAKED BEHIND A STUBBED fetch — so the actual
+  command strings this code sends (RPUSH, LRANGE, EVAL, SET, DEL) are what got exercised, not a
+  mock of the functions that build them.
+- Covered: two writers editing one investor and both surviving, and the same for one deal;
+  45 patches folded by compaction with none lost; publish replacing the base and clearing the
+  overlay; the four sets staying apart; the write lock; the origin check; and every 503.
+- The server and browser copies of the union merge were run against the same 12 inputs and agree
+  on all of them. They are duplicated deliberately — if they drift, the two disagree about what
+  was deleted. Keep testing them against each other.
+- In a browser against a local server: five tabs with Asset Management gone, 22 deals listed
+  with no document index present anywhere, the four local files loaded after /api/records 503s,
+  no JS exceptions, and the deal pickers on both CRMs and the task list carrying 22 / 19 / 44
+  entries with no duplicates.
+- THE WRITE PATH WAS FINALLY WATCHED END TO END, which had never happened before: opening The
+  Arden, editing its note and status, saving, and finding the patch in localStorage under
+  modillion-deals-overlay with the right statusSetAt — plus the toast correctly reporting that
+  the shared store was unreachable. The debt report rendered all three properties, and the
+  operator deal-tag opened its deal on the pipeline.
+- TWO REAL BUGS CAME OUT OF THAT, neither of which the parse check could see. A stale
+  $("wsAssets") left in switchTab() threw on every tab change, which is why a deal tag switched
+  tabs without opening anything. And dealNames() feeding both halves of a concat listed every
+  deal twice in the CRM picker. Parsing clean is not the same as working.
+- WHAT IS STILL NOT COVERED: Upstash itself, because there is no Node on this machine and no
+  store to point at. It is exercised for the first time on the deployed site.
+
+Connecting OneDrive — BUILT, NEVER DEPLOYED, DELETED 2026-08-20:
+- api/onedrive.js walked a OneDrive folder through Microsoft Graph and returned the same
+  JSON the snapshot script wrote; tools/onedrive-authorize.py minted the refresh token it
+  needed. Both were checked against the Python tool field by field and agreed on all 958
+  files. Neither was ever deployed, and neither held a credential.
+- The blockers are worth remembering, because they are what any future document feature
+  runs into: a PERSONAL Microsoft account has no tenant, so there is no app-only access and
+  no client-credentials flow — only a delegated token, refreshed from one that dies after
+  90 days idle, behind a client secret that expires on its own timer. Dropbox and Google
+  Drive have the same shape of problem with easier paperwork; object storage has none of it
+  but wants a 2.47 GB copy that outgrows every free tier.
+- Deleted rather than kept dormant, because a 750-line file nothing calls is a file somebody
+  eventually believes. It is in git history if it is ever wanted.
 
 The interim sign-in (dashboard.html) — username and password, added 2026-08-18:
 - Four accounts, one per person on the team, with a SHARED password. Usernames are the
@@ -117,10 +273,16 @@ The interim sign-in (dashboard.html) — username and password, added 2026-08-18
   box cannot be used to work out who has an account, and the error never says which of the two
   fields was wrong.
 - Sign out clears the session and the signed-in name, and empties both fields.
-- WHEN THE MICROSOFT 365 SIGN-IN LANDS, DELETE ALL OF THIS. GATE_USERS, the gate form and the
-  session keys go; getUser() on the DataProvider seam starts carrying the real account and the
-  chip uses it as-is. Do not keep this as a fallback — a second way in that is weaker than the
-  first is just the weaker one.
+- THAT SIGN-IN IS NOT COMING, and this section has to be read differently now. The OneDrive
+  connection built on 2026-08-19 does not sign the READER in to anything: the server holds one
+  delegated token for the account owner and answers everybody with it. So getUser() still has
+  no real account to carry, and the gate is still the only thing naming who is looking.
+- Which means: keep it for identity, and stop thinking of it as a door. Real documents are now
+  behind it, and it cannot hold them — /api/onedrive answers the browser directly and never
+  asks whether the form was passed. Anyone who fetches the endpoint has the whole tree.
+- If the dashboard should be private again, put Vercel edge Basic Auth or Vercel Authentication
+  in front of BOTH dashboard.html and /api/onedrive. Covering only the page does nothing; the
+  endpoint is where the documents come from.
 
 Local preview:
 - MSAL redirects will not work from file://, so serve the folder over http:
@@ -128,64 +290,31 @@ Local preview:
   then open http://localhost:8000/dashboard.html
 
 
-The Deal Pipeline tab (dashboard.html) — renamed from "Documents" 2026-08-18:
-- Same tab, same folder mirror, new name: it is the deal folders as they stand in OneDrive, so
-  "Deal Pipeline" says what is on it. The internal id is still "docs" — it is wired through the
-  tab switch, the print rules and the agent's context — so only the label changed.
-- It now carries Active Deals and Closed Deals only. Asset Management moved to its own tab
-  (below).
-- The four summary tiles across the top — Documents indexed, Categories, Most recently updated,
-  Document source — were removed 2026-08-18, from this tab and from Asset Management. They
-  restated what the cards underneath already say, and read as a row of dashes whenever no
-  document source was connected, which is the published state. The "Last synced" line stays on
-  the toolbar.
-
-"Add deal", on the Deal Pipeline toolbar — added 2026-08-18:
-- What it does NOT do first, because it is the whole shape of the thing: it does not create the
-  OneDrive folder. This page mirrors that folder and cannot write to it, and nothing here should
-  be able to reach into it. A deal added with this button is a NAME the firm is working on,
-  held in the same local overlay as every other edit on the page.
-- Where it shows: at the top of Active Deals or Closed Deals, whichever the form was set to,
-  sitting with the folders it will one day join and marked "No folder yet". It carries the
-  operator, a note and the date it was added instead of a modified stamp and a size, and clicking
-  it says there is nothing to open rather than opening an empty folder. The area card says
-  "N awaiting a folder" beside the document count, and a search on the tab finds it — a page
-  that let you add a deal and then answered "no results" for its name would be disagreeing
-  with itself.
-- The fields are name, area, status, operator and a note. Status writes the same CRM-side deal
-  status the Investor CRM sets, so marking it On hold or Dead here strikes it through everywhere
-  it appears. An operator already on the Operator CRM picks the deal up on their record, using
-  the record's own spelling rather than what was typed; a name that is not on that CRM is kept
-  on the deal and no operator record is invented.
-- IT IS THE SAME LIST the CRM's "add as a deal" offer writes to (dealsAdded in crm-data.json),
-  so a deal added on either side is one deal. It joins the deal pickers on both CRMs and the
-  task list straight away. That list used to hold bare names and now holds records — name, area,
-  operator, note, date. Old files holding plain strings still read, as Active Deals with the
-  rest blank.
-- Names are checked three ways before anything is saved: one that is already a OneDrive folder,
-  one already on this list, and one that is an investor on the CRM each get their own message
-  and nothing is written. Matching is case-insensitive.
-- Remove takes two clicks (the button arms itself and says so). This one genuinely removes,
-  where archiving an investor does not: a name with no folder carries no documents and no
-  conversation history, so there is nothing behind it to lose. What the name touched elsewhere
-  — a deal status, an investor's interest, an operator's deal list — is left exactly as it was.
-- When somebody creates the folder for real, the next snapshot brings it in and the pending row
-  drops out on its own: the folder is the better answer to the same name. Nothing has to be
-  tidied up by hand, which is why the form says to name it the way the folder will be named.
-- Saved in the browser like every other edit here. "Download crm-data.json" on the Investor CRM
-  tab writes it back to the file — same sharing limit as the rest of the page.
-- Known limits, deliberate: the reports count documents and folders, so a deal with neither does
-  not appear in them; and the chat agent reads deal FOLDERS, so it does not yet know about a deal
-  added here. Both are small additions if they start to matter.
+The Deal Pipeline tab (dashboard.html) — REBUILT AS RECORDS 2026-08-20:
+- It was a folder browser: area cards, a breadcrumb, a sortable file table and a search
+  across document names. It is now a filtered list of deal records with a detail view,
+  the same shape as the two CRMs beside it. The internal id is still "docs" — it is wired
+  through the tab switch, the print rules and the agent's context — so only what it shows
+  changed.
+- Columns: Deal, Operator, Where, Status, Market, Asset class. Filter by area, status or
+  operator; search across all of it. Sorting puts a BLANK LAST whichever way the column
+  points, because an unfilled field is not a small value, it is an absent one.
+- The detail view carries the debt block when the deal has one, and an Edit form that
+  writes through Deals.patch. "Add deal" is unchanged apart from losing the paragraph
+  explaining that it would not create the OneDrive folder.
+- Deleting a deal ARCHIVES it: the record leaves the list and stays in the file, the same
+  rule both CRMs follow.
 
 Investor CRM (dashboard.html, "Investor CRM" tab) — added 2026-08-17:
 - Tracks investor conversations: who the investor is, what type (family office, institutional,
   endowment, GP-stakes fund, platform), check size, which deals they are interested in, the
   research on them, and a dated log of every conversation.
-- Same data rule as the document snapshot. Real records live in crm-data.json, which is
-  GITIGNORED and never deployed. The committed page falls back to CRM_FALLBACK, three invented
-  firms, so the published dashboard shows the structure and nothing real. A line above the
-  table always says which of the two is loaded.
+- THE DATA RULE CHANGED TWICE IN TWO DAYS; this is where it landed. crm-data.json is GITIGNORED,
+  as it always was, and the live records are in the shared store — see "Everything lives in
+  Vercel now" above. The file here is the seed that store was filled from and the offline path
+  when it is unreachable. The deployed dashboard shows the real records rather than falling back
+  to CRM_FALLBACK, the line above the table says which source answered, and edits are no longer
+  trapped in one browser: they save to the team, and "Publish to team" makes them the new base.
 - The starter list holds nine researched prospects — GP-stakes buyers, multi-family offices,
   two North Carolina endowments and one distribution platform. They are named in crm-data.json
   and deliberately NOT listed here: who the firm is approaching for capital is not something to
@@ -329,162 +458,21 @@ Operator CRM (dashboard.html, "Operator CRM" tab) — added 2026-08-18:
   or who the owner is) but cannot change a record. Operator edits go through the form, where every field is
   in front of you; giving the agent an action vocabulary for a fourth dataset is a separate job.
 
-Asset Management (dashboard.html, "Asset Management" tab) — split out 2026-08-18:
-- Was a category card on the Documents tab; now its own tab, sitting left of the Task List. The
-  pipeline is what the firm is buying, this is what it already owns, and the two get read at
-  different times by different people.
-- IT IS THE SAME MACHINERY, POINTED AT ONE AREA. The views are addressed by role rather than by
-  id (WORKSPACE_VIEWS at the top of the script), so the Deal Pipeline and Asset Management share
-  one detail view, one file table, one sort, one report builder. Adding a third document tab is
-  one more row in that map plus a `ws` on the area.
-- Its front page is the properties themselves, one card each with a document count and a last
-  updated stamp, rather than a single category card you have to click through. Below that it is
-  the same folder browsing, with breadcrumbs that read All properties / <property> / <folder> —
-  the area's own name is not a step in the trail, because the tab IS the area.
-- Each tab searches its own folders. One index underneath, filtered by the area a hit came from:
-  a search for "mill" on the pipeline returns the closed Greenwich deal, the same search here
-  returns the operating property, and neither answers a question nobody asked.
-- "Asset report" is the same report builder scoped to the area, and it knows the difference: it
-  counts PROPERTIES rather than deals, and it drops the coverage matrix, which asks whether a
-  term sheet and an investment memo are on file — the wrong questions for something already
-  owned. Export PDF and Export Excel work as they do on the pipeline.
-- The print stylesheet prints whichever report is open, on either document tab. Both workspaces
-  are forced visible for print and everything that is not the open report is hidden by class, so
-  exactly one report reaches the page.
-- Which tab an area lands on is one property in DASHBOARD_CONFIG.areas: `ws: "assets"`. Nothing
-  else knows the split, including the deal tags on the Operator CRM — a tag opens whichever tab
-  its area belongs to.
-- Superseded 2026-08-19 — the type cards now skip asset management. The note below is what
-  used to be here, kept because it is the reasoning that got acted on:
-    "Known limit, deliberate: the 'By document type' cards on the pipeline still read across
-    EVERY area, asset management included. They are a cross-cutting view of all documents, and
-    the snapshot currently files nothing under asset management, so nothing double-counts
-    today. If the properties fill up and the type cards should stop counting them, the type
-    index needs an area scope — say so and it is a small change."
-  The properties filled up, so the scope went in. Not by skipping the area while indexing —
-  that was the first attempt and it silently emptied the Asset report's own "by document type"
-  table, which has every right to those documents. The index still reads EVERY area; each hit
-  now carries the areaId it came from, and the SCOPE IS APPLIED WHERE DOCUMENTS ARE COUNTED:
-  hitsFor(catId, ws) in the provider, and one `ws` per report in buildReport().
-  Unscoped, the pipeline cards read financials 41 instead of 32, investor updates 23 instead of
-  13 and sponsor materials 43 instead of 35 — the same rent rolls and update letters counted
-  once as deal documents and again as property documents. The asset side is the complement:
-  9, 10 and 8. The two add up, which is the check that the split is clean.
-- The portfolio report had the same fault and it is fixed the same way. An unscoped report used
-  to mean "every area", which was right while each tab was one folder; it would now have listed
-  all three properties a second time as deals. A report belongs to one tab.
+Asset Management — REMOVED 2026-08-20:
+- The tab, the derived area, the property grid and the workbook-backed debt report are all
+  gone. It was a VIEW of the closed deals' folders, so with the folders gone there was
+  nothing left for it to be a view of.
+- The debt roll-up survives as fields on a deal record — lender, balances, rate, maturity,
+  typed in rather than read out of a workbook — with a "Debt report" button on the Deal
+  Pipeline toolbar that tables them across the closed deals. It stays hidden when no deal
+  carries debt, rather than opening an empty report.
+- match_property() from the snapshot tool was ported into tools/extract-deals.py before the
+  deletion, ordering intact, to join the three workbook rows to the deals they belong to.
+  A loan shown against the wrong building is a number somebody acts on, so no match beat a
+  wrong one there and the same rule applies to anything that replaces it.
 
-
-Where Asset Management gets its properties — rebuilt 2026-08-19:
-- IT HAS NO FOLDER OF ITS OWN ANY MORE. It used to be a top-level "Asset Management" folder in
-  the Fund I library, one folder per property; it held a single half-built entry (Mill,
-  Greenwich CT, with an empty Monthly Update Letters inside) and has since been removed. Running
-  the snapshot against the source as it stands printed "recorded area not found in source:
-  Asset Management" and wrote a two-area file — the tab would have gone empty.
-- What replaced it is a better convention: what the firm owns is filed inside the deal folder it
-  closed under. The Arden — reorganised into 1. OM … 6. Asset Management — is the model.
-- So the area is DERIVED. tools/snapshot-source.txt gained an "assets-from:" line naming the area
-  to read it out of (_Closed Deals), and the script builds one property per closed deal that has
-  asset-management material, carrying that material ONLY, not the whole deal folder.
-- Which subfolders count: one named "Asset Management", or one the financials / investor-updates
-  crosscut groups already match. That is what lets the older deals in — they predate the naming
-  and file the same material under its parts. Today: The Arden 21 documents, The Mill 17
-  (Investor Letters, Quarterly Financials, Financial Statements, Depreciation, Percentage
-  Ownership), Gainesville 1 (Quarterly Updates).
-- A folder named "Asset Management" is SPLICED OPEN rather than shown as a step — the tab is
-  asset management, so a breadcrumb reading All properties / The Arden / 6. Asset Management is
-  saying it twice. The Arden opens straight onto Financials, Sponsor Updates and its update
-  workbook. Same reasoning as the area's own name not being a step in the trail.
-- It is a VIEW, not a second copy. Its files live in the closed-deal folders and appear on the
-  Deal Pipeline too, which is the point — the same document read at different times by different
-  people. Two consequences, both deliberate: totalFiles counts the source areas only (958, not
-  997), and the type cards skip the area, as above.
-- --no-assets skips the derivation for one run.
-- If a top-level Asset Management folder ever comes back, this becomes one line: drop the
-  assets-from: line and add "only: Asset Management" again. Nothing in dashboard.html knows the
-  difference — the area arrives with the same id and label either way.
-
-The debt report (Asset Management tab) — added 2026-08-19:
-- "Debt report" on the Asset Management toolbar, beside "Asset report". One row per asset with
-  lender, committed and current balance, rate type, index and spread, cap, floor, maturity and
-  extension options — what the firm owes across everything it owns, on one page. Export PDF and
-  Export Excel work as they do on the other reports.
-- THIS IS THE ONE PLACE THE DASHBOARD READS A DOCUMENT'S CONTENTS. Everywhere else the rule is
-  names, sizes and timestamps only, and it still holds. A debt report cannot be assembled from a
-  file name, so tools/onedrive-snapshot.py opens exactly one workbook — the one named on the
-  "debt-from:" line in snapshot-source.txt — and nothing else. Read the comment above
-  fmt_debt_cell() in that file before extending this; the narrowness is the point.
-- What that costs: dashboard-data.json now carries lenders, balances and rates as well as deal
-  names. It was already gitignored and never deployed. It is more confidential than it was.
-- The workbook drives the report, not the other way round. Columns come from its header row, so
-  adding a column in Excel adds a column here with no code change. The newest .xlsx/.xlsm in the
-  folder wins. The header is found as the first row with more than one label, because the sheet
-  opens with a blank row today and could gain a title row tomorrow.
-- Cells are formatted by the snapshot, from each cell's own number format: a $#,##0 cell prints
-  with a dollar sign and thousands separators, an 0.00% cell prints as a percentage to two
-  places, a date prints as "Mon D, YYYY". The report prints the workbook the way the workbook
-  prints itself, and the browser does no arithmetic on any of it.
-- An asset with nothing filled past the Lender column reads "No debt recorded" rather than a row
-  of dashes — The Mill today. The summary tiles count assets, with debt, and unlevered.
-- It never appears in an anonymised snapshot. Pseudonyms exist so a snapshot can be shown to
-  somebody, and a real lender and balance would walk straight through them, so --anonymise skips
-  the workbook and says so. --no-debt skips it for one run.
-- The button hides itself when the snapshot carried no workbook, which is the published page's
-  state — better than a button that opens an empty report.
-- It needs openpyxl (pip3 install openpyxl). Missing, the snapshot prints a NOTE and writes
-  everything else; the tab simply has no Debt report button.
-- The roll-up and the folders are joined by name — see below.
-
-Joining the debt roll-up to the property folders — added 2026-08-19:
-- The two records of the same building are typed by different people for different purposes and
-  agree on the words, not the formatting: the workbook says "The Mill", the folder says "The Mill
-  - Greenwich, CT". join_debt() in onedrive-snapshot.py matches them and writes the link both
-  ways — the property gets `debtRow`, the roll-up gets `match`.
-- Matching is tried strongest first, because a wrong join is worse than no join: a loan shown
-  against the wrong building is a number somebody acts on. In order — the whole name or the name
-  with its location trimmed; one name opening the other; then every word of one appearing in the
-  other, and only if that picks out exactly ONE property. Case, punctuation and a leading "the"
-  are ignored throughout. "Mill", "the mill", "The Mill, Greenwich" and "The Mill - Greenwich,
-  CT" all land on the same folder; "Some Other Asset" lands on nothing.
-- Nothing is dropped quietly. A roll-up row with no folder, and a property with no roll-up row,
-  each print a NOTE on the run, as does the count joined ("joined to properties: 3 of 3").
-- Where the join shows:
-    · the property CARD carries lender, current balance and maturity, above the document counts,
-      because it is the fact somebody came to the tab for;
-    · the property DETAIL view carries the full row — every column the workbook has — on the
-      property itself and not on the folders inside it, the same rule the task panel follows;
-    · the asset name in the Debt report is a BUTTON back to the folder. The join is only worth
-      making if it is walkable in both directions.
-- All three read the row by COLUMN ROLE (/lender/i, /balance/i, /maturity/i) rather than by
-  position, so reordering columns in Excel cannot start showing a rate cap where a lender was.
-- A property in the roll-up with nothing past the Lender column reads "No debt recorded" rather
-  than blanks — The Mill today. A property with no row at all shows no debt line, which is a
-  different statement and deliberately looks different.
-- The workbook itself was corrected on 2026-08-19: it spelled Greenwich "Greenich". Fixed in the
-  file rather than papered over in the report, by replacing the one string in sharedStrings.xml
-  and copying every other part of the .xlsx through untouched — the file carries webextension
-  parts that a rewrite through a spreadsheet library would have dropped.
-
-Reading a PDF without leaving the page — added 2026-08-18:
-- Click a PDF anywhere in a file table and it opens in a preview panel over the page rather than
-  in a new tab. Built for Asset Management, where the documents are things you read — monthly
-  update letters, quarterly financials, property reports — but it is on the shared file table, so
-  the Deal Pipeline gets it too. Close with the button, the Escape key, or a click outside.
-- "Open in new tab" is on the panel and goes to the file's SharePoint page, not the preview link:
-  that page is where version history, comments and the rest of the SharePoint chrome live, and
-  the frame does not carry any of it.
-- IT NEEDS A PREVIEW LINK AND THERE IS NOT ONE YET. The item shape gained an optional previewUrl
-  (see the DATA PROVIDER SEAM comment in dashboard.html). Nothing sets it today: the snapshot
-  tool records names, sizes and timestamps only, and never file contents or links. So no PDF
-  previews today — every file still opens the way it did.
-- What makes it work is the GraphProvider, whenever that lands. previewUrl must be Graph's
-  "@microsoft.graph.downloadUrl" on the driveItem — a short-lived, pre-authenticated link to the
-  file's bytes, which a browser will render inside a frame. It must NOT be webUrl: that is
-  SharePoint's own page for the file and SharePoint refuses to be framed, so the panel would
-  come up blank. webUrl stays where it already is, on `url`, driving "Open in new tab".
-- Only PDFs preview. Word and Excel files have no in-browser renderer to point a frame at, so
-  they open in a new tab as before, and so does a PDF that arrives without a previewUrl. The
-  fallback is the old behaviour rather than an error.
+Reading a PDF without leaving the page — REMOVED 2026-08-20:
+- The preview modal went with the documents. Nothing on the page opens a file any more.
 
 Task List (dashboard.html, "Task List" tab) — added 2026-08-17:
 - Third workspace, independent of Documents and the CRM. Company to-dos, assigned to a person,
@@ -754,40 +742,24 @@ Forwarding email into the CRM:
 
 
 Where the project lives, and where the dashboard reads from — 2026-08-18:
-- The project moved into OneDrive. It now lives under "David Wolfson's files - Claude", so it
-  syncs and is shared rather than sitting on one desktop. The old Desktop/Website Modillion copy
-  is retired; it carries a MOVED.txt saying so. Do not edit it — two git working copies of the
-  same repo diverge quietly, and this one is canonical.
+- WHICH COPY IS CANONICAL — DECIDED 2026-08-20, AND IT IS NOT THE ONE THIS PARAGRAPH USED TO
+  NAME. The working copy is now:
+      OneDrive-Personal/Modillion - Claude/Claude/Website Modillion
+  The copy under the work drive at "David Wolfson's files - Claude/Website Modillion" is STALE
+  and must not be edited. It is a byte-for-byte duplicate — .git and reflog included, both at
+  264e7cd — made by dragging the folder rather than cloning, which is why the two are impossible
+  to tell apart by looking. Check your path before editing; nothing in git will warn you.
+- The stale copy is also what a `python3 -m http.server 8000` started from it will serve, so a
+  dev server showing none of your changes is the first symptom of editing the wrong one. The
+  personal copy is served on 8010 by convention, for exactly that reason.
+- The older Desktop/Website Modillion copy is retired and carries a MOVED.txt saying so.
 - A note on .git in a synced folder: OneDrive replicating .git while git is mid-write can corrupt
   an index. It is fine in practice, but let sync settle before and after anything heavy (rebase,
   large checkout) rather than working through it.
 
-The document snapshot, in one place:
-- The Deal Pipeline and Asset Management tabs mirror a real OneDrive folder. dashboard-data.json
-  is not maintained by hand — tools/onedrive-snapshot.py reads the folder and writes it.
-- Which folder that is used to be a command-line argument nobody wrote down, which made "the
-  dashboard is stale" and "the dashboard is pointed somewhere else" impossible to tell apart.
-  It is now recorded in tools/snapshot-source.txt: the path, then "only:" lines naming the
-  top-level folders allowed to become areas, then the "assets-from:" line that says where the
-  Asset Management area is read out of. That file is gitignored — a local machine path, and this
-  repository is public.
-- Refresh the dashboard after the folders change:
-      python3 tools/onedrive-snapshot.py                  # the recorded source
-      python3 tools/onedrive-snapshot.py "/other/folder"  # override for one run
-      python3 tools/onedrive-snapshot.py --all-areas      # ignore the only: list
-      python3 tools/onedrive-snapshot.py --no-assets      # skip the derived asset area
-      python3 tools/onedrive-snapshot.py --no-debt        # skip the debt roll-up
-- THE only: LIST MATTERS. The source folder holds much more than the dashboard shows — Pitchbook,
-  Dead Deals, Entity Docs, Capital Calls and the rest. Areas the config does not declare never
-  appear as tiles, but buildTypeIndex() reads across EVERY area in the file, so without the list
-  the "By document type" cards quietly count dead deals and pitchbook drafts as live term sheets
-  and models. Scanning the whole folder gives 13 areas and 1194 files; the two
-  declared ones give 22 deals and 958. Keep the list in step with DASHBOARD_CONFIG.areas in
-  dashboard.html — allowing for asset management, which is declared there but derived here.
-- The run prints what it did, and the NOTE lines are worth reading: a recorded area that is not
-  in the source, or an assets-from area that produced nothing, both say so rather than quietly
-  writing a short file.
-- Only names, sizes and timestamps are read, with ONE exception: the debt roll-up workbook named
-  on the "debt-from:" line, whose rows become the Debt report (see above). No other file is
-  opened. The output holds real deal and sponsor names, and now lenders and loan balances too. It
-  is gitignored — it must never be committed.
+The document snapshot — REMOVED 2026-08-20:
+- tools/onedrive-snapshot.py, tools/snapshot-source.txt and dashboard-data.json are gone.
+  They read a OneDrive folder and wrote the document index the dashboard used to mirror.
+  See "No documents at all" above. tools/extract-deals.py turned the last index into
+  deals-data.json before the deletion; that is where the 22 deals came from.
+
