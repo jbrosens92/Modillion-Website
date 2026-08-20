@@ -1563,6 +1563,25 @@ button.link-arrow {
 }
 .crmtable tbody tr:hover { background: rgba(119, 166, 182, 0.07); }
 .crmtable td { padding: 16px 16px 16px 0; font-size: .9rem; vertical-align: top; }
+/* Delete, on the row itself. The record view has had one since it could be
+   edited; this is for what the list is actually for — reading down several
+   records and removing one — without opening it first. Quiet by default
+   because it is the only thing on the row that cannot be undone, and armed
+   on the first click by armed(), like every other delete on this page. The
+   width is reserved for the longer "Delete?" so arming does not jog the
+   column. The row does not open underneath it: the click handler matches
+   [data-crm-delete] before [data-investor] and returns. */
+.crmtable th.crm-actions, .crmtable td.crm-actions {
+  text-align: right; white-space: nowrap; padding-right: 0;
+}
+.crm-rowdelete {
+  appearance: none; background: none; border: 0; padding: 4px 0;
+  font-family: var(--sans); font-size: .72rem; color: var(--muted);
+  cursor: pointer; min-width: 54px; text-align: right;
+}
+.crm-rowdelete:hover { color: #C0392B; text-decoration: underline; }
+.crm-rowdelete:focus-visible { outline: 2px solid #C0392B; outline-offset: 2px; }
+.crm-rowdelete[data-armed="1"] { color: #C0392B; font-weight: 500; text-decoration: none; }
 .crmtable .crm-name { font-weight: 500; color: var(--deep-space); }
 .crmtable .crm-sub { display: block; font-size: .76rem; color: var(--muted); margin-top: 3px; }
 /* Last contact carries the date, then what the most recent note actually said.
@@ -3827,6 +3846,10 @@ button.link-arrow {
   function deleteInvestorRow(button) {
     var inv = Crm.get(button.getAttribute("data-crm-delete"));
     if (!inv) return;
+    // Deleting from the record view has to land somewhere, so it returns to
+    // the top of the list. Deleting from the list is already there — throwing
+    // the reader to the top would lose their place for no reason.
+    var fromRecord = crmState.view === "investor";
 
     var goes = [];
     if (inv.conversations.length) goes.push(countOf(inv.conversations.length, "logged conversation"));
@@ -3845,7 +3868,7 @@ button.link-arrow {
     renderCrmFilters();
     renderCrm();
     renderDeals();
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    if (fromRecord) window.scrollTo({ top: 0, behavior: "smooth" });
     toast("Deleted " + name + ". “Publish to team” makes that everyone's copy.");
   }
 
@@ -5707,7 +5730,10 @@ button.link-arrow {
              '<button type="button" data-crmsort="' + c.key + '">' + c.label +
              '<span class="arrow">' + (sorted && crmState.sortDir === "asc" ? "↑" : "↓") + '</span>' +
              '</button></th>';
-    }).join("");
+    }).join("") +
+    // Not sortable, and deliberately unlabelled: a "Delete" column heading
+    // reads as a description of the column rather than a per-row action.
+    '<th class="crm-actions"><span class="visually-hidden">Actions</span></th>';
 
     var rows = list.map(function (inv) {
       var last = lastContact(inv);
@@ -5740,6 +5766,10 @@ button.link-arrow {
           ? esc(last) + note +
             '<span class="crm-sub">' + inv.conversations.length + ' logged</span>'
           : '<span class="muted">Never</span>') + '</td>' +
+        '<td class="crm-actions">' +
+          '<button type="button" class="crm-rowdelete" data-crm-delete="' + esc(inv.id) +
+          '" title="Delete ' + esc(inv.name) + '">Delete</button>' +
+        '</td>' +
         '</tr>';
     }).join("");
 
