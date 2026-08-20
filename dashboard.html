@@ -1563,6 +1563,21 @@ button.link-arrow {
 }
 .crmtable tbody tr:hover { background: rgba(119, 166, 182, 0.07); }
 .crmtable td { padding: 16px 16px 16px 0; font-size: .9rem; vertical-align: top; }
+/* Research: the empty state, the lookup control, and a proposal that has
+   not been accepted yet. Proposed rows are visually distinct from saved
+   ones because the difference matters — one is a fact on the record and
+   the other is a suggestion nobody has read. */
+.crm-research__empty { color: var(--muted); font-size: .88rem; margin: 0 0 14px; }
+.crm-research__actions { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-top: 14px; }
+.crm-research__hint { color: var(--muted); font-size: .76rem; }
+.crm-research__note { color: var(--muted); font-size: .82rem; margin: 12px 0 0; }
+.crm-proposal {
+  margin-top: 16px; padding: 14px 16px;
+  border: 1px dashed var(--rule); border-radius: 4px;
+  background: rgba(119, 166, 182, 0.06);
+}
+.crm-proposal__head { margin: 0 0 10px; font-size: .82rem; color: var(--steel); }
+.crm-research li.is-proposed { opacity: .92; }
 /* Delete, on the row itself. The record view has had one since it could be
    edited; this is for what the list is actually for — reading down several
    records and removing one — without opening it first. Quiet by default
@@ -3843,6 +3858,85 @@ button.link-arrow {
   // Deleting an investor takes its conversation log with it, and that log is
   // the only account anywhere of who said what — so the first click reads it
   // back before the second one destroys it.
+  /* ============================================================
+     RESEARCH LOOKUP
+
+     Calls /api/research, which searches the web and returns notes in the
+     record's own { note, source, checked } shape. It PROPOSES — nothing
+     reaches the record until "Add to record" is clicked, which is the
+     same bargain the agent's diff makes, and for the same reason: these
+     are facts about a firm the team is asking for money, and a wrong one
+     that arrived automatically is worse than no fact at all.
+
+     Existing notes are kept. A re-run adds what is new and skips what is
+     already there, matched on the source URL and the text.
+     ============================================================ */
+  var RESEARCH_ENDPOINT = "/api/research";
+
+  function researchInvestor(button) {
+    var id = button.getAttribute("data-crm-research");
+    var inv = Crm.get(id);
+    if (!inv) return;
+
+    button.disabled = true;
+    button.textContent = "Searching the web…";
+    crmState.research = null;
+
+    fetch(RESEARCH_ENDPOINT, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        name: inv.name, type: inv.type,
+        location: inv.location, website: inv.website
+      })
+    }).then(function (r) {
+      return r.json().then(function (j) { return { ok: r.ok, status: r.status, body: j }; });
+    }).then(function (res) {
+      if (!res.ok) {
+        toast(res.status === 503
+          ? "Research needs ANTHROPIC_API_KEY set on the server."
+          : (res.body && res.body.error) || "The lookup failed.");
+        renderInvestor(id);
+        return;
+      }
+      // Skip anything already on the record: same URL, or same words.
+      var have = {};
+      inv.research.forEach(function (r) {
+        have[(r.source || "") + "|" + (r.note || "")] = true;
+        if (r.source) have["url|" + r.source] = true;
+      });
+      var fresh = (res.body.research || []).filter(function (r) {
+        return !have["url|" + r.source] && !have[(r.source || "") + "|" + (r.note || "")];
+      });
+
+      crmState.research = {
+        id: id,
+        items: fresh,
+        notes: (res.body.notes || []).concat(
+          fresh.length ? [] :
+          (res.body.research || []).length ? ["Everything it found is already on the record."]
+                                           : ["Nothing usable came back for that name."])
+      };
+      renderInvestor(id);
+      if (fresh.length) toast("Found " + fresh.length + " — read them, then add.");
+    }).catch(function () {
+      toast("Could not reach the research endpoint.");
+      renderInvestor(id);
+    });
+  }
+
+  function applyResearch(id) {
+    var inv = Crm.get(id);
+    var prop = crmState.research;
+    if (!inv || !prop || prop.id !== id || !prop.items.length) return;
+    Crm.patch(id, { research: inv.research.concat(prop.items) });
+    var n = prop.items.length;
+    crmState.research = null;
+    renderInvestor(id);
+    toast("Added " + n + " research note" + (n === 1 ? "" : "s") +
+          ". “Publish to team” makes that everyone's copy.");
+  }
+
   function deleteInvestorRow(button) {
     var inv = Crm.get(button.getAttribute("data-crm-delete"));
     if (!inv) return;
@@ -4236,16 +4330,44 @@ button.link-arrow {
       return !!v && typeof v === "object" && !(v instanceof Array);
     }
 
+    /* An id-less object reduced to something comparable. Key order is not
+       stable across two JSON round trips, so it is sorted before it is
+       stringified — otherwise the same contact written by two browsers
+       would not match itself. */
+    function canonical(v) {
+      try {
+        return JSON.stringify(Object.keys(v).sort().map(function (k) {
+          return [k, v[k]];
+        }));
+      } catch (e) { return null; }
+    }
+
     function mergeArrays(a, b) {
       var out = (a instanceof Array) ? a.slice() : [];
       var at = {};
+      var seen = {};
       out.forEach(function (v, i) {
-        if (isPlainObject(v) && v.id != null) at[v.id] = i;
+        if (isPlainObject(v) && v.id != null) { at[v.id] = i; return; }
+        if (isPlainObject(v)) {
+          var k0 = canonical(v);
+          if (k0 !== null) seen[k0] = true;
+        }
       });
       ((b instanceof Array) ? b : []).forEach(function (v) {
         if (isPlainObject(v) && v.id != null) {
           if (at[v.id] != null) out[at[v.id]] = merge(out[at[v.id]], v);
           else { at[v.id] = out.length; out.push(v); }
+        } else if (isPlainObject(v)) {
+          /* An object with no id — a contact, a research note. indexOf could
+             not see these: it compares by reference, and the same contact
+             arriving from the shared store is a different object from the one
+             already held here, however identical it reads. So every merge
+             pushed another copy and the list DOUBLED on each load — which is
+             why contacts appeared two, then four, then eight times. Compare
+             by value instead. Conversations are unaffected; they carry ids. */
+          var k = canonical(v);
+          if (k === null) { out.push(v); return; }
+          if (!seen[k]) { seen[k] = true; out.push(v); }
         } else if (out.indexOf(v) === -1) {
           out.push(v);
         }
@@ -4529,8 +4651,12 @@ button.link-arrow {
         priority: inv.priority || "",
         tags: (inv.tags || []).slice(),
         deals: (inv.deals || []).slice(),
-        contacts: (inv.contacts || []).slice(),
-        research: (inv.research || []).slice(),
+        // Already-stored records may carry duplicates written by the merge
+        // bug above before it was fixed. Collapsing them on read means the
+        // display is right immediately, and the next "Publish to team"
+        // writes the collapsed version back as the new base.
+        contacts: dedupeById(inv.contacts),
+        research: dedupeById(inv.research),
         why: inv.why || "",
         archived: !!inv.archived,
         conversations: (inv.conversations || []).map(function (c, i) {
@@ -4544,6 +4670,21 @@ button.link-arrow {
 
     // Base records, then field patches, then conversations the file does
     // not already carry, then investors created in the browser.
+    /* Same value-comparison the overlay merge uses, applied on the way in.
+       Order is preserved and the first of each duplicate wins. */
+    function dedupeById(list) {
+      var seen = {}, out = [];
+      (list || []).forEach(function (v) {
+        var k;
+        if (v && typeof v === "object") {
+          k = v.id != null ? "id:" + v.id
+            : JSON.stringify(Object.keys(v).sort().map(function (x) { return [x, v[x]]; }));
+        } else { k = "p:" + String(v); }
+        if (!seen[k]) { seen[k] = true; out.push(v); }
+      });
+      return out;
+    }
+
     function rebuild() {
       var byId = {};
       merged = (base.investors || []).filter(function (inv) {
@@ -5920,18 +6061,53 @@ button.link-arrow {
         }).join("") + '</ul></div>');
     }
 
-    if (inv.research.length) {
-      parts.push('<div class="crm-section"><h3>Research' +
-        '<span class="crm-section__aside">Public sources — verify before relying on any of it</span></h3>' +
-        '<ul class="crm-research">' +
-        inv.research.map(function (r) {
-          return '<li>' + esc(r.note) +
-            '<span class="crm-research__meta">' +
-            (r.source ? '<a href="' + esc(r.source) + '" target="_blank" rel="noopener noreferrer">' + esc(r.source) + '</a>' : "No source recorded") +
-            (r.checked ? " · checked " + esc(r.checked) : "") +
-            '</span></li>';
-        }).join("") + '</ul></div>');
+    /* The Research section is drawn on EVERY record now, not only the ones
+       that already have findings. It used to vanish when the list was
+       empty, which read as "this record has no research section" rather
+       than "nobody has looked yet" — and the second is the one that
+       invites somebody to do something about it. */
+    var proposal = (crmState.research && crmState.research.id === inv.id)
+      ? crmState.research : null;
+
+    function researchItem(r, proposed) {
+      return '<li' + (proposed ? ' class="is-proposed"' : '') + '>' + esc(r.note) +
+        '<span class="crm-research__meta">' +
+        (r.source ? '<a href="' + esc(r.source) + '" target="_blank" rel="noopener noreferrer">' + esc(r.source) + '</a>' : "No source recorded") +
+        (r.checked ? " · checked " + esc(r.checked) : "") +
+        '</span></li>';
     }
+
+    parts.push('<div class="crm-section"><h3>Research' +
+      '<span class="crm-section__aside">Public sources — verify before relying on any of it</span></h3>' +
+      (inv.research.length
+        ? '<ul class="crm-research">' + inv.research.map(function (r) {
+            return researchItem(r, false);
+          }).join("") + '</ul>'
+        : '<p class="crm-research__empty">Nothing looked up yet.</p>') +
+      (proposal && proposal.items.length
+        ? '<div class="crm-proposal">' +
+            '<p class="crm-proposal__head">Found ' + proposal.items.length +
+              ' — nothing is saved until you add it.</p>' +
+            '<ul class="crm-research">' + proposal.items.map(function (r) {
+              return researchItem(r, true);
+            }).join("") + '</ul>' +
+            '<button type="button" class="dash-refresh dash-refresh--primary" ' +
+              'data-crm-research-apply="' + esc(inv.id) + '">Add to record</button>' +
+            '<button type="button" class="dash-refresh" ' +
+              'data-crm-research-discard="' + esc(inv.id) + '">Discard</button>' +
+          '</div>'
+        : '') +
+      (proposal && proposal.notes.length
+        ? '<p class="crm-research__note">' + esc(proposal.notes.join(" ")) + '</p>'
+        : '') +
+      '<div class="crm-research__actions">' +
+        '<button type="button" class="dash-refresh" data-crm-research="' + esc(inv.id) + '">' +
+          (inv.research.length ? "Look up again" : "Look it up with Claude") +
+        '</button>' +
+        '<span class="crm-research__hint">Searches the web and proposes sourced notes. ' +
+          'Nothing is written to the record until you add it.</span>' +
+      '</div>' +
+      '</div>');
 
     parts.push(recordTaskPanel(inv.name));
 
@@ -9480,6 +9656,19 @@ button.link-arrow {
 
     var crmDelete = e.target.closest("[data-crm-delete]");
     if (crmDelete) { deleteInvestorRow(crmDelete); return; }
+
+    var research = e.target.closest("[data-crm-research]");
+    if (research) { researchInvestor(research); return; }
+
+    var researchApply = e.target.closest("[data-crm-research-apply]");
+    if (researchApply) { applyResearch(researchApply.getAttribute("data-crm-research-apply")); return; }
+
+    var researchDiscard = e.target.closest("[data-crm-research-discard]");
+    if (researchDiscard) {
+      crmState.research = null;
+      renderInvestor(researchDiscard.getAttribute("data-crm-research-discard"));
+      return;
+    }
 
     var editCancel = e.target.closest("[data-crm-edit-cancel]");
     if (editCancel) {
