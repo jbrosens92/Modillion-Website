@@ -3895,43 +3895,24 @@ button.link-arrow {
      unlike delete, which is armed. What is said afterwards says where
      the row went, because a row leaving the list without explanation
      reads like a deletion. */
-  /* The status vocabulary is the file's, not this function's — a store
-     that spells the parked state differently is still matched. */
-  function dealStatusNamed(want, fallback) {
-    var all = Deals.statuses();
-    for (var i = 0; i < all.length; i++) {
-      if (all[i].toLowerCase() === want) return all[i];
-    }
-    return fallback;
-  }
-
+  /* The status of an archived deal reads On hold, and that is Deals' own
+     doing — see parked() — so this touches nothing but the flag. Nothing
+     is written over, which is why Restore can hand the record back
+     exactly as it was. */
   function setDealArchived(id, on, scope) {
     var rec = Deals.get(id);
     if (!rec) return;
-    var onHold = dealStatusNamed("on hold", "On hold");
-    var live   = dealStatusNamed("live", "Live");
-
-    /* Archiving parks the deal, so it says so: the status follows the row
-       into the pile rather than leaving it reading Live from a list it is
-       no longer on. Only a live deal is relabelled — a dead one stays dead
-       and a closed one stays closed, because those are facts about the
-       deal, not a description of where the row is filed. */
-    var relabel = on ? (rec.status === live) : (rec.status === onHold);
-    if (relabel) {
-      Deals.patch(id, {
-        status: on ? onHold : live,
-        statusWhy: on ? rec.statusWhy : "",
-        statusSetAt: new Date().toISOString().slice(0, 10)
-      });
-    }
-
     Deals.archive(id, on);
     if (on) scope.state.open.archived = true;   // it went somewhere; show where
     renderDeals();
+
+    var now = Deals.get(id);
     toast(on
-      ? "“" + rec.name + "” is archived" + (relabel ? " and on hold" : "") +
+      ? "“" + rec.name + "” is archived" +
+        (now && now.status !== rec.status ? " and on hold" : "") +
         " — it is under Archived at the foot of the list, and Restore brings it back."
-      : "“" + rec.name + "” is back on the list" + (relabel ? " and live again" : "") + ".");
+      : "“" + rec.name + "” is back on the list" +
+        (now && now.status !== rec.status ? " as " + now.status.toLowerCase() : "") + ".");
   }
 
   /* Dead is a status, not a flag, so this writes the same three fields
@@ -3942,7 +3923,7 @@ button.link-arrow {
     var rec = Deals.get(id);
     if (!rec) return;
     Deals.patch(id, {
-      status: on ? dealStatusNamed("dead", "Dead") : dealStatusNamed("live", "Live"),
+      status: on ? Deals.statusNamed("dead", "Dead") : Deals.statusNamed("live", "Live"),
       statusWhy: on ? rec.statusWhy : "",
       statusSetAt: new Date().toISOString().slice(0, 10)
     });
@@ -7336,6 +7317,26 @@ button.link-arrow {
       };
     }
 
+    /* An archived deal is a parked deal, so it reads as one. This is
+       DERIVED rather than written: archiving does not edit the record, so
+       restoring gives the status back untouched, and a deal archived long
+       before this rule existed obeys it too. Only "Live" is covered — a
+       dead deal that was archived is still dead and a closed one is still
+       closed, and neither is something the archive gets to overwrite. */
+    function parked(rec, isArchived) {
+      if (!isArchived || rec.status !== "Live") return rec;
+      rec.status = statusNamed("on hold", "On hold");
+      return rec;
+    }
+
+    // The vocabulary is the file's, not this module's.
+    function statusNamed(want, fallback) {
+      for (var i = 0; i < DEAL_STATES.length; i++) {
+        if (DEAL_STATES[i].toLowerCase() === want) return DEAL_STATES[i];
+      }
+      return fallback;
+    }
+
     function rebuild() {
       var rows = (base && base.deals ? base.deals : []).concat(overlay.created)
         .filter(function (rec) { return !overlay.removed[rec.id]; });
@@ -7343,7 +7344,7 @@ button.link-arrow {
         var out = normalise(rec);
         var patch = overlay.patches[out.id];
         if (patch) out = normalise(Object.assign({}, out, patch));
-        return out;
+        return parked(out, !!overlay.archived[out.id] || !!out.archived);
       });
       merged.sort(function (a, b) { return a.name.localeCompare(b.name); });
     }
@@ -7513,6 +7514,7 @@ button.link-arrow {
       isArchived: function (id) { return !!overlay.archived[id]; },
       areas: function () { return DEAL_AREAS.slice(); },
       statuses: function () { return DEAL_STATES.slice(); },
+      statusNamed: statusNamed,
 
       /* ---- compatibility surface ---------------------------------
          These names are historical. They belong to the arrangement
