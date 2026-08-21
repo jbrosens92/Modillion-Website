@@ -3895,15 +3895,43 @@ button.link-arrow {
      unlike delete, which is armed. What is said afterwards says where
      the row went, because a row leaving the list without explanation
      reads like a deletion. */
+  /* The status vocabulary is the file's, not this function's — a store
+     that spells the parked state differently is still matched. */
+  function dealStatusNamed(want, fallback) {
+    var all = Deals.statuses();
+    for (var i = 0; i < all.length; i++) {
+      if (all[i].toLowerCase() === want) return all[i];
+    }
+    return fallback;
+  }
+
   function setDealArchived(id, on, scope) {
     var rec = Deals.get(id);
     if (!rec) return;
+    var onHold = dealStatusNamed("on hold", "On hold");
+    var live   = dealStatusNamed("live", "Live");
+
+    /* Archiving parks the deal, so it says so: the status follows the row
+       into the pile rather than leaving it reading Live from a list it is
+       no longer on. Only a live deal is relabelled — a dead one stays dead
+       and a closed one stays closed, because those are facts about the
+       deal, not a description of where the row is filed. */
+    var relabel = on ? (rec.status === live) : (rec.status === onHold);
+    if (relabel) {
+      Deals.patch(id, {
+        status: on ? onHold : live,
+        statusWhy: on ? rec.statusWhy : "",
+        statusSetAt: new Date().toISOString().slice(0, 10)
+      });
+    }
+
     Deals.archive(id, on);
     if (on) scope.state.open.archived = true;   // it went somewhere; show where
     renderDeals();
     toast(on
-      ? "“" + rec.name + "” is archived — it is under Archived at the foot of the list, and Restore brings it back."
-      : "“" + rec.name + "” is back on the list.");
+      ? "“" + rec.name + "” is archived" + (relabel ? " and on hold" : "") +
+        " — it is under Archived at the foot of the list, and Restore brings it back."
+      : "“" + rec.name + "” is back on the list" + (relabel ? " and live again" : "") + ".");
   }
 
   /* Dead is a status, not a flag, so this writes the same three fields
@@ -3914,7 +3942,7 @@ button.link-arrow {
     var rec = Deals.get(id);
     if (!rec) return;
     Deals.patch(id, {
-      status: on ? "Dead" : "Live",
+      status: on ? dealStatusNamed("dead", "Dead") : dealStatusNamed("live", "Live"),
       statusWhy: on ? rec.statusWhy : "",
       statusSetAt: new Date().toISOString().slice(0, 10)
     });
