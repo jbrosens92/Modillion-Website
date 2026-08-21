@@ -1597,6 +1597,44 @@ button.link-arrow {
 .crm-rowdelete:hover { color: #C0392B; text-decoration: underline; }
 .crm-rowdelete:focus-visible { outline: 2px solid #C0392B; outline-offset: 2px; }
 .crm-rowdelete[data-armed="1"] { color: #C0392B; font-weight: 500; text-decoration: none; }
+/* Archive and Dead, on the deal rows. Neither is armed the way the CRM's
+   Delete is, because neither destroys anything: the row moves to a pile at
+   the foot of the list and comes back from it. The click handler matches
+   these before [data-deal], so the deal does not open underneath them. */
+.deal-rowaction {
+  appearance: none; background: none; border: 0; padding: 4px 0 4px 14px;
+  font-family: var(--sans); font-size: .72rem; color: var(--muted);
+  cursor: pointer; white-space: nowrap;
+}
+.deal-rowaction:hover { color: var(--deep-space); text-decoration: underline; }
+.deal-rowaction[data-tone="dead"]:hover { color: #C0392B; }
+.deal-rowaction:focus-visible { outline: 2px solid var(--steel); outline-offset: 2px; }
+
+/* The two piles under the live list: what was put away, and what died.
+   Closed by default — the heading carries the count, which is usually all
+   anybody wants from them — and each remembers whether it was opened, so a
+   re-render does not spring it shut while somebody is reading it. */
+.deal-pile { border-top: 1px solid var(--rule); }
+.deal-pile > summary {
+  list-style: none; cursor: pointer;
+  display: flex; align-items: center; gap: 10px;
+  padding: 20px 0;
+  font-size: .72rem; letter-spacing: .12em; text-transform: uppercase;
+  color: var(--muted);
+}
+.deal-pile > summary::-webkit-details-marker { display: none; }
+.deal-pile > summary:hover { color: var(--deep-space); }
+.deal-pile > summary:focus-visible { outline: 2px solid var(--steel); outline-offset: 2px; }
+.deal-pile__chev { display: inline-block; font-size: .9rem; line-height: 1; transition: transform .18s ease; }
+.deal-pile[open] .deal-pile__chev { transform: rotate(90deg); }
+.deal-pile__count { letter-spacing: .06em; }
+.deal-pile__hint {
+  margin: 0 0 14px; font-size: .82rem; color: var(--muted);
+  text-transform: none; letter-spacing: 0;
+}
+/* A pile reads quieter than the live list above it. */
+.deal-pile .crmtable tbody td, .deal-pile .crmtable .crm-name { color: var(--muted); }
+
 .crmtable .crm-name { font-weight: 500; color: var(--deep-space); }
 .crmtable .crm-sub { display: block; font-size: .76rem; color: var(--muted); margin-top: 3px; }
 /* Last contact carries the date, then what the most recent note actually said.
@@ -3361,7 +3399,8 @@ button.link-arrow {
       query: "",
       filters: { status: "", operator: "" },
       sortKey: "name",
-      sortDir: "asc"
+      sortDir: "asc",
+      open: { archived: false, dead: false }   // the two piles, per tab
     };
   }
 
@@ -3407,11 +3446,38 @@ button.link-arrow {
     return id || "";
   }
 
+  /* The list this tab is drawn from. Unlike Deals.all(), it keeps the
+     archived records: they are not gone, they are filed at the foot of
+     the list, and a search that could not find one would be lying. */
+  function dealsInScope(scope) {
+    return Deals.allIncludingArchived().filter(function (r) {
+      return r.area === scope.area;
+    });
+  }
+
+  function dealIsArchived(rec) {
+    return Deals.isArchived(rec.id) || !!rec.archived;
+  }
+
+  /* Three piles, in the order they are read: what is live, what was put
+     away, and what died. Archived wins over dead — a deal that died and
+     was then archived is filed in the archive, and its own row still
+     carries the Dead pill, so nothing about it is hidden by the choice. */
+  function dealGroups(list) {
+    var out = { live: [], archived: [], dead: [] };
+    list.forEach(function (r) {
+      if (dealIsArchived(r)) out.archived.push(r);
+      else if (r.status === "Dead") out.dead.push(r);
+      else out.live.push(r);
+    });
+    return out;
+  }
+
   function dealFiltered(scope) {
     var st = scope.state;
     var q = st.query.trim().toLowerCase();
     var f = st.filters;
-    var list = Deals.inArea(scope.area).filter(function (r) {
+    var list = dealsInScope(scope).filter(function (r) {
       if (f.status && r.status !== f.status) return false;
       if (f.operator && r.operator !== f.operator) return false;
       if (!q) return true;
@@ -3432,23 +3498,51 @@ button.link-arrow {
     return list;
   }
 
-  function dealTable(list, scope) {
-    var st = scope.state;
+  function dealEmptyState(scope, matchesBelow) {
     var isClosed = scope.tab === "closed";
-
-    if (!list.length) {
-      return Deals.inArea(scope.area).length
-        ? '<div class="dash-state"><h3>No deals match</h3>' +
-          '<p>Clear the filters' +
-          (isClosed ? '.' : ', or add one with the button above.') + '</p></div>'
-        : isClosed
-          ? '<div class="dash-state"><h3>Nothing closed yet</h3>' +
-            '<p>A deal arrives here when its “Where it sits” is set to Closed Deals, ' +
-            'which is done on the deal itself over on the pipeline.</p></div>'
-          : '<div class="dash-state"><h3>No deals yet</h3>' +
-            '<p>Deals live in the shared store, seeded from deals-data.json. ' +
-            'Add the first one with the button above.</p></div>';
+    /* A search can match nothing live and still match something in one of
+       the piles. Saying "no deals match" over a page that visibly has hits
+       on it is the one thing this must not do. */
+    if (matchesBelow) {
+      return '<div class="dash-state"><h3>Nothing live matches</h3>' +
+        '<p>The ' + (matchesBelow === 1 ? "match is" : "matches are") +
+        ' in the archived and dead deals below, which are open.</p></div>';
     }
+    return dealsInScope(scope).length
+      ? '<div class="dash-state"><h3>No deals match</h3>' +
+        '<p>Clear the filters' +
+        (isClosed ? '.' : ', or add one with the button above.') + '</p></div>'
+      : isClosed
+        ? '<div class="dash-state"><h3>Nothing closed yet</h3>' +
+          '<p>A deal arrives here when its “Where it sits” is set to Closed Deals, ' +
+          'which is done on the deal itself over on the pipeline.</p></div>'
+        : '<div class="dash-state"><h3>No deals yet</h3>' +
+          '<p>Deals live in the shared store, seeded from deals-data.json. ' +
+          'Add the first one with the button above.</p></div>';
+  }
+
+  /* What sits on the right of a row, and it depends on which pile the row
+     is in: the live list offers the two ways out, and each pile offers the
+     way back. Every one of them is reversible from the other side. */
+  function dealRowActions(rec, pile) {
+    if (pile === "archived") {
+      return '<button type="button" class="deal-rowaction" data-deal-restore="' + esc(rec.id) +
+             '" title="Put ' + esc(rec.name) + ' back on the list">Restore</button>';
+    }
+    if (pile === "dead") {
+      return '<button type="button" class="deal-rowaction" data-deal-revive="' + esc(rec.id) +
+             '" title="Put ' + esc(rec.name) + ' back on the list as live">Live again</button>' +
+             '<button type="button" class="deal-rowaction" data-deal-archive="' + esc(rec.id) +
+             '" title="Archive ' + esc(rec.name) + '">Archive</button>';
+    }
+    return '<button type="button" class="deal-rowaction" data-deal-archive="' + esc(rec.id) +
+           '" title="Archive ' + esc(rec.name) + '">Archive</button>' +
+           '<button type="button" class="deal-rowaction" data-tone="dead" data-deal-dead="' + esc(rec.id) +
+           '" title="Mark ' + esc(rec.name) + ' dead">Dead</button>';
+  }
+
+  function dealTable(list, scope, pile) {
+    var st = scope.state;
 
     /* Each tab is one area now, so every row of either list would carry
        the same "Where" — it is on the deal itself, where it can be read
@@ -3461,7 +3555,10 @@ button.link-arrow {
              '<button type="button" data-dealsort="' + c.key + '">' + c.label +
              '<span class="arrow">' + (sorted && st.sortDir === "asc" ? "↑" : "↓") + '</span>' +
              '</button></th>';
-    }).join("");
+    }).join("") +
+    // Unlabelled on purpose: a heading over these would read as a
+    // description of the column rather than as two per-row actions.
+    '<th class="crm-actions"><span class="visually-hidden">Actions</span></th>';
 
     var rows = list.map(function (rec) {
       return '<tr data-deal="' + esc(rec.id) + '">' +
@@ -3473,11 +3570,32 @@ button.link-arrow {
         '<td>' + (rec.market ? esc(rec.market) : '<span class="muted">—</span>') + '</td>' +
         '<td>' + (rec.assetClass ? esc(rec.assetClass) : '<span class="muted">—</span>') +
           (rec.debt ? '<span class="crm-sub">debt on file</span>' : "") + '</td>' +
+        '<td class="crm-actions">' + dealRowActions(rec, pile) + '</td>' +
         '</tr>';
     }).join("");
 
     return '<div class="crmtable-wrap"><table class="crmtable">' +
            '<thead><tr>' + head + '</tr></thead><tbody>' + rows + '</tbody></table></div>';
+  }
+
+  /* A pile at the foot of the list. It is a <details>, so minimising it is
+     the browser's own behaviour and works without script; the state is
+     recorded only so the next render draws it the way it was left. A search
+     forces both open — a hit nobody can see is worse than a long page. */
+  function dealPile(scope, key, label, hint, list) {
+    if (!list.length) return "";
+    var forced = !!scope.state.query || !!scope.state.filters.status ||
+                 !!scope.state.filters.operator;
+    var open = scope.state.open[key] || forced;
+    return '<details class="deal-pile"' + (open ? " open" : "") + '>' +
+      '<summary data-deal-pile="' + key + '">' +
+        '<span class="deal-pile__chev" aria-hidden="true">›</span>' +
+        esc(label) +
+        '<span class="deal-pile__count">(' + list.length + ')</span>' +
+      '</summary>' +
+      '<p class="deal-pile__hint">' + esc(hint) + '</p>' +
+      dealTable(list, scope, key) +
+    '</details>';
   }
 
   function fillDealFilters(scope) {
@@ -3524,13 +3642,29 @@ button.link-arrow {
       return;
     }
 
-    var all = Deals.inArea(scope.area);
-    var list = dealFiltered(scope);
-    scopeEl(scope, "Body").innerHTML = dealTable(list, scope);
-    scopeEl(scope, "Shown").textContent = list.length === all.length
-      ? list.length + " deal" + (list.length === 1 ? "" : "s")
-      : list.length + " of " + all.length + " shown";
-    $(scope.countId).textContent = all.length ? "(" + all.length + ")" : "";
+    /* The live list, then the two piles under it. The count beside the
+       search reads the live list only — what is archived or dead is
+       counted on its own heading, where it cannot be mistaken for the
+       pipeline being longer than it is. */
+    var groups = dealGroups(dealFiltered(scope));
+    var liveTotal = dealGroups(dealsInScope(scope)).live.length;
+
+    scopeEl(scope, "Body").innerHTML =
+      (groups.live.length
+        ? dealTable(groups.live, scope, "live")
+        : dealEmptyState(scope, groups.archived.length + groups.dead.length)) +
+      dealPile(scope, "archived", "Archived",
+        "Off the list, not deleted. Restore puts one back where it was.",
+        groups.archived) +
+      dealPile(scope, "dead", "Dead",
+        "Deals that did not happen. Each keeps whatever was recorded about why.",
+        groups.dead);
+
+    scopeEl(scope, "Shown").textContent = groups.live.length === liveTotal
+      ? groups.live.length + " deal" + (groups.live.length === 1 ? "" : "s")
+      : groups.live.length + " of " + liveTotal + " shown";
+    var counted = Deals.inArea(scope.area).length;
+    $(scope.countId).textContent = counted ? "(" + counted + ")" : "";
     scopeEl(scope, "Unsaved").hidden = !Deals.hasLocalEdits();
 
     // The report opens from the closed tab only, and only when there is
@@ -3754,6 +3888,42 @@ button.link-arrow {
       (SharedOverlay.state() === "shared"
         ? "The team sees this on their next load."
         : "In this browser only — the shared store is not reachable."));
+  }
+
+  /* Archive and Dead both move a row into a pile at the foot of the
+     list, and both are reversible from there — so neither asks twice,
+     unlike delete, which is armed. What is said afterwards says where
+     the row went, because a row leaving the list without explanation
+     reads like a deletion. */
+  function setDealArchived(id, on, scope) {
+    var rec = Deals.get(id);
+    if (!rec) return;
+    Deals.archive(id, on);
+    if (on) scope.state.open.archived = true;   // it went somewhere; show where
+    renderDeals();
+    toast(on
+      ? "“" + rec.name + "” is archived — it is under Archived at the foot of the list, and Restore brings it back."
+      : "“" + rec.name + "” is back on the list.");
+  }
+
+  /* Dead is a status, not a flag, so this writes the same three fields
+     the edit form writes. What it will not do is invent a reason: a why
+     nobody typed is worse than a blank one, so an existing note is kept
+     and a missing one stays missing. */
+  function setDealDead(id, on, scope) {
+    var rec = Deals.get(id);
+    if (!rec) return;
+    Deals.patch(id, {
+      status: on ? "Dead" : "Live",
+      statusWhy: on ? rec.statusWhy : "",
+      statusSetAt: new Date().toISOString().slice(0, 10)
+    });
+    if (on) scope.state.open.dead = true;
+    renderDeals();
+    toast(on
+      ? "“" + rec.name + "” is dead — it is under Dead at the foot of the list." +
+        (rec.statusWhy ? "" : " Open it to say why, if it matters.")
+      : "“" + rec.name + "” is live again.");
   }
 
   /* ============================================================
@@ -10051,6 +10221,43 @@ button.link-arrow {
        One set of handlers serves both lists. Which one a click was in
        is read off the workspace it came from, never assumed — the two
        tabs hold different records and their own sort and filters. */
+
+    /* The row actions are read before the row itself, so the deal does
+       not open underneath the button that was pressed. */
+    var archiveDeal = e.target.closest("[data-deal-archive]");
+    if (archiveDeal) {
+      setDealArchived(archiveDeal.getAttribute("data-deal-archive"), true, scopeFromEl(archiveDeal));
+      return;
+    }
+
+    var restoreDeal = e.target.closest("[data-deal-restore]");
+    if (restoreDeal) {
+      setDealArchived(restoreDeal.getAttribute("data-deal-restore"), false, scopeFromEl(restoreDeal));
+      return;
+    }
+
+    var deadDeal = e.target.closest("[data-deal-dead]");
+    if (deadDeal) {
+      setDealDead(deadDeal.getAttribute("data-deal-dead"), true, scopeFromEl(deadDeal));
+      return;
+    }
+
+    var reviveDeal = e.target.closest("[data-deal-revive]");
+    if (reviveDeal) {
+      setDealDead(reviveDeal.getAttribute("data-deal-revive"), false, scopeFromEl(reviveDeal));
+      return;
+    }
+
+    /* Opening and closing a pile is the browser's own doing — this only
+       records which way it was left, so the next render agrees with what
+       is on screen. The attribute has not flipped yet at click time. */
+    var pileToggle = e.target.closest("summary[data-deal-pile]");
+    if (pileToggle) {
+      var pileScope = scopeFromEl(pileToggle);
+      pileScope.state.open[pileToggle.getAttribute("data-deal-pile")] =
+        !pileToggle.parentNode.hasAttribute("open");
+      return;
+    }
 
     var dealRow = e.target.closest("tr[data-deal]");
     if (dealRow) { openDeal(dealRow.getAttribute("data-deal"), scopeFromEl(dealRow)); return; }
