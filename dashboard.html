@@ -3873,22 +3873,54 @@ button.link-arrow {
      ============================================================ */
   var RESEARCH_ENDPOINT = "/api/research";
 
+  /* A web search plus two model calls takes the better part of a minute.
+     A button that says the same thing for fifty seconds is indistinguishable
+     from a broken one, so it counts up — and it cannot wait forever: without
+     the abort below, a request that never comes back leaves the button
+     disabled until the page is reloaded, which is exactly what a hang looks
+     like to somebody who has no idea a request is in flight. */
+  var researchTimer = null;
+
+  function researchTicking(id, startedAt) {
+    clearInterval(researchTimer);
+    researchTimer = setInterval(function () {
+      var b = document.querySelector('[data-crm-research="' + id + '"]');
+      if (!b) { clearInterval(researchTimer); return; }
+      var secs = Math.round((Date.now() - startedAt) / 1000);
+      b.textContent = "Searching the web… " + secs + "s";
+    }, 1000);
+  }
+
+  function researchDone(id) {
+    clearInterval(researchTimer);
+    researchTimer = null;
+    renderInvestor(id);
+  }
+
   function researchInvestor(button) {
     var id = button.getAttribute("data-crm-research");
     var inv = Crm.get(id);
     if (!inv) return;
 
     button.disabled = true;
-    button.textContent = "Searching the web…";
+    button.textContent = "Searching the web… 0s";
     crmState.research = null;
+    researchTicking(id, Date.now());
+
+    var stop = new AbortController();
+    var giveUp = setTimeout(function () { stop.abort(); }, 150000);
 
     fetch(RESEARCH_ENDPOINT, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
+      signal: stop.signal,
       body: JSON.stringify({
         name: inv.name, type: inv.type,
         location: inv.location, website: inv.website
       })
+    }).then(function (r) {
+      clearTimeout(giveUp);
+      return r;
     }).then(function (r) {
       return r.json().then(function (j) { return { ok: r.ok, status: r.status, body: j }; });
     }).then(function (res) {
@@ -3896,7 +3928,7 @@ button.link-arrow {
         toast(res.status === 503
           ? "Research needs ANTHROPIC_API_KEY set on the server."
           : (res.body && res.body.error) || "The lookup failed.");
-        renderInvestor(id);
+        researchDone(id);
         return;
       }
       // Skip anything already on the record: same URL, or same words.
@@ -3917,11 +3949,14 @@ button.link-arrow {
           (res.body.research || []).length ? ["Everything it found is already on the record."]
                                            : ["Nothing usable came back for that name."])
       };
-      renderInvestor(id);
+      researchDone(id);
       if (fresh.length) toast("Found " + fresh.length + " — read them, then add.");
-    }).catch(function () {
-      toast("Could not reach the research endpoint.");
-      renderInvestor(id);
+    }).catch(function (err) {
+      clearTimeout(giveUp);
+      toast(err && err.name === "AbortError"
+        ? "The lookup ran past two and a half minutes and was stopped. Try again, or look this one up by hand."
+        : "Could not reach the research endpoint.");
+      researchDone(id);
     });
   }
 
@@ -6104,8 +6139,8 @@ button.link-arrow {
         '<button type="button" class="dash-refresh" data-crm-research="' + esc(inv.id) + '">' +
           (inv.research.length ? "Look up again" : "Look it up with Claude") +
         '</button>' +
-        '<span class="crm-research__hint">Searches the web and proposes sourced notes. ' +
-          'Nothing is written to the record until you add it.</span>' +
+        '<span class="crm-research__hint">Searches the web and proposes sourced notes — ' +
+          'takes up to a minute. Nothing is written to the record until you add it.</span>' +
       '</div>' +
       '</div>');
 

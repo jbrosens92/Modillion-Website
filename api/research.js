@@ -55,10 +55,14 @@ export const maxDuration = 120;
 const MODEL = "claude-opus-5";
 const MAX_ITEMS = Math.max(1, Math.min(12, Number(process.env.RESEARCH_MAX_ITEMS || 6)));
 
+/* max_uses is a LATENCY dial as much as a cost one. At 8 this took ~90
+   seconds end to end, which the page could not distinguish from a hang.
+   Five is enough for "who is this firm and what do they invest in" —
+   the answer is usually on the firm's own site and two others. */
 const WEB_SEARCH_TOOL = {
   type: "web_search_20260209",
   name: "web_search",
-  max_uses: 8
+  max_uses: 5
 };
 
 /* Kept deliberately close to RESEARCH_SYSTEM in api/agent.js — the two
@@ -160,13 +164,16 @@ async function search(client, firm, notes) {
   const prose = [];
 
   // pause_turn means the server tool loop was interrupted, not finished.
-  for (let turn = 0; turn < 4; turn++) {
+  for (let turn = 0; turn < 3; turn++) {
     const out = await client.messages.create({
       model: MODEL,
       max_tokens: 8000,
       system: SEARCH_SYSTEM,
       thinking: { type: "adaptive" },
-      output_config: { effort: "medium" },
+      // low, not medium: the judgement here is "is this the right firm and
+      // is this fact sourced", not a hard reasoning problem, and effort is
+      // the single biggest lever on how long the reader waits.
+      output_config: { effort: "low" },
       tools: [WEB_SEARCH_TOOL],
       messages
     });
