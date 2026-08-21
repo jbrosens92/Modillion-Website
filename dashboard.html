@@ -1562,6 +1562,45 @@ button.link-arrow {
   transition: background .18s ease;
 }
 .crmtable tbody tr:hover { background: rgba(119, 166, 182, 0.07); }
+/* Hand-set order. The name is the grip: press it and move, and the row
+   travels with the pointer. A press that does NOT move is still a click,
+   so opening a record works exactly as it did — the drag only begins once
+   the pointer has actually gone somewhere. touch-action is off on the grip
+   because otherwise a touch-drag scrolls the page instead of the row; the
+   rest of the row still scrolls normally. */
+.crmtable[data-reorder] .crm-name { cursor: grab; touch-action: none; }
+.crmtable[data-reorder] tbody tr.is-dragging { background: rgba(119, 166, 182, 0.18); }
+.crmtable[data-reorder] tbody tr.is-dragging .crm-name { cursor: grabbing; }
+body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: none; }
+
+/* The line above a list that is in a hand-set order, and the way back out
+   of it. It says which order you are looking at, because a list that is
+   neither alphabetical nor by date and does not say so reads as broken. */
+.order-note {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  font-family: var(--sans); font-size: .74rem; color: var(--muted);
+  margin: 0 0 12px;
+}
+.order-note button {
+  appearance: none; background: none; border: 0; padding: 0;
+  font: inherit; color: var(--steel); cursor: pointer; text-decoration: underline;
+}
+.order-note button:hover { color: var(--deep-space); }
+
+/* Up and down, for anyone not using a pointer — dragging is a mouse and
+   touch gesture and nothing else, so the same move is a button too. Kept
+   invisible until the row is hovered or something in it has focus, so a
+   list nobody is reordering looks the way it always did. */
+.row-move { display: inline-flex; gap: 1px; margin-left: 8px; vertical-align: middle; opacity: 0; }
+.crmtable tbody tr:hover .row-move,
+.crmtable tbody tr:focus-within .row-move { opacity: 1; }
+.row-move button {
+  appearance: none; background: none; border: 0; padding: 0 3px;
+  font: inherit; font-size: .78rem; line-height: 1; color: var(--muted);
+  cursor: pointer; touch-action: manipulation;
+}
+.row-move button:hover { color: var(--deep-space); }
+.row-move button:focus-visible { outline: 2px solid var(--steel); outline-offset: 1px; opacity: 1; }
 .crmtable td { padding: 16px 16px 16px 0; font-size: .9rem; vertical-align: top; }
 /* Research: the empty state, the lookup control, and a proposal that has
    not been accepted yet. Proposed rows are visually distinct from saved
@@ -3400,6 +3439,10 @@ button.link-arrow {
       filters: { status: "", operator: "" },
       sortKey: "name",
       sortDir: "asc",
+      // Whether a column heading has been clicked on this tab since it was
+      // opened. Until one has, a list that carries a hand-set order shows
+      // itself in that order — see dealSortKey().
+      sortTouched: false,
       open: { archived: false, dead: false }   // the two piles, per tab
     };
   }
@@ -3485,17 +3528,45 @@ button.link-arrow {
         .join(" ").toLowerCase().indexOf(q) !== -1;
     });
 
-    var k = st.sortKey, dir = st.sortDir === "asc" ? 1 : -1;
-    list.sort(function (a, b) {
-      var av = String(a[k] == null ? "" : a[k]);
-      var bv = String(b[k] == null ? "" : b[k]);
+    list.sort(dealComparator(dealSortKey(scope), st.sortDir));
+    return list;
+  }
+
+  /* How two deals compare, by whichever column the list is ordered by.
+     "manual" is not a column: it is the order somebody dragged the rows
+     into, and a deal that has never been dragged has no position, so it
+     sorts to the foot of the list by name rather than to the top. */
+  function dealComparator(key, dirName) {
+    if (key === "manual") {
+      return function (a, b) {
+        var ao = a.order == null ? Infinity : a.order;
+        var bo = b.order == null ? Infinity : b.order;
+        if (ao !== bo) return ao - bo;
+        return a.name.localeCompare(b.name);
+      };
+    }
+    var dir = dirName === "asc" ? 1 : -1;
+    return function (a, b) {
+      var av = String(a[key] == null ? "" : a[key]);
+      var bv = String(b[key] == null ? "" : b[key]);
       // A blank sorts last whichever way the column is pointing: an
       // unfilled field is not a small value, it is an absent one.
       if (!av && bv) return 1;
       if (av && !bv) return -1;
       return av.localeCompare(bv) * dir;
-    });
-    return list;
+    };
+  }
+
+  /* Which order the list is ACTUALLY in, which is not always the column
+     in the state. Once a row on this tab has been dragged, the hand-set
+     order is what the list is for, and it lives in the shared store — so
+     it is the order everyone opens the tab to, not just whoever dragged.
+     Clicking a heading overrides it for as long as the tab is open. */
+  function dealSortKey(scope) {
+    if (scope.state.sortTouched) return scope.state.sortKey;
+    var list = dealsInScope(scope);
+    for (var i = 0; i < list.length; i++) if (list[i].order != null) return "manual";
+    return scope.state.sortKey;
   }
 
   function dealEmptyState(scope, matchesBelow) {
@@ -3549,8 +3620,10 @@ button.link-arrow {
        and changed, rather than repeated down the page. */
     var cols = DEAL_COLUMNS.filter(function (c) { return c.key !== "area"; });
 
+    var sortKey = dealSortKey(scope);
+
     var head = cols.map(function (c) {
-      var sorted = st.sortKey === c.key;
+      var sorted = sortKey === c.key;
       return '<th class="' + (sorted ? "is-sorted" : "") + '">' +
              '<button type="button" data-dealsort="' + c.key + '">' + c.label +
              '<span class="arrow">' + (sorted && st.sortDir === "asc" ? "↑" : "↓") + '</span>' +
@@ -3562,7 +3635,8 @@ button.link-arrow {
 
     var rows = list.map(function (rec) {
       return '<tr data-deal="' + esc(rec.id) + '">' +
-        '<td><span class="crm-name">' + esc(rec.name) + '</span>' +
+        '<td><span class="crm-name" title="Press and drag to move ' + esc(rec.name) +
+          ' up or down the list">' + esc(rec.name) + '</span>' + rowMoveButtons(rec.id) +
           (rec.note ? '<span class="crm-sub">' + esc(rec.note) + '</span>' : "") + '</td>' +
         '<td>' + (rec.operator ? esc(rec.operator) : '<span class="muted">—</span>') + '</td>' +
         '<td><span class="crm-pill" data-stage="' + esc(rec.status) + '">' + esc(rec.status) + '</span>' +
@@ -3574,7 +3648,13 @@ button.link-arrow {
         '</tr>';
     }).join("");
 
-    return '<div class="crmtable-wrap"><table class="crmtable">' +
+    /* The note goes over the live list only. Each pile is reorderable in
+       its own right, but three copies of the same sentence down one page
+       would say nothing the first one had not. */
+    return (pile === "live" ? orderNote(sortKey === "manual", "deal:" + scope.tab) : "") +
+           '<div class="crmtable-wrap">' +
+           '<table class="crmtable" data-reorder="deal" data-reorder-scope="' + esc(scope.tab) +
+           '" data-reorder-pile="' + esc(pile) + '">' +
            '<thead><tr>' + head + '</tr></thead><tbody>' + rows + '</tbody></table></div>';
   }
 
@@ -5037,6 +5117,8 @@ button.link-arrow {
         contacts: dedupeById(inv.contacts),
         research: dedupeById(inv.research),
         why: inv.why || "",
+        // Position in a hand-set order; null until somebody drags the row.
+        order: inv.order == null || inv.order === "" ? null : Number(inv.order),
         archived: !!inv.archived,
         conversations: (inv.conversations || []).map(function (c, i) {
           var copy = {};
@@ -5184,6 +5266,26 @@ button.link-arrow {
     function patch(id, fields) {
       overlay.patches[id] = overlay.patches[id] || {};
       Object.keys(fields).forEach(function (k) { overlay.patches[id][k] = fields[k]; });
+      writeOverlay();
+    function patch(id, fields) {
+      overlay.patches[id] = overlay.patches[id] || {};
+      Object.keys(fields).forEach(function (k) { overlay.patches[id][k] = fields[k]; });
+      writeOverlay();
+      rebuild();
+    }
+
+      rebuild();
+    }
+
+    /* Several records, saved once — see the same method on Deals. A
+       reorder restamps every row on the list, and one push carries them. */
+    function patchMany(map) {
+      var ids = Object.keys(map);
+      if (!ids.length) return;
+      ids.forEach(function (id) {
+        overlay.patches[id] = overlay.patches[id] || {};
+        Object.keys(map[id]).forEach(function (k) { overlay.patches[id][k] = map[id][k]; });
+      });
       writeOverlay();
       rebuild();
     }
@@ -5499,6 +5601,7 @@ button.link-arrow {
       get: byId,
       create: createInvestor,
       patch: patch,
+      patchMany: patchMany,
       addConversation: addConversation,
       patchConversation: patchConversation,
       removeConversation: removeConversation,
@@ -6135,6 +6238,9 @@ button.link-arrow {
     filters: { type: "", asset: "", stage: "", deal: "" },
     sortKey: "lastContact",
     sortDir: "desc",
+    // See dealSortKey(): until a heading is clicked, a list that has been
+    // put in a hand-set order shows itself in that order.
+    sortTouched: false,
     draft: null,
     actions: null
   };
@@ -6224,14 +6330,34 @@ button.link-arrow {
       return haystack.indexOf(q) !== -1;
     });
 
-    var dir = crmState.sortDir === "asc" ? 1 : -1;
-    return list.sort(function (a, b) {
-      var av = crmSortValue(a, crmState.sortKey);
-      var bv = crmSortValue(b, crmState.sortKey);
+    return list.sort(crmComparator(crmSortKey(), crmState.sortDir));
+  }
+
+  // The deal list's two helpers, for investors. Same rules, same reasons.
+  function crmComparator(key, dirName) {
+    if (key === "manual") {
+      return function (a, b) {
+        var ao = a.order == null ? Infinity : a.order;
+        var bo = b.order == null ? Infinity : b.order;
+        if (ao !== bo) return ao - bo;
+        return a.name.localeCompare(b.name);
+      };
+    }
+    var dir = dirName === "asc" ? 1 : -1;
+    return function (a, b) {
+      var av = crmSortValue(a, key);
+      var bv = crmSortValue(b, key);
       if (av < bv) return -1 * dir;
       if (av > bv) return 1 * dir;
       return a.name.localeCompare(b.name);
-    });
+    };
+  }
+
+  function crmSortKey() {
+    if (crmState.sortTouched) return crmState.sortKey;
+    var list = Crm.all();
+    for (var i = 0; i < list.length; i++) if (list[i].order != null) return "manual";
+    return crmState.sortKey;
   }
 
   function crmTable(list) {
@@ -6244,8 +6370,10 @@ button.link-arrow {
           'Describe a conversation above and the first one is created here.</p></div>';
     }
 
+    var sortKey = crmSortKey();
+
     var head = CRM_COLUMNS.map(function (c) {
-      var sorted = crmState.sortKey === c.key;
+      var sorted = sortKey === c.key;
       return '<th class="' + (sorted ? "is-sorted" : "") + '">' +
              '<button type="button" data-crmsort="' + c.key + '">' + c.label +
              '<span class="arrow">' + (sorted && crmState.sortDir === "asc" ? "↑" : "↓") + '</span>' +
@@ -6268,7 +6396,8 @@ button.link-arrow {
         : '<span class="muted">—</span>';
 
       return '<tr data-investor="' + esc(inv.id) + '">' +
-        '<td><span class="crm-name">' + esc(inv.name) + '</span>' +
+        '<td><span class="crm-name" title="Press and drag to move ' + esc(inv.name) +
+          ' up or down the list">' + esc(inv.name) + '</span>' + rowMoveButtons(inv.id) +
           (inv.location ? '<span class="crm-sub">' + esc(inv.location) + '</span>' : "") + '</td>' +
         '<td>' + esc(inv.type) +
           (inv.aum ? '<span class="crm-sub">' + esc(inv.aum) + '</span>' : "") + '</td>' +
@@ -6293,7 +6422,8 @@ button.link-arrow {
         '</tr>';
     }).join("");
 
-    return '<div class="crmtable-wrap"><table class="crmtable">' +
+    return orderNote(sortKey === "manual", "investor") +
+           '<div class="crmtable-wrap"><table class="crmtable" data-reorder="investor">' +
            '<thead><tr>' + head + '</tr></thead><tbody>' + rows + '</tbody></table></div>';
   }
 
@@ -7313,6 +7443,10 @@ button.link-arrow {
         addedAt: rec.addedAt || "",
         lastActivity: rec.lastActivity || "",
         debt: normaliseDebt(rec.debt),
+        // Where the deal sits when the list is in a hand-set order. Null
+        // is the ordinary case — a deal nobody has dragged has no opinion
+        // about its position, and sorts to the foot of the list by name.
+        order: rec.order == null || rec.order === "" ? null : Number(rec.order),
         archived: !!rec.archived
       };
     }
@@ -7423,6 +7557,20 @@ button.link-arrow {
       return byId(id);
     }
 
+    /* Several records in one go, saved once. Reordering restamps a whole
+       list, and patch() pushes the overlay to the shared store every time
+       it is called — forty rows would be forty pushes of the same thing. */
+    function patchMany(map) {
+      var ids = Object.keys(map);
+      if (!ids.length) return;
+      ids.forEach(function (id) {
+        var existing = overlay.patches[id] || {};
+        overlay.patches[id] = Object.assign({}, existing, map[id]);
+      });
+      writeOverlay();
+      rebuild();
+    }
+
     /* Status by NAME rather than by id, because that is how the
        agent and the CRMs ask ("that deal fell through"). A name that
        matches nothing is ignored rather than creating a record —
@@ -7507,6 +7655,7 @@ button.link-arrow {
       },
       create: create,
       patch: patch,
+      patchMany: patchMany,
       setStatus: setStatus,
       status: status,
       archive: archive,
@@ -10095,8 +10244,15 @@ button.link-arrow {
     var crmSort = e.target.closest("[data-crmsort]");
     if (crmSort) {
       var key = crmSort.getAttribute("data-crmsort");
-      if (crmState.sortKey === key) crmState.sortDir = crmState.sortDir === "asc" ? "desc" : "asc";
-      else { crmState.sortKey = key; crmState.sortDir = key === "name" || key === "type" ? "asc" : "desc"; }
+      if (crmState.sortKey === key && crmState.sortTouched) {
+        crmState.sortDir = crmState.sortDir === "asc" ? "desc" : "asc";
+      } else {
+        crmState.sortKey = key;
+        crmState.sortDir = key === "name" || key === "type" ? "asc" : "desc";
+      }
+      // A heading was chosen, so it wins over the hand-set order until
+      // this tab is reloaded. The order itself is untouched.
+      crmState.sortTouched = true;
       renderCrm();
       return;
     }
@@ -10302,12 +10458,13 @@ button.link-arrow {
     if (dealSort) {
       var sortScope = scopeFromEl(dealSort);
       var dk = dealSort.getAttribute("data-dealsort");
-      if (sortScope.state.sortKey === dk) {
+      if (sortScope.state.sortKey === dk && sortScope.state.sortTouched) {
         sortScope.state.sortDir = sortScope.state.sortDir === "asc" ? "desc" : "asc";
       } else {
         sortScope.state.sortKey = dk;
         sortScope.state.sortDir = "asc";
       }
+      sortScope.state.sortTouched = true;
       renderDeals(sortScope);
       return;
     }
@@ -12286,6 +12443,307 @@ button.link-arrow {
 
     return { init: init, open: open, send: send };
   })();
+
+  /* ============================================================
+     HAND-SET ORDER
+     A deal list and the investor list are sorted by a column, which is
+     the right default and the wrong one the moment somebody wants their
+     four live deals in the order they are actually working them. So the
+     name is a grip: press it, move, and the row goes where you put it.
+
+     What is stored is a number per record, in the same shared overlay as
+     every other edit — so the order is the TEAM's order, not a private
+     view. What is NOT stored is "the list is in manual mode": a list is
+     in its hand-set order because one of its rows carries a position,
+     and that is enough. Clicking a column heading still sorts by that
+     column, for as long as the tab stays open.
+
+     Dragging is a pointer gesture and nothing else, so every row also
+     carries ↑ and ↓ for the keyboard, running through the same commit.
+     ============================================================ */
+
+  // The line over a reorderable list, shown only when it is in a hand-set
+  // order — a list still sorted by a column has nothing to explain.
+  function orderNote(manual, target) {
+    if (!manual) return "";
+    return '<p class="order-note">' +
+      '<span>Your order — drag a name, or use ↑ ↓ on a row. Saved for everyone.</span>' +
+      '<button type="button" data-order-reset="' + esc(target) + '">Back to A–Z</button>' +
+      '</p>';
+  }
+
+  function rowMoveButtons(id) {
+    return '<span class="row-move">' +
+      '<button type="button" data-row-move="up" data-row-id="' + esc(id) +
+        '" title="Move up" aria-label="Move up">↑</button>' +
+      '<button type="button" data-row-move="down" data-row-id="' + esc(id) +
+        '" title="Move down" aria-label="Move down">↓</button>' +
+      '</span>';
+  }
+
+  /* One move, applied to a list of ids: take the row out, put it back in
+     front of the row it now sits above. Null means it went to the end. */
+  function applyMove(ids, movedId, beforeId) {
+    var out = ids.filter(function (id) { return id !== movedId; });
+    var at = beforeId ? out.indexOf(beforeId) : -1;
+    if (at === -1) out.push(movedId);
+    else out.splice(at, 0, movedId);
+    return out;
+  }
+
+  /* Positions are spaced ten apart. Nothing depends on the gap today —
+     it is there so a future "drop between these two" has somewhere to
+     land without restamping the list. Only what actually changed is
+     written, so dragging the bottom row up one does not mark forty
+     records as edited. */
+  function orderPatches(ids, current) {
+    var map = {}, any = false;
+    ids.forEach(function (id, i) {
+      var want = (i + 1) * 10;
+      if (current(id) === want) return;
+      map[id] = { order: want };
+      any = true;
+    });
+    return any ? map : null;
+  }
+
+  /* THE LIST A MOVE IS APPLIED TO is the whole pile, not what is on
+     screen. Reordering under a search would otherwise renumber the four
+     visible rows and silently throw the other thirty in behind them. */
+  function commitDealOrder(scope, pile, movedId, beforeId) {
+    var full = dealsInScope(scope).slice();
+    full.sort(dealComparator(dealSortKey(scope), scope.state.sortDir));
+    var ids = dealGroups(full)[pile].map(function (r) { return r.id; });
+    var map = orderPatches(applyMove(ids, movedId, beforeId), function (id) {
+      var rec = Deals.get(id);
+      return rec ? rec.order : null;
+    });
+    if (map) Deals.patchMany(map);
+    // The heading choice is dropped: the list is in the order it is now
+    // visibly in, and leaving it sorted by name would snap the row back.
+    scope.state.sortTouched = false;
+    renderDeals(scope);
+  }
+
+  function commitInvestorOrder(movedId, beforeId) {
+    var full = Crm.all().slice();
+    full.sort(crmComparator(crmSortKey(), crmState.sortDir));
+    var ids = full.map(function (r) { return r.id; });
+    var map = orderPatches(applyMove(ids, movedId, beforeId), function (id) {
+      var rec = Crm.get(id);
+      return rec ? rec.order : null;
+    });
+    if (map) Crm.patchMany(map);
+    crmState.sortTouched = false;
+    renderCrm();
+  }
+
+  function commitOrder(table, movedId, beforeId) {
+    if (!movedId) return;
+    if (table.getAttribute("data-reorder") === "deal") {
+      commitDealOrder(dealScope(table.getAttribute("data-reorder-scope")),
+                      table.getAttribute("data-reorder-pile"), movedId, beforeId);
+    } else {
+      commitInvestorOrder(movedId, beforeId);
+    }
+  }
+
+  /* Back to the column sort, and the positions are cleared rather than
+     hidden — a "reset" that left the numbers behind would come back the
+     next time anybody opened the tab. */
+  function resetOrder(target) {
+    var parts = target.split(":");
+    if (parts[0] === "deal") {
+      var scope = dealScope(parts[1]);
+      var map = {};
+      dealsInScope(scope).forEach(function (r) {
+        if (r.order != null) map[r.id] = { order: null };
+      });
+      Deals.patchMany(map);
+      scope.state.sortKey = "name";
+      scope.state.sortDir = "asc";
+      scope.state.sortTouched = true;
+      renderDeals(scope);
+    } else {
+      var imap = {};
+      Crm.all().forEach(function (r) {
+        if (r.order != null) imap[r.id] = { order: null };
+      });
+      Crm.patchMany(imap);
+      crmState.sortKey = "lastContact";
+      crmState.sortDir = "desc";
+      crmState.sortTouched = true;
+      renderCrm();
+    }
+    toast("Back to the usual order — your arrangement is cleared.");
+  }
+
+  var Reorder = (function () {
+    var drag = null;
+    var swallowClick = false;
+
+    function rowsOf(tbody) {
+      return Array.prototype.slice.call(tbody.children).filter(function (n) {
+        return n.tagName === "TR";
+      });
+    }
+
+    function idOf(row) {
+      return row.getAttribute("data-deal") || row.getAttribute("data-investor") || "";
+    }
+
+    function idsOf(tbody) { return rowsOf(tbody).map(idOf); }
+
+    function stop() {
+      if (!drag) return;
+      var d = drag;
+      drag = null;
+      document.body.classList.remove("is-reordering");
+      d.row.classList.remove("is-dragging");
+      try { d.row.releasePointerCapture(d.pointerId); } catch (e) { /* already gone */ }
+      return d;
+    }
+
+    document.addEventListener("pointerdown", function (e) {
+      swallowClick = false;
+      if (e.pointerType === "mouse" && e.button !== 0) return;
+      var grip = e.target.closest && e.target.closest(".crmtable[data-reorder] .crm-name");
+      if (!grip) return;
+      var row = grip.closest("tr");
+      var tbody = row && row.parentNode;
+      // One row cannot be put anywhere it is not already.
+      if (!tbody || rowsOf(tbody).length < 2) return;
+      drag = {
+        row: row, tbody: tbody, table: grip.closest("table"),
+        pointerId: e.pointerId, startY: e.clientY,
+        // Where it came from, so a cancelled gesture puts it back.
+        origNext: row.nextSibling, moved: false
+      };
+    });
+
+    document.addEventListener("pointermove", function (e) {
+      if (!drag || e.pointerId !== drag.pointerId) return;
+
+      if (!drag.moved) {
+        // A press that has not gone anywhere is still a click, and a click
+        // opens the record. Five pixels is the difference between the two.
+        if (Math.abs(e.clientY - drag.startY) < 5) return;
+        drag.moved = true;
+        drag.row.classList.add("is-dragging");
+        document.body.classList.add("is-reordering");
+        // The pointer leaves the row it started on immediately, so the
+        // row has to keep receiving the events itself.
+        try { drag.row.setPointerCapture(drag.pointerId); } catch (err) { /* fine */ }
+      }
+      e.preventDefault();
+
+      // A long list runs off the screen, so the edges pull it along.
+      var edge = 70;
+      if (e.clientY < edge) window.scrollBy(0, -14);
+      else if (e.clientY > window.innerHeight - edge) window.scrollBy(0, 14);
+
+      var rows = rowsOf(drag.tbody);
+      for (var i = 0; i < rows.length; i++) {
+        var r = rows[i];
+        if (r === drag.row) continue;
+        var box = r.getBoundingClientRect();
+        if (e.clientY < box.top || e.clientY > box.bottom) continue;
+        // Past the middle of the row it is over, it goes below it.
+        var below = e.clientY > box.top + box.height / 2;
+        var mark = below ? r.nextSibling : r;
+        if (mark !== drag.row) drag.tbody.insertBefore(drag.row, mark);
+        break;
+      }
+    });
+
+    document.addEventListener("pointerup", function (e) {
+      if (!drag || e.pointerId !== drag.pointerId) return;
+      var d = stop();
+      if (!d.moved) return;
+      /* The click this press is about to produce would open the record.
+         The next pointerdown clears the flag, so an ordinary click after
+         a drag is unaffected; the timer is for the case where no click
+         ever arrives — released off the row, or the gesture ended some
+         other way — and one stale flag would otherwise eat a click that
+         had nothing to do with any of this. */
+      swallowClick = true;
+      setTimeout(function () { swallowClick = false; }, 300);
+      var ids = idsOf(d.tbody);
+      var moved = idOf(d.row);
+      commitOrder(d.table, moved, ids[ids.indexOf(moved) + 1] || null);
+    });
+
+    // A cancelled gesture — a phone call, a scroll the browser took over —
+    // is not a move. The row goes back where it was.
+    document.addEventListener("pointercancel", function (e) {
+      if (!drag || e.pointerId !== drag.pointerId) return;
+      var d = stop();
+      if (d.moved) d.tbody.insertBefore(d.row, d.origNext);
+    });
+
+    // The browser's own text-drag would fight the gesture for the name.
+    document.addEventListener("dragstart", function (e) {
+      if (e.target.closest && e.target.closest(".crmtable[data-reorder] .crm-name")) {
+        e.preventDefault();
+      }
+    });
+
+    /* Capture, and ahead of every other click handler on the page: both
+       of these sit inside a row, and a row that is clicked opens. */
+    document.addEventListener("click", function (e) {
+      if (swallowClick) {
+        swallowClick = false;
+        e.stopPropagation();
+        e.preventDefault();
+        return;
+      }
+
+      var mover = e.target.closest && e.target.closest("[data-row-move]");
+      if (mover) {
+        e.stopPropagation();
+        e.preventDefault();
+        nudge(mover, mover.getAttribute("data-row-move") === "up" ? -1 : 1);
+        return;
+      }
+
+      var reset = e.target.closest && e.target.closest("[data-order-reset]");
+      if (reset) {
+        e.stopPropagation();
+        e.preventDefault();
+        resetOrder(reset.getAttribute("data-order-reset"));
+      }
+    }, true);
+
+    /* One step up or down, described as the same move a drag makes: the
+       row is placed in front of whatever ends up after it. */
+    function nudge(btn, delta) {
+      var row = btn.closest("tr");
+      var tbody = row && row.parentNode;
+      var table = btn.closest("table[data-reorder]");
+      if (!tbody || !table) return;
+
+      var ids = idsOf(tbody);
+      var id = row.getAttribute("data-row-id") || idOf(row);
+      var from = ids.indexOf(id);
+      var to = from + delta;
+      if (from === -1 || to < 0 || to >= ids.length) return;   // already at the end
+
+      var next = ids.slice();
+      next.splice(from, 1);
+      next.splice(to, 0, id);
+      commitOrder(table, id, next[to + 1] || null);
+
+      // The list is redrawn, so the button under the finger is a new one.
+      // Focus follows the row that moved, so a second press keeps going.
+      var again = document.querySelector(
+        '[data-row-move="' + (delta < 0 ? "up" : "down") + '"][data-row-id="' +
+        (window.CSS && CSS.escape ? CSS.escape(id) : id) + '"]');
+      if (again) again.focus();
+    }
+
+    return { nudge: nudge };
+  })();
+
 
   /* ============================================================
      BOOT
