@@ -1572,7 +1572,14 @@ button.link-arrow {
    All of it is drawn on the CELLS rather than on the row. The table is
    border-collapse, where a background or a shadow on a <tr> is drawn
    inconsistently or not at all. */
-.crmtable[data-reorder] .crm-name { cursor: grab; touch-action: none; }
+/* The grip is a handle, not a piece of text: selecting it is never what
+   the press meant, and a half-selected name dragged across the table is
+   the mess this avoids. Only the name itself is exempt — every other cell
+   selects and copies as it always did. */
+.crmtable[data-reorder] .crm-name {
+  cursor: grab; touch-action: none;
+  user-select: none; -webkit-user-select: none;
+}
 .crmtable[data-reorder] tbody td { transition: background .18s ease; }
 /* The gutter the accent lives in. The wrap around the table clips to its
    own box, so a mark hung off the left edge of the cell would simply not
@@ -12744,6 +12751,11 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
       d.row.classList.add("is-lifted");
       d.table.classList.add("is-sorting");
       document.body.classList.add("is-reordering");
+      // Whatever was highlighted before the press — a name read a moment
+      // ago, a note copied out — is not part of this gesture, and leaving
+      // it lit under a moving row reads as the drag having selected it.
+      var sel = window.getSelection && window.getSelection();
+      if (sel && !sel.isCollapsed) sel.removeAllRanges();
       try { d.row.setPointerCapture(d.pointerId); } catch (e) { /* fine without */ }
 
       var scroll = window.scrollY || document.documentElement.scrollTop || 0;
@@ -12923,6 +12935,17 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
     });
     document.addEventListener("keydown", function (e) {
       if (e.key === "Escape" && drag) abandon();
+    });
+
+    /* A press that turns into a drag must not also sweep a selection
+       across the rows it passes. The CSS above stops one STARTING on the
+       name; this stops one starting anywhere else once the gesture is
+       under way — the pointer leaves the name almost immediately, and a
+       selection begun off it would still run down the page. Refusing it
+       here rather than in pointerdown matters: preventDefault on the
+       press itself would also cancel the click that opens the record. */
+    document.addEventListener("selectstart", function (e) {
+      if (drag) e.preventDefault();
     });
 
     // The browser's own text-drag would fight the gesture for the name.
