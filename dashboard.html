@@ -1562,60 +1562,59 @@ button.link-arrow {
   transition: background .18s ease;
 }
 .crmtable tbody tr:hover { background: rgba(119, 166, 182, 0.07); }
-/* Hand-set order — the press, the lift, and the gap the row drops into.
-   The name is the grip. Pressing it grows a short accent down the left
-   edge of the row: while it is growing you are still only clicking, and
-   when it is full the row has lifted and will move with the pointer. The
-   resting table is untouched, so a list nobody is reordering looks exactly
-   as it always did.
+/* Hand-set order — the handle, the lift, and the gap the row drops into.
+   Dragging used to start on the name, which put it in a fight with the
+   thing a name is for: a press that was going to become a drag looked
+   exactly like a press that was going to select a word, and the browser
+   picked selection. So the grip is its own control now, in the gutter to
+   the left of the name, and the name is just a name again.
 
-   All of it is drawn on the CELLS rather than on the row. The table is
+   Everything is drawn on the CELLS rather than on the row. The table is
    border-collapse, where a background or a shadow on a <tr> is drawn
    inconsistently or not at all. */
-/* The grip is a handle, not a piece of text: selecting it is never what
-   the press meant, and a half-selected name dragged across the table is
-   the mess this avoids. Only the name itself is exempt — every other cell
-   selects and copies as it always did. */
-.crmtable[data-reorder] .crm-name {
-  cursor: grab; touch-action: none;
-  user-select: none; -webkit-user-select: none;
-}
-.crmtable[data-reorder] tbody td { transition: background .18s ease; }
-/* The gutter the accent lives in. The wrap around the table clips to its
-   own box, so a mark hung off the left edge of the cell would simply not
-   be drawn — it has to have room INSIDE the column. */
 .crmtable[data-reorder] thead th:first-child,
-.crmtable[data-reorder] tbody td:first-child { padding-left: 13px; }
+.crmtable[data-reorder] tbody td:first-child { padding-left: 24px; }
 .crmtable[data-reorder] tbody td:first-child { position: relative; }
-.crmtable[data-reorder] tbody td:first-child::before {
-  content: ""; position: absolute; left: 3px; top: 50%; bottom: 50%; width: 2px;
-  background: var(--steel); border-radius: 2px; opacity: 0;
-  transition: top .17s ease, bottom .17s ease, opacity .12s ease;
-}
+.crmtable[data-reorder] tbody td { transition: background .18s ease; }
 
-/* Hovering a row shows a stub of it — enough to say the row has a grip
-   without putting a mark on every line of a list nobody is reordering. */
-.crmtable[data-reorder] tbody tr:hover td:first-child::before {
-  top: 40%; bottom: 40%; opacity: .45;
+/* The handle. It sits on the first line of the row rather than in the
+   middle of it, because a row here can be one line or five and the grip
+   belongs beside the name either way. */
+.row-grip {
+  position: absolute; left: -2px; top: 12px;
+  width: 22px; height: 24px;
+  appearance: none; background: none; border: 0; padding: 0;
+  cursor: grab;
+  /* Hidden by going transparent rather than by opacity: an element at
+     opacity 0 cannot be focused in Chrome, which would put the handle —
+     and with it the only keyboard way to reorder — out of reach of the
+     Tab key. The dots are drawn in currentColor, so the colour alone
+     hides and shows them. */
+  color: transparent; transition: color .15s ease;
+  touch-action: none; user-select: none; -webkit-user-select: none;
 }
-
-/* The hold, filling out. This is the whole answer to "am I ready yet" —
-   when the bar has run the length of the row, the row is in the air. */
-.crmtable[data-reorder] tbody tr.is-pressing td:first-child::before,
-.crmtable[data-reorder] tbody tr.is-lifted td:first-child::before {
-  top: 9px; bottom: 9px; opacity: 1;
+/* Six dots, drawn rather than typed: a glyph would depend on a font that
+   may not have it, and would sit differently in every browser. */
+.row-grip::before {
+  content: ""; position: absolute; left: 7px; right: 7px; top: 6px; bottom: 6px;
+  background-image: radial-gradient(currentColor 1.25px, transparent 1.45px);
+  background-size: 4px 4px;
 }
-.crmtable[data-reorder] tbody tr.is-pressing td { background: rgba(119, 166, 182, 0.10); }
+.crmtable tbody tr:hover .row-grip { color: rgba(90, 100, 119, .62); }
+.crmtable tbody tr:hover .row-grip:hover,
+.row-grip:focus { color: var(--deep-space); }
+.row-grip:focus-visible { outline: 2px solid var(--steel); outline-offset: 1px; border-radius: 2px; }
 
-/* Lifted: off the page, following the pointer, and casting a shadow on
-   the rows it is passing over. */
+/* Held: the row is off the page and following the pointer, casting a
+   shadow on the rows it passes over. */
 .crmtable[data-reorder] tbody tr.is-lifted { position: relative; z-index: 4; }
 .crmtable[data-reorder] tbody tr.is-lifted td {
   background: var(--paper);
   box-shadow: 0 14px 30px -16px rgba(18, 34, 54, .55);
 }
-.crmtable[data-reorder] tbody tr.is-lifted .crm-name { cursor: grabbing; }
-.crmtable[data-reorder] tbody tr.is-lifted .row-move { opacity: 0; }
+.crmtable[data-reorder] tbody tr.is-lifted .row-grip {
+  color: var(--deep-space); cursor: grabbing;
+}
 
 /* Only while a row is in the air do the others slide, so an ordinary
    redraw of the table never animates anything. */
@@ -1627,7 +1626,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
 
 @media (prefers-reduced-motion: reduce) {
   .crmtable[data-reorder] tbody td,
-  .crmtable[data-reorder] tbody td:first-child::before,
+  .row-grip,
   .crmtable.is-sorting tbody tr { transition: none; }
 }
 
@@ -1644,21 +1643,6 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
   font: inherit; color: var(--steel); cursor: pointer; text-decoration: underline;
 }
 .order-note button:hover { color: var(--deep-space); }
-
-/* Up and down, for anyone not using a pointer — dragging is a mouse and
-   touch gesture and nothing else, so the same move is a button too. Kept
-   invisible until the row is hovered or something in it has focus, so a
-   list nobody is reordering looks the way it always did. */
-.row-move { display: inline-flex; gap: 1px; margin-left: 8px; vertical-align: middle; opacity: 0; }
-.crmtable tbody tr:hover .row-move,
-.crmtable tbody tr:focus-within .row-move { opacity: 1; }
-.row-move button {
-  appearance: none; background: none; border: 0; padding: 0 3px;
-  font: inherit; font-size: .78rem; line-height: 1; color: var(--muted);
-  cursor: pointer; touch-action: manipulation;
-}
-.row-move button:hover { color: var(--deep-space); }
-.row-move button:focus-visible { outline: 2px solid var(--steel); outline-offset: 1px; opacity: 1; }
 .crmtable td { padding: 16px 16px 16px 0; font-size: .9rem; vertical-align: top; }
 /* Research: the empty state, the lookup control, and a proposal that has
    not been accepted yet. Proposed rows are visually distinct from saved
@@ -3693,8 +3677,8 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
 
     var rows = list.map(function (rec) {
       return '<tr data-deal="' + esc(rec.id) + '">' +
-        '<td><span class="crm-name" title="Hold and drag to move ' + esc(rec.name) +
-          ' up or down the list">' + esc(rec.name) + '</span>' + rowMoveButtons(rec.id) +
+        '<td>' + rowGrip(rec.id, rec.name) +
+          '<span class="crm-name">' + esc(rec.name) + '</span>' +
           (rec.note ? '<span class="crm-sub">' + esc(rec.note) + '</span>' : "") + '</td>' +
         '<td>' + (rec.operator ? esc(rec.operator) : '<span class="muted">—</span>') + '</td>' +
         '<td><span class="crm-pill" data-stage="' + esc(rec.status) + '">' + esc(rec.status) + '</span>' +
@@ -6454,8 +6438,8 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
         : '<span class="muted">—</span>';
 
       return '<tr data-investor="' + esc(inv.id) + '">' +
-        '<td><span class="crm-name" title="Hold and drag to move ' + esc(inv.name) +
-          ' up or down the list">' + esc(inv.name) + '</span>' + rowMoveButtons(inv.id) +
+        '<td>' + rowGrip(inv.id, inv.name) +
+          '<span class="crm-name">' + esc(inv.name) + '</span>' +
           (inv.location ? '<span class="crm-sub">' + esc(inv.location) + '</span>' : "") + '</td>' +
         '<td>' + esc(inv.type) +
           (inv.aum ? '<span class="crm-sub">' + esc(inv.aum) + '</span>' : "") + '</td>' +
@@ -8214,8 +8198,8 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
         : '<span class="muted">—</span>';
 
       return '<tr data-operator="' + esc(rec.id) + '">' +
-        '<td><span class="crm-name" title="Hold and drag to move ' + esc(rec.name) +
-          ' up or down the list">' + esc(rec.name) + '</span>' + rowMoveButtons(rec.id) +
+        '<td>' + rowGrip(rec.id, rec.name) +
+          '<span class="crm-name">' + esc(rec.name) + '</span>' +
           (rec.location ? '<span class="crm-sub">' + esc(rec.location) + '</span>' : "") + '</td>' +
         '<td>' + (rec.stage
           ? '<span class="crm-pill" data-stage="' + esc(rec.stage) + '">' + esc(rec.stage) + '</span>'
@@ -12556,14 +12540,18 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
      HAND-SET ORDER
      Every list on this page is sorted by a column, which is the right
      default and the wrong one the moment somebody wants their four live
-     deals in the order they are actually working them. So the name is a
-     grip: press it, and the row lifts; move, and it goes where you put it.
+     deals in the order they are actually working them. So every row has
+     a handle in the gutter on its left: press it and the row lifts, move
+     and it goes where you put it.
 
-     THE PRESS IS THE PART THAT HAD TO BE SAID OUT LOUD. An accent grows
-     down the left edge of the row while you hold, and the row lifts when
-     it is full — so "am I holding this yet" is answered on screen instead
-     of guessed at. Moving before it finishes lifts it straight away; a
-     press that never moves is still a click, and still opens the record.
+     THE HANDLE IS ITS OWN CONTROL, and that is the point of it. Dragging
+     used to start on the name, where a press that was about to become a
+     drag was indistinguishable from a press that was about to select a
+     word — and the browser, reasonably, chose selection. No amount of
+     suppressing the selection afterwards fixed the ambiguity, because
+     the ambiguity was the design. A handle has one meaning, so it needs
+     no hold to arm and no guessing: press it and it is already moving.
+     The name is a name again, and selects and copies like any other text.
 
      Nothing is reordered in the DOM while the gesture is running. The
      lifted row is translated under the pointer, the rows it has passed
@@ -12586,18 +12574,18 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
   function orderNote(manual, target) {
     if (!manual) return "";
     return '<p class="order-note">' +
-      '<span>Your order — hold a name until it lifts, then drag. ↑ ↓ move one row. Saved for everyone.</span>' +
+      '<span>Your order — drag a row by the handle on its left. Saved for everyone.</span>' +
       '<button type="button" data-order-reset="' + esc(target) + '">Back to A–Z</button>' +
       '</p>';
   }
 
-  function rowMoveButtons(id) {
-    return '<span class="row-move">' +
-      '<button type="button" data-row-move="up" data-row-id="' + esc(id) +
-        '" title="Move up" aria-label="Move up">↑</button>' +
-      '<button type="button" data-row-move="down" data-row-id="' + esc(id) +
-        '" title="Move down" aria-label="Move down">↓</button>' +
-      '</span>';
+  /* The handle, and the whole of the keyboard's way in: focus it and the
+     arrow keys move the row. Two separate ↑ ↓ buttons said the same thing
+     with three controls on every row instead of one. */
+  function rowGrip(id, name) {
+    return '<button type="button" class="row-grip" data-row-grip="' + esc(id) + '"' +
+      ' title="Drag to reorder ' + esc(name) + ' — or press ↑ ↓ once focused"' +
+      ' aria-label="Reorder ' + esc(name) + '"></button>';
   }
 
   /* One move, applied to a list of ids: take the row out, put it back in
@@ -12717,8 +12705,6 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
   }
 
   var Reorder = (function () {
-    var HOLD_MS = 170;      // how long a press takes to become a lift
-    var NUDGE_PX = 4;       // and how far a move has to go to skip the wait
     var drag = null;
     var swallowClick = false;
     var scrollTimer = null;
@@ -12747,7 +12733,6 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
     function lift() {
       var d = drag;
       d.lifted = true;
-      d.row.classList.remove("is-pressing");
       d.row.classList.add("is-lifted");
       d.table.classList.add("is-sorting");
       document.body.classList.add("is-reordering");
@@ -12809,7 +12794,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
     }
 
     function clearStyles(d) {
-      d.row.classList.remove("is-pressing", "is-lifted");
+      d.row.classList.remove("is-lifted");
       d.table.classList.remove("is-sorting");
       document.body.classList.remove("is-reordering");
       d.row.style.transition = "";
@@ -12822,7 +12807,6 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
       if (!drag) return null;
       var d = drag;
       drag = null;
-      clearTimeout(d.holdTimer);
       if (scrollTimer) { clearInterval(scrollTimer); scrollTimer = null; }
       return d;
     }
@@ -12839,7 +12823,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
       if (scrollTimer) { clearInterval(scrollTimer); scrollTimer = null; }
       if (!speed) return;
       scrollTimer = setInterval(function () {
-        if (!drag || !drag.lifted) { clearInterval(scrollTimer); scrollTimer = null; return; }
+        if (!drag) { clearInterval(scrollTimer); scrollTimer = null; return; }
         window.scrollBy(0, speed);
         place(drag.lastPageY - drag.startPageY);
       }, 16);
@@ -12848,7 +12832,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
     document.addEventListener("pointerdown", function (e) {
       swallowClick = false;
       if (e.pointerType === "mouse" && e.button !== 0) return;
-      var grip = e.target.closest && e.target.closest(".crmtable[data-reorder] .crm-name");
+      var grip = e.target.closest && e.target.closest("[data-row-grip]");
       if (!grip) return;
       var row = grip.closest("tr");
       var tbody = row && row.parentNode;
@@ -12856,15 +12840,17 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
       if (!tbody || rowsOf(tbody).length < 2) return;
 
       drag = {
-        row: row, tbody: tbody, table: grip.closest("table"),
+        row: row, tbody: tbody, table: grip.closest("table[data-reorder]"),
         pointerId: e.pointerId,
         startPageY: pageY(e), lastPageY: pageY(e),
-        moved: false, lifted: false, items: null, holdTimer: null
+        moved: false, lifted: false, items: null
       };
-      // The accent starts growing immediately; the row is in the air when
-      // it has finished. Moving first gets there without the wait.
-      row.classList.add("is-pressing");
-      drag.holdTimer = setTimeout(function () { if (drag && !drag.lifted) lift(); }, HOLD_MS);
+      if (!drag.table) { drag = null; return; }
+      /* Up at once. A press on a handle can only be the start of a move,
+         so there is nothing to wait and see about — and the lift IS the
+         acknowledgement that the press landed. */
+      lift();
+      e.preventDefault();
     });
 
     document.addEventListener("pointermove", function (e) {
@@ -12872,11 +12858,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
       drag.lastPageY = pageY(e);
       var dy = drag.lastPageY - drag.startPageY;
 
-      if (!drag.moved) {
-        if (Math.abs(dy) < NUDGE_PX) return;
-        drag.moved = true;
-        if (!drag.lifted) { clearTimeout(drag.holdTimer); lift(); }
-      }
+      if (dy !== 0) drag.moved = true;
       e.preventDefault();
       place(dy);
       autoScroll(e.clientY);
@@ -12884,11 +12866,6 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
 
     document.addEventListener("pointerup", function (e) {
       if (!drag || e.pointerId !== drag.pointerId) return;
-
-      /* A press that never went anywhere is a click, whether or not it was
-         held long enough to lift. Punishing somebody for clicking slowly
-         would be a worse bargain than the one this is trying to make. */
-      if (!drag.moved) { clearStyles(drag); stop(); return; }
 
       var d = stop();
       /* The click this press is about to produce would open the record.
@@ -12934,23 +12911,24 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
       if (drag && e.pointerId === drag.pointerId) abandon();
     });
     document.addEventListener("keydown", function (e) {
-      if (e.key === "Escape" && drag) abandon();
+      if (e.key === "Escape" && drag) { abandon(); return; }
+      if (e.key !== "ArrowUp" && e.key !== "ArrowDown") return;
+      var grip = e.target.closest && e.target.closest("[data-row-grip]");
+      if (!grip) return;   // the arrow keys belong to the page everywhere else
+      e.preventDefault();
+      nudge(grip, e.key === "ArrowUp" ? -1 : 1);
     });
 
-    /* A press that turns into a drag must not also sweep a selection
-       across the rows it passes. The CSS above stops one STARTING on the
-       name; this stops one starting anywhere else once the gesture is
-       under way — the pointer leaves the name almost immediately, and a
-       selection begun off it would still run down the page. Refusing it
-       here rather than in pointerdown matters: preventDefault on the
-       press itself would also cancel the click that opens the record. */
+    /* The gesture starts on a handle, which is a button and selects
+       nothing — but the pointer leaves it at once, and a selection begun
+       over the rows it travels across would still run down the page. */
     document.addEventListener("selectstart", function (e) {
       if (drag) e.preventDefault();
     });
 
-    // The browser's own text-drag would fight the gesture for the name.
+    // The browser's own text-drag would fight the gesture for the row.
     document.addEventListener("dragstart", function (e) {
-      if (e.target.closest && e.target.closest(".crmtable[data-reorder] .crm-name")) {
+      if (drag || (e.target.closest && e.target.closest("[data-row-grip]"))) {
         e.preventDefault();
       }
     });
@@ -12965,12 +12943,26 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
         return;
       }
 
-      var mover = e.target.closest && e.target.closest("[data-row-move]");
-      if (mover) {
+      /* The handle sits inside a row, and a row that is clicked opens.
+         It never opens anything itself, so every click on it stops here. */
+      if (e.target.closest && e.target.closest("[data-row-grip]")) {
         e.stopPropagation();
         e.preventDefault();
-        nudge(mover, mover.getAttribute("data-row-move") === "up" ? -1 : 1);
         return;
+      }
+
+      /* Dragging across a name selects it, now that the name is not a
+         handle any more — and the click at the end of that drag is not
+         somebody asking to open the record. Opening it would redraw the
+         list and throw away what had just been selected. A plain click
+         collapses the selection before this runs, so it passes through. */
+      var row = e.target.closest && e.target.closest("tr[data-deal], tr[data-investor], tr[data-operator]");
+      if (row) {
+        var sel = window.getSelection && window.getSelection();
+        if (sel && !sel.isCollapsed && String(sel).trim() && row.contains(sel.anchorNode)) {
+          e.stopPropagation();
+          return;
+        }
       }
 
       var reset = e.target.closest && e.target.closest("[data-order-reset]");
@@ -12990,7 +12982,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
       if (!tbody || !table) return;
 
       var ids = rowsOf(tbody).map(idOf);
-      var id = row.getAttribute("data-row-id") || idOf(row);
+      var id = btn.getAttribute("data-row-grip") || idOf(row);
       var from = ids.indexOf(id);
       var to = from + delta;
       if (from === -1 || to < 0 || to >= ids.length) return;   // already at the end
@@ -13000,10 +12992,9 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
       next.splice(to, 0, id);
       commitOrder(table, id, next[to + 1] || null);
 
-      // The list is redrawn, so the button under the finger is a new one.
+      // The list is redrawn, so the handle under the finger is a new one.
       // Focus follows the row that moved, so a second press keeps going.
-      var again = document.querySelector(
-        '[data-row-move="' + (delta < 0 ? "up" : "down") + '"][data-row-id="' +
+      var again = document.querySelector('[data-row-grip="' +
         (window.CSS && CSS.escape ? CSS.escape(id) : id) + '"]');
       if (again) again.focus();
     }
