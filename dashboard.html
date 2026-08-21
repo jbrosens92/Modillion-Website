@@ -40,7 +40,13 @@
 
 /* Reset & base ------------------------------------------------ */
 *, *::before, *::after { box-sizing: border-box; }
-html { scroll-behavior: smooth; }
+html {
+  scroll-behavior: smooth;
+  /* Anything scrolled to lands clear of the two bars that stay on screen,
+     rather than under them. Both heights are measured at runtime — see
+     measureChrome(). */
+  scroll-padding-top: calc(var(--topbar-h, 0px) + var(--tabs-h, 0px) + 20px);
+}
 body {
   margin: 0;
   font-family: var(--sans);
@@ -1453,12 +1459,30 @@ button.link-arrow {
 .report-gap--none { color: #1D6F42; }
 
 /* Workspace tabs — Documents / Investor CRM ---------------------- */
+/* The workspace tabs stay on screen, parked directly under the topbar,
+   which is sticky itself. Neither height is a constant — the bar carries a
+   name that may not be there, and the tabs wrap on a narrow window — so
+   both are measured and handed to the CSS rather than typed into it.
+
+   The negative margins pull the bar out to the container's edges and the
+   matching padding puts the buttons back where they were, so the strip the
+   list scrolls under is the full width of the page rather than a floating
+   panel with the page visible either side of it. */
 .dash-tabs {
+  position: sticky;
+  top: var(--topbar-h, 0px);
+  z-index: 20;
   display: flex;
   gap: 4px;
-  margin-bottom: 40px;
+  margin: 0 calc(-1 * var(--gutter)) 40px;
+  padding: 10px var(--gutter) 0;
+  background: var(--alice);
   border-bottom: 1px solid var(--rule);
+  transition: box-shadow .2s ease;
 }
+/* Only once it has actually stuck. A bar that looks the same parked as it
+   does in place reads as content that has failed to scroll. */
+.dash-tabs.is-stuck { box-shadow: 0 12px 20px -18px rgba(18, 34, 54, .55); }
 .dash-tabs button {
   appearance: none;
   background: none;
@@ -13255,6 +13279,59 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
      is not there. When the Microsoft 365 sign-in lands, getUser() carries
      the name and everything below it stops being reached. */
 
+  /* ============================================================
+     THE BARS THAT STAY
+     The topbar and the workspace tabs are both sticky, stacked. The
+     tabs need to know how tall the bar above them is, and the page
+     needs to know how tall both are so that scrolling to something
+     does not park it underneath them. Measured rather than typed in:
+     the topbar carries a name that may or may not be there, and the
+     tabs wrap on a narrow window.
+     ============================================================ */
+  function measureChrome() {
+    var root = document.documentElement;
+    function h(sel) {
+      var el = document.querySelector(sel);
+      return el ? Math.round(el.getBoundingClientRect().height) : 0;
+    }
+    root.style.setProperty("--topbar-h", h(".dash-topbar") + "px");
+    root.style.setProperty("--tabs-h", h(".dash-tabs") + "px");
+  }
+
+  /* Whether the tabs have reached the bar above them, which is the only
+     thing the shadow is for. Read off the position rather than from a
+     sentinel element, so it needs nothing in the markup and follows a
+     topbar that changes height on its own. */
+  function markStuck() {
+    var tabs = document.querySelector(".dash-tabs");
+    if (!tabs) return;
+    var bar = document.querySelector(".dash-topbar");
+    var rest = (bar ? bar.getBoundingClientRect().height : 0) + 1;
+    tabs.classList.toggle("is-stuck", tabs.getBoundingClientRect().top <= rest);
+  }
+
+  /* Called straight from the scroll rather than deferred to an animation
+     frame. The frame would be the tidier throttle right up until the page
+     is hidden — a hidden page runs no frames, so a queued one never
+     arrives, the flag guarding the queue never lowers, and the shadow
+     stops answering for the rest of the session. Two rect reads and a
+     classList.toggle that only writes when the answer changes is cheap
+     enough not to need protecting from itself. */
+  window.addEventListener("scroll", markStuck, { passive: true });
+  window.addEventListener("resize", function () { measureChrome(); markStuck(); });
+
+  /* Both bars are in the static markup but hidden behind the gate, so they
+     measure zero until it opens. Observing them means the numbers correct
+     themselves the moment they have a size, without load() having to
+     remember to ask. */
+  if (window.ResizeObserver) {
+    var chromeWatch = new ResizeObserver(function () { measureChrome(); markStuck(); });
+    [".dash-topbar", ".dash-tabs"].forEach(function (sel) {
+      var el = document.querySelector(sel);
+      if (el) chromeWatch.observe(el);
+    });
+  }
+
   function renderIdentity() {
     var signedIn = signedInUser();
     var name = (signedIn && signedIn.name) || Tasks.personName(Tasks.whoAmI()) || "";
@@ -13268,6 +13345,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
 
   function load() {
     renderIdentity();
+    measureChrome();
 
     renderHome();   // the tab the dashboard opens on
     renderDeals();
