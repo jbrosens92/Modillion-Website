@@ -1681,7 +1681,9 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
 /* Archive and Dead, on the deal rows. Neither is armed the way the CRM's
    Delete is, because neither destroys anything: the row moves to a pile at
    the foot of the list and comes back from it. The click handler matches
-   these before [data-deal], so the deal does not open underneath them. */
+   these before [data-deal], so the deal does not open underneath them.
+   Archive and Restore on the two CRMs use the same button, for the same
+   reason and with the same handling. */
 .deal-rowaction {
   appearance: none; background: none; border: 0; padding: 4px 0 4px 14px;
   font-family: var(--sans); font-size: .72rem; color: var(--muted);
@@ -1691,7 +1693,10 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
 .deal-rowaction[data-tone="dead"]:hover { color: #C0392B; }
 .deal-rowaction:focus-visible { outline: 2px solid var(--steel); outline-offset: 2px; }
 
-/* The two piles under the live list: what was put away, and what died.
+/* The piles under a live list: what was put away, and — on the deal
+   tabs — what died. The class is named for the deal tabs it was written
+   for; the investor and operator lists file their archives the same way
+   and use the same style rather than a second copy of it.
    Closed by default — the heading carries the count, which is usually all
    anybody wants from them — and each remembers whether it was opened, so a
    re-render does not spring it shut while somebody is reading it. */
@@ -2107,6 +2112,9 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
 .deal-status[data-state="Dead"]    { background: rgba(192, 57, 43, 0.1); color: #C0392B; }
 .deal-status[data-state="On hold"] { background: rgba(232, 214, 203, 0.6); color: #8A5A3B; }
 .deal-status[data-state="Closed"]  { background: rgba(29, 111, 66, 0.1); color: #1D6F42; }
+/* Under contract is the live end of the pipeline, not an ending, so it
+   reads in the house blue rather than in a colour that means stopped. */
+.deal-status[data-state="In Contract"] { background: rgba(119, 166, 182, 0.18); color: #3E6C7C; }
 
 /* A deal added on the pipeline before its OneDrive folder exists. It sits in
    the list with the folders it will one day join and says plainly that there
@@ -4463,6 +4471,53 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
     toast("Deleted " + name + ". “Publish to team” makes that everyone's copy.");
   }
 
+  /* Archive and restore, for a record on either CRM. Written once each
+     because the two halves of the gesture are the same gesture: nothing
+     is destroyed either way, and the record keeps everything logged
+     against it.
+
+     Where the reader ends up depends on where they pressed. From the
+     record view there is no list under them any more, so it returns to
+     the top of the list; from a row they are already on the list, and
+     throwing them to the top would lose their place for no reason. */
+  function setOperatorArchived(id, on) {
+    var rec = Operators.get(id) ||
+              Operators.allIncludingArchived().filter(function (r) { return r.id === id; })[0];
+    if (!rec) return;
+    var fromRecord = opState.view === "operator";
+
+    Operators.archive(id, on);
+    if (on) opState.openArchived = true;   // so it lands somewhere visible
+    if (fromRecord) { opState.editing = false; showOperatorView("list"); }
+    renderOperatorFilters();
+    renderOperators();
+    if (fromRecord) window.scrollTo({ top: 0, behavior: "smooth" });
+
+    toast(on
+      ? "Archived " + rec.name + " — it is under Archived at the foot of the list, " +
+        "and Restore brings it back."
+      : "Restored " + rec.name + " to the list.");
+  }
+
+  function setInvestorArchived(id, on) {
+    var inv = Crm.get(id) ||
+              Crm.allIncludingArchived().filter(function (r) { return r.id === id; })[0];
+    if (!inv) return;
+    var fromRecord = crmState.view === "investor";
+
+    Crm.archive(id, on);
+    if (on) crmState.openArchived = true;
+    if (fromRecord) { crmState.editing = false; showCrmView("list"); }
+    renderCrmFilters();
+    renderCrm();
+    if (fromRecord) window.scrollTo({ top: 0, behavior: "smooth" });
+
+    toast(on
+      ? "Archived " + inv.name + " — it is under Archived at the foot of the list, " +
+        "and Restore brings it back."
+      : "Restored " + inv.name + " to the list.");
+  }
+
   function deleteOperatorRow(button) {
     var rec = Operators.get(button.getAttribute("data-op-delete"));
     if (!rec) return;
@@ -6111,7 +6166,13 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
      Nothing here applies on its own. Every action is rendered as a
      before/after line and waits for a person to press Apply.
      ============================================================ */
-  var DEAL_STATES = ["Live", "On hold", "Dead", "Closed"];
+  /* The deal statuses, in pipeline order: what is being worked, what is
+     signed, and the three ways a deal stops being either. A data file may
+     carry its own list — see mergeStages(), which folds this one in rather
+     than being replaced by it, so a status added here reaches everybody
+     without a data migration first. */
+  var DEAL_STATES_BUILTIN = ["Live", "In Contract", "On hold", "Dead", "Closed"];
+  var DEAL_STATES = DEAL_STATES_BUILTIN.slice();
 
   var Interpreter = (function () {
     var EDIT_VERB = /\b(remove|removing|drop|dropped|delete|archive|unarchive|restore|set|change|update|mark|assign|rename|add)\b/i;
@@ -6283,6 +6344,9 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
     // See dealSortKey(): until a heading is clicked, a list that has been
     // put in a hand-set order shows itself in that order.
     sortTouched: false,
+    // Whether the Archived pile at the foot of the list is open. Recorded
+    // so a re-render does not spring it shut while somebody is reading it.
+    openArchived: false,
     draft: null,
     actions: null
   };
@@ -6309,12 +6373,24 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
   }
 
   // A deal tag, struck through and labelled when the deal is no longer live.
+  /* A deal tag is struck through when the deal is no longer being worked,
+     which used to mean "anything but Live". In Contract is the one status
+     that is emphatically still being worked, and striking it out would
+     read as the opposite of what happened to it — so it joins Live, and
+     every other status is left reading exactly as it did.
+
+     The badge is a separate question: it shows for every status except
+     Live, because Live is the absence of news rather than news. */
+  function dealStruck(status) {
+    return !!status && status.status !== "Live" && status.status !== "In Contract";
+  }
+
   function dealTag(name) {
     var status = Deals.dealStatus(name);
-    var dead = status && status.status !== "Live";
-    return '<span class="crm-tag crm-tag--deal' + (dead ? " crm-deadtag" : "") + '">' +
+    var badge = status && status.status !== "Live";
+    return '<span class="crm-tag crm-tag--deal' + (dealStruck(status) ? " crm-deadtag" : "") + '">' +
            esc(name) + '</span>' +
-           (dead ? '<span class="deal-status" data-state="' + esc(status.status) + '">' +
+           (badge ? '<span class="deal-status" data-state="' + esc(status.status) + '">' +
                    esc(status.status) + '</span>' : "");
   }
 
@@ -6351,28 +6427,30 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
     }
   }
 
-  function crmFiltered() {
+  /* One test, used by the live list and by the archive under it, so a
+     search means the same thing in both halves of the page. */
+  function crmMatches(inv) {
     var q = crmState.query.trim().toLowerCase();
     var f = crmState.filters;
+    if (f.type && inv.type !== f.type) return false;
+    if (f.asset && inv.assetClasses.indexOf(f.asset) === -1) return false;
+    if (f.stage && inv.stage !== f.stage) return false;
+    if (f.deal && inv.deals.indexOf(f.deal) === -1) return false;
+    if (!q) return true;
 
-    var list = Crm.all().filter(function (inv) {
-      if (f.type && inv.type !== f.type) return false;
-      if (f.asset && inv.assetClasses.indexOf(f.asset) === -1) return false;
-      if (f.stage && inv.stage !== f.stage) return false;
-      if (f.deal && inv.deals.indexOf(f.deal) === -1) return false;
-      if (!q) return true;
+    var haystack = [inv.name, inv.type, inv.location, inv.mandate, inv.why,
+                    inv.aum, inv.assetClasses.join(" "), inv.tags.join(" "), inv.deals.join(" "),
+                    inv.contacts.map(function (c) { return (c.name || "") + " " + (c.email || ""); }).join(" "),
+                    inv.research.map(function (r) { return r.note; }).join(" "),
+                    inv.conversations.map(function (c) {
+                      return [c.summary, c.next, c.who, c.subject].join(" ");
+                    }).join(" ")].join(" ").toLowerCase();
+    return haystack.indexOf(q) !== -1;
+  }
 
-      var haystack = [inv.name, inv.type, inv.location, inv.mandate, inv.why,
-                      inv.aum, inv.assetClasses.join(" "), inv.tags.join(" "), inv.deals.join(" "),
-                      inv.contacts.map(function (c) { return (c.name || "") + " " + (c.email || ""); }).join(" "),
-                      inv.research.map(function (r) { return r.note; }).join(" "),
-                      inv.conversations.map(function (c) {
-                        return [c.summary, c.next, c.who, c.subject].join(" ");
-                      }).join(" ")].join(" ").toLowerCase();
-      return haystack.indexOf(q) !== -1;
-    });
-
-    return list.sort(crmComparator(crmSortKey(), crmState.sortDir));
+  function crmFiltered() {
+    return Crm.all().filter(crmMatches)
+      .sort(crmComparator(crmSortKey(), crmState.sortDir));
   }
 
   // The deal list's two helpers, for investors. Same rules, same reasons.
@@ -6402,8 +6480,19 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
     return crmState.sortKey;
   }
 
-  function crmTable(list) {
+  /* The archived records, put through the same search and filters as the
+     live list. A search that could not find an archived investor would be
+     lying about what the CRM holds. */
+  function crmArchived() {
+    return Crm.allIncludingArchived()
+      .filter(function (inv) { return Crm.isArchived(inv.id) || inv.archived; })
+      .filter(crmMatches)
+      .sort(function (a, b) { return a.name.localeCompare(b.name); });
+  }
+
+  function crmTable(list, pile, matchesBelow) {
     if (!list.length) {
+      if (matchesBelow) return nothingLiveMatches(matchesBelow, "investors");
       return Crm.all().length
         ? '<div class="dash-state"><h3>No investors match</h3>' +
           '<p>Clear the filters, or log a conversation above to create the first record.</p></div>'
@@ -6412,10 +6501,11 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
           'Describe a conversation above and the first one is created here.</p></div>';
     }
 
+    var archived = pile === "archived";
     var sortKey = crmSortKey();
 
     var head = CRM_COLUMNS.map(function (c) {
-      var sorted = sortKey === c.key;
+      var sorted = !archived && sortKey === c.key;
       return '<th class="' + (sorted ? "is-sorted" : "") + '">' +
              '<button type="button" data-crmsort="' + c.key + '">' + c.label +
              '<span class="arrow">' + (sorted && crmState.sortDir === "asc" ? "↑" : "↓") + '</span>' +
@@ -6438,7 +6528,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
         : '<span class="muted">—</span>';
 
       return '<tr data-investor="' + esc(inv.id) + '">' +
-        '<td>' + rowGrip(inv.id, inv.name) +
+        '<td>' + (archived ? "" : rowGrip(inv.id, inv.name)) +
           '<span class="crm-name">' + esc(inv.name) + '</span>' +
           (inv.location ? '<span class="crm-sub">' + esc(inv.location) + '</span>' : "") + '</td>' +
         '<td>' + esc(inv.type) +
@@ -6458,15 +6548,49 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
             '<span class="crm-sub">' + inv.conversations.length + ' logged</span>'
           : '<span class="muted">Never</span>') + '</td>' +
         '<td class="crm-actions">' +
+          (archived
+            ? '<button type="button" class="deal-rowaction" data-crm-restore="' + esc(inv.id) +
+              '" title="Put ' + esc(inv.name) + ' back on the list">Restore</button>'
+            : '<button type="button" class="deal-rowaction" data-crm-archive="' + esc(inv.id) +
+              '" title="Archive ' + esc(inv.name) + '">Archive</button>') +
           '<button type="button" class="crm-rowdelete" data-crm-delete="' + esc(inv.id) +
           '" title="Delete ' + esc(inv.name) + '">Delete</button>' +
         '</td>' +
         '</tr>';
     }).join("");
 
-    return orderNote(sortKey === "manual", "investor") +
-           '<div class="crmtable-wrap"><table class="crmtable" data-reorder="investor">' +
+    /* An archived record has no place in a hand-set order — it is not on
+       the list to be ordered — so the pile's table carries no handles and
+       no reorder hook. */
+    return (archived ? "" : orderNote(sortKey === "manual", "investor")) +
+           '<div class="crmtable-wrap"><table class="crmtable"' +
+           (archived ? "" : ' data-reorder="investor"') + '>' +
            '<thead><tr>' + head + '</tr></thead><tbody>' + rows + '</tbody></table></div>';
+  }
+
+  /* An Archived pile for a list that is not the deal pipeline. Same
+     markup and the same style as dealPile(), minus the per-scope state:
+     these two lists have one pile each rather than two. */
+  /* Said when a search matches nothing on the live list but does match
+     something in the archive below it. "No investors match", printed above
+     a pile that visibly contains the answer, is the one thing this must
+     not do — the same rule the deal tabs already follow. */
+  function nothingLiveMatches(n, noun) {
+    return '<div class="dash-state"><h3>Nothing on the list matches</h3>' +
+      '<p>The ' + (n === 1 ? "match is" : "matches are") + ' in the archived ' +
+      esc(noun) + ' below, which are open.</p></div>';
+  }
+
+  function archivePile(toggleAttr, open, count, hint, tableHtml) {
+    if (!count) return "";
+    return '<details class="deal-pile"' + (open ? " open" : "") + '>' +
+      '<summary ' + toggleAttr + '>' +
+        '<span class="deal-pile__chev" aria-hidden="true">›</span>Archived' +
+        '<span class="deal-pile__count">(' + count + ')</span>' +
+      '</summary>' +
+      '<p class="deal-pile__hint">' + esc(hint) + '</p>' +
+      tableHtml +
+    '</details>';
   }
 
   function renderCrmFilters() {
@@ -6504,7 +6628,16 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
 
   function renderCrm() {
     var list = crmFiltered();
-    $("crmBody").innerHTML = crmTable(list);
+    var put_away = crmArchived();
+    /* A search forces the pile open, for the same reason the deal piles
+       open: a hit nobody can see is worse than a longer page. */
+    var forced = !!crmState.query || !!crmState.filters.type || !!crmState.filters.asset ||
+                 !!crmState.filters.stage || !!crmState.filters.deal;
+    $("crmBody").innerHTML = crmTable(list, "live", put_away.length) +
+      archivePile('data-crm-pile="archived"', crmState.openArchived || forced, put_away.length,
+        "Off the list, not deleted. Everything logged against the record is kept, " +
+        "and Restore puts it back where it was.",
+        put_away.length ? crmTable(put_away, "archived") : "");
     $("crmShown").textContent = list.length === Crm.all().length
       ? list.length + " investor" + (list.length === 1 ? "" : "s")
       : list.length + " of " + Crm.all().length + " shown";
@@ -6811,12 +6944,16 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
       '<div class="crm-edit__actions">' +
         '<button class="dash-refresh dash-refresh--primary" data-crm-edit-save="' + esc(inv.id) + '">Save changes</button>' +
         '<button class="dash-refresh" data-crm-edit-cancel="' + esc(inv.id) + '">Cancel</button>' +
+        // Archive sits before Delete, and reads quieter than it, because it
+        // is the one of the two that can be taken back.
+        '<button class="dash-refresh" data-crm-archive="' + esc(inv.id) + '">Archive</button>' +
         '<button class="dash-refresh dash-refresh--danger" data-crm-delete="' + esc(inv.id) + '">Delete</button>' +
         '<span class="crm-edit__derived">Last contact ' +
           (lastContact(inv) ? esc(lastContact(inv)) : "not recorded") +
           ' — read from the newest conversation, so it is not typed here. Anyone at the firm ' +
           'beyond the main contact, the research notes and the conversation log are edited ' +
-          'through the agent. Delete takes the record and its conversations with it.</span>' +
+          'through the agent. Archive takes the record off the list and keeps all of it; ' +
+          'Delete takes the record and its conversations with it.</span>' +
       '</div></div>';
   }
 
@@ -7506,6 +7643,22 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
     }
 
     // The vocabulary is the file's, not this module's.
+    /* The file's vocabulary, plus anything the built-in list has that the
+       file has not caught up with yet. A stage the file added stays, and
+       stays where the file put it; a stage only this module knows about is
+       slotted in at the position it holds here — which is why "In Contract"
+       lands between Live and On hold rather than on the end. */
+    function mergeStages(fileStages) {
+      var out = fileStages.slice();
+      DEAL_STATES_BUILTIN.forEach(function (want, i) {
+        var has = out.some(function (v) {
+          return String(v).toLowerCase() === want.toLowerCase();
+        });
+        if (!has) out.splice(Math.min(i, out.length), 0, want);
+      });
+      return out;
+    }
+
     function statusNamed(want, fallback) {
       for (var i = 0; i < DEAL_STATES.length; i++) {
         if (DEAL_STATES[i].toLowerCase() === want) return DEAL_STATES[i];
@@ -7550,7 +7703,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
         })
         .then(function () {
           if (base.areas && base.areas.length) DEAL_AREAS = base.areas;
-          if (base.stages && base.stages.length) DEAL_STATES = base.stages;
+          if (base.stages && base.stages.length) DEAL_STATES = mergeStages(base.stages);
           rebuild();
         });
     }
@@ -8038,7 +8191,9 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
     sortDir: "asc",
     // See dealSortKey(): until a heading is clicked, a list that has been
     // put in a hand-set order shows itself in that order.
-    sortTouched: false
+    sortTouched: false,
+    // Whether the Archived pile at the foot of the list is open.
+    openArchived: false
   };
 
   var OPERATOR_COLUMNS = [
@@ -8064,10 +8219,10 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
   // one deal status, read everywhere.
   function opDealChip(name) {
     var status = Deals.dealStatus(name);
-    var dead = status && status.status !== "Live";
-    var badge = dead ? '<span class="deal-status" data-state="' + esc(status.status) + '">' +
-                       esc(status.status) + '</span>' : "";
-    var cls = "crm-tag crm-tag--deal" + (dead ? " crm-deadtag" : "");
+    var badge = status && status.status !== "Live"
+      ? '<span class="deal-status" data-state="' + esc(status.status) + '">' +
+        esc(status.status) + '</span>' : "";
+    var cls = "crm-tag crm-tag--deal" + (dealStruck(status) ? " crm-deadtag" : "");
 
     if (activeDealNames().indexOf(name) === -1) {
       return '<span class="' + cls + '">' + esc(name) + '</span>' + badge;
@@ -8120,26 +8275,39 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
     var q = opState.query.trim().toLowerCase();
     var f = opState.filters;
 
-    var list = Operators.all().filter(function (rec) {
-      if (f.investment && rec.investmentTypes.indexOf(f.investment) === -1) return false;
-      if (f.strategy && rec.assetStrategies.indexOf(f.strategy) === -1) return false;
-      if (f.market && rec.markets.indexOf(f.market) === -1) return false;
-      if (f.stage && rec.stage !== f.stage) return false;
-      if (f.priority && rec.priority !== f.priority) return false;
-      if (!q) return true;
-
-      var haystack = [rec.name, rec.location, rec.aum, rec.priority, rec.notes,
-                      rec.stage, rec.owner, rec.founded, rec.trackRecord, rec.coInvest,
-                      rec.verticalIntegration, rec.tags.join(" "), opCheckText(rec),
-                      rec.investmentTypes.join(" "), rec.assetStrategies.join(" "),
-                      rec.markets.join(" "), rec.deals.join(" "),
-                      rec.contacts.map(function (c) {
-                        return [c.name, c.title, c.email].join(" ");
-                      }).join(" ")].join(" ").toLowerCase();
-      return haystack.indexOf(q) !== -1;
-    });
+    var list = Operators.all().filter(opMatches);
 
     return list.sort(opComparator(opSortKey(), opState.sortDir));
+  }
+
+  /* One test, used by the live list and by the archive under it, so a
+     search means the same thing in both halves of the page. */
+  function opMatches(rec) {
+    var q = opState.query.trim().toLowerCase();
+    var f = opState.filters;
+    if (f.investment && rec.investmentTypes.indexOf(f.investment) === -1) return false;
+    if (f.strategy && rec.assetStrategies.indexOf(f.strategy) === -1) return false;
+    if (f.market && rec.markets.indexOf(f.market) === -1) return false;
+    if (f.stage && rec.stage !== f.stage) return false;
+    if (f.priority && rec.priority !== f.priority) return false;
+    if (!q) return true;
+
+    var haystack = [rec.name, rec.location, rec.aum, rec.priority, rec.notes,
+                    rec.stage, rec.owner, rec.founded, rec.trackRecord, rec.coInvest,
+                    rec.verticalIntegration, rec.tags.join(" "), opCheckText(rec),
+                    rec.investmentTypes.join(" "), rec.assetStrategies.join(" "),
+                    rec.markets.join(" "), rec.deals.join(" "),
+                    rec.contacts.map(function (c) {
+                      return [c.name, c.title, c.email].join(" ");
+                    }).join(" ")].join(" ").toLowerCase();
+    return haystack.indexOf(q) !== -1;
+  }
+
+  function opArchived() {
+    return Operators.allIncludingArchived()
+      .filter(function (rec) { return Operators.isArchived(rec.id) || rec.archived; })
+      .filter(opMatches)
+      .sort(function (a, b) { return a.name.localeCompare(b.name); });
   }
 
   // The deal list's two helpers, for operators. Same rules, same reasons.
@@ -8171,8 +8339,9 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
     return opState.sortKey;
   }
 
-  function operatorTable(list) {
+  function operatorTable(list, pile, matchesBelow) {
     if (!list.length) {
+      if (matchesBelow) return nothingLiveMatches(matchesBelow, "operators");
       return Operators.all().length
         ? '<div class="dash-state"><h3>No operators match</h3>' +
           '<p>Clear the filters, or add one with the button above.</p></div>'
@@ -8181,15 +8350,20 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
           'Add the first one with the button above.</p></div>';
     }
 
+    var archived = pile === "archived";
     var sortKey = opSortKey();
 
     var head = OPERATOR_COLUMNS.map(function (c) {
-      var sorted = sortKey === c.key;
+      var sorted = !archived && sortKey === c.key;
       return '<th class="' + (sorted ? "is-sorted" : "") + '">' +
              '<button type="button" data-opsort="' + c.key + '">' + c.label +
              '<span class="arrow">' + (sorted && opState.sortDir === "asc" ? "↑" : "↓") + '</span>' +
              '</button></th>';
-    }).join("");
+    }).join("") +
+    // Unlabelled on purpose, as on the other two lists: a heading over
+    // these would read as a description of the column rather than as two
+    // things you can do to the row.
+    '<th class="crm-actions"><span class="visually-hidden">Actions</span></th>';
 
     var rows = list.map(function (rec) {
       var deals = rec.deals.length
@@ -8198,7 +8372,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
         : '<span class="muted">—</span>';
 
       return '<tr data-operator="' + esc(rec.id) + '">' +
-        '<td>' + rowGrip(rec.id, rec.name) +
+        '<td>' + (archived ? "" : rowGrip(rec.id, rec.name)) +
           '<span class="crm-name">' + esc(rec.name) + '</span>' +
           (rec.location ? '<span class="crm-sub">' + esc(rec.location) + '</span>' : "") + '</td>' +
         '<td>' + (rec.stage
@@ -8214,11 +8388,24 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
           ? '<span class="task-pill" data-p="' + esc(rec.priority) + '">' + esc(rec.priority) + '</span>'
           : '<span class="muted">—</span>') + '</td>' +
         '<td>' + (rec.aum ? esc(rec.aum) : '<span class="muted">—</span>') + '</td>' +
+        '<td class="crm-actions">' +
+          (archived
+            ? '<button type="button" class="deal-rowaction" data-op-restore="' + esc(rec.id) +
+              '" title="Put ' + esc(rec.name) + ' back on the list">Restore</button>'
+            : '<button type="button" class="deal-rowaction" data-op-archive="' + esc(rec.id) +
+              '" title="Archive ' + esc(rec.name) + '">Archive</button>') +
+          '<button type="button" class="crm-rowdelete" data-op-delete="' + esc(rec.id) +
+          '" title="Delete ' + esc(rec.name) + '">Delete</button>' +
+        '</td>' +
         '</tr>';
     }).join("");
 
-    return orderNote(sortKey === "manual", "operator") +
-           '<div class="crmtable-wrap"><table class="crmtable" data-reorder="operator">' +
+    /* An archived record has no place in a hand-set order — it is not on
+       the list to be ordered — so the pile's table carries no handles and
+       no reorder hook. */
+    return (archived ? "" : orderNote(sortKey === "manual", "operator")) +
+           '<div class="crmtable-wrap"><table class="crmtable"' +
+           (archived ? "" : ' data-reorder="operator"') + '>' +
            '<thead><tr>' + head + '</tr></thead><tbody>' + rows + '</tbody></table></div>';
   }
 
@@ -8253,7 +8440,14 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
 
   function renderOperators() {
     var list = opFiltered();
-    $("opBody").innerHTML = operatorTable(list);
+    var putAway = opArchived();
+    var opForced = !!opState.query || !!opState.filters.investment || !!opState.filters.strategy ||
+                   !!opState.filters.market || !!opState.filters.stage || !!opState.filters.priority;
+    $("opBody").innerHTML = operatorTable(list, "live", putAway.length) +
+      archivePile('data-op-pile="archived"', opState.openArchived || opForced, putAway.length,
+        "Off the list, not deleted. The record and everything on it is kept, " +
+        "and Restore puts it back where it was.",
+        putAway.length ? operatorTable(putAway, "archived") : "");
     $("opShown").textContent = list.length === Operators.all().length
       ? list.length + " operator" + (list.length === 1 ? "" : "s")
       : list.length + " of " + Operators.all().length + " shown";
@@ -8720,6 +8914,27 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
       return;
     }
 
+    /* These three sit INSIDE a row, and a row that is clicked opens the
+       record — so they are matched before [data-operator], exactly as the
+       investor CRM matches its own row actions before [data-investor].
+       Below that line they would never be reached. */
+    var opPile = e.target.closest("summary[data-op-pile]");
+    if (opPile) {
+      // <details> does the opening; this only records which way it was
+      // left, and the attribute has not flipped yet at click time.
+      opState.openArchived = !opPile.parentNode.hasAttribute("open");
+      return;
+    }
+
+    var opDelete = e.target.closest("[data-op-delete]");
+    if (opDelete) { deleteOperatorRow(opDelete); return; }
+
+    var opArchive = e.target.closest("[data-op-archive]");
+    if (opArchive) { setOperatorArchived(opArchive.getAttribute("data-op-archive"), true); return; }
+
+    var opRestore = e.target.closest("[data-op-restore]");
+    if (opRestore) { setOperatorArchived(opRestore.getAttribute("data-op-restore"), false); return; }
+
     var opRow = e.target.closest("[data-operator]");
     if (opRow) { openOperator(opRow.getAttribute("data-operator")); return; }
 
@@ -8752,23 +8967,6 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
       return;
     }
 
-    var opDelete = e.target.closest("[data-op-delete]");
-    if (opDelete) { deleteOperatorRow(opDelete); return; }
-
-    var opArchive = e.target.closest("[data-op-archive]");
-    if (opArchive) {
-      var id = opArchive.getAttribute("data-op-archive");
-      var rec = Operators.get(id);
-      Operators.archive(id, true);
-      opState.editing = false;
-      showOperatorView("list");
-      renderOperatorFilters();
-      renderOperators();
-      window.scrollTo({ top: 0, behavior: "smooth" });
-      toast("Archived " + (rec ? rec.name : "the record") +
-            ". It stays in the file and comes back when local edits are cleared.");
-      return;
-    }
   });
 
   /* ============================================================
@@ -10297,6 +10495,21 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
 
     var editSave = e.target.closest("[data-crm-edit-save]");
     if (editSave) { saveInvestorEdits(editSave.getAttribute("data-crm-edit-save")); return; }
+
+    /* Both piles toggle themselves — <details> is doing that — so this
+       only records which way it was left. The attribute has not flipped
+       yet at click time, hence the negation. */
+    var crmPile = e.target.closest("summary[data-crm-pile]");
+    if (crmPile) {
+      crmState.openArchived = !crmPile.parentNode.hasAttribute("open");
+      return;
+    }
+
+    var crmArchive = e.target.closest("[data-crm-archive]");
+    if (crmArchive) { setInvestorArchived(crmArchive.getAttribute("data-crm-archive"), true); return; }
+
+    var crmRestore = e.target.closest("[data-crm-restore]");
+    if (crmRestore) { setInvestorArchived(crmRestore.getAttribute("data-crm-restore"), false); return; }
 
     var crmDelete = e.target.closest("[data-crm-delete]");
     if (crmDelete) { deleteInvestorRow(crmDelete); return; }
