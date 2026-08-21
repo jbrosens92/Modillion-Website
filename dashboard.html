@@ -4491,7 +4491,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
     renderCrmFilters();
     renderCrm();
     renderDeals();
-    if (fromRecord) window.scrollTo({ top: 0, behavior: "smooth" });
+    if (fromRecord) scrollToWorkspace();
     toast("Deleted " + name + ". “Publish to team” makes that everyone's copy.");
   }
 
@@ -4515,7 +4515,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
     if (fromRecord) { opState.editing = false; showOperatorView("list"); }
     renderOperatorFilters();
     renderOperators();
-    if (fromRecord) window.scrollTo({ top: 0, behavior: "smooth" });
+    if (fromRecord) scrollToWorkspace();
 
     toast(on
       ? "Archived " + rec.name + " — it is under Archived at the foot of the list, " +
@@ -4534,7 +4534,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
     if (fromRecord) { crmState.editing = false; showCrmView("list"); }
     renderCrmFilters();
     renderCrm();
-    if (fromRecord) window.scrollTo({ top: 0, behavior: "smooth" });
+    if (fromRecord) scrollToWorkspace();
 
     toast(on
       ? "Archived " + inv.name + " — it is under Archived at the foot of the list, " +
@@ -4555,7 +4555,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
     showOperatorView("list");
     renderOperatorFilters();
     renderOperators();
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    scrollToWorkspace();
     toast("Deleted " + name + ". Download operator-data.json to make it gone in the folder too.");
   }
 
@@ -8918,7 +8918,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
     if (opHome) {
       showOperatorView("list");
       renderOperators();
-      window.scrollTo({ top: 0, behavior: "smooth" });
+      scrollToWorkspace();
       return;
     }
 
@@ -8987,7 +8987,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
     if (opNewCancel) {
       showOperatorView("list");
       renderOperators();
-      window.scrollTo({ top: 0, behavior: "smooth" });
+      scrollToWorkspace();
       return;
     }
 
@@ -10488,7 +10488,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
     if (tab === "docs") { renderDeals(DEAL_SCOPES.docs); }
     if (tab === "closed") { renderDeals(DEAL_SCOPES.closed); }
     if (tab === "tasks") { fillTaskSelects(); renderTasks(); }
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    scrollToWorkspace();
   }
 
   // The Type dropdown's escape hatch. The form is drawn with innerHTML, so
@@ -10507,7 +10507,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
     if (tab) { switchTab(tab.getAttribute("data-tab")); return; }
 
     var crmHome = e.target.closest("[data-action='crm-home']");
-    if (crmHome) { showCrmView("list"); renderCrm(); window.scrollTo({ top: 0, behavior: "smooth" }); return; }
+    if (crmHome) { showCrmView("list"); renderCrm(); scrollToWorkspace(); return; }
 
     var editBtn = e.target.closest("[data-crm-edit]");
     if (editBtn) {
@@ -13330,6 +13330,30 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
       var el = document.querySelector(sel);
       if (el) chromeWatch.observe(el);
     });
+  }
+
+  /* Where the page sits when the workspace is at the top of the screen:
+     the tabs parked under the topbar, with the list starting right below
+     them. Scrolling to 0 instead lands on the hero, which is a picture and
+     a heading — so clicking a tab used to travel past the thing that was
+     clicked, to somewhere nobody asked for.
+
+     Measured off the tabs' CONTAINER rather than off the tabs. A sticky
+     element's rect reports where it is painted, which once it has stuck is
+     the very answer we are trying to compute; the container is not sticky,
+     and the tabs are its first child, so its top is their resting top. */
+  function workspaceTop() {
+    var tabs = document.querySelector(".dash-tabs");
+    if (!tabs || !tabs.parentNode) return 0;
+    var bar = document.querySelector(".dash-topbar");
+    var barH = bar ? bar.getBoundingClientRect().height : 0;
+    var y = tabs.parentNode.getBoundingClientRect().top +
+            (window.scrollY || document.documentElement.scrollTop || 0) - barH;
+    return Math.max(0, Math.round(y));
+  }
+
+  function scrollToWorkspace() {
+    window.scrollTo({ top: workspaceTop(), behavior: "smooth" });
   }
 
   function renderIdentity() {
