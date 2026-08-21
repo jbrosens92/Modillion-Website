@@ -2349,14 +2349,14 @@ button.link-arrow {
   .dash-toolbar, .dash-browse, .dash-detail, .dash-results, .dash-tabs,
   .deal-add, .agent-dock,
   .dash-crm, .dash-investor, #wsTasks, #wsOperators, #wsHome,
-  .site-footer, .dash-toast, 
+  .site-footer, .dash-toast { display: none !important; }
 
   /* Force the app visible even if the gate is locked in this window */
   body[data-state="locked"] .dash-app { display: block !important; }
 
-  /* The report lives inside the Deal Pipeline workspace, which the CRM tabs hide */
-  #wsDocs[hidden] { display: block !important; }
-  #wsCrm, #wsOperators { display: none !important; }
+  /* The report lives inside the Closed Deals workspace, which the other tabs hide */
+  #wsClosed[hidden] { display: block !important; }
+  #wsDocs, #wsCrm, #wsOperators { display: none !important; }
 
   section { padding: 0 !important; }
   .section--alice { background: #FFFFFF !important; }
@@ -2539,6 +2539,7 @@ button.link-arrow {
       <nav class="dash-tabs" aria-label="Workspace">
         <button type="button" data-tab="home" class="is-active" aria-current="page">Home</button>
         <button type="button" data-tab="docs">Deal Pipeline<span class="dash-tabs__count" id="tabDealCount"></span></button>
+        <button type="button" data-tab="closed">Closed Deals<span class="dash-tabs__count" id="tabClosedCount"></span></button>
         <button type="button" data-tab="operators">Operator CRM<span class="dash-tabs__count" id="tabOperatorCount"></span></button>
         <button type="button" data-tab="crm">Investor CRM<span class="dash-tabs__count" id="tabCrmCount"></span></button>
         <button type="button" data-tab="tasks">Task List<span class="dash-tabs__count" id="tabTaskCount"></span></button>
@@ -2554,7 +2555,7 @@ button.link-arrow {
       </div><!-- /#wsHome -->
 
       <!-- ====================== DEAL PIPELINE ====================== -->
-      <div id="wsDocs" hidden>
+      <div id="wsDocs" hidden data-deal-scope="docs">
 
         <p class="report-note" id="dealSourceNote"></p>
 
@@ -2566,7 +2567,6 @@ button.link-arrow {
             <input type="search" id="dealSearch" placeholder="Search deals, operators and markets" autocomplete="off">
           </div>
           <button class="dash-refresh dash-refresh--primary" id="dealAddBtn">Add deal</button>
-          <button class="dash-refresh" id="dealDebtBtn" hidden>Debt report</button>
           <button class="dash-refresh" id="dealExportBtn">Export Excel</button>
           <button class="dash-refresh" id="dealPublishBtn">Publish to team</button>
           <button class="dash-refresh" id="dealSaveFileBtn">Download deals-data.json</button>
@@ -2580,11 +2580,8 @@ button.link-arrow {
         <div class="deal-add" id="dealAddPanel" hidden></div>
 
         <!-- List -->
-        <div class="dash-crm" id="viewDeals">
+        <div class="dash-crm" id="dealList">
           <div class="dash-crm__filters">
-            <label class="visually-hidden" for="dealFilterArea">Filter by area</label>
-            <select id="dealFilterArea"><option value="">Active and closed</option></select>
-
             <label class="visually-hidden" for="dealFilterStatus">Filter by status</label>
             <select id="dealFilterStatus"><option value="">Any status</option></select>
 
@@ -2598,7 +2595,7 @@ button.link-arrow {
         </div>
 
         <!-- Deal detail -->
-        <div class="dash-investor" id="viewDeal" hidden>
+        <div class="dash-investor" id="dealDetail" hidden>
           <nav class="dash-crumbs" aria-label="Breadcrumb">
             <button type="button" data-action="deal-home">All deals</button>
             <span class="sep">/</span>
@@ -2607,12 +2604,67 @@ button.link-arrow {
           <div id="dealDetailBody"></div>
         </div>
 
+        <datalist id="dealOperatorNames"></datalist>
+
+      </div><!-- /#wsDocs -->
+
+      <!-- ======================= CLOSED DEALS =======================
+           What the firm already owns, off the pipeline. It is the same
+           list machinery as the tab before it, pointed at the closed-deals
+           area instead of the active one — every id here is the pipeline's
+           id with a "closed" prefix, which is what lets one set of functions
+           draw either tab.
+
+           The debt roll-up lives here rather than beside the live pipeline,
+           because debt is only ever recorded against a building the firm
+           has closed on. -->
+      <div id="wsClosed" hidden data-deal-scope="closed">
+
+        <p class="report-note" id="closedSourceNote"></p>
+
+        <!-- Toolbar -->
+        <div class="dash-toolbar">
+          <div class="dash-search">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+            <label class="visually-hidden" for="closedSearch">Search closed deals</label>
+            <input type="search" id="closedSearch" placeholder="Search closed deals, operators and markets" autocomplete="off">
+          </div>
+          <button class="dash-refresh dash-refresh--primary" id="closedDebtBtn" hidden>Debt report</button>
+          <button class="dash-refresh" id="closedExportBtn">Export Excel</button>
+          <span class="crm-unsaved" id="closedUnsaved" hidden>Unsaved local edits</span>
+        </div>
+
+        <!-- List -->
+        <div class="dash-crm" id="closedList">
+          <div class="dash-crm__filters">
+            <label class="visually-hidden" for="closedFilterStatus">Filter by status</label>
+            <select id="closedFilterStatus"><option value="">Any status</option></select>
+
+            <label class="visually-hidden" for="closedFilterOperator">Filter by operator</label>
+            <select id="closedFilterOperator"><option value="">All operators</option></select>
+
+            <button type="button" class="dash-crm__clear" id="closedClearFilters">Clear</button>
+            <span class="dash-crm__shown" id="closedShown"></span>
+          </div>
+          <div id="closedBody"></div>
+        </div>
+
+        <!-- Deal detail -->
+        <div class="dash-investor" id="closedDetail" hidden>
+          <nav class="dash-crumbs" aria-label="Breadcrumb">
+            <button type="button" data-action="deal-home">All closed deals</button>
+            <span class="sep">/</span>
+            <span class="current" id="closedCrumb"></span>
+          </nav>
+          <div id="closedDetailBody"></div>
+        </div>
+
         <!-- Debt report. Same chrome the Asset Management tab used to carry,
              reading the debt fields on the closed deals rather than a
              workbook. -->
-        <div class="dash-report" id="dealReport" hidden>
+        <div class="dash-report" id="closedReport" hidden>
           <nav class="dash-crumbs dash-report__crumbs" aria-label="Breadcrumb">
-            <button type="button" data-action="deal-home">All deals</button>
+            <button type="button" data-action="deal-home">All closed deals</button>
             <span class="sep">/</span>
             <span class="current">Debt report</span>
           </nav>
@@ -2620,21 +2672,19 @@ button.link-arrow {
           <div class="dash-report__head">
             <div>
               <p class="eyebrow">Modillion Partners — Internal</p>
-              <h2 id="dealReportTitle"></h2>
-              <p class="dash-report__meta" id="dealReportMeta"></p>
+              <h2 id="closedReportTitle"></h2>
+              <p class="dash-report__meta" id="closedReportMeta"></p>
             </div>
             <div class="dash-report__actions">
-              <button class="dash-refresh" id="dealReportPdfBtn">Export PDF</button>
-              <button class="dash-refresh" id="dealReportXlsxBtn">Export Excel</button>
+              <button class="dash-refresh" id="closedReportPdfBtn">Export PDF</button>
+              <button class="dash-refresh" id="closedReportXlsxBtn">Export Excel</button>
             </div>
           </div>
 
-          <div id="dealReportBody"></div>
+          <div id="closedReportBody"></div>
         </div>
 
-        <datalist id="dealOperatorNames"></datalist>
-
-      </div><!-- /#wsDocs -->
+      </div><!-- /#wsClosed -->
 
       <!-- ====================== INVESTOR CRM ====================== -->
       <div id="wsCrm" hidden>
@@ -3245,10 +3295,17 @@ button.link-arrow {
      ============================================================ */
   var HOME_TILES = [
     { tab: "docs", label: "Deal Pipeline", icon: "target",
-      blurb: "Every live and closed deal, with the operator behind it, where it stands, " +
-             "and the debt on the ones the firm already owns.",
+      blurb: "Every live deal, with the operator behind it, the market it is in, " +
+             "and where it stands.",
       count: function () {
-        var n = Deals.all().length;
+        var n = Deals.inArea("active-deals").length;
+        return n ? n + " deal" + (n === 1 ? "" : "s") : null;
+      } },
+    { tab: "closed", label: "Closed Deals", icon: "building",
+      blurb: "What the firm already owns — the realised investments, and the debt " +
+             "on each of them rolled up into one summary.",
+      count: function () {
+        var n = Deals.inArea("closed-deals").length;
         return n ? n + " deal" + (n === 1 ? "" : "s") : null;
       } },
     { tab: "operators", label: "Operator CRM", icon: "shield",
@@ -3288,14 +3345,52 @@ button.link-arrow {
      opened; it reads the debt fields on the closed deals instead.
      ============================================================ */
 
-  var dealState = {
-    view: "list",              // list | deal | report
-    dealId: null,
-    query: "",
-    filters: { area: "", status: "", operator: "" },
-    sortKey: "name",
-    sortDir: "asc"
+  /* Two tabs, one machinery. The Deal Pipeline is the active-deals area
+     and Closed Deals is the closed-deals one, and each keeps its own
+     search, filters, sort and open record so that switching between them
+     does not disturb what the other was showing.
+
+     Every element either tab needs is addressed as the scope's prefix
+     plus a role — dealBody and closedBody, dealCrumb and closedCrumb —
+     which is what lets one set of functions draw both. The report is the
+     one thing only the closed side has. */
+  function newDealState() {
+    return {
+      view: "list",              // list | deal | report
+      dealId: null,
+      query: "",
+      filters: { status: "", operator: "" },
+      sortKey: "name",
+      sortDir: "asc"
+    };
+  }
+
+  var dealState   = newDealState();   // Deal Pipeline
+  var closedState = newDealState();   // Closed Deals
+
+  var DEAL_SCOPES = {
+    docs:   { tab: "docs",   area: "active-deals", prefix: "deal",
+              ws: "wsDocs",   countId: "tabDealCount",   state: dealState },
+    closed: { tab: "closed", area: "closed-deals", prefix: "closed",
+              ws: "wsClosed", countId: "tabClosedCount", state: closedState }
   };
+
+  function dealScope(id) { return DEAL_SCOPES[id] || DEAL_SCOPES.docs; }
+
+  // Which tab a deal belongs on is its area, and nothing else.
+  function scopeForArea(area) {
+    return area === "closed-deals" ? DEAL_SCOPES.closed : DEAL_SCOPES.docs;
+  }
+
+  /* The click handlers are shared by both tabs, so the element that was
+     clicked is what says which tab it was in — the workspace it sits
+     inside carries data-deal-scope. */
+  function scopeFromEl(el) {
+    var host = el && el.closest ? el.closest("[data-deal-scope]") : null;
+    return dealScope(host ? host.getAttribute("data-deal-scope") : "docs");
+  }
+
+  function scopeEl(scope, role) { return $(scope.prefix + role); }
 
   var DEAL_COLUMNS = [
     { key: "name",       label: "Deal" },
@@ -3312,11 +3407,11 @@ button.link-arrow {
     return id || "";
   }
 
-  function dealFiltered() {
-    var q = dealState.query.trim().toLowerCase();
-    var f = dealState.filters;
-    var list = Deals.all().filter(function (r) {
-      if (f.area && r.area !== f.area) return false;
+  function dealFiltered(scope) {
+    var st = scope.state;
+    var q = st.query.trim().toLowerCase();
+    var f = st.filters;
+    var list = Deals.inArea(scope.area).filter(function (r) {
       if (f.status && r.status !== f.status) return false;
       if (f.operator && r.operator !== f.operator) return false;
       if (!q) return true;
@@ -3324,7 +3419,7 @@ button.link-arrow {
         .join(" ").toLowerCase().indexOf(q) !== -1;
     });
 
-    var k = dealState.sortKey, dir = dealState.sortDir === "asc" ? 1 : -1;
+    var k = st.sortKey, dir = st.sortDir === "asc" ? 1 : -1;
     list.sort(function (a, b) {
       var av = String(a[k] == null ? "" : a[k]);
       var bv = String(b[k] == null ? "" : b[k]);
@@ -3337,21 +3432,34 @@ button.link-arrow {
     return list;
   }
 
-  function dealTable(list) {
+  function dealTable(list, scope) {
+    var st = scope.state;
+    var isClosed = scope.tab === "closed";
+
     if (!list.length) {
-      return Deals.all().length
+      return Deals.inArea(scope.area).length
         ? '<div class="dash-state"><h3>No deals match</h3>' +
-          '<p>Clear the filters, or add one with the button above.</p></div>'
-        : '<div class="dash-state"><h3>No deals yet</h3>' +
-          '<p>Deals live in the shared store, seeded from deals-data.json. ' +
-          'Add the first one with the button above.</p></div>';
+          '<p>Clear the filters' +
+          (isClosed ? '.' : ', or add one with the button above.') + '</p></div>'
+        : isClosed
+          ? '<div class="dash-state"><h3>Nothing closed yet</h3>' +
+            '<p>A deal arrives here when its “Where it sits” is set to Closed Deals, ' +
+            'which is done on the deal itself over on the pipeline.</p></div>'
+          : '<div class="dash-state"><h3>No deals yet</h3>' +
+            '<p>Deals live in the shared store, seeded from deals-data.json. ' +
+            'Add the first one with the button above.</p></div>';
     }
 
-    var head = DEAL_COLUMNS.map(function (c) {
-      var sorted = dealState.sortKey === c.key;
+    /* Each tab is one area now, so every row of either list would carry
+       the same "Where" — it is on the deal itself, where it can be read
+       and changed, rather than repeated down the page. */
+    var cols = DEAL_COLUMNS.filter(function (c) { return c.key !== "area"; });
+
+    var head = cols.map(function (c) {
+      var sorted = st.sortKey === c.key;
       return '<th class="' + (sorted ? "is-sorted" : "") + '">' +
              '<button type="button" data-dealsort="' + c.key + '">' + c.label +
-             '<span class="arrow">' + (sorted && dealState.sortDir === "asc" ? "↑" : "↓") + '</span>' +
+             '<span class="arrow">' + (sorted && st.sortDir === "asc" ? "↑" : "↓") + '</span>' +
              '</button></th>';
     }).join("");
 
@@ -3360,7 +3468,6 @@ button.link-arrow {
         '<td><span class="crm-name">' + esc(rec.name) + '</span>' +
           (rec.note ? '<span class="crm-sub">' + esc(rec.note) + '</span>' : "") + '</td>' +
         '<td>' + (rec.operator ? esc(rec.operator) : '<span class="muted">—</span>') + '</td>' +
-        '<td>' + esc(dealAreaLabel(rec.area)) + '</td>' +
         '<td><span class="crm-pill" data-stage="' + esc(rec.status) + '">' + esc(rec.status) + '</span>' +
           (rec.statusWhy ? '<span class="crm-sub">' + esc(rec.statusWhy) + '</span>' : "") + '</td>' +
         '<td>' + (rec.market ? esc(rec.market) : '<span class="muted">—</span>') + '</td>' +
@@ -3373,7 +3480,7 @@ button.link-arrow {
            '<thead><tr>' + head + '</tr></thead><tbody>' + rows + '</tbody></table></div>';
   }
 
-  function fillDealFilters() {
+  function fillDealFilters(scope) {
     function fill(id, values, blank) {
       var sel = $(id);
       if (!sel) return;
@@ -3384,19 +3491,18 @@ button.link-arrow {
         }).join("");
       sel.value = current;
     }
-    fill("dealFilterArea", Deals.areas().map(function (a) {
-      return { value: a.id, label: a.label };
-    }), "Active and closed");
-    fill("dealFilterStatus", Deals.statuses().map(function (s) {
+    fill(scope.prefix + "FilterStatus", Deals.statuses().map(function (s) {
       return { value: s, label: s };
     }), "Any status");
 
+    // Only the operators behind THIS tab's deals — a picker offering names
+    // that cannot match anything on the list in front of you is a dead end.
     var ops = [];
-    Deals.all().forEach(function (r) {
+    Deals.inArea(scope.area).forEach(function (r) {
       if (r.operator && ops.indexOf(r.operator) === -1) ops.push(r.operator);
     });
     ops.sort();
-    fill("dealFilterOperator", ops.map(function (o) {
+    fill(scope.prefix + "FilterOperator", ops.map(function (o) {
       return { value: o, label: o };
     }), "All operators");
 
@@ -3408,21 +3514,35 @@ button.link-arrow {
     }
   }
 
-  function renderDeals() {
-    var all = Deals.all();
-    var list = dealFiltered();
-    $("dealBody").innerHTML = dealTable(list);
-    $("dealShown").textContent = list.length === all.length
+  /* Called with a scope to draw one tab, and without one to draw both —
+     which is what every edit elsewhere on the page wants, since a deal it
+     touched could be sitting on either list. */
+  function renderDeals(scope) {
+    if (!scope) {
+      renderDeals(DEAL_SCOPES.docs);
+      renderDeals(DEAL_SCOPES.closed);
+      return;
+    }
+
+    var all = Deals.inArea(scope.area);
+    var list = dealFiltered(scope);
+    scopeEl(scope, "Body").innerHTML = dealTable(list, scope);
+    scopeEl(scope, "Shown").textContent = list.length === all.length
       ? list.length + " deal" + (list.length === 1 ? "" : "s")
       : list.length + " of " + all.length + " shown";
-    $("tabDealCount").textContent = all.length ? "(" + all.length + ")" : "";
-    $("dealUnsaved").hidden = !Deals.hasLocalEdits();
-    $("dealDebtBtn").hidden = !Deals.withDebt().length;
+    $(scope.countId).textContent = all.length ? "(" + all.length + ")" : "";
+    scopeEl(scope, "Unsaved").hidden = !Deals.hasLocalEdits();
 
-    fillDealFilters();
+    // The report opens from the closed tab only, and only when there is
+    // something in it — an empty debt summary is a page nobody wanted.
+    if (scope.tab === "closed") {
+      $("closedDebtBtn").hidden = !Deals.withDebt().length;
+    }
+
+    fillDealFilters(scope);
 
     var m = Deals.meta();
-    $("dealSourceNote").innerHTML = m.source !== "fallback"
+    scopeEl(scope, "SourceNote").innerHTML = m.source !== "fallback"
       ? (m.source === "shared"
           ? "Deals from the shared store — the same pipeline everyone sees. "
           : "Deals from deals-data.json in this site folder, not from the shared store. ") +
@@ -3432,27 +3552,32 @@ button.link-arrow {
         SharedOverlay.note();
   }
 
-  function showDealView(name) {
-    dealState.view = name;
-    $("viewDeals").hidden  = name !== "list";
-    $("viewDeal").hidden   = name !== "deal";
-    $("dealReport").hidden = name !== "report";
+  function showDealView(name, scope) {
+    scope.state.view = name;
+    scopeEl(scope, "List").hidden   = name !== "list";
+    scopeEl(scope, "Detail").hidden = name !== "deal";
+    var report = scopeEl(scope, "Report");     // the closed tab only
+    if (report) report.hidden = name !== "report";
   }
 
-  function dealHome() {
-    dealState.view = "list";
-    dealState.dealId = null;
-    showDealView("list");
-    renderDeals();
+  function dealHome(scope) {
+    scope = scope || DEAL_SCOPES.docs;
+    scope.state.view = "list";
+    scope.state.dealId = null;
+    showDealView("list", scope);
+    renderDeals(scope);
   }
 
-  function openDeal(id) {
+  /* Opened without a scope — from a link on another tab, or after an edit —
+     a deal lands on whichever tab its area puts it on. */
+  function openDeal(id, scope) {
     var rec = Deals.get(id);
-    if (!rec) { dealHome(); return; }
-    dealState.dealId = id;
-    $("dealCrumb").textContent = rec.name;
-    $("dealDetailBody").innerHTML = dealDetail(rec);
-    showDealView("deal");
+    if (!rec) { dealHome(scope); return; }
+    scope = scope || scopeForArea(rec.area);
+    scope.state.dealId = id;
+    scopeEl(scope, "Crumb").textContent = rec.name;
+    scopeEl(scope, "DetailBody").innerHTML = dealDetail(rec);
+    showDealView("deal", scope);
   }
 
   /* Open a deal by NAME, which is how everything outside this tab
@@ -3461,8 +3586,10 @@ button.link-arrow {
      rather than on an error. */
   function openDealByName(name) {
     var rec = Deals.byName(name);
-    if (rec) openDeal(rec.id);
-    else dealHome();
+    var scope = rec ? scopeForArea(rec.area) : DEAL_SCOPES.docs;
+    switchTab(scope.tab);
+    if (rec) openDeal(rec.id, scope);
+    else dealHome(scope);
   }
 
   function dealField(label, value, wide) {
@@ -3576,10 +3703,15 @@ button.link-arrow {
       '</div></div>';
   }
 
-  function saveDealEdit(id) {
+  function saveDealEdit(id, scope) {
     var rec = Deals.get(id);
     if (!rec) return;
-    function v(sel) { var el = $(sel); return el ? el.value.trim() : ""; }
+    scope = scope || scopeForArea(rec.area);
+    /* Both tabs draw this same form, so a deal could be open in edit on
+       each of them at once and the ids would not be unique. The fields are
+       read out of the workspace the Save button was in, which they are. */
+    var host = $(scope.ws);
+    function v(sel) { var el = host.querySelector("#" + sel); return el ? el.value.trim() : ""; }
 
     var debt = {}, anyDebt = false;
     DEBT_LABELS.forEach(function (f) {
@@ -3590,10 +3722,11 @@ button.link-arrow {
 
     var name = v("dealEditName") || rec.name;
     var status = v("dealEditStatus");
+    var area = v("dealEditArea") || rec.area;
     Deals.patch(id, {
       name: name,
       operator: v("dealEditOperator"),
-      area: v("dealEditArea"),
+      area: area,
       status: status,
       statusWhy: v("dealEditStatusWhy"),
       statusSetAt: status !== rec.status
@@ -3603,11 +3736,24 @@ button.link-arrow {
       note: v("dealEditNote"),
       debt: anyDebt ? debt : null
     });
-    openDeal(id);
+
     renderDeals();
-    toast("Saved. " + (SharedOverlay.state() === "shared"
-      ? "The team sees this on their next load."
-      : "In this browser only — the shared store is not reachable."));
+
+    /* "Where it sits" is the field that moves a deal between the two tabs.
+       When it has been changed the deal is followed to the tab it now
+       belongs on, rather than left open on a list it has just left. */
+    var target = scopeForArea(area);
+    var moved = target !== scope;
+    if (moved) {
+      dealHome(scope);
+      switchTab(target.tab);
+    }
+    openDeal(id, target);
+
+    toast("Saved" + (moved ? " and moved to " + dealAreaLabel(area) : "") + ". " +
+      (SharedOverlay.state() === "shared"
+        ? "The team sees this on their next load."
+        : "In this browser only — the shared store is not reachable."));
   }
 
   /* ============================================================
@@ -3621,14 +3767,14 @@ button.link-arrow {
      ============================================================ */
   function openDealDebtReport() {
     var list = Deals.withDebt();
-    $("dealReportTitle").textContent = "Debt summary";
-    $("dealReportMeta").textContent =
+    $("closedReportTitle").textContent = "Debt summary";
+    $("closedReportMeta").textContent =
       list.length + " propert" + (list.length === 1 ? "y" : "ies") +
       " · " + new Date().toLocaleDateString(undefined,
         { year: "numeric", month: "long", day: "numeric" });
 
     if (!list.length) {
-      $("dealReportBody").innerHTML =
+      $("closedReportBody").innerHTML =
         '<div class="dash-state"><h3>Nothing to report</h3>' +
         '<p>No deal carries debt yet. Open a deal and fill in its debt block.</p></div>';
     } else {
@@ -3638,22 +3784,30 @@ button.link-arrow {
                 esc(r.name) + '</button>', esc(r.market)]
           .concat(DEBT_LABELS.map(function (f) { return esc(r.debt[f[0]] || ""); }));
       });
-      $("dealReportBody").innerHTML = table(head, rows);
+      $("closedReportBody").innerHTML = table(head, rows);
     }
-    showDealView("report");
+    showDealView("report", DEAL_SCOPES.closed);
   }
 
-  function exportDealsXlsx() {
-    var list = Deals.all();
+  /* One workbook per tab: the pipeline exports the live deals, Closed Deals
+     exports what the firm owns and the debt against it. The debt sheet on
+     the closed side is the same set of rows the report prints, so a deal
+     carrying debt cannot be in one and missing from the other. */
+  function exportDealsXlsx(scope) {
+    scope = scope || DEAL_SCOPES.docs;
+    var isClosed = scope.tab === "closed";
+    var list = Deals.inArea(scope.area);
     var sheets = [{
-      name: "Deals",
+      name: isClosed ? "Closed deals" : "Deals",
       rows: [["Deal", "Operator", "Where", "Status", "Why", "Market", "Asset class", "Note", "Added"]]
         .concat(list.map(function (r) {
           return [r.name, r.operator, dealAreaLabel(r.area), r.status, r.statusWhy,
                   r.market, r.assetClass, r.note, r.addedAt];
         }))
     }];
-    var withDebt = Deals.withDebt();
+    var withDebt = isClosed
+      ? Deals.withDebt()
+      : list.filter(function (r) { return !!r.debt; });
     if (withDebt.length) {
       sheets.push({
         name: "Debt",
@@ -3664,8 +3818,10 @@ button.link-arrow {
       });
     }
     download(Xlsx.build(sheets),
-      "modillion-pipeline-" + new Date().toISOString().slice(0, 10) + ".xlsx");
-    toast("Excel workbook downloaded — " + list.length + " deals" +
+      "modillion-" + (isClosed ? "closed-deals-" : "pipeline-") +
+      new Date().toISOString().slice(0, 10) + ".xlsx");
+    toast("Excel workbook downloaded — " + list.length +
+          (isClosed ? " closed deals" : " deals") +
           (withDebt.length ? ", " + withDebt.length + " with debt" : "") + ".");
   }
 
@@ -3833,7 +3989,12 @@ button.link-arrow {
     closeDealAdd();
     afterLinkAdd();      // the pickers, the CRM list and the link offers take it up
     renderDeals();
-    dealHome();
+
+    // A deal added straight into Closed Deals is shown where it landed,
+    // rather than leaving the pipeline claiming to have taken it.
+    var target = scopeForArea(area);
+    dealHome(target);
+    if (target.tab !== "docs") switchTab(target.tab);
 
     toast("Added “" + saved + "” to " + esc(dealAreaLabel(area)) +
           (matched ? " under " + matched.name : "") + ".");
@@ -4022,7 +4183,7 @@ button.link-arrow {
   // takes the deal off the pipeline, which is the only part of it this page
   // owns. Said plainly on the first click, because "delete" reasonably
   // sounds like it reaches further than it does.
-  function hideDealRow(button) {
+  function hideDealRow(button, scope) {
     var name = button.getAttribute("data-deal-hide");
     if (!armed(button, "Delete?",
         "Click again to take “" + name + "” off the pipeline. It is archived, not destroyed — " +
@@ -4031,14 +4192,14 @@ button.link-arrow {
     Deals.hideDeal(name, true);
     afterLinkAdd();
     renderDeals();
-    dealHome();
+    dealHome(scope);
     toast("“" + name + "” is off the pipeline.");
   }
 
   // Two clicks, not one — but not a diff either. There is nothing behind the
   // name to lose, so the second click is a check against a mis-click rather
   // than a decision worth staging.
-  function removeDealRow(button) {
+  function removeDealRow(button, scope) {
     var name = button.getAttribute("data-deal-remove");
     if (button.getAttribute("data-armed") !== "1") {
       button.setAttribute("data-armed", "1");
@@ -4050,7 +4211,7 @@ button.link-arrow {
     Deals.removeAddedDeal(name);
     afterLinkAdd();
     renderDeals();
-    dealHome();
+    dealHome(scope);
     toast("“" + name + "” is off the deal list.");
   }
 
@@ -4077,7 +4238,11 @@ button.link-arrow {
   function table(head, rows, foot) {
     return '<div class="report-table-wrap"><table class="report-table">' +
       '<thead><tr>' + head.map(function (h) {
-        return '<th' + (h.num ? ' class="num"' : '') + '>' + esc(h.label) + '</th>';
+        // A heading is either { label, num } or, as the debt report writes
+        // them, a plain string. Reading .label off the string is what used
+        // to print a row of "undefined" across the top of the report.
+        var label = (h && typeof h === "object") ? h.label : h;
+        return '<th' + (h && h.num ? ' class="num"' : '') + '>' + esc(label) + '</th>';
       }).join("") + '</tr></thead>' +
       '<tbody>' + rows.map(function (r) {
         return '<tr>' + r.map(function (c) {
@@ -8093,8 +8258,7 @@ button.link-arrow {
     if (dealChip) {
       e.stopPropagation();
       var name = dealChip.getAttribute("data-op-deal");
-      switchTab("docs");
-      openDealByName(name);
+      openDealByName(name);      // it picks the tab the deal is filed on
       return;
     }
 
@@ -8890,7 +9054,9 @@ button.link-arrow {
     } else if (crmState.tab === "operators" && opState.view === "operator" && opState.operatorId) {
       renderOperator(opState.operatorId);
     } else if (crmState.tab === "docs" && dealState.view === "deal" && dealState.dealId) {
-      openDeal(dealState.dealId);
+      openDeal(dealState.dealId, DEAL_SCOPES.docs);
+    } else if (crmState.tab === "closed" && closedState.view === "deal" && closedState.dealId) {
+      openDeal(closedState.dealId, DEAL_SCOPES.closed);
     }
   }
 
@@ -9649,13 +9815,15 @@ button.link-arrow {
     });
     $("wsHome").hidden = tab !== "home";
     $("wsDocs").hidden = tab !== "docs";
+    $("wsClosed").hidden = tab !== "closed";
     $("wsCrm").hidden = tab !== "crm";
     $("wsOperators").hidden = tab !== "operators";
     $("wsTasks").hidden = tab !== "tasks";
     if (tab === "home") renderHome();
     if (tab === "crm") { renderCrmFilters(); renderCrm(); }
     if (tab === "operators") { renderOperatorFilters(); renderOperators(); }
-    if (tab === "docs") { renderDeals(); }
+    if (tab === "docs") { renderDeals(DEAL_SCOPES.docs); }
+    if (tab === "closed") { renderDeals(DEAL_SCOPES.closed); }
     if (tab === "tasks") { fillTaskSelects(); renderTasks(); }
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
@@ -9875,101 +10043,125 @@ button.link-arrow {
      ============================================================ */
   document.addEventListener("click", function (e) {
 
-    /* ---- Deal Pipeline ------------------------------------------
+    /* ---- Deal Pipeline and Closed Deals -------------------------
        All of this used to be folder navigation: cards into areas,
        breadcrumbs, a file table, a PDF preview. A deal is a record
-       now, so the tab behaves like the two CRMs beside it. */
+       now, so the tabs behave like the two CRMs beside them.
+
+       One set of handlers serves both lists. Which one a click was in
+       is read off the workspace it came from, never assumed — the two
+       tabs hold different records and their own sort and filters. */
 
     var dealRow = e.target.closest("tr[data-deal]");
-    if (dealRow) { openDeal(dealRow.getAttribute("data-deal")); return; }
+    if (dealRow) { openDeal(dealRow.getAttribute("data-deal"), scopeFromEl(dealRow)); return; }
 
     var dealOpen = e.target.closest("[data-deal-open]");
-    if (dealOpen) { openDeal(dealOpen.getAttribute("data-deal-open")); return; }
+    if (dealOpen) { openDeal(dealOpen.getAttribute("data-deal-open"), scopeFromEl(dealOpen)); return; }
 
-    if (e.target.closest("[data-action='deal-home']")) { dealHome(); return; }
+    var dealBack = e.target.closest("[data-action='deal-home']");
+    if (dealBack) { dealHome(scopeFromEl(dealBack)); return; }
 
     var dealSort = e.target.closest("[data-dealsort]");
     if (dealSort) {
+      var sortScope = scopeFromEl(dealSort);
       var dk = dealSort.getAttribute("data-dealsort");
-      if (dealState.sortKey === dk) {
-        dealState.sortDir = dealState.sortDir === "asc" ? "desc" : "asc";
+      if (sortScope.state.sortKey === dk) {
+        sortScope.state.sortDir = sortScope.state.sortDir === "asc" ? "desc" : "asc";
       } else {
-        dealState.sortKey = dk;
-        dealState.sortDir = "asc";
+        sortScope.state.sortKey = dk;
+        sortScope.state.sortDir = "asc";
       }
-      renderDeals();
+      renderDeals(sortScope);
       return;
     }
 
     var dealEdit = e.target.closest("[data-deal-edit]");
     if (dealEdit) {
+      var editScope = scopeFromEl(dealEdit);
       var editing = Deals.get(dealEdit.getAttribute("data-deal-edit"));
-      if (editing) $("dealDetailBody").innerHTML = dealEditForm(editing);
+      if (editing) scopeEl(editScope, "DetailBody").innerHTML = dealEditForm(editing);
       return;
     }
 
     var dealSave = e.target.closest("[data-deal-save]");
-    if (dealSave) { saveDealEdit(dealSave.getAttribute("data-deal-save")); return; }
+    if (dealSave) {
+      saveDealEdit(dealSave.getAttribute("data-deal-save"), scopeFromEl(dealSave));
+      return;
+    }
 
     var dealCancel = e.target.closest("[data-deal-cancel]");
-    if (dealCancel) { openDeal(dealCancel.getAttribute("data-deal-cancel")); return; }
+    if (dealCancel) {
+      openDeal(dealCancel.getAttribute("data-deal-cancel"), scopeFromEl(dealCancel));
+      return;
+    }
 
     var dealTask = e.target.closest("[data-deal-task]");
     if (dealTask) { addTaskFor(dealTask.getAttribute("data-deal-task")); return; }
 
     var removeDeal = e.target.closest("[data-deal-remove]");
-    if (removeDeal) { removeDealRow(removeDeal); return; }
+    if (removeDeal) { removeDealRow(removeDeal, scopeFromEl(removeDeal)); return; }
 
     var hideDeal = e.target.closest("[data-deal-hide]");
-    if (hideDeal) { hideDealRow(hideDeal); return; }
+    if (hideDeal) { hideDealRow(hideDeal, scopeFromEl(hideDeal)); return; }
   });
 
-  /* ---- Deal Pipeline toolbar ---------------------------------- */
+  /* ---- Deal Pipeline and Closed Deals toolbars ----------------
+     The search box, the two filters, Clear and Export are the same
+     controls on both tabs, so they are wired in one pass over the
+     scopes rather than written out twice. */
 
-  var dealSearchTimer = null;
-  $("dealSearch").addEventListener("input", function (e) {
-    var q = e.target.value;
-    clearTimeout(dealSearchTimer);
-    dealSearchTimer = setTimeout(function () {
-      dealState.query = q;
-      renderDeals();
-    }, 200);
-  });
+  Object.keys(DEAL_SCOPES).forEach(function (key) {
+    var scope = DEAL_SCOPES[key];
+    var searchTimer = null;
 
-  $("dealSearch").addEventListener("keydown", function (e) {
-    if (e.key === "Escape") {
-      e.target.value = "";
-      dealState.query = "";
-      renderDeals();
-    }
-  });
-
-  ["dealFilterArea", "dealFilterStatus", "dealFilterOperator"].forEach(function (id) {
-    $(id).addEventListener("change", function () {
-      dealState.filters.area     = $("dealFilterArea").value;
-      dealState.filters.status   = $("dealFilterStatus").value;
-      dealState.filters.operator = $("dealFilterOperator").value;
-      renderDeals();
+    scopeEl(scope, "Search").addEventListener("input", function (e) {
+      var q = e.target.value;
+      clearTimeout(searchTimer);
+      searchTimer = setTimeout(function () {
+        scope.state.query = q;
+        renderDeals(scope);
+      }, 200);
     });
-  });
 
-  $("dealClearFilters").addEventListener("click", function () {
-    dealState.filters = { area: "", status: "", operator: "" };
-    dealState.query = "";
-    $("dealSearch").value = "";
-    renderDeals();
+    scopeEl(scope, "Search").addEventListener("keydown", function (e) {
+      if (e.key === "Escape") {
+        e.target.value = "";
+        scope.state.query = "";
+        renderDeals(scope);
+      }
+    });
+
+    ["FilterStatus", "FilterOperator"].forEach(function (role) {
+      scopeEl(scope, role).addEventListener("change", function () {
+        scope.state.filters.status   = scopeEl(scope, "FilterStatus").value;
+        scope.state.filters.operator = scopeEl(scope, "FilterOperator").value;
+        renderDeals(scope);
+      });
+    });
+
+    scopeEl(scope, "ClearFilters").addEventListener("click", function () {
+      scope.state.filters = { status: "", operator: "" };
+      scope.state.query = "";
+      scopeEl(scope, "Search").value = "";
+      renderDeals(scope);
+    });
+
+    scopeEl(scope, "ExportBtn").addEventListener("click", function () {
+      exportDealsXlsx(scope);
+    });
   });
 
   $("dealAddBtn").addEventListener("click", openDealAdd);
 
   // Hidden when no deal carries debt, rather than opening an empty report.
-  $("dealDebtBtn").addEventListener("click", openDealDebtReport);
+  $("closedDebtBtn").addEventListener("click", openDealDebtReport);
 
-  $("dealExportBtn").addEventListener("click", exportDealsXlsx);
-  $("dealReportXlsxBtn").addEventListener("click", exportDealsXlsx);
+  $("closedReportXlsxBtn").addEventListener("click", function () {
+    exportDealsXlsx(DEAL_SCOPES.closed);
+  });
 
   // The print stylesheet is the PDF: it hides everything but the report.
-  $("dealReportPdfBtn").addEventListener("click", function () { window.print(); });
+  $("closedReportPdfBtn").addEventListener("click", function () { window.print(); });
 
   $("dealSaveFileBtn").addEventListener("click", function () {
     var blob = new Blob([JSON.stringify(Deals.toFile(), null, 2)], { type: "application/json" });
