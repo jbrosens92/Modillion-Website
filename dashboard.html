@@ -1562,18 +1562,69 @@ button.link-arrow {
   transition: background .18s ease;
 }
 .crmtable tbody tr:hover { background: rgba(119, 166, 182, 0.07); }
-/* Hand-set order. The name is the grip: press it and move, and the row
-   travels with the pointer. A press that does NOT move is still a click,
-   so opening a record works exactly as it did — the drag only begins once
-   the pointer has actually gone somewhere. touch-action is off on the grip
-   because otherwise a touch-drag scrolls the page instead of the row; the
-   rest of the row still scrolls normally. */
+/* Hand-set order — the press, the lift, and the gap the row drops into.
+   The name is the grip. Pressing it grows a short accent down the left
+   edge of the row: while it is growing you are still only clicking, and
+   when it is full the row has lifted and will move with the pointer. The
+   resting table is untouched, so a list nobody is reordering looks exactly
+   as it always did.
+
+   All of it is drawn on the CELLS rather than on the row. The table is
+   border-collapse, where a background or a shadow on a <tr> is drawn
+   inconsistently or not at all. */
 .crmtable[data-reorder] .crm-name { cursor: grab; touch-action: none; }
-.crmtable[data-reorder] tbody tr.is-dragging { background: rgba(119, 166, 182, 0.18); }
-.crmtable[data-reorder] tbody tr.is-dragging .crm-name { cursor: grabbing; }
+.crmtable[data-reorder] tbody td { transition: background .18s ease; }
+/* The gutter the accent lives in. The wrap around the table clips to its
+   own box, so a mark hung off the left edge of the cell would simply not
+   be drawn — it has to have room INSIDE the column. */
+.crmtable[data-reorder] thead th:first-child,
+.crmtable[data-reorder] tbody td:first-child { padding-left: 13px; }
+.crmtable[data-reorder] tbody td:first-child { position: relative; }
+.crmtable[data-reorder] tbody td:first-child::before {
+  content: ""; position: absolute; left: 3px; top: 50%; bottom: 50%; width: 2px;
+  background: var(--steel); border-radius: 2px; opacity: 0;
+  transition: top .17s ease, bottom .17s ease, opacity .12s ease;
+}
+
+/* Hovering a row shows a stub of it — enough to say the row has a grip
+   without putting a mark on every line of a list nobody is reordering. */
+.crmtable[data-reorder] tbody tr:hover td:first-child::before {
+  top: 40%; bottom: 40%; opacity: .45;
+}
+
+/* The hold, filling out. This is the whole answer to "am I ready yet" —
+   when the bar has run the length of the row, the row is in the air. */
+.crmtable[data-reorder] tbody tr.is-pressing td:first-child::before,
+.crmtable[data-reorder] tbody tr.is-lifted td:first-child::before {
+  top: 9px; bottom: 9px; opacity: 1;
+}
+.crmtable[data-reorder] tbody tr.is-pressing td { background: rgba(119, 166, 182, 0.10); }
+
+/* Lifted: off the page, following the pointer, and casting a shadow on
+   the rows it is passing over. */
+.crmtable[data-reorder] tbody tr.is-lifted { position: relative; z-index: 4; }
+.crmtable[data-reorder] tbody tr.is-lifted td {
+  background: var(--paper);
+  box-shadow: 0 14px 30px -16px rgba(18, 34, 54, .55);
+}
+.crmtable[data-reorder] tbody tr.is-lifted .crm-name { cursor: grabbing; }
+.crmtable[data-reorder] tbody tr.is-lifted .row-move { opacity: 0; }
+
+/* Only while a row is in the air do the others slide, so an ordinary
+   redraw of the table never animates anything. */
+.crmtable.is-sorting tbody tr { transition: transform .18s cubic-bezier(.2, .7, .3, 1); }
+.crmtable.is-sorting tbody tr.is-lifted { transition: none; }
+.crmtable.is-sorting tbody tr:hover td { background: none; }
+.crmtable.is-sorting tbody tr.is-lifted td { background: var(--paper); }
 body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: none; }
 
-/* The line above a list that is in a hand-set order, and the way back out
+@media (prefers-reduced-motion: reduce) {
+  .crmtable[data-reorder] tbody td,
+  .crmtable[data-reorder] tbody td:first-child::before,
+  .crmtable.is-sorting tbody tr { transition: none; }
+}
+
+/* The line over a list that is in a hand-set order, and the way back out
    of it. It says which order you are looking at, because a list that is
    neither alphabetical nor by date and does not say so reads as broken. */
 .order-note {
@@ -3635,7 +3686,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
 
     var rows = list.map(function (rec) {
       return '<tr data-deal="' + esc(rec.id) + '">' +
-        '<td><span class="crm-name" title="Press and drag to move ' + esc(rec.name) +
+        '<td><span class="crm-name" title="Hold and drag to move ' + esc(rec.name) +
           ' up or down the list">' + esc(rec.name) + '</span>' + rowMoveButtons(rec.id) +
           (rec.note ? '<span class="crm-sub">' + esc(rec.note) + '</span>' : "") + '</td>' +
         '<td>' + (rec.operator ? esc(rec.operator) : '<span class="muted">—</span>') + '</td>' +
@@ -6396,7 +6447,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
         : '<span class="muted">—</span>';
 
       return '<tr data-investor="' + esc(inv.id) + '">' +
-        '<td><span class="crm-name" title="Press and drag to move ' + esc(inv.name) +
+        '<td><span class="crm-name" title="Hold and drag to move ' + esc(inv.name) +
           ' up or down the list">' + esc(inv.name) + '</span>' + rowMoveButtons(inv.id) +
           (inv.location ? '<span class="crm-sub">' + esc(inv.location) + '</span>' : "") + '</td>' +
         '<td>' + esc(inv.type) +
@@ -7801,6 +7852,8 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
           return { name: c.name || "", title: c.title || "", email: c.email || "" };
         }),
         notes: rec.notes || "",
+        // Position in a hand-set order; null until somebody drags the row.
+        order: rec.order == null || rec.order === "" ? null : Number(rec.order),
         archived: !!rec.archived
       };
     }
@@ -7885,6 +7938,19 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
       return byId(id);
     }
 
+    /* Several records, saved once — see the same method on Deals. A
+       reorder restamps every row on the list, and one push carries them. */
+    function patchMany(map) {
+      var ids = Object.keys(map);
+      if (!ids.length) return;
+      ids.forEach(function (id) {
+        var existing = overlay.patches[id] || {};
+        overlay.patches[id] = Object.assign({}, existing, map[id]);
+      });
+      writeOverlay();
+      rebuild();
+    }
+
     // Delete, on the same terms as the Investor CRM: made here, it is
     // spliced out; from operator-data.json, a tombstone keeps it out of
     // the list and out of the export until local edits are cleared.
@@ -7949,6 +8015,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
       get: byId,
       create: create,
       patch: patch,
+      patchMany: patchMany,
       archive: archive,
       remove: remove,
       isArchived: function (id) { return !!overlay.archived[id]; },
@@ -7977,7 +8044,10 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
     query: "",
     filters: { investment: "", strategy: "", market: "", stage: "", priority: "" },
     sortKey: "name",
-    sortDir: "asc"
+    sortDir: "asc",
+    // See dealSortKey(): until a heading is clicked, a list that has been
+    // put in a hand-set order shows itself in that order.
+    sortTouched: false
   };
 
   var OPERATOR_COLUMNS = [
@@ -8078,16 +8148,36 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
       return haystack.indexOf(q) !== -1;
     });
 
+    return list.sort(opComparator(opSortKey(), opState.sortDir));
+  }
+
+  // The deal list's two helpers, for operators. Same rules, same reasons.
+  function opComparator(key, dirName) {
+    if (key === "manual") {
+      return function (a, b) {
+        var ao = a.order == null ? Infinity : a.order;
+        var bo = b.order == null ? Infinity : b.order;
+        if (ao !== bo) return ao - bo;
+        return a.name.localeCompare(b.name);
+      };
+    }
     // Priority sorts high-to-low whichever way the arrow points, because
     // its natural order is the rank, not the alphabet.
-    var dir = opState.sortDir === "asc" ? 1 : -1;
-    return list.sort(function (a, b) {
-      var av = opSortValue(a, opState.sortKey);
-      var bv = opSortValue(b, opState.sortKey);
+    var dir = dirName === "asc" ? 1 : -1;
+    return function (a, b) {
+      var av = opSortValue(a, key);
+      var bv = opSortValue(b, key);
       if (av < bv) return -1 * dir;
       if (av > bv) return 1 * dir;
       return a.name.localeCompare(b.name);
-    });
+    };
+  }
+
+  function opSortKey() {
+    if (opState.sortTouched) return opState.sortKey;
+    var list = Operators.all();
+    for (var i = 0; i < list.length; i++) if (list[i].order != null) return "manual";
+    return opState.sortKey;
   }
 
   function operatorTable(list) {
@@ -8100,8 +8190,10 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
           'Add the first one with the button above.</p></div>';
     }
 
+    var sortKey = opSortKey();
+
     var head = OPERATOR_COLUMNS.map(function (c) {
-      var sorted = opState.sortKey === c.key;
+      var sorted = sortKey === c.key;
       return '<th class="' + (sorted ? "is-sorted" : "") + '">' +
              '<button type="button" data-opsort="' + c.key + '">' + c.label +
              '<span class="arrow">' + (sorted && opState.sortDir === "asc" ? "↑" : "↓") + '</span>' +
@@ -8115,7 +8207,8 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
         : '<span class="muted">—</span>';
 
       return '<tr data-operator="' + esc(rec.id) + '">' +
-        '<td><span class="crm-name">' + esc(rec.name) + '</span>' +
+        '<td><span class="crm-name" title="Hold and drag to move ' + esc(rec.name) +
+          ' up or down the list">' + esc(rec.name) + '</span>' + rowMoveButtons(rec.id) +
           (rec.location ? '<span class="crm-sub">' + esc(rec.location) + '</span>' : "") + '</td>' +
         '<td>' + (rec.stage
           ? '<span class="crm-pill" data-stage="' + esc(rec.stage) + '">' + esc(rec.stage) + '</span>'
@@ -8133,7 +8226,8 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
         '</tr>';
     }).join("");
 
-    return '<div class="crmtable-wrap"><table class="crmtable">' +
+    return orderNote(sortKey === "manual", "operator") +
+           '<div class="crmtable-wrap"><table class="crmtable" data-reorder="operator">' +
            '<thead><tr>' + head + '</tr></thead><tbody>' + rows + '</tbody></table></div>';
   }
 
@@ -8622,8 +8716,15 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
     var opSort = e.target.closest("[data-opsort]");
     if (opSort) {
       var key = opSort.getAttribute("data-opsort");
-      if (opState.sortKey === key) opState.sortDir = opState.sortDir === "asc" ? "desc" : "asc";
-      else { opState.sortKey = key; opState.sortDir = key === "aum" || key === "deals" ? "desc" : "asc"; }
+      if (opState.sortKey === key && opState.sortTouched) {
+        opState.sortDir = opState.sortDir === "asc" ? "desc" : "asc";
+      } else {
+        opState.sortKey = key;
+        opState.sortDir = key === "aum" || key === "deals" ? "desc" : "asc";
+      }
+      // A heading was chosen, so it wins over the hand-set order until
+      // this tab is reloaded. The order itself is untouched.
+      opState.sortTouched = true;
       renderOperators();
       return;
     }
@@ -12446,17 +12547,28 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
 
   /* ============================================================
      HAND-SET ORDER
-     A deal list and the investor list are sorted by a column, which is
-     the right default and the wrong one the moment somebody wants their
-     four live deals in the order they are actually working them. So the
-     name is a grip: press it, move, and the row goes where you put it.
+     Every list on this page is sorted by a column, which is the right
+     default and the wrong one the moment somebody wants their four live
+     deals in the order they are actually working them. So the name is a
+     grip: press it, and the row lifts; move, and it goes where you put it.
+
+     THE PRESS IS THE PART THAT HAD TO BE SAID OUT LOUD. An accent grows
+     down the left edge of the row while you hold, and the row lifts when
+     it is full — so "am I holding this yet" is answered on screen instead
+     of guessed at. Moving before it finishes lifts it straight away; a
+     press that never moves is still a click, and still opens the record.
+
+     Nothing is reordered in the DOM while the gesture is running. The
+     lifted row is translated under the pointer, the rows it has passed
+     slide by exactly its height to open the gap it will drop into, and
+     the list is redrawn from the records once, at the end.
 
      What is stored is a number per record, in the same shared overlay as
      every other edit — so the order is the TEAM's order, not a private
      view. What is NOT stored is "the list is in manual mode": a list is
-     in its hand-set order because one of its rows carries a position,
-     and that is enough. Clicking a column heading still sorts by that
-     column, for as long as the tab stays open.
+     in its hand-set order because one of its rows carries a position, and
+     that is enough. Clicking a column heading still sorts by that column,
+     for as long as the tab stays open.
 
      Dragging is a pointer gesture and nothing else, so every row also
      carries ↑ and ↓ for the keyboard, running through the same commit.
@@ -12467,7 +12579,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
   function orderNote(manual, target) {
     if (!manual) return "";
     return '<p class="order-note">' +
-      '<span>Your order — drag a name, or use ↑ ↓ on a row. Saved for everyone.</span>' +
+      '<span>Your order — hold a name until it lifts, then drag. ↑ ↓ move one row. Saved for everyone.</span>' +
       '<button type="button" data-order-reset="' + esc(target) + '">Back to A–Z</button>' +
       '</p>';
   }
@@ -12538,11 +12650,27 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
     renderCrm();
   }
 
+  function commitOperatorOrder(movedId, beforeId) {
+    var full = Operators.all().slice();
+    full.sort(opComparator(opSortKey(), opState.sortDir));
+    var ids = full.map(function (r) { return r.id; });
+    var map = orderPatches(applyMove(ids, movedId, beforeId), function (id) {
+      var rec = Operators.get(id);
+      return rec ? rec.order : null;
+    });
+    if (map) Operators.patchMany(map);
+    opState.sortTouched = false;
+    renderOperators();
+  }
+
   function commitOrder(table, movedId, beforeId) {
     if (!movedId) return;
-    if (table.getAttribute("data-reorder") === "deal") {
+    var kind = table.getAttribute("data-reorder");
+    if (kind === "deal") {
       commitDealOrder(dealScope(table.getAttribute("data-reorder-scope")),
                       table.getAttribute("data-reorder-pile"), movedId, beforeId);
+    } else if (kind === "operator") {
+      commitOperatorOrder(movedId, beforeId);
     } else {
       commitInvestorOrder(movedId, beforeId);
     }
@@ -12553,23 +12681,26 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
      next time anybody opened the tab. */
   function resetOrder(target) {
     var parts = target.split(":");
+    function clear(records, store) {
+      var map = {};
+      records.forEach(function (r) { if (r.order != null) map[r.id] = { order: null }; });
+      store.patchMany(map);
+    }
     if (parts[0] === "deal") {
       var scope = dealScope(parts[1]);
-      var map = {};
-      dealsInScope(scope).forEach(function (r) {
-        if (r.order != null) map[r.id] = { order: null };
-      });
-      Deals.patchMany(map);
+      clear(dealsInScope(scope), Deals);
       scope.state.sortKey = "name";
       scope.state.sortDir = "asc";
       scope.state.sortTouched = true;
       renderDeals(scope);
+    } else if (parts[0] === "operator") {
+      clear(Operators.all(), Operators);
+      opState.sortKey = "name";
+      opState.sortDir = "asc";
+      opState.sortTouched = true;
+      renderOperators();
     } else {
-      var imap = {};
-      Crm.all().forEach(function (r) {
-        if (r.order != null) imap[r.id] = { order: null };
-      });
-      Crm.patchMany(imap);
+      clear(Crm.all(), Crm);
       crmState.sortKey = "lastContact";
       crmState.sortDir = "desc";
       crmState.sortTouched = true;
@@ -12579,8 +12710,11 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
   }
 
   var Reorder = (function () {
+    var HOLD_MS = 170;      // how long a press takes to become a lift
+    var NUDGE_PX = 4;       // and how far a move has to go to skip the wait
     var drag = null;
     var swallowClick = false;
+    var scrollTimer = null;
 
     function rowsOf(tbody) {
       return Array.prototype.slice.call(tbody.children).filter(function (n) {
@@ -12589,19 +12723,114 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
     }
 
     function idOf(row) {
-      return row.getAttribute("data-deal") || row.getAttribute("data-investor") || "";
+      return row.getAttribute("data-deal") ||
+             row.getAttribute("data-investor") ||
+             row.getAttribute("data-operator") || "";
     }
 
-    function idsOf(tbody) { return rowsOf(tbody).map(idOf); }
+    // Viewport coordinates go stale the moment the page scrolls under the
+    // gesture, so everything is measured in page coordinates instead.
+    function pageY(e) {
+      return e.clientY + (window.scrollY || document.documentElement.scrollTop || 0);
+    }
+
+    /* The lift. Measured once, here, because the whole gesture is played
+       out in transforms against these numbers — nothing below moves a row
+       in the DOM, so the measurements stay true until the drop. */
+    function lift() {
+      var d = drag;
+      d.lifted = true;
+      d.row.classList.remove("is-pressing");
+      d.row.classList.add("is-lifted");
+      d.table.classList.add("is-sorting");
+      document.body.classList.add("is-reordering");
+      try { d.row.setPointerCapture(d.pointerId); } catch (e) { /* fine without */ }
+
+      var scroll = window.scrollY || document.documentElement.scrollTop || 0;
+      d.items = rowsOf(d.tbody).map(function (row) {
+        var box = row.getBoundingClientRect();
+        return { row: row, id: idOf(row), top: box.top + scroll, height: box.height };
+      });
+      for (var i = 0; i < d.items.length; i++) {
+        if (d.items[i].row === d.row) { d.from = i; break; }
+      }
+      d.to = d.from;
+      d.height = d.items[d.from].height;
+    }
+
+    /* Where the row would land if it were dropped now, and the rows it has
+       displaced sliding out of its way by exactly its own height. */
+    function place(dy) {
+      var d = drag;
+      var centre = d.items[d.from].top + d.height / 2 + dy;
+      var to = d.from;
+      var i;
+      for (i = d.from + 1; i < d.items.length; i++) {
+        if (centre > d.items[i].top + d.items[i].height / 2) to = i;
+      }
+      for (i = d.from - 1; i >= 0; i--) {
+        if (centre < d.items[i].top + d.items[i].height / 2) to = i;
+      }
+      d.to = to;
+
+      d.row.style.transform = "translateY(" + dy + "px)";
+      d.items.forEach(function (item, idx) {
+        if (idx === d.from) return;
+        var shift = 0;
+        if (idx > d.from && idx <= to) shift = -d.height;
+        else if (idx < d.from && idx >= to) shift = d.height;
+        item.row.style.transform = shift ? "translateY(" + shift + "px)" : "";
+      });
+    }
+
+    /* The offset that leaves the row sitting exactly in the gap, so the
+       drop settles into place instead of snapping there. Takes the gesture
+       rather than reading it: this runs after the drop, by which time the
+       gesture is over and there is no current one to read. */
+    function restingOffset(d) {
+      if (d.to > d.from) {
+        return (d.items[d.to].top + d.items[d.to].height) -
+               (d.items[d.from].top + d.items[d.from].height);
+      }
+      if (d.to < d.from) return d.items[d.to].top - d.items[d.from].top;
+      return 0;
+    }
+
+    function clearStyles(d) {
+      d.row.classList.remove("is-pressing", "is-lifted");
+      d.table.classList.remove("is-sorting");
+      document.body.classList.remove("is-reordering");
+      d.row.style.transition = "";
+      d.row.style.transform = "";
+      (d.items || []).forEach(function (item) { item.row.style.transform = ""; });
+      try { d.row.releasePointerCapture(d.pointerId); } catch (e) { /* already gone */ }
+    }
 
     function stop() {
-      if (!drag) return;
+      if (!drag) return null;
       var d = drag;
       drag = null;
-      document.body.classList.remove("is-reordering");
-      d.row.classList.remove("is-dragging");
-      try { d.row.releasePointerCapture(d.pointerId); } catch (e) { /* already gone */ }
+      clearTimeout(d.holdTimer);
+      if (scrollTimer) { clearInterval(scrollTimer); scrollTimer = null; }
       return d;
+    }
+
+    // A long list runs off the screen, so the edges pull it along while a
+    // row is held against them.
+    function autoScroll(clientY) {
+      var edge = 80;
+      var speed = 0;
+      if (clientY < edge) speed = -Math.ceil((edge - clientY) / 6);
+      else if (clientY > window.innerHeight - edge) {
+        speed = Math.ceil((clientY - (window.innerHeight - edge)) / 6);
+      }
+      if (scrollTimer) { clearInterval(scrollTimer); scrollTimer = null; }
+      if (!speed) return;
+      scrollTimer = setInterval(function () {
+        if (!drag || !drag.lifted) { clearInterval(scrollTimer); scrollTimer = null; return; }
+        window.scrollBy(0, speed);
+        place(drag.lastPageY - drag.startPageY);
+      }, 16);
     }
 
     document.addEventListener("pointerdown", function (e) {
@@ -12613,53 +12842,43 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
       var tbody = row && row.parentNode;
       // One row cannot be put anywhere it is not already.
       if (!tbody || rowsOf(tbody).length < 2) return;
+
       drag = {
         row: row, tbody: tbody, table: grip.closest("table"),
-        pointerId: e.pointerId, startY: e.clientY,
-        // Where it came from, so a cancelled gesture puts it back.
-        origNext: row.nextSibling, moved: false
+        pointerId: e.pointerId,
+        startPageY: pageY(e), lastPageY: pageY(e),
+        moved: false, lifted: false, items: null, holdTimer: null
       };
+      // The accent starts growing immediately; the row is in the air when
+      // it has finished. Moving first gets there without the wait.
+      row.classList.add("is-pressing");
+      drag.holdTimer = setTimeout(function () { if (drag && !drag.lifted) lift(); }, HOLD_MS);
     });
 
     document.addEventListener("pointermove", function (e) {
       if (!drag || e.pointerId !== drag.pointerId) return;
+      drag.lastPageY = pageY(e);
+      var dy = drag.lastPageY - drag.startPageY;
 
       if (!drag.moved) {
-        // A press that has not gone anywhere is still a click, and a click
-        // opens the record. Five pixels is the difference between the two.
-        if (Math.abs(e.clientY - drag.startY) < 5) return;
+        if (Math.abs(dy) < NUDGE_PX) return;
         drag.moved = true;
-        drag.row.classList.add("is-dragging");
-        document.body.classList.add("is-reordering");
-        // The pointer leaves the row it started on immediately, so the
-        // row has to keep receiving the events itself.
-        try { drag.row.setPointerCapture(drag.pointerId); } catch (err) { /* fine */ }
+        if (!drag.lifted) { clearTimeout(drag.holdTimer); lift(); }
       }
       e.preventDefault();
-
-      // A long list runs off the screen, so the edges pull it along.
-      var edge = 70;
-      if (e.clientY < edge) window.scrollBy(0, -14);
-      else if (e.clientY > window.innerHeight - edge) window.scrollBy(0, 14);
-
-      var rows = rowsOf(drag.tbody);
-      for (var i = 0; i < rows.length; i++) {
-        var r = rows[i];
-        if (r === drag.row) continue;
-        var box = r.getBoundingClientRect();
-        if (e.clientY < box.top || e.clientY > box.bottom) continue;
-        // Past the middle of the row it is over, it goes below it.
-        var below = e.clientY > box.top + box.height / 2;
-        var mark = below ? r.nextSibling : r;
-        if (mark !== drag.row) drag.tbody.insertBefore(drag.row, mark);
-        break;
-      }
+      place(dy);
+      autoScroll(e.clientY);
     });
 
     document.addEventListener("pointerup", function (e) {
       if (!drag || e.pointerId !== drag.pointerId) return;
+
+      /* A press that never went anywhere is a click, whether or not it was
+         held long enough to lift. Punishing somebody for clicking slowly
+         would be a worse bargain than the one this is trying to make. */
+      if (!drag.moved) { clearStyles(drag); stop(); return; }
+
       var d = stop();
-      if (!d.moved) return;
       /* The click this press is about to produce would open the record.
          The next pointerdown clears the flag, so an ordinary click after
          a drag is unaffected; the timer is for the case where no click
@@ -12668,17 +12887,42 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
          had nothing to do with any of this. */
       swallowClick = true;
       setTimeout(function () { swallowClick = false; }, 300);
-      var ids = idsOf(d.tbody);
+
       var moved = idOf(d.row);
-      commitOrder(d.table, moved, ids[ids.indexOf(moved) + 1] || null);
+      var seq = d.items.map(function (item) { return item.id; });
+      seq.splice(d.from, 1);
+      seq.splice(d.to, 0, moved);
+      var before = seq[d.to + 1] || null;
+
+      if (d.to === d.from) { clearStyles(d); return; }
+
+      /* Settle into the gap first, then redraw. Committing on the instant
+         of release would replace the row mid-flight, which is the jump
+         this whole arrangement exists to avoid. */
+      var done = false;
+      function finish() {
+        if (done) return;
+        done = true;
+        clearStyles(d);
+        commitOrder(d.table, moved, before);
+      }
+      d.row.style.transition = "transform .16s cubic-bezier(.2, .7, .3, 1)";
+      d.row.style.transform = "translateY(" + restingOffset(d) + "px)";
+      d.row.addEventListener("transitionend", finish, { once: true });
+      setTimeout(finish, 220);   // in case the transition never fires
     });
 
-    // A cancelled gesture — a phone call, a scroll the browser took over —
-    // is not a move. The row goes back where it was.
-    document.addEventListener("pointercancel", function (e) {
-      if (!drag || e.pointerId !== drag.pointerId) return;
+    /* A cancelled gesture — a phone call, a scroll the browser took over,
+       Escape — puts everything back and commits nothing. */
+    function abandon() {
       var d = stop();
-      if (d.moved) d.tbody.insertBefore(d.row, d.origNext);
+      if (d) clearStyles(d);
+    }
+    document.addEventListener("pointercancel", function (e) {
+      if (drag && e.pointerId === drag.pointerId) abandon();
+    });
+    document.addEventListener("keydown", function (e) {
+      if (e.key === "Escape" && drag) abandon();
     });
 
     // The browser's own text-drag would fight the gesture for the name.
@@ -12722,7 +12966,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
       var table = btn.closest("table[data-reorder]");
       if (!tbody || !table) return;
 
-      var ids = idsOf(tbody);
+      var ids = rowsOf(tbody).map(idOf);
       var id = row.getAttribute("data-row-id") || idOf(row);
       var from = ids.indexOf(id);
       var to = from + delta;
