@@ -159,6 +159,27 @@ export async function clearOverlay(set) {
   await redis(["DEL", KEY("overlay", set)]);
 }
 
+/* How many deltas are queued right now. Handed to the page on a read so
+   that a later publish can say how much of the queue its document
+   actually accounts for. */
+export async function overlayLength(set) {
+  const n = await redis(["LLEN", KEY("overlay", set)]);
+  return typeof n === "number" ? n : 0;
+}
+
+/* Drop the first N deltas and keep the rest — the same LTRIM that makes
+   compactOverlay() safe, for the same reason. Publishing used to DEL the
+   whole list, which is correct only if nothing was appended between the
+   page merging its document and the server acting on it. Nobody noticed
+   while publishing was a button somebody pressed now and then; on a timer
+   it becomes a routine way to lose a colleague's edit. Trimming exactly
+   what the page had seen leaves anything newer queued for next time. */
+export async function trimOverlay(set, n) {
+  const k = KEY("overlay", set);
+  if (!(n > 0)) return;
+  await redis(["LTRIM", k, String(n), "-1"]);
+}
+
 /* ============================================================
    THE MERGE
 

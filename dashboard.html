@@ -3819,7 +3819,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
       : groups.live.length + " of " + liveTotal + " shown";
     var counted = Deals.inArea(scope.area).length;
     $(scope.countId).textContent = counted ? "(" + counted + ")" : "";
-    scopeEl(scope, "Unsaved").hidden = !Deals.hasLocalEdits();
+    markUnsaved(scope.prefix + "Unsaved", Deals.hasLocalEdits());
 
     // The report opens from the closed tab only, and only when there is
     // something in it — an empty debt summary is a page nobody wanted.
@@ -3934,7 +3934,13 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
       '<button class="dash-refresh" data-deal-remove="' + esc(rec.id) + '">Delete</button>' +
       '</div>';
 
-    return head + fields + debt + actions;
+    /* What is outstanding against this deal. The investor and operator
+       records have carried this panel all along; the deal record offered
+       "Add a task" and then never mentioned the task again, so the one
+       page that sent you to write it was the one page that could not show
+       it back. Tasks join by NAME, the same join every reference to a deal
+       uses — see the note over Deals.byName(). */
+    return head + fields + debt + recordTaskPanel(rec.name) + actions;
   }
 
   /* The edit form. Deliberately the same fields the add form
@@ -4982,6 +4988,11 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
     /* Returns { base, overlay } — the stored records and everyone's
        edits — or null when the store is not reachable, which is the
        signal to fall back to the local JSON file. */
+    /* How many deltas were behind the overlay this browser last read, per
+       set. Handed back on publish so the queue is trimmed by exactly that
+       much — see trimOverlay() in _store.js. */
+    var seenCount = {};
+
     function load(set) {
       return fetch(ENDPOINT + "?set=" + encodeURIComponent(set), { cache: "no-store" })
         .then(function (r) {
@@ -4990,6 +5001,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
         })
         .then(function (j) {
           state = "shared";
+          seenCount[set] = typeof j.count === "number" ? j.count : 0;
           return { base: j.base || null, overlay: j.overlay || null };
         })
         .catch(function () {
@@ -5026,9 +5038,16 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
       return fetch(ENDPOINT + "?set=" + encodeURIComponent(set) + "&op=publish", {
         method: "POST",
         headers: headers(),
-        body: JSON.stringify({ doc: doc, by: who || "" })
+        body: JSON.stringify({ doc: doc, by: who || "", seen: seenCount[set] || 0 })
       }).then(function (r) {
-        if (r.ok) return { ok: true };
+        /* The new base comes back, so the page can adopt it and drop the
+           deltas it just folded in rather than holding a pile that is now
+           part of the base — see adoptPublished() on each store. */
+        if (r.ok) {
+          return r.json()
+            .then(function (j) { return { ok: true, base: j && j.base }; })
+            .catch(function () { return { ok: true, base: null }; });
+        }
         if (r.status === 403) {
           return { ok: false, reason: writeKey()
             ? "This browser's write key was refused."
@@ -5075,7 +5094,8 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
     return {
       load: load, push: push, publish: publish,
       merge: merge, mergeInto: mergeInto, setKey: setKey,
-      note: note, state: function () { return state; }
+      note: note, state: function () { return state; },
+      seen: function (set) { return seenCount[set] || 0; }
     };
   })();
 
@@ -5091,7 +5111,88 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
      failed would leave somebody believing the team can see their
      work, which is the one wrong belief this whole change exists to
      prevent. */
-  function publishRecords(set, label, toFile, btnId) {
+  /* ============================================================
+     AUTO-PUBLISH
+
+     Every edit already reaches the team the moment it is made: the
+     delta goes into the shared overlay and anybody who reloads sees
+     it. Publishing is not what makes work visible — it FOLDS the
+     accumulated deltas into a fresh base so the queue stops growing.
+     That is housekeeping, and housekeeping should not be somebody's
+     job to remember.
+
+     WHY A QUIET PERIOD RATHER THAN EVERY EDIT. Publishing rewrites a
+     whole document and then drops the deltas behind it. Doing that on
+     each keystroke would mean a stream of full-document writes, and a
+     far larger chance of landing on top of somebody else's save. Once
+     things have been still for a while, one write does the same job.
+
+     WHAT MAKES IT SAFE TO RUN UNATTENDED. Two things. It re-reads the
+     shared store first, so the document it publishes contains other
+     people's edits and not just this browser's. And the server trims
+     exactly the deltas this page had seen rather than dropping the
+     queue, so anything that arrived in between survives to be folded
+     next time. Neither mattered much when a person pressed a button
+     now and then; both matter when this runs by itself.
+     ============================================================ */
+  var AutoPublish = (function () {
+    var QUIET_MS = 30000;
+    var timers = {};
+    var busy = {};
+
+    var SETS = {
+      deals:     { store: function () { return Deals; },     render: function () { renderDeals(); } },
+      crm:       { store: function () { return Crm; },       render: function () { renderCrm(); } },
+      operators: { store: function () { return Operators; }, render: function () { renderOperators(); } },
+      tasks:     { store: function () { return Tasks; },     render: function () { renderTasks(); } }
+    };
+
+    /* An edit landed. Push the deadline out — the point is stillness,
+       not a fixed interval, so a run of edits publishes once at the end
+       rather than once per edit. */
+    function touch(set) {
+      if (!SETS[set]) return;
+      clearTimeout(timers[set]);
+      timers[set] = setTimeout(function () { run(set); }, QUIET_MS);
+    }
+
+    function run(set) {
+      var entry = SETS[set];
+      if (!entry || busy[set]) return;
+      var store = entry.store();
+      // Nothing queued, or nowhere to send it: both are ordinary.
+      if (!store.hasLocalEdits() || SharedOverlay.state() !== "shared") return;
+
+      busy[set] = true;
+      var who = typeof signedInUser === "function" ? signedInUser() : null;
+
+      // Everyone else's edits first, so this does not publish a document
+      // that only knows about this browser.
+      store.load()
+        .then(function () {
+          return SharedOverlay.publish(set, store.toFile(),
+            who ? (who.name || who.username || "") : "");
+        })
+        .then(function (res) {
+          if (res && res.ok) {
+            store.adoptPublished(res.base);
+            entry.render();
+          } else {
+            /* Left alone on purpose. The edits are still in this browser
+               and still in the shared queue, the next edit schedules
+               another attempt, and the button is still there for anybody
+               who wants to know now. A toast for something nobody asked
+               for would be noise. */
+          }
+        })
+        .catch(function () { /* same bargain */ })
+        .then(function () { busy[set] = false; });
+    }
+
+    return { touch: touch, QUIET_MS: QUIET_MS };
+  })();
+
+  function publishRecords(set, label, toFile, btnId, store) {
     var btn = $(btnId);
     var who = typeof signedInUser === "function" ? signedInUser() : null;
     if (btn) { btn.disabled = true; btn.textContent = "Publishing…"; }
@@ -5099,6 +5200,9 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
       .then(function (res) {
         if (btn) { btn.disabled = false; btn.textContent = "Publish to team"; }
         if (res.ok) {
+          // Same as the automatic path: the deltas are in the base now, so
+          // stop carrying them — and the "not folded in yet" mark goes out.
+          if (store) store.adoptPublished(res.base);
           toast(label + " published. This is what everyone loads now — reload to see it as they will.");
         } else {
           toast("Not published: " + res.reason + " Your edits are still safe in this browser.");
@@ -5183,7 +5287,27 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
       // goes up every time, the next successful save carries it anyway.
       var who = typeof signedInUser === "function" ? signedInUser() : null;
       SharedOverlay.push("crm", overlay, who ? (who.name || who.username || "") : "");
+      AutoPublish.touch("crm");
     }
+
+    /* The publish landed, so the deltas behind it are part of the base
+       now. Take the base the server handed back and drop them, rather
+       than keeping a pile that would only be re-sent and re-merged into
+       a base that already contains it. Written straight to localStorage,
+       NOT through writeOverlay(), which would push the empty overlay
+       back and reschedule the very publish that just happened. */
+    function adoptPublished(doc) {
+      if (doc) base = doc;
+      overlay = { patches: {}, conversations: {}, created: [],
+                 convPatches: {}, convRemoved: {},
+                 dealStatus: {}, dealsAdded: [], dealsDropped: {}, dealsHidden: {},
+                 archived: {}, removed: {},
+                 learned: { aliases: {} } };
+      try { localStorage.setItem(OVERLAY_KEY, JSON.stringify(overlay)); }
+      catch (e) { /* private mode — the copy in memory is what matters */ }
+      rebuild();
+    }
+
 
     function hasOverlay() {
       return Object.keys(overlay.patches).length > 0 ||
@@ -5746,6 +5870,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
       forget: forget,
       hasLocalEdits: hasOverlay,
       toFile: toFile,
+      adoptPublished: adoptPublished,
       clearOverlay: function () {
         overlay = { patches: {}, conversations: {}, created: [],
                     convPatches: {}, convRemoved: {},
@@ -6666,7 +6791,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
       ? list.length + " investor" + (list.length === 1 ? "" : "s")
       : list.length + " of " + Crm.all().length + " shown";
     $("tabCrmCount").textContent = Crm.all().length ? "(" + Crm.all().length + ")" : "";
-    $("crmUnsaved").hidden = !Crm.hasLocalEdits();
+    markUnsaved("crmUnsaved", Crm.hasLocalEdits());
     $("crmInvestorNames").innerHTML = Crm.all().map(function (i) {
       return '<option value="' + esc(i.name) + '">';
     }).join("");
@@ -7599,7 +7724,23 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
       // goes up every time, the next successful save carries it anyway.
       var who = typeof signedInUser === "function" ? signedInUser() : null;
       SharedOverlay.push("deals", overlay, who ? (who.name || who.username || "") : "");
+      AutoPublish.touch("deals");
     }
+
+    /* The publish landed, so the deltas behind it are part of the base
+       now. Take the base the server handed back and drop them, rather
+       than keeping a pile that would only be re-sent and re-merged into
+       a base that already contains it. Written straight to localStorage,
+       NOT through writeOverlay(), which would push the empty overlay
+       back and reschedule the very publish that just happened. */
+    function adoptPublished(doc) {
+      if (doc) base = doc;
+      overlay = { patches: {}, created: [], archived: {}, removed: {} };
+      try { localStorage.setItem(OVERLAY_KEY, JSON.stringify(overlay)); }
+      catch (e) { /* private mode — the copy in memory is what matters */ }
+      rebuild();
+    }
+
 
     function hasOverlay() {
       return Object.keys(overlay.patches).length > 0 ||
@@ -7934,6 +8075,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
       },
       hasLocalEdits: hasOverlay,
       toFile: toFile,
+      adoptPublished: adoptPublished,
       clearOverlay: function () {
         overlay = { patches: {}, created: [], archived: {}, removed: {} };
         writeOverlay();
@@ -7970,7 +8112,23 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
       // goes up every time, the next successful save carries it anyway.
       var who = typeof signedInUser === "function" ? signedInUser() : null;
       SharedOverlay.push("operators", overlay, who ? (who.name || who.username || "") : "");
+      AutoPublish.touch("operators");
     }
+
+    /* The publish landed, so the deltas behind it are part of the base
+       now. Take the base the server handed back and drop them, rather
+       than keeping a pile that would only be re-sent and re-merged into
+       a base that already contains it. Written straight to localStorage,
+       NOT through writeOverlay(), which would push the empty overlay
+       back and reschedule the very publish that just happened. */
+    function adoptPublished(doc) {
+      if (doc) base = doc;
+      overlay = { patches: {}, created: [], archived: {}, removed: {} };
+      try { localStorage.setItem(OVERLAY_KEY, JSON.stringify(overlay)); }
+      catch (e) { /* private mode — the copy in memory is what matters */ }
+      rebuild();
+    }
+
 
     function hasOverlay() {
       return Object.keys(overlay.patches).length > 0 ||
@@ -8194,6 +8352,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
       stages: function () { return OPERATOR_STAGES.slice(); },
       hasLocalEdits: hasOverlay,
       toFile: toFile,
+      adoptPublished: adoptPublished,
       clearOverlay: function () {
         overlay = { patches: {}, created: [], archived: {}, removed: {} };
         writeOverlay();
@@ -8476,7 +8635,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
       ? list.length + " operator" + (list.length === 1 ? "" : "s")
       : list.length + " of " + Operators.all().length + " shown";
     $("tabOperatorCount").textContent = Operators.all().length ? "(" + Operators.all().length + ")" : "";
-    $("opUnsaved").hidden = !Operators.hasLocalEdits();
+    markUnsaved("opUnsaved", Operators.hasLocalEdits());
 
     fillOperatorDatalists();
 
@@ -8900,7 +9059,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
 
   $("opSaveFileBtn").addEventListener("click", exportOperatorFile);
   $("opPublishBtn").addEventListener("click", function () {
-    publishRecords("operators", "Operator CRM", Operators.toFile, "opPublishBtn");
+    publishRecords("operators", "Operator CRM", Operators.toFile, "opPublishBtn", Operators);
   });
 
   document.addEventListener("click", function (e) {
@@ -9069,7 +9228,23 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
       // goes up every time, the next successful save carries it anyway.
       var who = typeof signedInUser === "function" ? signedInUser() : null;
       SharedOverlay.push("tasks", overlay, who ? (who.name || who.username || "") : "");
+      AutoPublish.touch("tasks");
     }
+
+    /* The publish landed, so the deltas behind it are part of the base
+       now. Take the base the server handed back and drop them, rather
+       than keeping a pile that would only be re-sent and re-merged into
+       a base that already contains it. Written straight to localStorage,
+       NOT through writeOverlay(), which would push the empty overlay
+       back and reschedule the very publish that just happened. */
+    function adoptPublished(doc) {
+      if (doc) base = doc;
+      overlay = { patches: {}, created: [], removed: {} };
+      try { localStorage.setItem(OVERLAY_KEY, JSON.stringify(overlay)); }
+      catch (e) { /* private mode — the copy in memory is what matters */ }
+      rebuild();
+    }
+
 
     function hasOverlay() {
       return Object.keys(overlay.patches).length > 0 ||
@@ -9267,7 +9442,8 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
       personEmail: personEmail,
       initials: initials,
       hasLocalEdits: hasOverlay,
-      toFile: toFile
+      toFile: toFile,
+      adoptPublished: adoptPublished,
     };
   })();
 
@@ -9924,7 +10100,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
     var open = Tasks.all().filter(function (t) { return t.status !== "Done"; }).length;
     $("tabTaskCount").textContent = open ? "(" + open + ")" : "";
     $("taskShown").textContent = list.length + " shown · " + open + " open";
-    $("taskUnsaved").hidden = !Tasks.hasLocalEdits();
+    markUnsaved("taskUnsaved", Tasks.hasLocalEdits());
 
     var m = Tasks.meta();
     $("taskSourceNote").innerHTML = m.source !== "fallback"
@@ -10443,7 +10619,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
 
   $("taskSaveFileBtn").addEventListener("click", exportTaskFile);
   $("taskPublishBtn").addEventListener("click", function () {
-    publishRecords("tasks", "Task list", Tasks.toFile, "taskPublishBtn");
+    publishRecords("tasks", "Task list", Tasks.toFile, "taskPublishBtn", Tasks);
   });
 
   /* The switch, and the line beside it that says which of the two routes
@@ -10720,7 +10896,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
 
   $("crmSaveFileBtn").addEventListener("click", exportCrmFile);
   $("crmPublishBtn").addEventListener("click", function () {
-    publishRecords("crm", "Investor CRM", Crm.toFile, "crmPublishBtn");
+    publishRecords("crm", "Investor CRM", Crm.toFile, "crmPublishBtn", Crm);
   });
 
   /* ============================================================
@@ -10893,7 +11069,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
   });
 
   $("dealPublishBtn").addEventListener("click", function () {
-    publishRecords("deals", "Deal pipeline", Deals.toFile, "dealPublishBtn");
+    publishRecords("deals", "Deal pipeline", Deals.toFile, "dealPublishBtn", Deals);
   });
 
   $("signOutBtn").addEventListener("click", function () {
@@ -13354,6 +13530,21 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
 
   function scrollToWorkspace() {
     window.scrollTo({ top: workspaceTop(), behavior: "smooth" });
+  }
+
+  /* The mark beside each list. It used to read "Unsaved local edits" and
+     stay lit forever, because nothing ever cleared the overlay behind it —
+     which said the opposite of the truth, since every edit reaches the team
+     the moment it is made. What it actually marks is edits not yet folded
+     into the team's base, which is now a matter of waiting half a minute.
+     When the store is unreachable the old words are the right ones. */
+  function markUnsaved(id, pending) {
+    var el = $(id);
+    if (!el) return;
+    el.hidden = !pending;
+    el.textContent = SharedOverlay.state() === "shared"
+      ? "Shared — folding in shortly"
+      : "Unsaved local edits";
   }
 
   function renderIdentity() {

@@ -64,8 +64,14 @@
    ============================================================ */
 
 import {
-  redisConfigured, readBase, writeBase,
-  appendOverlay, readOverlay, clearOverlay
+  redisConfigured,
+  readBase,
+  writeBase,
+  appendOverlay,
+  readOverlay,
+  clearOverlay,
+  overlayLength,
+  trimOverlay
 } from "./_store.js";
 
 /* A whitelist, not a sanitiser: `set` becomes part of a Redis key,
@@ -145,9 +151,13 @@ export default async function handler(req, res) {
 
   try {
     if (req.method === "GET") {
-      const [base, overlay] = await Promise.all([readBase(set), readOverlay(set)]);
+      const [base, overlay, count] = await Promise.all([
+        readBase(set), readOverlay(set), overlayLength(set)
+      ]);
       res.setHeader("Cache-Control", "no-store");
-      res.status(200).json({ ok: true, set, base, overlay });
+      // `count` is how many deltas produced that overlay. The page hands it
+      // back when it publishes, so the trim can be exact — see trimOverlay().
+      res.status(200).json({ ok: true, set, base, overlay, count });
       return;
     }
 
@@ -178,7 +188,16 @@ export default async function handler(req, res) {
           publishedBy: by
         });
         await writeBase(set, stamped);
-        await clearOverlay(set);
+        /* `seen` is how many deltas the page had folded into the document
+           above. Trim exactly those and anything that arrived while it was
+           being computed stays queued, to be folded by the next publish.
+           Without it the only option is dropping the whole list, which
+           discards those newer deltas — tolerable when a person pressed a
+           button, not when this runs on a timer. Absent, the old behaviour
+           stands, so an older page still publishes correctly. */
+        const seen = Number(payload.seen);
+        if (Number.isFinite(seen) && seen > 0) await trimOverlay(set, seen);
+        else await clearOverlay(set);
         res.setHeader("Cache-Control", "no-store");
         res.status(200).json({ ok: true, set, published: true, base: stamped, overlay: {} });
         return;
