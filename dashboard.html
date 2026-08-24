@@ -2955,6 +2955,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
             <label class="visually-hidden" for="crmSearch">Search investors</label>
             <input type="search" id="crmSearch" placeholder="Search investors, notes and conversations" autocomplete="off">
           </div>
+          <button class="dash-refresh dash-refresh--primary" id="crmAddBtn">Add investor</button>
           <button class="dash-refresh" id="crmExportBtn">Export Excel</button>
           <button class="dash-refresh" id="crmPublishBtn">Publish to team</button>
           <button class="dash-refresh" id="crmSaveFileBtn">Download crm-data.json</button>
@@ -6992,7 +6993,11 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
            !inv.website && !inv.aum && !inv.mandate && !inv.why && !inv.contacts.length;
   }
 
-  function investorEditForm(inv) {
+  /* One form, whether the record exists yet or not — the same fields in
+     the same order, so there is nothing to learn twice and nothing that
+     can be filled in on one and not the other. Only the buttons at the
+     foot differ, and what they do with what was typed. */
+  function investorEditForm(inv, isNew) {
     function uniqVals(arr) {
       return arr.filter(function (v, i, a) { return v && a.indexOf(v) === i; }).sort();
     }
@@ -7091,25 +7096,34 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
           '<textarea id="editWhy">' + esc(inv.why) + '</textarea>', true) +
       '</div>' +
       '<div class="crm-edit__actions">' +
-        '<button class="dash-refresh dash-refresh--primary" data-crm-edit-save="' + esc(inv.id) + '">Save changes</button>' +
-        '<button class="dash-refresh" data-crm-edit-cancel="' + esc(inv.id) + '">Cancel</button>' +
-        // Archive sits before Delete, and reads quieter than it, because it
-        // is the one of the two that can be taken back.
-        '<button class="dash-refresh" data-crm-archive="' + esc(inv.id) + '">Archive</button>' +
-        '<button class="dash-refresh dash-refresh--danger" data-crm-delete="' + esc(inv.id) + '">Delete</button>' +
-        '<span class="crm-edit__derived">Last contact ' +
-          (lastContact(inv) ? esc(lastContact(inv)) : "not recorded") +
-          ' — read from the newest conversation, so it is not typed here. Anyone at the firm ' +
-          'beyond the main contact, the research notes and the conversation log are edited ' +
-          'through the agent. Archive takes the record off the list and keeps all of it; ' +
-          'Delete takes the record and its conversations with it.</span>' +
+        (isNew
+          ? '<button class="dash-refresh dash-refresh--primary" data-crm-new-save="1">Add investor</button>' +
+            '<button class="dash-refresh" data-crm-new-cancel="1">Cancel</button>' +
+            '<span class="crm-edit__derived">Only a name is required — everything else can be ' +
+              'filled in now or left for when it is known. Conversations, research notes and ' +
+              'anyone at the firm beyond the main contact are added to the record afterwards, ' +
+              'through the agent.</span>'
+          : '<button class="dash-refresh dash-refresh--primary" data-crm-edit-save="' + esc(inv.id) + '">Save changes</button>' +
+            '<button class="dash-refresh" data-crm-edit-cancel="' + esc(inv.id) + '">Cancel</button>' +
+            // Archive sits before Delete, and reads quieter than it, because
+            // it is the one of the two that can be taken back.
+            '<button class="dash-refresh" data-crm-archive="' + esc(inv.id) + '">Archive</button>' +
+            '<button class="dash-refresh dash-refresh--danger" data-crm-delete="' + esc(inv.id) + '">Delete</button>' +
+            '<span class="crm-edit__derived">Last contact ' +
+              (lastContact(inv) ? esc(lastContact(inv)) : "not recorded") +
+              ' — read from the newest conversation, so it is not typed here. Anyone at the firm ' +
+              'beyond the main contact, the research notes and the conversation log are edited ' +
+              'through the agent. Archive takes the record off the list and keeps all of it; ' +
+              'Delete takes the record and its conversations with it.</span>') +
       '</div></div>';
   }
 
-  function saveInvestorEdits(id) {
-    var inv = Crm.get(id);
-    if (!inv) { crmState.editing = false; showCrmView("list"); renderCrm(); return; }
-
+  /* Everything the form is holding, in the shape a record wants. Read in
+     one place because two places would drift: a field added to the form
+     and to only one of "save" or "add" is a field that silently does
+     nothing on one of the two paths. Returns null when the name is
+     missing, having already said so. */
+  function readInvestorForm(existingContacts) {
     function val(fid) { var el = $(fid); return el ? el.value.trim() : ""; }
     function commaList(fid) {
       return val(fid).split(",").map(function (s) { return s.trim(); })
@@ -7124,8 +7138,8 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
     var name = val("editName");
     if (!name) {
       toast("A record needs a name.");
-      $("editName").focus();
-      return;
+      if ($("editName")) $("editName").focus();
+      return null;
     }
 
     // One box for check size, read the same way the agent reads it. A range
@@ -7145,7 +7159,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
     // this form edits the main contact, it does not own the People section.
     var contactName = val("editContactName");
     var contactEmail = val("editContactEmail");
-    var contacts = inv.contacts.slice();
+    var contacts = (existingContacts || []).slice();
     if (contactName || contactEmail) {
       var first = Object.assign({}, contacts[0] || {});
       first.name = contactName;
@@ -7155,7 +7169,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
       contacts = contacts.slice(1);   // both boxes cleared — drop it, keep the rest
     }
 
-    Crm.patch(id, {
+    return {
       name: name,
       type: typeChoice || "Unclassified",
       stage: $("editStage").value,
@@ -7171,7 +7185,17 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
       contacts: contacts,
       mandate: val("editMandate"),
       why: val("editWhy")
-    });
+    };
+  }
+
+  function saveInvestorEdits(id) {
+    var inv = Crm.get(id);
+    if (!inv) { crmState.editing = false; showCrmView("list"); renderCrm(); return; }
+
+    var fields = readInvestorForm(inv.contacts);
+    if (!fields) return;
+
+    Crm.patch(id, fields);
 
     crmState.editing = false;
     renderInvestor(id);
@@ -7180,11 +7204,46 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
     toast("Saved in this browser. Download crm-data.json to keep it.");
   }
 
+  /* The whole form, before there is a record to hang it on. Nothing is
+     created until Add is pressed, so backing out of it leaves nothing
+     behind — which is why this is a view of its own rather than a blank
+     record made up front and tidied away afterwards. */
+  function renderNewInvestor() {
+    var blank = { id: "", name: "", type: "Unclassified", stage: CRM_STAGES[0] || "Prospect",
+                  owner: "", location: "", website: "", aum: "", assetClasses: [],
+                  checkSize: { min: null, max: null, note: "" }, mandate: "", priority: "",
+                  tags: [], deals: [], contacts: [], research: [], why: "",
+                  archived: false, conversations: [] };
+    $("investorCrumb").textContent = "New investor";
+    $("investorBody").innerHTML =
+      '<div class="dash-investor__head"><div><h2>Add an investor</h2>' +
+      '<p class="dash-investor__sub">A name is all that is required — the rest can be filled ' +
+      'in now, or as it is learned.</p></div></div>' + investorEditForm(blank, true);
+    showCrmView("new");
+    scrollToInvestor();
+    if ($("editName")) $("editName").focus();
+  }
+
+  function createInvestorFromForm() {
+    var fields = readInvestorForm([]);
+    if (!fields) return;
+    var inv = Crm.create(fields);
+    // create() only takes the fields it was built for; the rest go on as a
+    // patch, so the form fills in a whole record rather than half of one.
+    Crm.patch(inv.id, fields);
+    renderCrmFilters();
+    renderCrm();
+    openInvestor(inv.id);
+    toast("Added " + fields.name + ". Log a conversation against it with the agent above.");
+  }
+
   function showCrmView(name) {
     crmState.view = name;
     if (name !== "investor") crmState.editing = false;
     $("viewCrm").hidden = name !== "list";
-    $("viewInvestor").hidden = name !== "investor";
+    // "new" borrows the record pane, the way the operator tab does: it is
+    // the same form in the same place, just without a record behind it yet.
+    $("viewInvestor").hidden = name === "list";
   }
 
   // Land on the record itself, not the top of the page. The agent box and
@@ -10705,6 +10764,17 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
       return;
     }
 
+    var crmNewSave = e.target.closest("[data-crm-new-save]");
+    if (crmNewSave) { createInvestorFromForm(); return; }
+
+    var crmNewCancel = e.target.closest("[data-crm-new-cancel]");
+    if (crmNewCancel) {
+      showCrmView("list");
+      renderCrm();
+      scrollToWorkspace();
+      return;
+    }
+
     var crmArchive = e.target.closest("[data-crm-archive]");
     if (crmArchive) { setInvestorArchived(crmArchive.getAttribute("data-crm-archive"), true); return; }
 
@@ -10895,6 +10965,8 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
   });
 
   $("crmSaveFileBtn").addEventListener("click", exportCrmFile);
+  $("crmAddBtn").addEventListener("click", renderNewInvestor);
+
   $("crmPublishBtn").addEventListener("click", function () {
     publishRecords("crm", "Investor CRM", Crm.toFile, "crmPublishBtn", Crm);
   });
