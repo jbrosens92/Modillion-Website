@@ -1894,6 +1894,22 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
   margin-left: auto; font-size: .72rem; color: var(--muted); max-width: 42ch;
 }
 
+/* The opening conversation, folded into the add-investor form. It reads
+   as a section of that form rather than a second form stacked under it —
+   one heading, one grid, the same fields as everywhere else. */
+.crm-newconv {
+  margin-top: 30px; padding-top: 24px; border-top: 1px solid var(--rule);
+}
+.crm-newconv > h3 {
+  font-family: var(--sans); font-size: .72rem; font-weight: 500;
+  letter-spacing: .16em; text-transform: uppercase; color: var(--muted);
+  margin: 0 0 6px; display: flex; align-items: baseline; gap: 10px;
+}
+.crm-newconv__aside {
+  letter-spacing: .06em; text-transform: none; font-size: .74rem; color: var(--steel);
+}
+.crm-newconv__lede { margin: 0 0 18px; font-size: .82rem; color: var(--muted); }
+
 .crm-section { margin-bottom: 48px; }
 .crm-section > h3 {
   font-family: var(--sans);
@@ -7095,6 +7111,36 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
         field("editWhy", "Why they are on the list",
           '<textarea id="editWhy">' + esc(inv.why) + '</textarea>', true) +
       '</div>' +
+
+      /* The opening conversation, on the add form only. A record almost
+         never arrives out of nowhere — somebody spoke to them, and that
+         call was the reason to write them down. Having to create the
+         record and then go and log the call against it made one event
+         into two jobs. Leave it empty and nothing is logged; the record
+         is created either way. */
+      (isNew
+        ? '<div class="crm-newconv">' +
+            '<h3>First conversation<span class="crm-newconv__aside">optional</span></h3>' +
+            '<p class="crm-newconv__lede">What prompted the record. Say nothing here and none ' +
+              'is logged — the rest of the log is written through the agent afterwards.</p>' +
+            '<div class="crm-edit__grid">' +
+              field("newConvSummary", "What happened",
+                '<textarea id="newConvSummary" placeholder="Intro call — they asked for the deck"></textarea>', true) +
+              field("newConvDate", "Date",
+                '<input type="date" id="newConvDate" value="' +
+                esc(new Date().toISOString().slice(0, 10)) + '">') +
+              field("newConvChannel", "Channel",
+                '<select id="newConvChannel">' +
+                  ["Call", "Email", "Meeting", "Video call", "Conference", "Note"]
+                    .map(function (c) { return '<option>' + c + '</option>'; }).join("") +
+                '</select>') +
+              field("newConvWho", "Who was on it",
+                '<input type="text" id="newConvWho" autocomplete="off" placeholder="Names, comma separated">') +
+              field("newConvNext", "Next step",
+                '<input type="text" id="newConvNext" autocomplete="off">') +
+            '</div>' +
+          '</div>'
+        : "") +
       '<div class="crm-edit__actions">' +
         (isNew
           ? '<button class="dash-refresh dash-refresh--primary" data-crm-new-save="1">Add investor</button>' +
@@ -7231,10 +7277,39 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
     // create() only takes the fields it was built for; the rest go on as a
     // patch, so the form fills in a whole record rather than half of one.
     Crm.patch(inv.id, fields);
+
+    /* "What happened" is what decides whether there was a conversation.
+       A date sitting at today's is the box's default rather than anybody's
+       answer, so it cannot be the test — it would log an empty entry
+       against every record ever added. */
+    var logged = false;
+    var summary = $("newConvSummary") ? $("newConvSummary").value.trim() : "";
+    if (summary) {
+      Crm.addConversation(inv.id, {
+        date: $("newConvDate").value || new Date().toISOString().slice(0, 10),
+        channel: $("newConvChannel").value,
+        who: $("newConvWho").value.trim(),
+        subject: "",
+        summary: summary,
+        /* The deals and the check come off the record's own boxes. At the
+           moment a record is created, "what they are interested in" and
+           "what was discussed" are the same answer typed once — the same
+           single source commitDraft() feeds to both. */
+        check: fields.checkSize && fields.checkSize.note ? fields.checkSize.note : "",
+        deals: fields.deals.slice(),
+        next: $("newConvNext").value.trim(),
+        loggedVia: "with the record",
+        loggedAt: new Date().toISOString()
+      });
+      logged = true;
+    }
+
     renderCrmFilters();
     renderCrm();
     openInvestor(inv.id);
-    toast("Added " + fields.name + ". Log a conversation against it with the agent above.");
+    toast(logged
+      ? "Added " + fields.name + ", with the first conversation logged against it."
+      : "Added " + fields.name + ". Log a conversation against it with the agent above.");
   }
 
   function showCrmView(name) {
