@@ -527,8 +527,8 @@ The sharing limit — read this before rolling the task list out to the team:
   looking at together, and one that quietly disagrees with itself is worse than no task list at
   all. The page says so above the list rather than leaving it to be discovered.
 - If the team is going to rely on this daily, it needs a real backend — the same piece of work
-  that would give the CRM shared state and the mailbox an automatic intake. Until then, treat
-  the file as the source of truth and re-export after a working session.
+  that would give the CRM shared state. Until then, treat the file as the source of truth and
+  re-export after a working session.
 
 Telling the assignee — email on a new task, added 2026-08-19:
 - A task list only works if the person named on it finds out. When a task is created with
@@ -722,23 +722,24 @@ Putting Claude behind the chat (api/agent.js):
   protection in front of this function (Vercel deployment protection, or a check against the
   Microsoft 365 token once that lands). Until then, treat the URL as the secret it is not.
 
-Forwarding email into the CRM:
-- Intake address is set in crm-data.json under "intake" (not repeated here — it is a personal
-  mailbox). It is currently a Gmail plus-address, which works with no setup: mail sent to
-  <account>+crm@gmail.com lands in the same inbox and a filter can label it "CRM". Swap it for a
-  shared crm@modillionpartners.com alias when the team wants an address that is not personal.
-- Forward the thread, save the messages as .eml into crm-inbox/ (gitignored), then:
-      python3 tools/crm-ingest.py crm-inbox/ --dry-run     # show what it would do
-      python3 tools/crm-ingest.py crm-inbox/ --archive crm-inbox/done
-  It matches each message to an investor by the sender's address, then the firm name in the
-  text, then the sender's domain; creates a record when the firm is genuinely new; saves the
-  sender as a contact so the next thread matches on the address; and deduplicates on Message-ID,
-  so running it twice over the same folder logs nothing twice.
-- Run --dry-run first. The script writes crm-data.json directly, with no review step, and its
-  stage and check-size reads are the same guesses the dashboard makes.
-- What is NOT built: an always-on mailbox that ingests by itself. That needs a real mailbox plus
-  a scheduled fetch (IMAP or the Gmail API) — a small addition, but a server-side one, and it
-  cannot live in this static page.
+Forwarding email into the CRM — REMOVED 2026-08-25:
+- There was an intake address in crm-data.json and a tools/crm-ingest.py that read .eml files
+  out of a folder into the CRM. Both are gone.
+- WHY. Forwarding a thread to the address did nothing on its own, and it read as though it
+  would: nothing ever watched that mailbox, so every message sat in Gmail until somebody
+  exported it and ran the script by hand — which nobody had. The tab advertised the address
+  without saying that second half out loud.
+- It would also have filed the mail wrongly. The script took the sender from the outer From:
+  header, which on a FORWARD is whoever forwarded it, and clean_body() stripped the inner
+  From:/Sent:/To: lines as banners before anything could read them. A thread forwarded from an
+  investor would have been logged against Modillion Partners, or created a record for it.
+- WHAT IT WOULD TAKE TO BRING BACK. Two things, and the second is the reason it is out rather
+  than fixed: teach the reader to parse the forwarded header block, and give it a mailbox that
+  is actually watched — IMAP or the Gmail API on a schedule, which is a server-side job with
+  credentials to keep, not something this static page can do. Until both exist, an address that
+  quietly swallows mail is worse than no address.
+- Conversations are logged through the agent box on the tab, or on the form that creates an
+  investor. Neither pretends to be automatic.
 
 
 Where the project lives, and where the dashboard reads from — 2026-08-18:

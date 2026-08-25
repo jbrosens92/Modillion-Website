@@ -5334,10 +5334,9 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
      Edits made in the browser are held in a localStorage overlay
      keyed by investor id, not written back over the file — a static
      page cannot write to disk. "Download crm-data.json" produces the
-     merged file to drop back into the folder, and tools/crm-ingest.py
-     writes the same file from forwarded email. The overlay stores
-     only additions and patches, so re-loading a newer file does not
-     lose them and does not duplicate what the file already holds.
+     merged file to drop back into the folder. The overlay stores only
+     additions and patches, so re-loading a newer file does not lose
+     them and does not duplicate what the file already holds.
      ============================================================ */
 
   var CRM_STAGES = ["Prospect", "Contacted", "In diligence", "Committed", "Passed", "Dormant"];
@@ -5359,7 +5358,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
 
   var Crm = (function () {
     var base = null;                 // as loaded from file or fallback
-    var meta = { source: "fallback", generatedAt: null, intake: null };
+    var meta = { source: "fallback", generatedAt: null };
     var merged = [];                 // base + overlay, what the UI reads
     var OVERLAY_KEY = "modillion-crm-overlay";
     var overlay = { patches: {}, conversations: {}, created: [],
@@ -5577,11 +5576,11 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
         })
         .then(function (json) {
           base = json;
-          meta = { source: origin, generatedAt: json.generatedAt || null, intake: json.intake || null };
+          meta = { source: origin, generatedAt: json.generatedAt || null };
         })
         .catch(function () {
           base = CRM_FALLBACK;
-          meta = { source: "fallback", generatedAt: null, intake: null };
+          meta = { source: "fallback", generatedAt: null };
         })
         .then(function () {
           if (base.stages && base.stages.length) CRM_STAGES = base.stages;
@@ -5936,7 +5935,6 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
         generatedAt: new Date().toISOString().slice(0, 10),
         source: "local",
         note: "Exported from the dashboard. A backup, or a seed for tools/publish.py — the live copy is in the shared store. Gitignored — never commit.",
-        intake: meta.intake,
         stages: CRM_STAGES,
         dealStatus: dealStatuses(),
         dealsAdded: addedDealRecords(),
@@ -6947,10 +6945,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
           ? "Records from the shared store — the same set everyone sees. "
           : "Records from crm-data.json in this site folder, not from the shared store. ") +
         "Research notes come from public sources and carry the date they were checked." +
-        SharedOverlay.note() +
-        (m.intake && m.intake.address
-          ? " Forward investor threads to <strong>" + esc(m.intake.address) + "</strong>, then run tools/crm-ingest.py to fold them in."
-          : "")
+        SharedOverlay.note()
       : "No investor records loaded — neither the shared store nor a local crm-data.json " +
         "answered. Anything shown here was entered in this browser." + SharedOverlay.note();
   }
