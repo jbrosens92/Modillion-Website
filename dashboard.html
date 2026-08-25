@@ -1762,6 +1762,9 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
   color: var(--deep-space);
 }
 .crmtable .muted { color: var(--muted); }
+/* A date is one thing and reads as one. The column is narrow enough that
+   it would otherwise break after the year. */
+.crmtable td.crm-date { white-space: nowrap; }
 
 .crm-pill {
   display: inline-block;
@@ -3642,7 +3645,8 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
     { key: "area",       label: "Where" },
     { key: "status",     label: "Status" },
     { key: "market",     label: "Market" },
-    { key: "assetClass", label: "Asset class" }
+    { key: "assetClass", label: "Asset class" },
+    { key: "addedAt",    label: "Added" }
   ];
 
   function dealAreaLabel(id) {
@@ -3692,6 +3696,24 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
 
     list.sort(dealComparator(dealSortKey(scope), st.sortDir));
     return list;
+  }
+
+  /* Sorting on a date that is not always there. A record with no date is
+     not an old record — it is one from before the date was kept — so it
+     sorts to the END whichever way the arrow points, rather than pretending
+     to be the oldest thing on the list. The deal comparator already works
+     this way for every blank field; these two lists compare values rather
+     than strings, so they need it spelled out. */
+  function blanksLastBy(get, dirName) {
+    var dir = dirName === "asc" ? 1 : -1;
+    return function (a, b) {
+      var av = get(a) || "", bv = get(b) || "";
+      if (!av && !bv) return a.name.localeCompare(b.name);
+      if (!av) return 1;
+      if (!bv) return -1;
+      if (av !== bv) return av.localeCompare(bv) * dir;
+      return a.name.localeCompare(b.name);
+    };
   }
 
   /* How two deals compare, by whichever column the list is ordered by.
@@ -3806,7 +3828,10 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
           ["Operator", RowEdit.text("operator", rec.operator, ' list="dealOperatorNames"')],
           ["Status", RowEdit.select("status", Deals.statuses(), rec.status)],
           ["Market", RowEdit.text("market", rec.market)],
-          ["Asset class", RowEdit.text("assetClass", rec.assetClass)]
+          ["Asset class", RowEdit.text("assetClass", rec.assetClass)],
+          // Stamped when the record was written down, and not editable:
+          // a date somebody could change is not a record of anything.
+          ["Added", RowEdit.stat(rec.addedAt || "Not recorded")]
         ], "Enter saves · Esc cancels");
       }
       return '<tr data-deal="' + esc(rec.id) + '">' +
@@ -3819,6 +3844,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
         '<td>' + (rec.market ? esc(rec.market) : '<span class="muted">—</span>') + '</td>' +
         '<td>' + (rec.assetClass ? esc(rec.assetClass) : '<span class="muted">—</span>') +
           (rec.debt ? '<span class="crm-sub">debt on file</span>' : "") + '</td>' +
+        '<td class="crm-date">' + (rec.addedAt ? esc(rec.addedAt) : '<span class="muted">—</span>') + '</td>' +
         '<td class="crm-actions">' + dealRowActions(rec, pile) + '</td>' +
         '</tr>';
     }).join("");
@@ -5462,6 +5488,11 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
         contacts: dedupeById(inv.contacts),
         research: dedupeById(inv.research),
         why: inv.why || "",
+        /* The day the record was written down. Blank on everything that
+           was already in the file when this started being kept — there is
+           no honest way to invent it after the fact, so those sort to the
+           end of the list rather than to a made-up date. */
+        addedAt: inv.addedAt || "",
         // Position in a hand-set order; null until somebody drags the row.
         order: inv.order == null || inv.order === "" ? null : Number(inv.order),
         archived: !!inv.archived,
@@ -5594,6 +5625,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
       var rec = normalise({
         id: slugId(fields.name),
         name: fields.name,
+        addedAt: fields.addedAt || new Date().toISOString().slice(0, 10),
         type: fields.type || "Unclassified",
         stage: fields.stage || "Contacted",
         location: fields.location || "",
@@ -6606,7 +6638,8 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
     { key: "stage",       label: "Stage" },
     { key: "check",       label: "Check size" },
     { key: "deals",       label: "Deals of interest" },
-    { key: "lastContact", label: "Last contact" }
+    { key: "lastContact", label: "Last contact" },
+    { key: "addedAt",     label: "Added" }
   ];
 
   function checkText(inv) {
@@ -6671,6 +6704,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
       case "check":       return inv.checkSize.max || inv.checkSize.min || 0;
       case "deals":       return inv.deals.length;
       case "lastContact": return lastContact(inv) || "";
+      case "addedAt":     return inv.addedAt || "";
       default:            return "";
     }
   }
@@ -6703,6 +6737,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
 
   // The deal list's two helpers, for investors. Same rules, same reasons.
   function crmComparator(key, dirName) {
+    if (key === "addedAt") return blanksLastBy(function (i) { return i.addedAt; }, dirName);
     if (key === "manual") {
       return function (a, b) {
         var ao = a.order == null ? Infinity : a.order;
@@ -6791,7 +6826,10 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
                     ' list="crmDealNames" placeholder="Comma separated"')],
           // Read off the newest conversation rather than typed, so it is
           // shown in its slot and not offered as a box.
-          ["Last contact", RowEdit.stat(last || "Never")]
+          ["Last contact", RowEdit.stat(last || "Never")],
+          // Stamped when the record was written down, and not editable:
+          // a date somebody could change is not a record of anything.
+          ["Added", RowEdit.stat(inv.addedAt || "Not recorded")]
         ], "Enter saves · Esc cancels");
       }
       return '<tr data-investor="' + esc(inv.id) + '">' +
@@ -6814,6 +6852,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
           ? esc(last) + note +
             '<span class="crm-sub">' + inv.conversations.length + ' logged</span>'
           : '<span class="muted">Never</span>') + '</td>' +
+        '<td class="crm-date">' + (inv.addedAt ? esc(inv.addedAt) : '<span class="muted">—</span>') + '</td>' +
         '<td class="crm-actions">' +
           (archived ? "" : RowEdit.trigger("investor", inv.id, inv.name)) +
           (archived
@@ -8413,6 +8452,8 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
           return { name: c.name || "", title: c.title || "", email: c.email || "" };
         }),
         notes: rec.notes || "",
+        // See the same field on an investor: blank where it was never kept.
+        addedAt: rec.addedAt || "",
         // Position in a hand-set order; null until somebody drags the row.
         order: rec.order == null || rec.order === "" ? null : Number(rec.order),
         archived: !!rec.archived
@@ -8483,7 +8524,8 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
     }
 
     function create(fields) {
-      var rec = normalise(Object.assign({ id: slugId(fields.name || "") }, fields));
+      var rec = normalise(Object.assign(
+        { id: slugId(fields.name || ""), addedAt: new Date().toISOString().slice(0, 10) }, fields));
       delete overlay.removed[rec.id];   // same name, new record
       overlay.created.push(rec);
       writeOverlay();
@@ -8622,7 +8664,8 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
     { key: "market",     label: "Market Focus" },
     { key: "deals",      label: "Deals" },
     { key: "priority",   label: "Priority" },
-    { key: "aum",        label: "AUM" }
+    { key: "aum",        label: "AUM" },
+    { key: "addedAt",    label: "Added" }
   ];
 
   // Only the live pipeline. A deal tag is a link into the Deal Pipeline tab,
@@ -8685,6 +8728,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
       case "priority":   return OPERATOR_PRIORITIES.indexOf(rec.priority) === -1
                                 ? OPERATOR_PRIORITIES.length : OPERATOR_PRIORITIES.indexOf(rec.priority);
       case "aum":        return aumValue(rec.aum);
+      case "addedAt":    return rec.addedAt || "";
       default:           return "";
     }
   }
@@ -8730,6 +8774,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
 
   // The deal list's two helpers, for operators. Same rules, same reasons.
   function opComparator(key, dirName) {
+    if (key === "addedAt") return blanksLastBy(function (r) { return r.addedAt; }, dirName);
     if (key === "manual") {
       return function (a, b) {
         var ao = a.order == null ? Infinity : a.order;
@@ -8802,7 +8847,10 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
           ["Deals", RowEdit.text("deals", rec.deals.join(", "),
                     ' list="crmDealNames" placeholder="Comma separated"')],
           ["Priority", RowEdit.select("priority", [""].concat(Operators.priorities()), rec.priority)],
-          ["AUM", RowEdit.text("aum", rec.aum, ' placeholder="$1.4B"')]
+          ["AUM", RowEdit.text("aum", rec.aum, ' placeholder="$1.4B"')],
+          // Stamped when the record was written down, and not editable:
+          // a date somebody could change is not a record of anything.
+          ["Added", RowEdit.stat(rec.addedAt || "Not recorded")]
         ], "Enter saves · Esc cancels");
       }
       return '<tr data-operator="' + esc(rec.id) + '">' +
@@ -8822,6 +8870,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
           ? '<span class="task-pill" data-p="' + esc(rec.priority) + '">' + esc(rec.priority) + '</span>'
           : '<span class="muted">—</span>') + '</td>' +
         '<td>' + (rec.aum ? esc(rec.aum) : '<span class="muted">—</span>') + '</td>' +
+        '<td class="crm-date">' + (rec.addedAt ? esc(rec.addedAt) : '<span class="muted">—</span>') + '</td>' +
         '<td class="crm-actions">' +
           (archived ? "" : RowEdit.trigger("operator", rec.id, rec.name)) +
           (archived
