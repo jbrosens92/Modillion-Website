@@ -1894,32 +1894,85 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
   margin-left: auto; font-size: .72rem; color: var(--muted); max-width: 42ch;
 }
 
-/* A row being edited where it sits. The inputs are sized to the column
-   they are in rather than to their contents, so nothing jumps sideways
-   when a row goes from reading to editing and back. */
-.crmtable tbody tr.is-editing td { background: rgba(119, 166, 182, 0.07); vertical-align: middle; }
+/* A row being edited where it sits. Every field is one line of the same
+   height, centred against the others, so the row reads as a row rather
+   than as a form that has fallen into the table. The tighter padding is
+   the only way a text box gets a usable width out of a column sized for
+   wrapped text: sixteen pixels of gutter per cell is generous for reading
+   and wasted on an input. */
+.crmtable tbody tr.is-editing td {
+  /* Solid rather than a tint, because the actions cell sticks to the
+     right edge below and has to hide what scrolls under it. A colour
+     with alpha in it cannot. This is that tint, already mixed. */
+  background: #D8E4EE;
+  vertical-align: middle;
+  padding: 12px 8px 12px 0;
+  font-size: .84rem; color: var(--muted);
+}
+/* Save has to stay reachable. The operator list is nine columns wide and
+   grows further once its boxes claim a workable width, so on any ordinary
+   window the right-hand end of the row is off the side — and the button
+   that ends the edit was the part that had gone. */
+.crmtable tbody tr.is-editing td:last-child {
+  position: sticky; right: 0; z-index: 1;
+  box-shadow: -10px 0 14px -12px rgba(18, 34, 54, .45);
+}
+/* The accent that says which row is open, in the gutter the drag handle
+   would be in — the handle is gone while the row is being edited. */
+.crmtable tbody tr.is-editing td:first-child { box-shadow: inset 2px 0 0 var(--steel); }
+.crmtable tbody tr.is-editing td:last-child { padding-right: 0; }
+
 .rowedit__input, .rowedit__select {
-  width: 100%; max-width: 100%; box-sizing: border-box;
+  width: 100%; min-width: 0; box-sizing: border-box;
+  height: 36px; line-height: 22px;
   font-family: var(--sans); font-size: .84rem; color: var(--ink);
-  padding: 7px 9px; border: 1px solid var(--rule); border-radius: 3px;
+  padding: 6px 9px; border: 1px solid var(--rule); border-radius: 3px;
   background: var(--paper);
 }
+.rowedit__select { padding-right: 4px; min-width: 110px; }
+
+/* A column is as wide as its READ content needs, and read content wraps
+   over two lines where a box cannot. Left alone, the name of a firm goes
+   into a box a hundred pixels wide and comes out as "Belltower Fam". A
+   floor per field widens the column for as long as the row is open; the
+   table scrolls sideways if the window is too narrow to hold it, which is
+   what it already does for any table wider than the page. */
+.rowedit__input[data-rowedit-field="name"] { min-width: 160px; }
+.rowedit__input[data-rowedit-field="assetClasses"],
+.rowedit__input[data-rowedit-field="investmentTypes"],
+.rowedit__input[data-rowedit-field="assetStrategies"],
+.rowedit__input[data-rowedit-field="markets"],
+.rowedit__input[data-rowedit-field="deals"] { min-width: 140px; }
+.rowedit__input[data-rowedit-field="operator"],
+.rowedit__input[data-rowedit-field="type"],
+.rowedit__input[data-rowedit-field="market"],
+.rowedit__input[data-rowedit-field="assetClass"],
+.rowedit__input[data-rowedit-field="check"],
+.rowedit__input[data-rowedit-field="aum"] { min-width: 115px; }
 .rowedit__input:focus, .rowedit__select:focus {
   outline: none; border-color: var(--steel); box-shadow: 0 0 0 3px rgba(119, 166, 182, .18);
 }
-.rowedit__note {
-  display: block; margin-top: 4px; font-size: .68rem; color: var(--muted);
-}
-/* The row's own actions become Save and Cancel, in the same cell the
-   others were in, so the column does not change width mid-edit. */
+.rowedit__input::placeholder { color: var(--muted); opacity: .65; }
+/* A box with a datalist grows a picker button in Chrome. It is the size
+   of the arrow on a select and means something quite different, and next
+   to a real select in the row beside it, it just reads as a mistake. The
+   suggestions still open on typing. */
+.rowedit__input::-webkit-calendar-picker-indicator { display: none !important; }
+
+/* The row's own actions become Save and Cancel, in the cell the others
+   were in, so the column does not change width mid-edit. */
 .rowedit__save, .rowedit__cancel {
-  appearance: none; background: none; border: 0; padding: 4px 0 4px 14px;
-  font-family: var(--sans); font-size: .72rem; cursor: pointer; white-space: nowrap;
+  appearance: none; border: 0; cursor: pointer; white-space: nowrap;
+  font-family: var(--sans); font-size: .72rem; letter-spacing: .04em;
+  padding: 8px 12px; border-radius: 3px; margin-left: 6px;
 }
-.rowedit__save { color: var(--deep-space); font-weight: 500; }
-.rowedit__save:hover { text-decoration: underline; }
-.rowedit__cancel { color: var(--muted); }
+.rowedit__save { background: var(--deep-space); color: var(--paper); }
+.rowedit__save:hover { background: var(--prussian); }
+.rowedit__cancel { background: none; color: var(--muted); padding-left: 6px; padding-right: 0; }
 .rowedit__cancel:hover { color: var(--deep-space); text-decoration: underline; }
+.rowedit__save:focus-visible, .rowedit__cancel:focus-visible {
+  outline: 2px solid var(--steel); outline-offset: 2px;
+}
 
 /* The opening conversation, folded into the add-investor form. It reads
    as a section of that form rather than a second form stacked under it —
@@ -6741,12 +6794,13 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
           '<td>' + RowEdit.text("name", inv.name) + '</td>' +
           '<td>' + RowEdit.text("type", inv.type === "Unclassified" ? "" : inv.type,
                     ' list="crmRowTypes"') + '</td>' +
-          '<td>' + RowEdit.text("assetClasses", inv.assetClasses.join(", ")) +
-            RowEdit.note("Commas") + '</td>' +
+          '<td>' + RowEdit.text("assetClasses", inv.assetClasses.join(", "),
+                    ' placeholder="Comma separated"') + '</td>' +
           '<td>' + RowEdit.select("stage", Crm.stages(), inv.stage) + '</td>' +
-          '<td>' + RowEdit.text("check", checkText(inv) || inv.checkSize.note) + '</td>' +
-          '<td>' + RowEdit.text("deals", inv.deals.join(", "), ' list="crmDealNames"') +
-            RowEdit.note("Commas") + '</td>' +
+          '<td>' + RowEdit.text("check", checkText(inv) || inv.checkSize.note,
+                    ' placeholder="$3m–$6m"') + '</td>' +
+          '<td>' + RowEdit.text("deals", inv.deals.join(", "),
+                    ' list="crmDealNames" placeholder="Comma separated"') + '</td>' +
           '<td>' + (last ? esc(last) : '<span class="muted">Never</span>') + '</td>' +
           RowEdit.actions("investor", inv.id) +
           '</tr>';
@@ -8753,16 +8807,16 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
         return '<tr class="is-editing" data-operator="' + esc(rec.id) + '">' +
           '<td>' + RowEdit.text("name", rec.name) + '</td>' +
           '<td>' + RowEdit.select("stage", [""].concat(Operators.stages()), rec.stage) + '</td>' +
-          '<td>' + RowEdit.text("investmentTypes", rec.investmentTypes.join(", ")) +
-            RowEdit.note("Commas") + '</td>' +
-          '<td>' + RowEdit.text("assetStrategies", rec.assetStrategies.join(", ")) +
-            RowEdit.note("Commas") + '</td>' +
-          '<td>' + RowEdit.text("markets", rec.markets.join(", ")) +
-            RowEdit.note("Commas") + '</td>' +
-          '<td>' + RowEdit.text("deals", rec.deals.join(", "), ' list="crmDealNames"') +
-            RowEdit.note("Commas") + '</td>' +
+          '<td>' + RowEdit.text("investmentTypes", rec.investmentTypes.join(", "),
+                    ' placeholder="Comma separated"') + '</td>' +
+          '<td>' + RowEdit.text("assetStrategies", rec.assetStrategies.join(", "),
+                    ' placeholder="Comma separated"') + '</td>' +
+          '<td>' + RowEdit.text("markets", rec.markets.join(", "),
+                    ' placeholder="Comma separated"') + '</td>' +
+          '<td>' + RowEdit.text("deals", rec.deals.join(", "),
+                    ' list="crmDealNames" placeholder="Comma separated"') + '</td>' +
           '<td>' + RowEdit.select("priority", [""].concat(Operators.priorities()), rec.priority) + '</td>' +
-          '<td>' + RowEdit.text("aum", rec.aum) + '</td>' +
+          '<td>' + RowEdit.text("aum", rec.aum, ' placeholder="$1.4B"') + '</td>' +
           RowEdit.actions("operator", rec.id) +
           '</tr>';
       }
@@ -13810,8 +13864,13 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
     }
 
     function text(field, value, extra) {
+      var v = value == null ? "" : String(value);
+      // A column sized for wrapped text cannot always show a long value on
+      // one line. Focusing scrolls the box, and hovering says the whole
+      // thing without having to.
       return '<input type="text" class="rowedit__input" data-rowedit-field="' + esc(field) +
-        '" value="' + esc(value == null ? "" : value) + '" autocomplete="off"' + (extra || "") + '>';
+        '" value="' + esc(v) + '"' + (v ? ' title="' + esc(v) + '"' : "") +
+        ' autocomplete="off"' + (extra || "") + '>';
     }
 
     function select(field, values, current) {
@@ -13821,8 +13880,6 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
             esc(v || "not recorded") + '</option>';
         }).join("") + '</select>';
     }
-
-    function note(t) { return '<span class="rowedit__note">' + esc(t) + '</span>'; }
 
     function actions(kind, id) {
       return '<td class="crm-actions">' +
@@ -13980,7 +14037,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
       }
     });
 
-    return { on: on, text: text, select: select, note: note,
+    return { on: on, text: text, select: select,
              actions: actions, trigger: trigger, list: list,
              close: function () { stop(false); } };
   })();
