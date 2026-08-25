@@ -8474,6 +8474,19 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
         statusSetAt: rec.statusSetAt || "",
         market: rec.market || "",
         assetClass: rec.assetClass || "",
+        /* Kept as typed — see dealAmount(), which does the parsing where
+           these are read rather than on the way in.
+
+           THIS LIST IS THE ONE THAT DECIDES WHAT A DEAL IS. Everything
+           passes through here on every rebuild, so a field the edit form
+           writes and this literal does not name is stored in the overlay,
+           stripped on the way back out, and looks to the person who typed
+           it exactly like an edit that would not save. That is what these
+           three did until it was reported. If you add a field to a deal,
+           add it here first. */
+        dealSize: rec.dealSize || "",
+        gpCheck: rec.gpCheck || "",
+        lpCheck: rec.lpCheck || "",
         note: rec.note || "",
         addedAt: rec.addedAt || "",
         lastActivity: rec.lastActivity || "",
