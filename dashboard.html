@@ -1841,6 +1841,79 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
 
 .op-empty { color: var(--muted); font-style: italic; font-size: .82rem; }
 
+/* Competitor tracker ---------------------------------------------
+   The list is the Operator CRM's table with a different subject, so
+   almost nothing here is new: the pills, the tag stacks and the row
+   editing are the same rules. Two things are.
+
+   THE OVERLAP PILL IS NOT A STAGE. A stage is where a relationship
+   has got to and moves in one direction; overlap is a judgement about
+   how directly a firm competes, and it can go either way at any time.
+   It gets its own attribute rather than borrowing [data-stage] so
+   that nothing can start reading one as the other — and its colours
+   run the opposite way to a pipeline's, because "Direct" is the one
+   to look at, not the one to celebrate.
+
+   ARTICLES are the reason this tab exists rather than being three
+   more columns on the Operator CRM. Each is a headline, where it ran,
+   when, and the one line saying why it mattered — which is the part
+   that is worth more than the link a month later. */
+#wsCompetitors[hidden] { display: none; }
+
+.crm-pill[data-overlap="Direct"]        { background: rgba(192, 57, 43, 0.1); color: #C0392B; }
+.crm-pill[data-overlap="Adjacent"]      { background: rgba(232, 214, 203, 0.55); color: #8A5A3B; }
+.crm-pill[data-overlap="Emerging"]      { background: rgba(119, 166, 182, 0.16); color: #3E6C7C; }
+.crm-pill[data-overlap="Watching"]      { background: rgba(90, 100, 119, 0.1); color: var(--muted); }
+.crm-pill[data-overlap="Not competing"] { background: rgba(45, 58, 81, 0.06); color: var(--muted); }
+
+.crm-tag--capital { border-color: rgba(45, 58, 81, .28); color: var(--deep-space); }
+
+/* The count in the Articles column. A number alone does not say
+   whether anybody has looked recently, which is the thing actually
+   worth knowing on a tracker, so the date of the newest sits under it. */
+.comp-count { font-variant-numeric: tabular-nums; }
+
+.comp-articles { list-style: none; margin: 0; padding: 0; }
+.comp-articles li {
+  padding: 0 0 18px 0;
+  margin-bottom: 18px;
+  border-bottom: 1px solid var(--rule);
+  font-size: .92rem;
+  line-height: 1.6;
+}
+.comp-articles li:last-child { border-bottom: 0; margin-bottom: 0; padding-bottom: 0; }
+.comp-articles__head { display: flex; justify-content: space-between; align-items: baseline; gap: 16px; }
+.comp-articles__title { color: var(--deep-space); text-decoration: none; font-weight: 500; }
+.comp-articles__title:hover { color: var(--steel); text-decoration: underline; }
+.comp-articles__meta { display: block; margin-top: 6px; font-size: .76rem; color: var(--muted); }
+.comp-articles__meta a { color: var(--steel); text-decoration: none; word-break: break-all; }
+.comp-articles__meta a:hover { text-decoration: underline; }
+.comp-articles__take { margin: 8px 0 0; color: var(--muted); font-size: .88rem; }
+.comp-articles__empty { color: var(--muted); font-size: .88rem; margin: 0 0 14px; }
+.comp-articles__drop {
+  appearance: none; background: none; border: 0; padding: 0;
+  font: inherit; font-size: .74rem; color: var(--muted);
+  cursor: pointer; white-space: nowrap;
+}
+.comp-articles__drop:hover { color: #C0392B; }
+
+/* The add-an-article form. It sits open on every record rather than
+   behind a button: pasting a link is the commonest thing anybody will
+   do on this tab, and a form you have to reveal first is a form that
+   gets skipped in favour of not recording it at all. */
+.comp-addart { margin-top: 20px; padding: 18px 20px; border: 1px solid var(--rule); border-radius: 4px; }
+.comp-addart > h4 {
+  font-family: var(--sans); font-size: .72rem; font-weight: 500;
+  letter-spacing: .16em; text-transform: uppercase; color: var(--muted);
+  margin: 0 0 14px;
+}
+.comp-addart__grid {
+  display: grid; gap: 14px 20px;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  margin-bottom: 14px;
+}
+.comp-addart__grid .crm-field--wide { grid-column: 1 / -1; }
+
 /* Investor detail */
 .dash-investor__head {
   display: flex;
@@ -2870,12 +2943,13 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
         <button type="button" data-tab="operators">Operator CRM<span class="dash-tabs__count" id="tabOperatorCount"></span></button>
         <button type="button" data-tab="crm">Investor CRM<span class="dash-tabs__count" id="tabCrmCount"></span></button>
         <button type="button" data-tab="tasks">Task List<span class="dash-tabs__count" id="tabTaskCount"></span></button>
+        <button type="button" data-tab="competitors">Competitor Tracker<span class="dash-tabs__count" id="tabCompetitorCount"></span></button>
       </nav>
 
       <!-- ========================== HOME ========================== -->
       <div id="wsHome">
         <p class="dash-home__lede">
-          Five workspaces, each backed by its own data. The documents are a mirror of
+          Six workspaces, each backed by its own data. The documents are a mirror of
           the OneDrive folders as they stand; everything else is recorded here.
         </p>
         <div class="dash-grid dash-grid--home" id="homeGrid"></div>
@@ -3351,6 +3425,74 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
 
       </div><!-- /#wsTasks -->
 
+      <!-- =================== COMPETITOR TRACKER ===================
+           The Operator CRM turned around. Same table, same sort, same
+           row editing, same archive — the subject is the other kind of
+           company in the room: firms doing what this one does, rather
+           than firms it does deals with. What is new is the ARTICLES
+           section on each record, because a competitor is mostly
+           learned about by reading, and a link that stayed in one
+           person's inbox is a thing nobody else knows.
+           ========================================================== -->
+      <div id="wsCompetitors" hidden>
+
+        <p class="report-note" id="compSourceNote"></p>
+
+        <!-- Toolbar -->
+        <div class="dash-toolbar">
+          <div class="dash-search">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+            <label class="visually-hidden" for="compSearch">Search competitors</label>
+            <input type="search" id="compSearch" placeholder="Search competitors, strategies, markets and articles" autocomplete="off">
+          </div>
+          <button class="dash-refresh dash-refresh--primary" id="compAddBtn">Add competitor</button>
+          <button class="dash-refresh" id="compExportBtn">Export Excel</button>
+          <button class="dash-refresh" id="compPublishBtn">Publish to team</button>
+          <button class="dash-refresh" id="compSaveFileBtn">Download competitor-data.json</button>
+          <span class="crm-unsaved" id="compUnsaved" hidden>Unsaved local edits</span>
+        </div>
+
+        <!-- List -->
+        <div class="dash-crm" id="viewCompetitors">
+          <div class="dash-crm__filters">
+            <label class="visually-hidden" for="compFilterCapital">Filter by capital type</label>
+            <select id="compFilterCapital"><option value="">All capital types</option></select>
+
+            <label class="visually-hidden" for="compFilterStrategy">Filter by asset strategy</label>
+            <select id="compFilterStrategy"><option value="">All strategies</option></select>
+
+            <label class="visually-hidden" for="compFilterMarket">Filter by market</label>
+            <select id="compFilterMarket"><option value="">All markets</option></select>
+
+            <label class="visually-hidden" for="compFilterOverlap">Filter by overlap</label>
+            <select id="compFilterOverlap"><option value="">Any overlap</option></select>
+
+            <label class="visually-hidden" for="compFilterPriority">Filter by priority</label>
+            <select id="compFilterPriority"><option value="">Any priority</option></select>
+
+            <button type="button" class="dash-crm__clear" id="compClearFilters">Clear</button>
+            <span class="dash-crm__shown" id="compShown"></span>
+          </div>
+          <div id="compBody"></div>
+        </div>
+
+        <!-- Competitor detail -->
+        <div class="dash-investor" id="viewCompetitor" hidden>
+          <nav class="dash-crumbs" aria-label="Breadcrumb">
+            <button type="button" data-action="comp-home">All competitors</button>
+            <span class="sep">/</span>
+            <span class="current" id="competitorCrumb"></span>
+          </nav>
+          <div id="competitorBody"></div>
+        </div>
+
+        <datalist id="compCapitalTypes"></datalist>
+        <datalist id="compStrategies"></datalist>
+        <datalist id="compMarkets"></datalist>
+        <datalist id="compPublications"></datalist>
+
+      </div><!-- /#wsCompetitors -->
+
     </div>
   </section>
 
@@ -3656,6 +3798,13 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
       count: function () {
         var n = Tasks.all().filter(function (t) { return t.status !== "Done"; }).length;
         return n ? n + " open" : null;
+      } },
+    { tab: "competitors", label: "Competitor Tracker", icon: "magnify",
+      blurb: "The firms doing what this one does — what they provide, where they do it, how " +
+             "directly they overlap, and the articles written about them.",
+      count: function () {
+        var n = Competitors.all().length;
+        return n ? n + " compan" + (n === 1 ? "y" : "ies") : null;
       } }
   ];
 
@@ -5358,7 +5507,9 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
       deals:     { store: function () { return Deals; },     render: function () { renderDeals(); } },
       crm:       { store: function () { return Crm; },       render: function () { renderCrm(); } },
       operators: { store: function () { return Operators; }, render: function () { renderOperators(); } },
-      tasks:     { store: function () { return Tasks; },     render: function () { renderTasks(); } }
+      tasks:     { store: function () { return Tasks; },     render: function () { renderTasks(); } },
+      competitors: { store: function () { return Competitors; },
+                     render: function () { renderCompetitors(); } }
     };
 
     /* An edit landed. Push the deadline out — the point is stillness,
@@ -9543,6 +9694,1537 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
   });
 
   /* ============================================================
+     COMPETITOR TRACKER — DATA
+
+     Fifth dataset, same seam as the other four. The Operator CRM
+     records the firms this one invests ALONGSIDE; this records the
+     firms it is in the room AGAINST — the other people writing Co-GP
+     cheques, seeding sponsors and backing operators.
+
+     The two are deliberately separate lists rather than one list with
+     a flag on it. A firm can be both, and when it is, the two records
+     are answering different questions: on the Operator CRM, "what are
+     we doing with them"; here, "what are they doing that we are not".
+     Collapsing them would mean one set of fields trying to do both,
+     and the field that decides everything on this tab — how directly
+     they overlap — has no meaning at all on the other one.
+
+     Real records live in the SHARED STORE, read through
+     /api/records?set=competitors; competitor-data.json in this folder
+     is the seed behind it. It ships EMPTY: there is no folder to read
+     rival firms off, so seeding it would mean inventing them, and an
+     invented competitor is one somebody eventually repeats in a
+     meeting. COMPETITOR_FALLBACK is the empty state behind both.
+
+     ARTICLES are the part that is not on any other tab. Each one is a
+     headline, the publication, the date it ran, and the line saying
+     why it mattered to us — that last field being the one worth
+     having in six months, when the link has moved and nobody
+     remembers why it was saved. They carry ids so the shared overlay
+     merges two people's additions instead of doubling them, which is
+     the same rule conversations follow on the Investor CRM.
+     ============================================================ */
+
+  // Starting vocabularies, on the same terms as the Operator CRM's: not
+  // a closed set — a value typed into a record joins the pickers on the
+  // next render.
+  var COMPETITOR_CAPITAL_TYPES = ["Co-GP Equity", "Seed", "GP Stakes", "LP Equity",
+                                  "Preferred Equity", "Programmatic JV"];
+  var COMPETITOR_STRATEGIES = ["Multifamily", "Retail", "Industrial", "Office",
+                               "Hospitality", "Life Science", "Mixed-Use"];
+  var COMPETITOR_MARKETS = ["National", "Regional", "Southeast", "Northeast", "Mid-Atlantic",
+                            "Midwest", "Southwest", "West", "Texas", "Florida", "Georgia",
+                            "North Carolina", "New York"];
+  var COMPETITOR_PRIORITIES = ["High", "Medium", "Low"];
+  /* How directly they compete, which is a judgement and is written down
+     as one. It is NOT a pipeline: nothing progresses along this list, and
+     a firm can move from Watching to Direct in a week because of one
+     fund close. Ordered most-competitive first so the list sorts into
+     the order somebody actually reads it in. */
+  var COMPETITOR_OVERLAPS = ["Direct", "Adjacent", "Emerging", "Watching", "Not competing"];
+
+  // Empty. Real records arrive from the shared store, or from
+  // competitor-data.json behind it — which also ships empty.
+  var COMPETITOR_FALLBACK = {
+    generatedAt: null,
+    source: "fallback",
+    competitors: []
+  };
+
+  var Competitors = (function () {
+    var base = null;
+    var meta = { source: "fallback", generatedAt: null, note: "" };
+    var merged = [];
+    var OVERLAY_KEY = "modillion-competitor-overlay";
+    var overlay = { patches: {}, created: [], archived: {}, removed: {} };
+
+    function readOverlay() {
+      try {
+        var raw = localStorage.getItem(OVERLAY_KEY);
+        if (!raw) return;
+        var o = JSON.parse(raw);
+        overlay.patches  = o.patches || {};
+        overlay.created  = o.created || [];
+        overlay.archived = o.archived || {};
+        overlay.removed  = o.removed || {};
+      } catch (e) { /* private mode, or corrupt — start clean */ }
+    }
+
+    function writeOverlay() {
+      try { localStorage.setItem(OVERLAY_KEY, JSON.stringify(overlay)); }
+      catch (e) { /* private mode — edits live for this page view only */ }
+      var who = typeof signedInUser === "function" ? signedInUser() : null;
+      SharedOverlay.push("competitors", overlay, who ? (who.name || who.username || "") : "");
+      AutoPublish.touch("competitors");
+    }
+
+    // See the same method on Operators: the publish landed, so the deltas
+    // behind it are part of the base now and are dropped rather than being
+    // re-sent into a base that already holds them.
+    function adoptPublished(doc) {
+      if (doc) base = doc;
+      overlay = { patches: {}, created: [], archived: {}, removed: {} };
+      try { localStorage.setItem(OVERLAY_KEY, JSON.stringify(overlay)); }
+      catch (e) { /* private mode — the copy in memory is what matters */ }
+      rebuild();
+    }
+
+    function hasOverlay() {
+      return Object.keys(overlay.patches).length > 0 ||
+             Object.keys(overlay.archived).length > 0 ||
+             Object.keys(overlay.removed).length > 0 ||
+             overlay.created.length > 0;
+    }
+
+    function valueList(v) {
+      var arr = [];
+      if (Object.prototype.toString.call(v) === "[object Array]") arr = v;
+      else if (typeof v === "string") arr = v.split(";");
+      return arr.map(function (s) { return String(s).trim(); })
+                .filter(function (s, i, a) { return s.length > 0 && a.indexOf(s) === i; });
+    }
+
+    /* An article's id is what lets two people add two articles to the
+       same firm without either of them being lost — the shared merge
+       matches array entries by id and appends the rest. An article that
+       arrived in a hand-written file without one is given a stable id
+       from its URL rather than a random one, so re-reading the same file
+       does not produce a second copy of the same link. */
+    function articleId(a, i) {
+      if (a.id) return String(a.id);
+      var stem = slug(String(a.url || a.title || "article")).slice(0, 40);
+      return "art-" + (stem || "x") + "-" + i;
+    }
+
+    function normaliseArticle(a, i) {
+      return {
+        id: articleId(a, i),
+        title: a.title || "",
+        url: a.url || "",
+        publication: a.publication || "",
+        date: a.date || "",
+        takeaway: a.takeaway || "",
+        addedAt: a.addedAt || "",
+        addedBy: a.addedBy || ""
+      };
+    }
+
+    function normalise(rec) {
+      var c = rec.checkSize || {};
+      return {
+        id: rec.id || slug(rec.name || "") || "competitor",
+        name: rec.name || "",
+        capitalTypes: valueList(rec.capitalTypes),
+        assetStrategies: valueList(rec.assetStrategies),
+        markets: valueList(rec.markets),
+        overlap: rec.overlap || "",
+        owner: rec.owner || "",
+        priority: rec.priority || "",
+        // What they write per deal, in the same shape as an investor's
+        // check size and an operator's equity per deal, so one parser and
+        // one formatter serve all three.
+        checkSize: { min: c.min == null ? null : c.min,
+                     max: c.max == null ? null : c.max,
+                     note: c.note || "" },
+        aum: rec.aum || "",
+        capitalBase: rec.capitalBase || "",
+        founded: rec.founded || "",
+        trackRecord: rec.trackRecord || "",
+        edge: rec.edge || "",
+        backers: rec.backers || "",
+        tags: valueList(rec.tags),
+        location: rec.location || "",
+        website: rec.website || "",
+        contacts: (rec.contacts || []).map(function (c2) {
+          return { name: c2.name || "", title: c2.title || "", email: c2.email || "" };
+        }),
+        articles: (rec.articles || []).map(normaliseArticle),
+        notes: rec.notes || "",
+        addedAt: rec.addedAt || "",
+        order: rec.order == null || rec.order === "" ? null : Number(rec.order),
+        archived: !!rec.archived
+      };
+    }
+
+    function rebuild() {
+      var rows = (base && base.competitors ? base.competitors : []).concat(overlay.created)
+        .filter(function (rec) { return !overlay.removed[rec.id]; });
+      merged = rows.map(function (rec) {
+        var out = normalise(rec);
+        var patch = overlay.patches[out.id];
+        if (patch) out = normalise(Object.assign({}, out, patch));
+        return out;
+      });
+      merged.sort(function (a, b) { return a.name.localeCompare(b.name); });
+    }
+
+    function load() {
+      readOverlay();
+      var origin = "local";
+      return SharedOverlay.load("competitors")
+        .then(function (shared) {
+          if (shared && shared.overlay) SharedOverlay.mergeInto(overlay, shared.overlay);
+          if (shared && shared.base) { origin = "shared"; return shared.base; }
+          return fetch("competitor-data.json", { cache: "no-store" })
+            .then(function (r) {
+              if (!r.ok) throw new Error("no local competitor file");
+              return r.json();
+            });
+        })
+        .then(function (json) {
+          base = json;
+          meta = { source: origin, generatedAt: json.generatedAt || null, note: json.note || "" };
+        })
+        .catch(function () {
+          base = COMPETITOR_FALLBACK;
+          meta = { source: "fallback", generatedAt: null, note: "" };
+        })
+        .then(function () {
+          if (base.capitalTypes && base.capitalTypes.length) COMPETITOR_CAPITAL_TYPES = base.capitalTypes;
+          if (base.assetStrategies && base.assetStrategies.length) COMPETITOR_STRATEGIES = base.assetStrategies;
+          if (base.markets && base.markets.length) COMPETITOR_MARKETS = base.markets;
+          if (base.priorities && base.priorities.length) COMPETITOR_PRIORITIES = base.priorities;
+          if (base.overlaps && base.overlaps.length) COMPETITOR_OVERLAPS = base.overlaps;
+          rebuild();
+        });
+    }
+
+    function byId(id) {
+      for (var i = 0; i < merged.length; i++) if (merged[i].id === id) return merged[i];
+      return null;
+    }
+
+    function slugId(name) {
+      var s = slug(name) || "competitor";
+      var n = s, i = 2;
+      while (byId(n)) { n = s + "-" + i; i++; }
+      return n;
+    }
+
+    function create(fields) {
+      var rec = normalise(Object.assign(
+        { id: slugId(fields.name || ""), addedAt: new Date().toISOString().slice(0, 10) }, fields));
+      delete overlay.removed[rec.id];
+      overlay.created.push(rec);
+      writeOverlay();
+      rebuild();
+      return byId(rec.id);
+    }
+
+    function patch(id, fields) {
+      var existing = overlay.patches[id] || {};
+      overlay.patches[id] = Object.assign({}, existing, fields);
+      writeOverlay();
+      rebuild();
+      return byId(id);
+    }
+
+    function patchMany(map) {
+      var ids = Object.keys(map);
+      if (!ids.length) return;
+      ids.forEach(function (id) {
+        var existing = overlay.patches[id] || {};
+        overlay.patches[id] = Object.assign({}, existing, map[id]);
+      });
+      writeOverlay();
+      rebuild();
+    }
+
+    /* ADDING AN ARTICLE IS ITS OWN METHOD rather than a patch on the
+       whole list, because two people reading the same firm on the same
+       morning is the expected case, not the awkward one. Each addition
+       is written as the full list with one more entry on it, and the
+       shared merge unions them by article id — so the second person's
+       link does not replace the first person's. A URL already on the
+       record is refused rather than added twice. */
+    function addArticle(id, article) {
+      var rec = byId(id);
+      if (!rec) return null;
+      var url = String(article.url || "").trim();
+      if (url && rec.articles.some(function (a) { return a.url === url; })) return "duplicate";
+      var who = typeof signedInUser === "function" ? signedInUser() : null;
+      var stamped = normaliseArticle(Object.assign({
+        id: "art-" + Date.now().toString(36) + "-" + Math.random().toString(36).slice(2, 7),
+        addedAt: new Date().toISOString().slice(0, 10),
+        addedBy: who ? (who.name || who.username || "") : ""
+      }, article), rec.articles.length);
+      patch(id, { articles: rec.articles.concat([stamped]) });
+      return stamped;
+    }
+
+    // Several at once, for the web lookup — one write, one push.
+    function addArticles(id, list) {
+      var rec = byId(id);
+      if (!rec || !list.length) return 0;
+      var have = {};
+      rec.articles.forEach(function (a) { if (a.url) have[a.url] = true; });
+      var who = typeof signedInUser === "function" ? signedInUser() : null;
+      var today = new Date().toISOString().slice(0, 10);
+      var fresh = list.filter(function (a) { return !a.url || !have[a.url]; })
+        .map(function (a, i) {
+          return normaliseArticle(Object.assign({
+            id: "art-" + Date.now().toString(36) + "-" + i + "-" + Math.random().toString(36).slice(2, 6),
+            addedAt: today,
+            addedBy: who ? (who.name || who.username || "") : ""
+          }, a), rec.articles.length + i);
+        });
+      if (!fresh.length) return 0;
+      patch(id, { articles: rec.articles.concat(fresh) });
+      return fresh.length;
+    }
+
+    function removeArticle(id, articleId2) {
+      var rec = byId(id);
+      if (!rec) return false;
+      var kept = rec.articles.filter(function (a) { return a.id !== articleId2; });
+      if (kept.length === rec.articles.length) return false;
+      patch(id, { articles: kept });
+      return true;
+    }
+
+    function remove(id) {
+      if (!byId(id)) return false;
+      var inFile = (base && base.competitors ? base.competitors : [])
+        .some(function (rec) { return rec.id === id; });
+      overlay.created = overlay.created.filter(function (r) { return r.id !== id; });
+      delete overlay.patches[id];
+      delete overlay.archived[id];
+      if (inFile) overlay.removed[id] = new Date().toISOString().slice(0, 10);
+      writeOverlay();
+      rebuild();
+      return true;
+    }
+
+    function archive(id, on) {
+      if (on === false) delete overlay.archived[id];
+      else overlay.archived[id] = true;
+      writeOverlay();
+      rebuild();
+    }
+
+    function all() {
+      return merged.filter(function (r) { return !overlay.archived[r.id] && !r.archived; });
+    }
+
+    function vocabulary(field, seed) {
+      var out = seed.slice();
+      merged.forEach(function (r) {
+        r[field].forEach(function (v) { if (out.indexOf(v) === -1) out.push(v); });
+      });
+      return out;
+    }
+
+    // Every publication named on an article, for the add form's datalist —
+    // so the second Bisnow piece is filed under the same word as the first.
+    function publications() {
+      var out = [];
+      merged.forEach(function (r) {
+        r.articles.forEach(function (a) {
+          if (a.publication && out.indexOf(a.publication) === -1) out.push(a.publication);
+        });
+      });
+      return out.sort();
+    }
+
+    function toFile() {
+      return {
+        generatedAt: new Date().toISOString().slice(0, 10),
+        source: "local",
+        note: "Exported from the dashboard. Replaces competitor-data.json in the site folder. Gitignored — never commit.",
+        capitalTypes: COMPETITOR_CAPITAL_TYPES,
+        assetStrategies: COMPETITOR_STRATEGIES,
+        markets: COMPETITOR_MARKETS,
+        priorities: COMPETITOR_PRIORITIES,
+        overlaps: COMPETITOR_OVERLAPS,
+        competitors: merged.map(function (r) {
+          var out = Object.assign({}, r);
+          if (overlay.archived[r.id]) out.archived = true;
+          return out;
+        })
+      };
+    }
+
+    return {
+      load: load,
+      meta: function () { return meta; },
+      all: all,
+      allIncludingArchived: function () { return merged; },
+      get: byId,
+      create: create,
+      patch: patch,
+      patchMany: patchMany,
+      addArticle: addArticle,
+      addArticles: addArticles,
+      removeArticle: removeArticle,
+      archive: archive,
+      remove: remove,
+      isArchived: function (id) { return !!overlay.archived[id]; },
+      capitalTypes: function () { return vocabulary("capitalTypes", COMPETITOR_CAPITAL_TYPES); },
+      strategies: function () { return vocabulary("assetStrategies", COMPETITOR_STRATEGIES); },
+      markets: function () { return vocabulary("markets", COMPETITOR_MARKETS); },
+      priorities: function () { return COMPETITOR_PRIORITIES.slice(); },
+      overlaps: function () { return COMPETITOR_OVERLAPS.slice(); },
+      publications: publications,
+      hasLocalEdits: hasOverlay,
+      toFile: toFile,
+      adoptPublished: adoptPublished,
+      clearOverlay: function () {
+        overlay = { patches: {}, created: [], archived: {}, removed: {} };
+        writeOverlay();
+        rebuild();
+      }
+    };
+  })();
+
+  /* ============================================================
+     COMPETITOR TRACKER — RENDER
+     ============================================================ */
+  var compState = {
+    view: "list",          // list | competitor | new
+    competitorId: null,
+    editing: false,
+    query: "",
+    filters: { capital: "", strategy: "", market: "", overlap: "", priority: "" },
+    sortKey: "name",
+    sortDir: "asc",
+    // See dealSortKey(): until a heading is clicked, a list that has been
+    // put in a hand-set order shows itself in that order.
+    sortTouched: false,
+    openArchived: false,
+    // A web lookup that has come back and is waiting to be read, held the
+    // way the Investor CRM holds a research proposal: { id, items, notes }.
+    found: null
+  };
+
+  var COMPETITOR_COLUMNS = [
+    { key: "name",     label: "Company Name" },
+    { key: "overlap",  label: "Overlap" },
+    { key: "capital",  label: "Capital Type" },
+    { key: "strategy", label: "Asset Strategy" },
+    { key: "market",   label: "Market Focus" },
+    { key: "articles", label: "Articles" },
+    { key: "priority", label: "Priority" },
+    { key: "aum",      label: "AUM" },
+    { key: "addedAt",  label: "Added" }
+  ];
+
+  // The tag stacks, on the same terms the Operator CRM sets them: a cell
+  // holding several values shows the first few and says how many are left,
+  // because a row is read across and a stack of nine tags stops it being one.
+  function compTagStack(values, kind, limit) {
+    var max = limit || 2;
+    if (!values.length) return '<span class="muted">—</span>';
+    var shown = values.slice(0, max).map(function (v) {
+      return '<span class="crm-tag crm-tag--' + kind + '">' + esc(v) + '</span>';
+    }).join("");
+    return shown + (values.length > max
+      ? '<span class="crm-tag">+' + (values.length - max) + '</span>' : "");
+  }
+
+  // The newest article's date, which is what "have we looked at this firm
+  // lately" actually means. Blank when nothing is recorded — not today's date.
+  function compLastArticle(rec) {
+    var dates = rec.articles.map(function (a) { return a.date || a.addedAt || ""; })
+                            .filter(function (d) { return !!d; });
+    if (!dates.length) return "";
+    return dates.sort()[dates.length - 1];
+  }
+
+  function compSortValue(rec, key) {
+    switch (key) {
+      case "name":     return rec.name.toLowerCase();
+      case "overlap":  return String(COMPETITOR_OVERLAPS.indexOf(rec.overlap) === -1
+                              ? COMPETITOR_OVERLAPS.length : COMPETITOR_OVERLAPS.indexOf(rec.overlap));
+      case "capital":  return rec.capitalTypes.join(" ").toLowerCase();
+      case "strategy": return rec.assetStrategies.join(" ").toLowerCase();
+      case "market":   return rec.markets.join(" ").toLowerCase();
+      case "articles": return rec.articles.length;
+      case "priority": return COMPETITOR_PRIORITIES.indexOf(rec.priority) === -1
+                              ? COMPETITOR_PRIORITIES.length : COMPETITOR_PRIORITIES.indexOf(rec.priority);
+      case "aum":      return aumValue(rec.aum);
+      case "addedAt":  return rec.addedAt || "";
+      default:         return "";
+    }
+  }
+
+  /* One test, used by the live list and by the archive under it, so a
+     search means the same thing in both halves of the page. Article
+     headlines and takeaways are in the haystack on purpose: "who was in
+     that piece about Sun Belt seed capital" is the question this tab
+     gets asked, and the answer is in the articles, not in the fields. */
+  function compMatches(rec) {
+    var q = compState.query.trim().toLowerCase();
+    var f = compState.filters;
+    if (f.capital && rec.capitalTypes.indexOf(f.capital) === -1) return false;
+    if (f.strategy && rec.assetStrategies.indexOf(f.strategy) === -1) return false;
+    if (f.market && rec.markets.indexOf(f.market) === -1) return false;
+    if (f.overlap && rec.overlap !== f.overlap) return false;
+    if (f.priority && rec.priority !== f.priority) return false;
+    if (!q) return true;
+
+    var haystack = [rec.name, rec.location, rec.aum, rec.priority, rec.notes,
+                    rec.overlap, rec.owner, rec.founded, rec.trackRecord, rec.edge,
+                    rec.backers, rec.capitalBase, rec.tags.join(" "), compCheckText(rec),
+                    rec.capitalTypes.join(" "), rec.assetStrategies.join(" "),
+                    rec.markets.join(" "),
+                    rec.articles.map(function (a) {
+                      return [a.title, a.publication, a.takeaway].join(" ");
+                    }).join(" "),
+                    rec.contacts.map(function (c) {
+                      return [c.name, c.title, c.email].join(" ");
+                    }).join(" ")].join(" ").toLowerCase();
+    return haystack.indexOf(q) !== -1;
+  }
+
+  function compFiltered() {
+    return Competitors.all().filter(compMatches)
+      .sort(compComparator(compSortKey(), compState.sortDir));
+  }
+
+  function compArchived() {
+    return Competitors.allIncludingArchived()
+      .filter(function (rec) { return Competitors.isArchived(rec.id) || rec.archived; })
+      .filter(compMatches)
+      .sort(function (a, b) { return a.name.localeCompare(b.name); });
+  }
+
+  function compComparator(key, dirName) {
+    if (key === "addedAt") return blanksLastBy(function (r) { return r.addedAt; }, dirName);
+    if (key === "manual") {
+      return function (a, b) {
+        var ao = a.order == null ? Infinity : a.order;
+        var bo = b.order == null ? Infinity : b.order;
+        if (ao !== bo) return ao - bo;
+        return a.name.localeCompare(b.name);
+      };
+    }
+    var dir = dirName === "asc" ? 1 : -1;
+    return function (a, b) {
+      var av = compSortValue(a, key);
+      var bv = compSortValue(b, key);
+      if (av < bv) return -1 * dir;
+      if (av > bv) return 1 * dir;
+      return a.name.localeCompare(b.name);
+    };
+  }
+
+  function compSortKey() {
+    if (compState.sortTouched) return compState.sortKey;
+    var list = Competitors.all();
+    for (var i = 0; i < list.length; i++) if (list[i].order != null) return "manual";
+    return compState.sortKey;
+  }
+
+  function competitorTable(list, pile, matchesBelow) {
+    if (!list.length) {
+      if (matchesBelow) return nothingLiveMatches(matchesBelow, "competitors");
+      return Competitors.all().length
+        ? '<div class="dash-state"><h3>No competitors match</h3>' +
+          '<p>Clear the filters, or add one with the button above.</p></div>'
+        : '<div class="dash-state"><h3>No competitors yet</h3>' +
+          '<p>Nothing is seeded here — there is no folder to read rival firms off, and ' +
+          'inventing a few would put names in a meeting that nobody checked. Add the first ' +
+          'one with the button above.</p></div>';
+    }
+
+    var archived = pile === "archived";
+    var sortKey = compSortKey();
+
+    var head = COMPETITOR_COLUMNS.map(function (c) {
+      var sorted = !archived && sortKey === c.key;
+      return '<th class="' + (sorted ? "is-sorted" : "") + '">' +
+             '<button type="button" data-compsort="' + c.key + '">' + c.label +
+             '<span class="arrow">' + (sorted && compState.sortDir === "asc" ? "↑" : "↓") + '</span>' +
+             '</button></th>';
+    }).join("") +
+    '<th class="crm-actions"><span class="visually-hidden">Actions</span></th>';
+
+    var rows = list.map(function (rec) {
+      if (RowEdit.on("competitor", rec.id)) {
+        return RowEdit.form("competitor", rec.id, COMPETITOR_COLUMNS.length + 1, [
+          ["Company name", RowEdit.text("name", rec.name)],
+          ["Overlap", RowEdit.select("overlap", [""].concat(Competitors.overlaps()), rec.overlap)],
+          ["Capital type", RowEdit.text("capitalTypes", rec.capitalTypes.join(", "),
+                    ' placeholder="Comma separated"')],
+          ["Asset strategy", RowEdit.text("assetStrategies", rec.assetStrategies.join(", "),
+                    ' placeholder="Comma separated"')],
+          ["Market focus", RowEdit.text("markets", rec.markets.join(", "),
+                    ' placeholder="Comma separated"')],
+          // Articles are added on the record, where the headline, the
+          // publication and the date each have a box of their own. A
+          // comma list on a row could not carry any of that.
+          ["Articles", RowEdit.stat(rec.articles.length
+                    ? rec.articles.length + " — open the record to add one"
+                    : "None — open the record to add one")],
+          ["Priority", RowEdit.select("priority", [""].concat(Competitors.priorities()), rec.priority)],
+          ["AUM", RowEdit.text("aum", rec.aum, ' placeholder="$1.4B"')],
+          ["Added", RowEdit.stat(rec.addedAt || "Not recorded")]
+        ], "Enter saves · Esc cancels");
+      }
+
+      var last = compLastArticle(rec);
+      return '<tr data-competitor="' + esc(rec.id) + '">' +
+        '<td>' + (archived ? "" : rowGrip(rec.id, rec.name)) +
+          '<span class="crm-name">' + esc(rec.name) + '</span>' +
+          (rec.location ? '<span class="crm-sub">' + esc(rec.location) + '</span>' : "") + '</td>' +
+        '<td>' + (rec.overlap
+          ? '<span class="crm-pill" data-overlap="' + esc(rec.overlap) + '">' + esc(rec.overlap) + '</span>'
+          : '<span class="muted">—</span>') + '</td>' +
+        '<td>' + compTagStack(rec.capitalTypes, "capital") + '</td>' +
+        '<td>' + compTagStack(rec.assetStrategies, "strategy") + '</td>' +
+        '<td>' + compTagStack(rec.markets, "market", 3) + '</td>' +
+        '<td>' + (rec.articles.length
+          ? '<span class="comp-count">' + rec.articles.length + '</span>' +
+            (last ? '<span class="crm-sub">latest ' + esc(last) + '</span>' : "")
+          : '<span class="muted">—</span>') + '</td>' +
+        '<td>' + (rec.priority
+          ? '<span class="task-pill" data-p="' + esc(rec.priority) + '">' + esc(rec.priority) + '</span>'
+          : '<span class="muted">—</span>') + '</td>' +
+        '<td>' + (rec.aum ? esc(rec.aum) : '<span class="muted">—</span>') + '</td>' +
+        '<td class="crm-date">' + (rec.addedAt ? esc(rec.addedAt) : '<span class="muted">—</span>') + '</td>' +
+        '<td class="crm-actions">' +
+          (archived ? "" : RowEdit.trigger("competitor", rec.id, rec.name)) +
+          (archived
+            ? '<button type="button" class="deal-rowaction" data-comp-restore="' + esc(rec.id) +
+              '" title="Put ' + esc(rec.name) + ' back on the list">Restore</button>'
+            : '<button type="button" class="deal-rowaction" data-comp-archive="' + esc(rec.id) +
+              '" title="Archive ' + esc(rec.name) + '">Archive</button>') +
+          '<button type="button" class="crm-rowdelete" data-comp-delete="' + esc(rec.id) +
+          '" title="Delete ' + esc(rec.name) + '">Delete</button>' +
+        '</td>' +
+        '</tr>';
+    }).join("");
+
+    return (archived ? "" : orderNote(sortKey === "manual", "competitor")) +
+           '<div class="crmtable-wrap"><table class="crmtable"' +
+           (archived ? "" : ' data-reorder="competitor"') + '>' +
+           '<thead><tr>' + head + '</tr></thead><tbody>' + rows + '</tbody></table></div>';
+  }
+
+  function renderCompetitorFilters() {
+    function fill(id, values, current) {
+      var el = $(id);
+      var label = el.options[0].textContent;
+      el.innerHTML = '<option value="">' + label + '</option>' +
+        values.map(function (v) {
+          return '<option value="' + esc(v) + '"' + (v === current ? " selected" : "") + '>' +
+                 esc(v) + '</option>';
+        }).join("");
+    }
+    fill("compFilterCapital", Competitors.capitalTypes(), compState.filters.capital);
+    fill("compFilterStrategy", Competitors.strategies(), compState.filters.strategy);
+    fill("compFilterMarket", Competitors.markets(), compState.filters.market);
+    fill("compFilterOverlap", Competitors.overlaps(), compState.filters.overlap);
+    fill("compFilterPriority", Competitors.priorities(), compState.filters.priority);
+  }
+
+  function fillCompetitorDatalists() {
+    function fill(id, values) {
+      $(id).innerHTML = values.map(function (v) {
+        return '<option value="' + esc(v) + '">';
+      }).join("");
+    }
+    fill("compCapitalTypes", Competitors.capitalTypes());
+    fill("compStrategies", Competitors.strategies());
+    fill("compMarkets", Competitors.markets());
+    fill("compPublications", Competitors.publications());
+  }
+
+  function renderCompetitors() {
+    var list = compFiltered();
+    var putAway = compArchived();
+    var forced = !!compState.query || !!compState.filters.capital || !!compState.filters.strategy ||
+                 !!compState.filters.market || !!compState.filters.overlap || !!compState.filters.priority;
+    $("compBody").innerHTML = competitorTable(list, "live", putAway.length) +
+      archivePile('data-comp-pile="archived"', compState.openArchived || forced, putAway.length,
+        "Off the list, not deleted. The record and every article on it is kept, " +
+        "and Restore puts it back where it was.",
+        putAway.length ? competitorTable(putAway, "archived") : "");
+    labelCells($("compBody"));
+    $("compShown").textContent = list.length === Competitors.all().length
+      ? list.length + " compan" + (list.length === 1 ? "y" : "ies")
+      : list.length + " of " + Competitors.all().length + " shown";
+    $("tabCompetitorCount").textContent = Competitors.all().length ? "(" + Competitors.all().length + ")" : "";
+    markUnsaved("compUnsaved", Competitors.hasLocalEdits());
+
+    fillCompetitorDatalists();
+
+    var articles = Competitors.all().reduce(function (n, r) { return n + r.articles.length; }, 0);
+    $("compSourceNote").innerHTML = Competitors.meta().source !== "fallback"
+      ? (Competitors.meta().source === "shared"
+          ? "Records from the shared store — the same set everyone sees. "
+          : "Records from competitor-data.json in this site folder, not from the shared store. ") +
+        "Firms doing what this one does, with " +
+        (articles ? articles + " article" + (articles === 1 ? "" : "s") + " filed against them"
+                  : "no articles filed yet") +
+        ". Overlap is a judgement somebody wrote down, not a measurement." + SharedOverlay.note()
+      : "No competitor records loaded — neither the shared store nor a local " +
+        "competitor-data.json answered." + SharedOverlay.note();
+  }
+
+  function showCompetitorView(name) {
+    compState.view = name;
+    if (name !== "competitor") compState.editing = false;
+    $("viewCompetitors").hidden = name !== "list";
+    $("viewCompetitor").hidden = name === "list";
+  }
+
+  function scrollToCompetitor() {
+    var el = $("viewCompetitor");
+    if (!el) return;
+    var bar = document.querySelector(".dash-topbar");
+    var offset = (bar ? bar.getBoundingClientRect().height : 0) + 20;
+    var top = window.scrollY + el.getBoundingClientRect().top - offset;
+    window.scrollTo({ top: top < 0 ? 0 : top, behavior: "smooth" });
+  }
+
+  // What they write per deal, formatted the way the other two tabs format
+  // the same idea — one reader, one look.
+  function compCheckText(rec) {
+    var c = rec.checkSize || {};
+    if (c.min != null && c.max != null) {
+      return c.min === c.max ? Reader.fmtMoney(c.min)
+                             : Reader.fmtMoney(c.min) + "–" + Reader.fmtMoney(c.max);
+    }
+    if (c.min != null) return Reader.fmtMoney(c.min) + "+";
+    if (c.max != null) return "up to " + Reader.fmtMoney(c.max);
+    return "";
+  }
+
+  function competitorFacts(rec) {
+    var contact = rec.contacts[0] || null;
+    var last = compLastArticle(rec);
+    return [
+      ["Capital type", rec.capitalTypes.length ? compTagStack(rec.capitalTypes, "capital", 9) : ""],
+      ["Asset strategy", rec.assetStrategies.length ? compTagStack(rec.assetStrategies, "strategy", 9) : ""],
+      ["Market focus", rec.markets.length ? compTagStack(rec.markets, "market", 9) : ""],
+      ["Overlap", rec.overlap
+        ? '<span class="crm-pill" data-overlap="' + esc(rec.overlap) + '">' + esc(rec.overlap) + '</span>' : ""],
+      ["Cheque per deal", esc(compCheckText(rec))],
+      ["AUM", esc(rec.aum)],
+      ["Capital base", esc(rec.capitalBase)],
+      ["Backed by", esc(rec.backers)],
+      ["Watched by", esc(rec.owner)],
+      ["Priority", rec.priority
+        ? '<span class="task-pill" data-p="' + esc(rec.priority) + '">' + esc(rec.priority) + '</span>' : ""],
+      ["Location", esc(rec.location)],
+      ["Founded", esc(rec.founded)],
+      ["Track record", esc(rec.trackRecord)],
+      ["Articles", rec.articles.length ? String(rec.articles.length) : ""],
+      ["Last written about", esc(last)],
+      ["Contact", esc((contact || {}).name || "") +
+        ((contact || {}).title ? '<span class="crm-sub"> · ' + esc(contact.title) + '</span>' : "")],
+      ["Contact email", (contact || {}).email
+        ? '<a href="mailto:' + esc(contact.email) + '">' + esc(contact.email) + '</a>' : ""]
+    ].map(function (pair) {
+      var empty = !pair[1];
+      var note = pair[0] === "Cheque per deal" && rec.checkSize.note ? rec.checkSize.note : "not recorded";
+      return '<div class="crm-fact"><span class="crm-fact__label">' + pair[0] + '</span>' +
+             '<span class="crm-fact__value' + (empty ? " is-empty" : "") + '">' +
+             (empty ? esc(note) : pair[1]) + '</span></div>';
+    }).join("");
+  }
+
+  function competitorEditForm(rec, isNew) {
+    function field(id, label, control, wide) {
+      return '<div class="crm-field' + (wide ? " crm-field--wide" : "") + '">' +
+             '<label for="' + id + '">' + esc(label) + '</label>' + control + '</div>';
+    }
+    function note(text) { return '<span class="crm-field__note">' + esc(text) + '</span>'; }
+    function text(id, value, extra) {
+      return '<input type="text" id="' + id + '" value="' + esc(value || "") + '" autocomplete="off"' +
+             (extra || "") + '>';
+    }
+    function options(values, current) {
+      return values.map(function (v) {
+        return '<option value="' + esc(v) + '"' + (v === current ? " selected" : "") + '>' +
+               esc(v || "not recorded") + '</option>';
+      }).join("");
+    }
+
+    var contact = rec.contacts[0] || { name: "", title: "", email: "" };
+    var priorities = Competitors.priorities();
+    if (rec.priority && priorities.indexOf(rec.priority) === -1) priorities = priorities.concat([rec.priority]);
+    var overlaps = Competitors.overlaps();
+    if (rec.overlap && overlaps.indexOf(rec.overlap) === -1) overlaps = overlaps.concat([rec.overlap]);
+
+    // The roster the task list keeps, same single copy both CRMs read.
+    var team = Tasks.team().map(function (p) { return p.name; });
+    if (rec.owner && team.indexOf(rec.owner) === -1) team.push(rec.owner);
+
+    return '<div class="crm-edit">' +
+      '<h3>' + (isNew ? "New competitor" : "Editing this record") + '</h3>' +
+      '<p class="crm-edit__lede">Nothing is written until you press Save. Articles are added ' +
+        'below the record rather than in here — a headline, where it ran and what it told us ' +
+        'do not fit in a field on a form about the firm.</p>' +
+      '<div class="crm-edit__grid">' +
+        field("compEditName", "Company name", text("compEditName", rec.name)) +
+        field("compEditOverlap", "Overlap",
+          '<select id="compEditOverlap">' + options([""].concat(overlaps), rec.overlap) + '</select>' +
+          note("How directly they are in the same room as us. A judgement, and it can move " +
+               "either way — it is not a pipeline.")) +
+        field("compEditCheck", "Cheque per deal",
+          text("compEditCheck", compCheckText(rec) || rec.checkSize.note, ' placeholder="$5m–$15m"') +
+          note("What they are understood to write. A range or a figure becomes numbers the " +
+               "list can sort on; anything else — “not published” — is kept as written.")) +
+        field("compEditAum", "AUM", text("compEditAum", rec.aum, ' placeholder="$1.4B"')) +
+        field("compEditCapitalBase", "Capital base",
+          text("compEditCapitalBase", rec.capitalBase, ' placeholder="Fund III, $400m, closed 2025"')) +
+        field("compEditBackers", "Backed by",
+          text("compEditBackers", rec.backers, ' placeholder="Insurance capital, one anchor LP"')) +
+        field("compEditOwner", "Watched by",
+          '<select id="compEditOwner">' + options([""].concat(team), rec.owner) + '</select>' +
+          note("Whoever here keeps an eye on them, so a question about this firm has somebody " +
+               "to go to.")) +
+        field("compEditPriority", "Priority",
+          '<select id="compEditPriority">' + options([""].concat(priorities), rec.priority) + '</select>') +
+        field("compEditLocation", "Location", text("compEditLocation", rec.location, ' placeholder="Dallas, TX"')) +
+        field("compEditFounded", "Founded", text("compEditFounded", rec.founded, ' placeholder="2016"')) +
+        field("compEditWebsite", "Website",
+          '<input type="url" id="compEditWebsite" value="' + esc(rec.website) +
+          '" autocomplete="off" placeholder="https://">') +
+        field("compEditContactName", "Contact name", text("compEditContactName", contact.name)) +
+        field("compEditContactTitle", "Contact title", text("compEditContactTitle", contact.title)) +
+        field("compEditContactEmail", "Contact email",
+          '<input type="email" id="compEditContactEmail" value="' + esc(contact.email) +
+          '" autocomplete="off" placeholder="name@firm.com">') +
+        field("compEditCapital", "Capital type",
+          text("compEditCapital", rec.capitalTypes.join(", "), ' list="compCapitalTypes"') +
+          note("What they put into a deal, separated by commas. Co-GP Equity, Seed, GP Stakes."), true) +
+        field("compEditStrategy", "Asset strategy",
+          text("compEditStrategy", rec.assetStrategies.join(", "), ' list="compStrategies"') +
+          note("Separated by commas. Anything typed here joins the filter on the next render."), true) +
+        field("compEditMarkets", "Market focus",
+          text("compEditMarkets", rec.markets.join(", "), ' list="compMarkets"') +
+          note("Separated by commas. Mix scope and place freely — “Southeast, Texas” or just " +
+               "“National”."), true) +
+        field("compEditTrack", "Track record",
+          text("compEditTrack", rec.trackRecord, ' placeholder="14 sponsor seedings since 2019"'), true) +
+        field("compEditEdge", "What they do that we do not",
+          '<textarea id="compEditEdge">' + esc(rec.edge) + '</textarea>' +
+          note("The honest version. A tracker that only records where a rival is weaker is a " +
+               "tracker nobody learns anything from."), true) +
+        field("compEditTags", "Tags",
+          text("compEditTags", rec.tags.join(", ")) + note("Separated by commas."), true) +
+        field("compEditNotes", "Notes",
+          '<textarea id="compEditNotes">' + esc(rec.notes) + '</textarea>', true) +
+      '</div>' +
+      '<div class="crm-edit__actions">' +
+        (isNew
+          ? '<button class="dash-refresh dash-refresh--primary" data-comp-new-save="1">Add competitor</button>' +
+            '<button class="dash-refresh" data-comp-new-cancel="1">Cancel</button>'
+          : '<button class="dash-refresh dash-refresh--primary" data-comp-edit-save="' + esc(rec.id) + '">Save changes</button>' +
+            '<button class="dash-refresh" data-comp-edit-cancel="' + esc(rec.id) + '">Cancel</button>' +
+            '<button class="dash-refresh" data-comp-archive="' + esc(rec.id) + '">Archive</button>' +
+            '<button class="dash-refresh dash-refresh--danger" data-comp-delete="' + esc(rec.id) + '">Delete</button>') +
+        '<span class="crm-edit__derived">Archiving takes the record off the list and leaves it in the ' +
+          'file, articles and all; deleting takes it out of the file too, on the next download. ' +
+          'Clearing local edits in this browser brings back either one.</span>' +
+      '</div></div>';
+  }
+
+  function readCompetitorForm() {
+    function val(id) { var el = $(id); return el ? el.value.trim() : ""; }
+    function commaList(id) {
+      return val(id).split(",").map(function (s) { return s.trim(); })
+                    .filter(function (s) { return s.length > 0; });
+    }
+
+    var contacts = [];
+    var cName = val("compEditContactName");
+    var cTitle = val("compEditContactTitle");
+    var cEmail = val("compEditContactEmail");
+    if (cName || cTitle || cEmail) contacts = [{ name: cName, title: cTitle, email: cEmail }];
+
+    var raw = val("compEditCheck");
+    var check = { min: null, max: null, note: "" };
+    if (raw) {
+      var probe = /\$/.test(raw) ? raw : raw.replace(/(^|[^\w$])(\d)/g, "$1$$$2");
+      var parsed = Reader.matchCheck(probe);
+      if (parsed) check = { min: parsed.min, max: parsed.max, note: "" };
+      else check.note = raw;
+    }
+
+    return {
+      name: val("compEditName"),
+      capitalTypes: commaList("compEditCapital"),
+      assetStrategies: commaList("compEditStrategy"),
+      markets: commaList("compEditMarkets"),
+      overlap: $("compEditOverlap").value,
+      owner: $("compEditOwner").value,
+      priority: $("compEditPriority").value,
+      checkSize: check,
+      aum: val("compEditAum"),
+      capitalBase: val("compEditCapitalBase"),
+      backers: val("compEditBackers"),
+      founded: val("compEditFounded"),
+      trackRecord: val("compEditTrack"),
+      edge: val("compEditEdge"),
+      tags: commaList("compEditTags"),
+      location: val("compEditLocation"),
+      website: val("compEditWebsite"),
+      contacts: contacts,
+      notes: val("compEditNotes")
+    };
+  }
+
+  /* ---- ARTICLES ------------------------------------------------
+     The thing this tab is for. Everything above records what a firm
+     IS; this records what has been said about it, which is how a
+     competitor is actually learned about.
+
+     Each article carries a takeaway — one line on why it mattered —
+     and that field is doing more work than the link. A URL saved
+     with nothing beside it is a thing nobody opens again, and in a
+     year it is a 404 with no memory attached. The takeaway survives
+     the link going dead.
+
+     Nothing here is fetched or scraped. The page is static and the
+     browser cannot read another site's page anyway; what it can do
+     is take a URL, take what the reader already knows, and file it
+     where the rest of the team will find it.
+     -------------------------------------------------------------- */
+
+  // Newest first, on whichever date the article actually has. An article
+  // with no publication date falls back to the day it was filed rather
+  // than sinking to the bottom of the list forever.
+  function compSortedArticles(rec) {
+    return rec.articles.slice().sort(function (a, b) {
+      var ad = a.date || a.addedAt || "";
+      var bd = b.date || b.addedAt || "";
+      if (ad !== bd) return ad < bd ? 1 : -1;
+      return (a.title || "").localeCompare(b.title || "");
+    });
+  }
+
+  function compHost(url) {
+    try { return new URL(url).hostname.replace(/^www\./, ""); }
+    catch (e) { return ""; }
+  }
+
+  function competitorArticleItem(rec, a, proposed) {
+    var where = a.publication || compHost(a.url) || "";
+    var head = a.url
+      ? '<a class="comp-articles__title" href="' + esc(a.url) +
+        '" target="_blank" rel="noopener noreferrer">' + esc(a.title || a.url) + '</a>'
+      : '<span class="comp-articles__title">' + esc(a.title || "Untitled") + '</span>';
+
+    return '<li' + (proposed ? ' class="is-proposed"' : '') + '>' +
+      '<div class="comp-articles__head">' + head +
+        (proposed ? "" :
+          '<button type="button" class="comp-articles__drop" data-comp-article-drop="' +
+          esc(rec.id + ":" + a.id) + '" title="Take this article off the record">Remove</button>') +
+      '</div>' +
+      (a.takeaway ? '<p class="comp-articles__take">' + esc(a.takeaway) + '</p>' : "") +
+      '<span class="comp-articles__meta">' +
+        (where ? esc(where) : "Source not recorded") +
+        (a.date ? " · " + esc(a.date) : "") +
+        (a.url && a.publication ? ' · <a href="' + esc(a.url) +
+          '" target="_blank" rel="noopener noreferrer">' + esc(a.url) + '</a>' : "") +
+        (proposed ? "" :
+          (a.addedAt ? " · filed " + esc(a.addedAt) : "") +
+          (a.addedBy ? " by " + esc(a.addedBy) : "")) +
+      '</span></li>';
+  }
+
+  function competitorArticles(rec) {
+    var found = (compState.found && compState.found.id === rec.id) ? compState.found : null;
+    var list = compSortedArticles(rec);
+
+    return '<div class="crm-section"><h3>Articles' +
+      '<span class="crm-section__aside">' +
+        (list.length
+          ? list.length + " filed · newest first"
+          : "Nothing filed yet") +
+      '</span></h3>' +
+      (list.length
+        ? '<ul class="comp-articles">' + list.map(function (a) {
+            return competitorArticleItem(rec, a, false);
+          }).join("") + '</ul>'
+        : '<p class="comp-articles__empty">No articles on this firm yet. Paste one below — ' +
+          'the line about why it mattered is the part worth having in a year.</p>') +
+
+      (found && found.items.length
+        ? '<div class="crm-proposal">' +
+            '<p class="crm-proposal__head">Found ' + found.items.length +
+              ' — nothing is filed until you add it. Read them first: a headline is not a fact.</p>' +
+            '<ul class="comp-articles">' + found.items.map(function (a) {
+              return competitorArticleItem(rec, a, true);
+            }).join("") + '</ul>' +
+            '<button type="button" class="dash-refresh dash-refresh--primary" ' +
+              'data-comp-found-apply="' + esc(rec.id) + '">File all ' + found.items.length + '</button>' +
+            '<button type="button" class="dash-refresh" ' +
+              'data-comp-found-discard="' + esc(rec.id) + '">Discard</button>' +
+          '</div>'
+        : '') +
+      (found && found.notes.length
+        ? '<p class="crm-research__note">' + esc(found.notes.join(" ")) + '</p>'
+        : '') +
+
+      /* The add form, open rather than behind a button — see the note on
+         .comp-addart. The URL is the only required box: a link with
+         nothing else on it is still worth more than a link nobody filed,
+         and the rest can be filled in on the row later. */
+      '<div class="comp-addart">' +
+        '<h4>File an article</h4>' +
+        '<div class="comp-addart__grid">' +
+          '<div class="crm-field crm-field--wide">' +
+            '<label for="compArtUrl">Link</label>' +
+            '<input type="url" id="compArtUrl" autocomplete="off" placeholder="https://">' +
+          '</div>' +
+          '<div class="crm-field crm-field--wide">' +
+            '<label for="compArtTitle">Headline</label>' +
+            '<input type="text" id="compArtTitle" autocomplete="off" ' +
+              'placeholder="What the piece was called">' +
+          '</div>' +
+          '<div class="crm-field">' +
+            '<label for="compArtPub">Where it ran</label>' +
+            '<input type="text" id="compArtPub" autocomplete="off" list="compPublications" ' +
+              'placeholder="Bisnow, The Real Deal, their own site">' +
+          '</div>' +
+          '<div class="crm-field">' +
+            '<label for="compArtDate">When</label>' +
+            '<input type="date" id="compArtDate">' +
+          '</div>' +
+          '<div class="crm-field crm-field--wide">' +
+            '<label for="compArtTake">Why it mattered</label>' +
+            '<textarea id="compArtTake" placeholder="One line. The link may not survive; this will."></textarea>' +
+          '</div>' +
+        '</div>' +
+        '<div class="crm-research__actions">' +
+          '<button type="button" class="dash-refresh dash-refresh--primary" ' +
+            'data-comp-article-add="' + esc(rec.id) + '">File it</button>' +
+          '<button type="button" class="dash-refresh" data-comp-find="' + esc(rec.id) + '">' +
+            (rec.articles.length ? "Look again with Claude" : "Look it up with Claude") +
+          '</button>' +
+          '<span class="crm-research__hint">Searching the web takes up to a minute and proposes ' +
+            'dated, sourced pieces — nothing is filed until you add it.</span>' +
+        '</div>' +
+      '</div>' +
+    '</div>';
+  }
+
+  function renderCompetitor(id) {
+    var rec = Competitors.get(id);
+    if (!rec) { showCompetitorView("list"); renderCompetitors(); return; }
+
+    $("competitorCrumb").textContent = rec.name;
+
+    var parts = [];
+    parts.push('<div class="dash-investor__head"><div>' +
+      '<h2>' + esc(rec.name) + '</h2>' +
+      '<p class="dash-investor__sub">' +
+        (rec.capitalTypes.length ? esc(rec.capitalTypes.join(" · ")) : "No capital type recorded") +
+        (rec.assetStrategies.length ? " — " + esc(rec.assetStrategies.join(", ")) : "") +
+        (rec.website ? ' · <a href="' + esc(rec.website) + '" target="_blank" rel="noopener noreferrer">' +
+          esc(rec.website.replace(/^https?:\/\//, "").replace(/\/$/, "")) + '</a>' : "") +
+      '</p></div>' +
+      '<div class="dash-investor__actions">' +
+        (compState.editing ? "" :
+          '<button class="dash-refresh" data-comp-edit="' + esc(rec.id) + '">Edit</button>') +
+      '</div></div>');
+
+    parts.push(compState.editing
+      ? competitorEditForm(rec, false)
+      : '<div class="crm-facts">' + competitorFacts(rec) + '</div>');
+
+    parts.push(competitorArticles(rec));
+
+    if (rec.edge) {
+      parts.push('<div class="crm-section"><h3>What they do that we do not</h3>' +
+                 '<p class="crm-why">' + esc(rec.edge) + '</p></div>');
+    }
+
+    parts.push(recordTaskPanel(rec.name));
+
+    if (rec.tags.length) {
+      parts.push('<div class="crm-section"><h3>Tags</h3><div>' +
+        rec.tags.map(function (t) { return '<span class="crm-tag">' + esc(t) + '</span>'; }).join("") +
+        '</div></div>');
+    }
+
+    if (rec.contacts.length) {
+      parts.push('<div class="crm-section"><h3>People</h3><ul class="crm-research">' +
+        rec.contacts.map(function (c) {
+          return '<li><strong>' + esc(c.name || "—") + '</strong>' +
+                 (c.title ? " · " + esc(c.title) : "") +
+                 (c.email ? '<span class="crm-research__meta">' + esc(c.email) + '</span>' : "") +
+                 '</li>';
+        }).join("") + '</ul></div>');
+    }
+
+    if (rec.notes) {
+      parts.push('<div class="crm-section"><h3>Notes</h3>' +
+                 '<p class="crm-why">' + esc(rec.notes) + '</p></div>');
+    }
+
+    $("competitorBody").innerHTML = parts.join("");
+    showCompetitorView("competitor");
+  }
+
+  function openCompetitor(id) {
+    compState.competitorId = id;
+    compState.editing = false;
+    renderCompetitor(id);
+    scrollToCompetitor();
+  }
+
+  function renderNewCompetitor() {
+    var blank = { id: "", name: "", capitalTypes: [], assetStrategies: [], markets: [],
+                  overlap: "", owner: "", priority: "",
+                  checkSize: { min: null, max: null, note: "" }, aum: "",
+                  capitalBase: "", backers: "", founded: "", trackRecord: "", edge: "",
+                  tags: [], location: "", website: "",
+                  contacts: [], articles: [], notes: "" };
+    $("competitorCrumb").textContent = "New competitor";
+    $("competitorBody").innerHTML =
+      '<div class="dash-investor__head"><div><h2>Add a competitor</h2>' +
+      '<p class="dash-investor__sub">A company name is all that is required — the rest, and the ' +
+      'articles, can be filled in as they are found.</p></div></div>' + competitorEditForm(blank, true);
+    showCompetitorView("new");
+    scrollToCompetitor();
+    $("compEditName").focus();
+  }
+
+  function saveCompetitorEdits(id) {
+    var fields = readCompetitorForm();
+    if (!fields.name) { toast("A record needs a company name."); $("compEditName").focus(); return; }
+    Competitors.patch(id, fields);
+    compState.editing = false;
+    renderCompetitorFilters();
+    renderCompetitors();
+    renderCompetitor(id);
+    toast("Saved. “Publish to team” makes it everyone's copy.");
+  }
+
+  function createCompetitorFromForm() {
+    var fields = readCompetitorForm();
+    if (!fields.name) { toast("A record needs a company name."); $("compEditName").focus(); return; }
+    var rec = Competitors.create(fields);
+    renderCompetitorFilters();
+    renderCompetitors();
+    openCompetitor(rec.id);
+    toast("Added " + rec.name + ". File the first article on the record below.");
+  }
+
+  function addCompetitorArticle(id) {
+    var rec = Competitors.get(id);
+    if (!rec) return;
+    function val(elId) { var el = $(elId); return el ? el.value.trim() : ""; }
+
+    var url = val("compArtUrl");
+    var title = val("compArtTitle");
+    // A link with nothing else beats no link at all — but a form with
+    // nothing in it at all is a mis-click, not an article.
+    if (!url && !title) {
+      toast("An article needs a link, or at least a headline.");
+      $("compArtUrl").focus();
+      return;
+    }
+    if (url && !/^https?:\/\//i.test(url)) {
+      toast("That does not look like a link — it needs to start with http:// or https://.");
+      $("compArtUrl").focus();
+      return;
+    }
+
+    var res = Competitors.addArticle(id, {
+      url: url,
+      title: title || url,
+      publication: val("compArtPub"),
+      date: val("compArtDate"),
+      takeaway: val("compArtTake")
+    });
+
+    if (res === "duplicate") {
+      toast("That link is already on " + rec.name + ".");
+      return;
+    }
+    renderCompetitors();
+    renderCompetitor(id);
+    toast("Filed against " + rec.name + ".");
+  }
+
+  function dropCompetitorArticle(token) {
+    var bits = String(token).split(":");
+    var id = bits[0], articleId = bits.slice(1).join(":");
+    var rec = Competitors.get(id);
+    if (!rec) return;
+    var article = rec.articles.filter(function (a) { return a.id === articleId; })[0];
+    if (!Competitors.removeArticle(id, articleId)) return;
+    renderCompetitors();
+    renderCompetitor(id);
+    toast("Removed “" + ((article && article.title) || "that article") + "” from " + rec.name + ".");
+  }
+
+  /* ---- LOOKING THEM UP -----------------------------------------
+     The same endpoint the Investor CRM uses, asked a different
+     question: not "who is this firm" but "what has been written
+     about them lately". It PROPOSES — nothing is filed until
+     somebody has read it, which matters more here than on an
+     investor record, because a competitor's own press release and a
+     reporter's account of the same week are not the same document
+     and only one of them is worth filing.
+
+     With no key on the server this returns 503 and says so. That is
+     an ordinary state, not a broken one: the form above still works,
+     and pasting a link by hand was always the main way in.
+     -------------------------------------------------------------- */
+  var compFindTimer = null;
+
+  function compFindTicking(id, startedAt) {
+    clearInterval(compFindTimer);
+    compFindTimer = setInterval(function () {
+      var b = document.querySelector('[data-comp-find="' + id + '"]');
+      if (!b) { clearInterval(compFindTimer); return; }
+      var secs = Math.round((Date.now() - startedAt) / 1000);
+      b.textContent = "Searching the web… " + secs + "s";
+    }, 1000);
+  }
+
+  function compFindDone(id) {
+    clearInterval(compFindTimer);
+    compFindTimer = null;
+    renderCompetitor(id);
+  }
+
+  function findCompetitorArticles(button) {
+    var id = button.getAttribute("data-comp-find");
+    var rec = Competitors.get(id);
+    if (!rec) return;
+
+    button.disabled = true;
+    button.textContent = "Searching the web… 0s";
+    compState.found = null;
+    compFindTicking(id, Date.now());
+
+    var stop = new AbortController();
+    var giveUp = setTimeout(function () { stop.abort(); }, 150000);
+
+    fetch(RESEARCH_ENDPOINT, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      signal: stop.signal,
+      body: JSON.stringify({
+        kind: "competitor",
+        name: rec.name,
+        type: rec.capitalTypes.join(", "),
+        location: rec.location,
+        website: rec.website
+      })
+    }).then(function (r) {
+      clearTimeout(giveUp);
+      return r.json().then(function (j) { return { ok: r.ok, status: r.status, body: j }; });
+    }).then(function (res) {
+      if (!res.ok) {
+        toast(res.status === 503
+          ? "Looking articles up needs ANTHROPIC_API_KEY set on the server. Paste one in by hand instead."
+          : (res.body && res.body.error) || "The lookup failed.");
+        compFindDone(id);
+        return;
+      }
+      // Anything already filed against this firm is skipped, matched on URL.
+      var have = {};
+      rec.articles.forEach(function (a) { if (a.url) have[a.url] = true; });
+      var fresh = (res.body.articles || []).filter(function (a) {
+        return a.url && !have[a.url];
+      });
+
+      compState.found = {
+        id: id,
+        items: fresh,
+        notes: (res.body.notes || []).concat(
+          fresh.length ? [] :
+          (res.body.articles || []).length ? ["Everything it found is already filed here."]
+                                           : ["Nothing usable came back for that name."])
+      };
+      compFindDone(id);
+      if (fresh.length) toast("Found " + fresh.length + " — read them, then file.");
+    }).catch(function (err) {
+      clearTimeout(giveUp);
+      toast(err && err.name === "AbortError"
+        ? "The lookup ran past two and a half minutes and was stopped. Try again, or paste the link in by hand."
+        : "Could not reach the research endpoint.");
+      compFindDone(id);
+    });
+  }
+
+  function applyFoundArticles(id) {
+    var found = compState.found;
+    if (!found || found.id !== id || !found.items.length) return;
+    var n = Competitors.addArticles(id, found.items);
+    compState.found = null;
+    renderCompetitors();
+    renderCompetitor(id);
+    toast(n
+      ? "Filed " + n + " article" + (n === 1 ? "" : "s") + ". “Publish to team” makes that everyone's copy."
+      : "Nothing new to file — they were already here.");
+  }
+
+  function setCompetitorArchived(id, on) {
+    var rec = Competitors.get(id) ||
+              Competitors.allIncludingArchived().filter(function (r) { return r.id === id; })[0];
+    if (!rec) return;
+    var fromRecord = compState.view === "competitor";
+
+    Competitors.archive(id, on);
+    if (on) compState.openArchived = true;
+    if (fromRecord) { compState.editing = false; showCompetitorView("list"); }
+    renderCompetitorFilters();
+    renderCompetitors();
+    if (fromRecord) scrollToWorkspace();
+
+    toast(on
+      ? "Archived " + rec.name + " — it is under Archived at the foot of the list, " +
+        "and Restore brings it back."
+      : "Restored " + rec.name + " to the list.");
+  }
+
+  function deleteCompetitorRow(button) {
+    var rec = Competitors.get(button.getAttribute("data-comp-delete"));
+    if (!rec) return;
+    var goes = rec.articles.length ? ", and with it " + countOf(rec.articles.length, "filed article") : "";
+    if (!armed(button, "Delete?",
+        "Click Delete again to remove " + rec.name + goes +
+        ". Archiving keeps the record and hides it; this does not keep it.")) return;
+
+    var name = rec.name;
+    Competitors.remove(rec.id);
+    compState.editing = false;
+    showCompetitorView("list");
+    renderCompetitorFilters();
+    renderCompetitors();
+    scrollToWorkspace();
+    toast("Deleted " + name + ". “Publish to team” makes that everyone's copy.");
+  }
+
+  /* ============================================================
+     COMPETITOR TRACKER — EXPORTS
+     ============================================================ */
+  function exportCompetitorFile() {
+    var blob = new Blob([JSON.stringify(Competitors.toFile(), null, 2)], { type: "application/json" });
+    download(blob, "competitor-data.json");
+    toast("Downloaded — a backup of the records as they stand. “Publish to team” is what makes them everyone's.");
+  }
+
+  function exportCompetitorXlsx() {
+    var list = Competitors.all();
+    var sheets = [];
+
+    sheets.push({
+      name: "Competitors",
+      widths: [30, 16, 26, 26, 34, 16, 12, 16, 28, 26, 18, 10, 30, 24, 10, 30],
+      rows: [["Company", "Overlap", "Capital type", "Asset strategy", "Market focus",
+              "Cheque per deal", "Priority", "AUM", "Capital base", "Backed by",
+              "Watched by", "Founded", "Track record", "Location", "Articles",
+              "Contact"]].concat(
+        list.map(function (r) {
+          var c = r.contacts[0] || {};
+          return [r.name, r.overlap, r.capitalTypes.join(", "), r.assetStrategies.join(", "),
+                  r.markets.join(", "), compCheckText(r) || r.checkSize.note, r.priority, r.aum,
+                  r.capitalBase, r.backers, r.owner, r.founded, r.trackRecord, r.location,
+                  r.articles.length,
+                  [c.name, c.title, c.email].filter(Boolean).join(" — ")];
+        }))
+    });
+
+    /* One row per article, newest first — the shape somebody wants when the
+       question is "what has been written this quarter" rather than "who are
+       these firms". The takeaway travels with it; a spreadsheet of bare URLs
+       would be the same dead links in a different file. */
+    var byArticle = [];
+    list.forEach(function (r) {
+      compSortedArticles(r).forEach(function (a) {
+        byArticle.push([a.date || "", r.name, a.title, a.publication || compHost(a.url),
+                        a.takeaway, a.url, a.addedAt, a.addedBy]);
+      });
+    });
+    byArticle.sort(function (a, b) { return String(b[0]).localeCompare(String(a[0])); });
+
+    sheets.push({
+      name: "Articles",
+      widths: [12, 26, 56, 22, 60, 46, 12, 20],
+      rows: [["Date", "Company", "Headline", "Where it ran", "Why it mattered",
+              "Link", "Filed", "Filed by"]].concat(byArticle)
+    });
+
+    download(Xlsx.build(sheets),
+             "modillion-competitor-tracker-" + new Date().toISOString().slice(0, 10) + ".xlsx");
+    toast("Excel workbook downloaded — " + list.length + " competitors, " +
+          byArticle.length + " article rows.");
+  }
+
+  /* ============================================================
+     COMPETITOR TRACKER — EVENTS
+     ============================================================ */
+  var compSearchTimer = null;
+  $("compSearch").addEventListener("input", function (e) {
+    var q = e.target.value;
+    clearTimeout(compSearchTimer);
+    compSearchTimer = setTimeout(function () {
+      compState.query = q;
+      if (compState.view !== "list") showCompetitorView("list");
+      renderCompetitors();
+    }, 200);
+  });
+
+  ["compFilterCapital", "compFilterStrategy", "compFilterMarket", "compFilterOverlap", "compFilterPriority"]
+    .forEach(function (id) {
+      $(id).addEventListener("change", function (e) {
+        compState.filters[id.replace("compFilter", "").toLowerCase()] = e.target.value;
+        if (compState.view !== "list") showCompetitorView("list");
+        renderCompetitors();
+      });
+    });
+
+  $("compClearFilters").addEventListener("click", function () {
+    compState.filters = { capital: "", strategy: "", market: "", overlap: "", priority: "" };
+    compState.query = "";
+    $("compSearch").value = "";
+    renderCompetitorFilters();
+    renderCompetitors();
+  });
+
+  $("compAddBtn").addEventListener("click", renderNewCompetitor);
+
+  $("compExportBtn").addEventListener("click", function () {
+    try { exportCompetitorXlsx(); }
+    catch (err) { toast("Could not build the workbook: " + err.message); }
+  });
+
+  $("compSaveFileBtn").addEventListener("click", exportCompetitorFile);
+  $("compPublishBtn").addEventListener("click", function () {
+    publishRecords("competitors", "Competitor Tracker", Competitors.toFile, "compPublishBtn", Competitors);
+  });
+
+  document.addEventListener("click", function (e) {
+    var compHome = e.target.closest("[data-action='comp-home']");
+    if (compHome) {
+      showCompetitorView("list");
+      renderCompetitors();
+      scrollToWorkspace();
+      return;
+    }
+
+    var compSort = e.target.closest("[data-compsort]");
+    if (compSort) {
+      var key = compSort.getAttribute("data-compsort");
+      if (compState.sortKey === key && compState.sortTouched) {
+        compState.sortDir = compState.sortDir === "asc" ? "desc" : "asc";
+      } else {
+        compState.sortKey = key;
+        // The columns somebody sorts to see the top of, not the bottom.
+        compState.sortDir = key === "aum" || key === "articles" ? "desc" : "asc";
+      }
+      compState.sortTouched = true;
+      renderCompetitors();
+      return;
+    }
+
+    /* Everything that sits INSIDE a row is matched before [data-competitor],
+       exactly as the other two lists match their row actions — below that
+       line the row would win and none of these would ever fire. */
+    var compPile = e.target.closest("summary[data-comp-pile]");
+    if (compPile) {
+      compState.openArchived = !compPile.parentNode.hasAttribute("open");
+      return;
+    }
+
+    var compDelete = e.target.closest("[data-comp-delete]");
+    if (compDelete) { deleteCompetitorRow(compDelete); return; }
+
+    var compArchive = e.target.closest("[data-comp-archive]");
+    if (compArchive) { setCompetitorArchived(compArchive.getAttribute("data-comp-archive"), true); return; }
+
+    var compRestore = e.target.closest("[data-comp-restore]");
+    if (compRestore) { setCompetitorArchived(compRestore.getAttribute("data-comp-restore"), false); return; }
+
+    var compArtAdd = e.target.closest("[data-comp-article-add]");
+    if (compArtAdd) { addCompetitorArticle(compArtAdd.getAttribute("data-comp-article-add")); return; }
+
+    var compArtDrop = e.target.closest("[data-comp-article-drop]");
+    if (compArtDrop) { dropCompetitorArticle(compArtDrop.getAttribute("data-comp-article-drop")); return; }
+
+    var compFind = e.target.closest("[data-comp-find]");
+    if (compFind) { findCompetitorArticles(compFind); return; }
+
+    var compFoundApply = e.target.closest("[data-comp-found-apply]");
+    if (compFoundApply) { applyFoundArticles(compFoundApply.getAttribute("data-comp-found-apply")); return; }
+
+    var compFoundDiscard = e.target.closest("[data-comp-found-discard]");
+    if (compFoundDiscard) {
+      compState.found = null;
+      renderCompetitor(compFoundDiscard.getAttribute("data-comp-found-discard"));
+      return;
+    }
+
+    var compEdit = e.target.closest("[data-comp-edit]");
+    if (compEdit) {
+      compState.editing = true;
+      renderCompetitor(compEdit.getAttribute("data-comp-edit"));
+      $("compEditName").focus();
+      return;
+    }
+
+    var compSave = e.target.closest("[data-comp-edit-save]");
+    if (compSave) { saveCompetitorEdits(compSave.getAttribute("data-comp-edit-save")); return; }
+
+    var compCancel = e.target.closest("[data-comp-edit-cancel]");
+    if (compCancel) {
+      compState.editing = false;
+      renderCompetitor(compCancel.getAttribute("data-comp-edit-cancel"));
+      return;
+    }
+
+    var compNewSave = e.target.closest("[data-comp-new-save]");
+    if (compNewSave) { createCompetitorFromForm(); return; }
+
+    var compNewCancel = e.target.closest("[data-comp-new-cancel]");
+    if (compNewCancel) {
+      showCompetitorView("list");
+      renderCompetitors();
+      scrollToWorkspace();
+      return;
+    }
+
+    /* Last, because the row is the outermost thing that answers a click on
+       it. A link inside the record view is not on a row and is unaffected. */
+    var compRow = e.target.closest("[data-competitor]");
+    if (compRow) { openCompetitor(compRow.getAttribute("data-competitor")); return; }
+  });
+
+  // Enter files the article, so a pasted link and a headline do not need
+  // a reach for the mouse. The takeaway is a textarea and keeps its Enter.
+  document.addEventListener("keydown", function (e) {
+    if (e.key !== "Enter") return;
+    var box = e.target.closest("#compArtUrl, #compArtTitle, #compArtPub, #compArtDate");
+    if (!box) return;
+    var btn = document.querySelector("[data-comp-article-add]");
+    if (!btn) return;
+    e.preventDefault();
+    addCompetitorArticle(btn.getAttribute("data-comp-article-add"));
+  });
+
+  /* ============================================================
      TASKS — DATA
 
      Third dataset, same seam as the other two. Real tasks live in
@@ -11051,12 +12733,14 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
     $("wsCrm").hidden = tab !== "crm";
     $("wsOperators").hidden = tab !== "operators";
     $("wsTasks").hidden = tab !== "tasks";
+    $("wsCompetitors").hidden = tab !== "competitors";
     if (tab === "home") renderHome();
     if (tab === "crm") { renderCrmFilters(); renderCrm(); }
     if (tab === "operators") { renderOperatorFilters(); renderOperators(); }
     if (tab === "docs") { renderDeals(DEAL_SCOPES.docs); }
     if (tab === "closed") { renderDeals(DEAL_SCOPES.closed); }
     if (tab === "tasks") { fillTaskSelects(); renderTasks(); }
+    if (tab === "competitors") { renderCompetitorFilters(); renderCompetitors(); }
     scrollToWorkspace();
   }
 
@@ -11770,6 +13454,30 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
       });
     }
 
+    /* Read-only, on the same terms as operators above: the agent can
+       answer "who else is writing Co-GP cheques in Texas" and "what have
+       we read about them" without being able to change a record. Each
+       article is carried as its headline, where it ran and the takeaway —
+       the takeaway being the part that answers a question; a bare URL
+       would only make the snapshot bigger. */
+    function competitors() {
+      return Competitors.all().map(function (r) {
+        return { id: r.id, name: r.name,
+                 capitalTypes: r.capitalTypes.slice(),
+                 assetStrategies: r.assetStrategies.slice(),
+                 markets: r.markets.slice(),
+                 overlap: r.overlap, owner: r.owner, priority: r.priority,
+                 aum: r.aum, capitalBase: r.capitalBase, backers: r.backers,
+                 location: r.location, founded: r.founded,
+                 trackRecord: r.trackRecord, edge: r.edge,
+                 lastArticle: compLastArticle(r),
+                 articles: r.articles.map(function (a) {
+                   return { title: a.title || "", publication: a.publication || "",
+                            date: a.date || "", takeaway: a.takeaway || "" };
+                 }) };
+      });
+    }
+
     function build() {
       return {
         today: new Date().toISOString().slice(0, 10),
@@ -11782,6 +13490,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
         team: Tasks.team().map(function (p) { return { id: p.id, name: p.name }; }),
         investors: investors(),
         operators: operators(),
+        competitors: competitors(),
         tasks: tasks(),
         deals: deals()
       };
@@ -13477,6 +15186,19 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
     renderOperators();
   }
 
+  function commitCompetitorOrder(movedId, beforeId) {
+    var full = Competitors.all().slice();
+    full.sort(compComparator(compSortKey(), compState.sortDir));
+    var ids = full.map(function (r) { return r.id; });
+    var map = orderPatches(applyMove(ids, movedId, beforeId), function (id) {
+      var rec = Competitors.get(id);
+      return rec ? rec.order : null;
+    });
+    if (map) Competitors.patchMany(map);
+    compState.sortTouched = false;
+    renderCompetitors();
+  }
+
   function commitOrder(table, movedId, beforeId) {
     if (!movedId) return;
     var kind = table.getAttribute("data-reorder");
@@ -13485,6 +15207,8 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
                       table.getAttribute("data-reorder-pile"), movedId, beforeId);
     } else if (kind === "operator") {
       commitOperatorOrder(movedId, beforeId);
+    } else if (kind === "competitor") {
+      commitCompetitorOrder(movedId, beforeId);
     } else {
       commitInvestorOrder(movedId, beforeId);
     }
@@ -13513,6 +15237,12 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
       opState.sortDir = "asc";
       opState.sortTouched = true;
       renderOperators();
+    } else if (parts[0] === "competitor") {
+      clear(Competitors.all(), Competitors);
+      compState.sortKey = "name";
+      compState.sortDir = "asc";
+      compState.sortTouched = true;
+      renderCompetitors();
     } else {
       clear(Crm.all(), Crm);
       crmState.sortKey = "lastContact";
@@ -13537,7 +15267,8 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
     function idOf(row) {
       return row.getAttribute("data-deal") ||
              row.getAttribute("data-investor") ||
-             row.getAttribute("data-operator") || "";
+             row.getAttribute("data-operator") ||
+             row.getAttribute("data-competitor") || "";
     }
 
     // Viewport coordinates go stale the moment the page scrolls under the
@@ -13838,8 +15569,8 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
     if (m.source === "shared") {
       el.setAttribute("data-variant", "live");
       text.innerHTML = "<strong>Live records — the team's copy.</strong> Deals, operators, " +
-        "investors and tasks come from the shared store, and edits save back to it. " +
-        "This page is public: anyone with the URL sees these names.";
+        "investors, tasks and competitors come from the shared store, and edits save back to " +
+        "it. This page is public: anyone with the URL sees these names.";
     } else if (m.source === "local") {
       el.setAttribute("data-variant", "live");
       text.innerHTML = "<strong>Local records — real names.</strong> Loaded from the JSON " +
@@ -13973,7 +15704,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
      and the rules about what a click inside an open row means.
      ============================================================ */
   var RowEdit = (function () {
-    var open = null;   // { kind: "deal" | "investor" | "operator", id: "..." }
+    var open = null;   // { kind: "deal" | "investor" | "operator" | "competitor", id: "..." }
 
     function on(kind, id) {
       return !!open && open.kind === kind && open.id === id;
@@ -14097,6 +15828,26 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
             aum: String(v.aum || "").trim()
           });
         }
+      },
+      /* Articles are deliberately NOT here. Every other field on this
+         row is one value in one box, and an article is four — headline,
+         publication, date, and the line saying why it mattered. The row
+         shows the count and says where to add one. */
+      competitor: {
+        render: function () { renderCompetitors(); },
+        save: function (id, v) {
+          var rec = Competitors.get(id);
+          if (!rec) return;
+          Competitors.patch(id, {
+            name: String(v.name || "").trim() || rec.name,
+            overlap: v.overlap,
+            capitalTypes: list(v.capitalTypes),
+            assetStrategies: list(v.assetStrategies),
+            markets: list(v.markets),
+            priority: v.priority,
+            aum: String(v.aum || "").trim()
+          });
+        }
       }
     };
 
@@ -14131,6 +15882,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
       // records, and an edit here can be what puts a new value on one.
       if (kind === "investor") renderCrmFilters();
       if (kind === "operator") renderOperatorFilters();
+      if (kind === "competitor") renderCompetitorFilters();
       KINDS[kind].render();
       toast("Saved.");
     }
@@ -14250,6 +16002,8 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
     renderOperators();
     fillTaskSelects();
     renderTasks();
+    renderCompetitorFilters();
+    renderCompetitors();
     // Same one-probe-per-session rule as the agent endpoint. Absent is the
     // normal case; the switch just says "opens a draft" instead of "sends".
     renderNotifyNote();
@@ -14263,7 +16017,8 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
      session. There is deliberately no query-string bypass — that
      would make the gate pointless.
      ============================================================ */
-  Promise.all([Deals.load(), Crm.load(), Operators.load(), Tasks.load()]).then(function () {
+  Promise.all([Deals.load(), Crm.load(), Operators.load(), Tasks.load(),
+               Competitors.load()]).then(function () {
     describeSource();
     var unlocked = false;
     try { unlocked = sessionStorage.getItem(GATE_KEY) === "1"; } catch (e) { /* private mode */ }

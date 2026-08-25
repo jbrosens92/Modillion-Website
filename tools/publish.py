@@ -17,6 +17,7 @@ WHAT IT SENDS, AND TO WHERE
     crm-data.json        -> POST /api/records?set=crm&op=publish
     operator-data.json   -> POST /api/records?set=operators&op=publish
     tasks-data.json      -> POST /api/records?set=tasks&op=publish
+    competitor-data.json -> POST /api/records?set=competitors&op=publish
 
 IT TALKS TO THE SITE, NOT TO THE STORE. This machine never holds the
 Redis credentials — only DASHBOARD_WRITE_KEY, and only if the
@@ -57,6 +58,8 @@ TARGETS = {
     "crm":       ("crm-data.json",       "/api/records?set=crm&op=publish",       "investor CRM"),
     "operators": ("operator-data.json",  "/api/records?set=operators&op=publish", "operator CRM"),
     "tasks":     ("tasks-data.json",     "/api/records?set=tasks&op=publish",     "task list"),
+    "competitors": ("competitor-data.json", "/api/records?set=competitors&op=publish",
+                    "competitor tracker"),
 }
 
 HERE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -89,6 +92,10 @@ def describe(name, doc):
         deals = doc.get("deals") or []
         with_debt = sum(1 for d in deals if d.get("debt"))
         return "%d deals, %d with debt" % (len(deals), with_debt)
+    if name == "competitors":
+        rows = doc.get("competitors") or []
+        articles = sum(len(c.get("articles") or []) for c in rows)
+        return "%d competitors, %d articles" % (len(rows), articles)
     for field in ("investors", "operators", "tasks"):
         if isinstance(doc.get(field), list):
             return "%d %s" % (len(doc[field]), field)

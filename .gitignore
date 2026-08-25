@@ -9,10 +9,11 @@
 .content-archive/
 
 # ---------------------------------------------------------------------------
-# THE FOUR DATA FILES ARE IGNORED AGAIN, AND THIS TIME NOTHING RESTS ON IT.
+# THE FIVE DATA FILES ARE IGNORED AGAIN, AND THIS TIME NOTHING RESTS ON IT.
 #
-# dashboard-data.json, crm-data.json, operator-data.json and tasks-data.json
-# hold real deal names, sponsor names, investor firms and conversation notes.
+# dashboard-data.json, crm-data.json, operator-data.json, tasks-data.json and
+# competitor-data.json hold real deal names, sponsor names, investor firms,
+# conversation notes, and an internal read on named rival firms.
 # They were briefly committed, which forced this repository private and left a
 # standing hazard: make it public again without purging history and every one
 # of those names is published.
@@ -36,6 +37,8 @@ operator-data.json
 operator-data.*.json
 tasks-data.json
 tasks-data.*.json
+competitor-data.json
+competitor-data.*.json
 
 # Forwarded-email intake staging for the investor CRM. Local working area,
 # not records — the records it produces land in crm-data.json.

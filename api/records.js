@@ -15,10 +15,11 @@
      POST /api/records?set=deals&op=publish  make edits the new base
      GET  /api/records?probe=1            configured or not
 
-   Four sets: deals, crm, operators, tasks. `deals` arrived on
-   2026-08-20 when the document mirror was retired and the pipeline
-   stopped being a folder listing — see README.txt. Adding a set is
-   this one line, because nothing here understands a record.
+   Five sets: deals, crm, operators, tasks, competitors. `deals`
+   arrived on 2026-08-20 when the document mirror was retired and the
+   pipeline stopped being a folder listing; `competitors` on
+   2026-08-25 with the Competitor Tracker — see README.txt. Adding a
+   set is this one line, because nothing here understands a record.
 
    ------------------------------------------------------------
    WHY BASE AND OVERLAY ARE STILL SEPARATE
@@ -76,7 +77,7 @@ import {
 
 /* A whitelist, not a sanitiser: `set` becomes part of a Redis key,
    so anything not on this list must not reach it. */
-const SETS = new Set(["deals", "crm", "operators", "tasks"]);
+const SETS = new Set(["deals", "crm", "operators", "tasks", "competitors"]);
 
 function allow(req, res) {
   const allowed = process.env.DASHBOARD_ALLOWED_ORIGIN;

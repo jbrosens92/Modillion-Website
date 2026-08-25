@@ -51,11 +51,12 @@ Company Dashboard (dashboard.html) — internal, added 2026-08-17:
   keep it out of search results.
 - IT IS NOT A DOCUMENT DASHBOARD ANY MORE — see "No documents at all" below, which supersedes
   every arrangement above it. There is no folder mirror, no document index, and nothing is read
-  from OneDrive, Graph, Dropbox, Drive or object storage. Four record sets: deals, operators,
-  investors, tasks.
+  from OneDrive, Graph, Dropbox, Drive or object storage. Five record sets: deals, operators,
+  investors, tasks, competitors.
 - Two states. It opens on a gate and switches to the dashboard once signed in.
 - What it does: a deal pipeline with the operator behind each deal, where it stands and the
-  debt on the ones the firm owns; two CRMs; a task list; and an agent across all of them.
+  debt on the ones the firm owns; two CRMs; a task list; a competitor tracker; and an agent
+  across all of them.
 
 No documents at all — 2026-08-20, and it SUPERSEDES every document section in this file:
 - THE DECISION: the dashboard tracks DEALS, OPERATORS, INVESTORS AND TASKS. It does not carry
@@ -457,6 +458,77 @@ Operator CRM (dashboard.html, "Operator CRM" tab) — added 2026-08-18:
 - The chat agent can READ this tab (ask it which operators are in Texas, who is on East Blocks,
   or who the owner is) but cannot change a record. Operator edits go through the form, where every field is
   in front of you; giving the agent an action vocabulary for a fourth dataset is a separate job.
+
+Competitor Tracker (dashboard.html, "Competitor Tracker" tab) — added 2026-08-25:
+- The Operator CRM turned around. That one records the firms this one invests ALONGSIDE; this
+  records the firms it is in the room AGAINST — the other people writing Co-GP cheques, seeding
+  sponsors and backing operators. It sits to the right of the Task List, and the fifth record
+  set (?set=competitors) went in with it.
+- WHY IT IS A SEPARATE LIST rather than a flag on an operator. A firm can be both, and when it
+  is, the two records answer different questions: on the Operator CRM, "what are we doing with
+  them"; here, "what are they doing that we are not". One record trying to hold both would mean
+  one set of fields doing both jobs, and the field that decides everything on this tab — how
+  directly they overlap — has no meaning at all on the other one.
+- Columns: Company Name, Overlap, Capital Type, Asset Strategy, Market Focus, Articles,
+  Priority, AUM, Added. Capital type, asset strategy and market focus are tag stacks holding
+  several values, exactly as on the Operator CRM, and the filters match on any one of them.
+- OVERLAP IS NOT A STAGE, and it carries its own attribute rather than borrowing [data-stage]
+  so nothing can start reading one as the other. A stage is where a relationship has got to and
+  moves one way; overlap is a judgement about how directly a firm competes and can go either way
+  in a week. Direct / Adjacent / Emerging / Watching / Not competing, ordered most-competitive
+  first, and coloured the opposite way round to a pipeline — "Direct" is the one to look at, not
+  the one to celebrate. The line above the table says out loud that it is a judgement somebody
+  wrote down, not a measurement.
+- ARTICLES ARE THE POINT OF THE TAB. A competitor is mostly learned about by reading, and a link
+  that stayed in one person's inbox is a thing nobody else knows. Each article is a headline, the
+  publication, the date it ran, and ONE LINE ON WHY IT MATTERED — that last field doing more work
+  than the link, because a URL saved with nothing beside it is a 404 with no memory attached a
+  year later. The list column shows the count and the newest date, which is what "have we looked
+  at this firm lately" actually means.
+- The add-article form sits OPEN on every record rather than behind a button: pasting a link is
+  the commonest thing anybody will do here, and a form you have to reveal first is one that gets
+  skipped in favour of not recording it at all. A link is enough on its own; the rest can follow.
+  A URL already on the record is refused rather than filed twice, and a link with no http:// is
+  refused rather than saved as something that will not open. Enter files it from any of the
+  single-line boxes.
+- Articles carry IDS, so the shared overlay unions two people's additions instead of doubling
+  them — the same rule conversations follow on the Investor CRM, and the same rule that fixed
+  contacts appearing two, then four, then eight times.
+- "Look it up with Claude" calls /api/research with kind:"competitor", which asks the same
+  machinery a different question: not "who is this firm" but "what has been written about them
+  lately". It PROPOSES — nothing is filed until somebody has read it, which matters more here
+  than on an investor record, because a firm's own press release and a reporter's account of the
+  same week are not the same document and only one of them is worth filing. A piece with no
+  openable link is dropped server-side; a piece the model could not date comes back undated and
+  says so, rather than carrying a guessed date that would sort wrongly against hand-filed ones.
+  With no ANTHROPIC_API_KEY the button says so and the paste-it-in form is unaffected.
+- Fields beyond the Operator CRM's: CAPITAL BASE (where their money stands — "Fund III, $400m,
+  closed 2025"), BACKED BY (whose money it is), WATCHED BY (whoever here keeps an eye on them,
+  from the same task-list roster both CRMs read), and WHAT THEY DO THAT WE DO NOT — the honest
+  version, because a tracker that only records where a rival is weaker is one nobody learns
+  anything from. CHEQUE PER DEAL parses like the operator's equity per deal and the investor's
+  check size: a range becomes numbers the list can sort on, anything else is kept as written.
+- THE SEED FILE SHIPS EMPTY, and that is deliberate. There is no folder to read rival firms off
+  the way operator names were read off Active Deals, so seeding it would mean inventing them —
+  and an invented competitor is one somebody eventually repeats in a meeting. The vocabularies in
+  competitor-data.json are starting pickers, not claims about anybody. The empty state says this
+  rather than looking broken.
+- Everything else is the Operator CRM's machinery unchanged, which is the point: sort on any
+  column (AUM on the figure behind the text, overlap by rank rather than alphabet), search across
+  every field AND across article headlines and takeaways, filter by capital type, strategy,
+  market, overlap or priority, edit a row where it sits, drag rows into a hand-set order, archive
+  rather than delete, and the same "Publish to team" / "Download competitor-data.json" pair.
+  Row editing shows the article count as static text and says to open the record — every other
+  field on a row is one value in one box, and an article is four.
+- Exports: "Export Excel" gives two sheets — Competitors, with every field on the record, and
+  Articles, one row per piece newest first, carrying the takeaway. A spreadsheet of bare URLs
+  would be the same dead links in a different file.
+- competitor-data.json is GITIGNORED with the other four. The names in it are public firms, but
+  what is written in the overlap, edge and notes fields is an internal read on named rivals.
+- The chat agent can READ this tab — which firms are Direct, who else writes Co-GP in Texas, what
+  has been written about them — but cannot change a record, on the same terms as the Operator
+  CRM. Each article reaches the agent as its headline, publication, date and takeaway; the bare
+  URL is left out, since it would only make the snapshot bigger without answering anything.
 
 Asset Management — REMOVED 2026-08-20:
 - The tab, the derived area, the property grid and the workbook-backed debt report are all
