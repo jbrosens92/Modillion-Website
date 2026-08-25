@@ -40,6 +40,14 @@ tasks-data.*.json
 competitor-data.json
 competitor-data.*.json
 
+# mentions-data.json joins them, and for the ORIGINAL reason rather than by
+# analogy: it carries the team's own email addresses in `recipients`, and it
+# accumulates whatever the news sweep files. Those addresses are nowhere else
+# in this repository, and this repository is public. Seeded like the rest, with
+# tools/publish.py --only mentions.
+mentions-data.json
+mentions-data.*.json
+
 # Forwarded-email intake staging for the investor CRM. Local working area,
 # not records — the records it produces land in crm-data.json.
 crm-inbox/

@@ -836,3 +836,81 @@ The document snapshot — REMOVED 2026-08-20:
   See "No documents at all" above. tools/extract-deals.py turned the last index into
   deals-data.json before the deletion; that is where the 22 deals came from.
 
+
+News blast (api/blast.js) — internal, added 2026-08-25:
+- Answers one question every Monday: did anybody write about us? Usually the
+  answer is no, and the blast says so by not arriving.
+- Watchlist lives in mentions-data.json. Eight entries in two kinds:
+    ENTITY  Modillion Partners, Fairwind, and the four principals by name
+    TOPIC   GP stakes in real estate; Co-GP equity & sponsor seeding
+- Operators are deliberately NOT on it. Aker, Arboretum, Green Light,
+  Switchback and OTH collide with unrelated companies and common words, and a
+  blast that is two thirds noise stops being opened by week three. Add one
+  later if it earns its place, with an anchor that pins down which firm it is.
+
+How a hit has to prove itself:
+- An ENTITY hit must arrive with the sentence from the page in which the name
+  appears, quoted verbatim, and api/_news.js checks mechanically that one of
+  the entry's aliases is really in it, on a word boundary. A model can talk
+  itself into "close enough"; it cannot quote a name that was never on the
+  page. This is why person entries list the FULL NAME only — a bare "Ernst"
+  would wave through Ernst & Young on a technicality.
+- A TOPIC hit has no name to anchor on, so the date is the anchor: undated, or
+  older than the entry's lookback, and it is dropped rather than flagged.
+- The two rules catch different failures and neither is sufficient alone. The
+  quote check stops a different David Wolfson; it does NOT stop a piece about
+  a modillion cornice or the Fairwind Marina, which pass the letter of it. The
+  anchor text on each entry is what handles those, so keep the anchors sharp.
+- Both are stricter than the Competitor Tracker, which merely flags an undated
+  article. That tracker is read by somebody who went looking. This is read by
+  somebody who did not.
+
+Running:
+    GET  /api/blast                 probe — what is configured, what is queued
+    GET  /api/blast?op=preview      the digest as it stands, unsent
+    GET  /api/blast?op=sweep        sweep the stalest entries
+    GET  /api/blast?op=send         send it, mark it sent
+  GET carries the verbs because Vercel Cron only issues GET. POST works too,
+  with x-dashboard-key, which is what tools/blast.py uses.
+
+    python3 tools/blast.py status | preview | sweep | send
+  send asks before mailing four people unless you pass --yes, and --dry-run
+  composes without sending. Seed the set once with:
+    python3 tools/publish.py --only mentions
+
+Schedule (vercel.json): three sweeps Monday 09:00, 09:30 and 10:00 UTC, then
+one send at 11:00 UTC — 07:00 Eastern in summer. Three sweeps for eight
+entries because a sweep is INCREMENTAL: it takes entries stalest first, files
+each as it finishes, and stops starting new ones near the invocation ceiling.
+A run killed mid-entry loses that entry and nothing else, and the next run
+takes it first because its lastSwept is still the oldest.
+
+Sweep and send are deliberately separate crons. A sweep is eight web-search
+passes; a send is one HTTP call. Together, a slow Tuesday would mean no blast
+at all rather than a blast of whatever the earlier passes did find.
+
+Environment:
+    ANTHROPIC_API_KEY      the same key /api/agent and /api/research use
+    RESEND_API_KEY         the blast sends through /api/notify, not its own key
+    CRON_SECRET            what Vercel Cron sends; set it, see below
+    DASHBOARD_WRITE_KEY    lets a person sweep or send by hand
+    BLAST_RECIPIENTS       optional, overrides recipients in mentions-data.json
+    BLAST_MAX_ITEMS        optional, default 6 per entry per sweep
+
+Unlike /api/records, THIS ENDPOINT REFUSES TO RUN UNLOCKED. With neither
+CRON_SECRET nor DASHBOARD_WRITE_KEY set, sweep and send return 503. An open
+write to the records store costs a bad record somebody can fix; an open blast
+costs the firm's return address in four inboxes as often as a stranger asks,
+and a sweep is billable model calls, so it is also a way to spend somebody
+else's money. Preview stays open, matching reads elsewhere here.
+
+An empty week sends nothing. A weekly "no mentions this week" is how people
+learn to filter the sender. Use the probe or tools/blast.py status to confirm
+it ran.
+
+Caveat worth knowing before the first send: publishing REPLACES the base and
+drops the deltas it accounts for, and every mention the sweep has filed lives
+in those deltas. Re-seeding mentions-data.json from this folder after the
+blast has been running will discard what it found. publish.py prints the
+mention count in the local file for exactly this reason — a zero there is the
+thing to notice before you send it, not after.

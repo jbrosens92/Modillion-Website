@@ -18,6 +18,7 @@ WHAT IT SENDS, AND TO WHERE
     operator-data.json   -> POST /api/records?set=operators&op=publish
     tasks-data.json      -> POST /api/records?set=tasks&op=publish
     competitor-data.json -> POST /api/records?set=competitors&op=publish
+    mentions-data.json   -> POST /api/records?set=mentions&op=publish
 
 IT TALKS TO THE SITE, NOT TO THE STORE. This machine never holds the
 Redis credentials — only DASHBOARD_WRITE_KEY, and only if the
@@ -60,6 +61,8 @@ TARGETS = {
     "tasks":     ("tasks-data.json",     "/api/records?set=tasks&op=publish",     "task list"),
     "competitors": ("competitor-data.json", "/api/records?set=competitors&op=publish",
                     "competitor tracker"),
+    "mentions":  ("mentions-data.json",  "/api/records?set=mentions&op=publish",
+                    "news blast watchlist"),
 }
 
 HERE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -96,6 +99,15 @@ def describe(name, doc):
         rows = doc.get("competitors") or []
         articles = sum(len(c.get("articles") or []) for c in rows)
         return "%d competitors, %d articles" % (len(rows), articles)
+    if name == "mentions":
+        watch = doc.get("watchlist") or []
+        found = doc.get("mentions") or []
+        # Publishing REPLACES the base and drops the deltas it accounts
+        # for, and every mention the sweep has filed lives in those
+        # deltas. Re-seeding from the local file after the blast has run
+        # therefore discards what it found. Say the count out loud so a
+        # zero here is read before it is sent, not after.
+        return "%d watch entries, %d mentions in this file" % (len(watch), len(found))
     for field in ("investors", "operators", "tasks"):
         if isinstance(doc.get(field), list):
             return "%d %s" % (len(doc[field]), field)
@@ -107,7 +119,7 @@ def main():
     ap.add_argument("--site", default=os.environ.get("MODILLION_SITE", DEFAULT_SITE),
                     help="site root, default %s" % DEFAULT_SITE)
     ap.add_argument("--only", nargs="+", choices=sorted(TARGETS),
-                    help="publish only these; default is all four")
+                    help="publish only these; default is every set")
     ap.add_argument("--dry-run", action="store_true",
                     help="read and check the files, send nothing")
     args = ap.parse_args()
