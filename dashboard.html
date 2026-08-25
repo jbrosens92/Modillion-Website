@@ -1557,6 +1557,19 @@ button.link-arrow {
 .dash-crm__filters .dash-crm__clear:hover { color: var(--deep-space); text-decoration: underline; }
 .dash-crm__filters .dash-crm__shown { margin-left: auto; font-size: .78rem; color: var(--muted); }
 
+/* A table wider than the phone scrolls sideways INSIDE this box. That is
+   what overflow-x has always said, and Chrome reads it that way — but
+   Safari sizes its layout viewport from the widest thing on the page,
+   scroll container or not, and these tables are 880px at their narrowest
+   and further past 1100 now that they carry actions and a date. The whole
+   page was being zoomed out to fit a table nobody had scrolled to.
+
+   `contain: paint` is the same promise said in the words the browser acts
+   on: nothing here is drawn outside this box, so nothing here is a reason
+   to widen the page. It changes nothing about what is on screen — the box
+   already clipped — and it is why the wide tables stopped dragging the
+   layout around. */
+.crmtable-wrap, .report-table-wrap, .filetable-wrap { contain: paint; max-width: 100%; }
 .crmtable-wrap { overflow-x: auto; }
 .crmtable { width: 100%; border-collapse: collapse; min-width: 880px; }
 .crmtable thead th {
@@ -1605,7 +1618,10 @@ button.link-arrow {
    middle of it, because a row here can be one line or five and the grip
    belongs beside the name either way. */
 .row-grip {
-  position: absolute; left: -2px; top: 12px;
+  /* Flush with the cell rather than 2px outside it: the wrap around the
+     table clips to its own box now, and those two pixels were the ones
+     that would have been shaved off the handle. */
+  position: absolute; left: 0; top: 12px;
   width: 22px; height: 24px;
   appearance: none; background: none; border: 0; padding: 0;
   cursor: grab;
