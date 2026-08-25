@@ -1790,6 +1790,18 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
   text-align: right; white-space: nowrap;
   font-variant-numeric: tabular-nums;
 }
+/* Four money columns whose headings are longer than anything under them.
+   "MP GP CHECK" is eleven characters holding up a column that says "$1.2m",
+   and with thead th nowrap those headings set the table's minimum width:
+   eleven columns wanted 1236px inside a 1128px workspace, so the table
+   scrolled at every width the moment the fourth one was added.
+
+   Letting just these four headings wrap to two lines gives it all back —
+   1236 to 1128, nothing clipped, and the deal and asset-class columns get
+   a little wider into the bargain. Two-line headings over numbers are
+   ordinary; a table that scrolls before you have done anything is not. */
+.crmtable[data-reorder="deal"] thead th.crm-num { white-space: normal; }
+
 /* THE ACTIONS COLUMN IS PINNED, on the deal tabs only.
 
    Ten columns do not fit every screen. At the workspace's full 1128px
@@ -3955,6 +3967,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
     { key: "assetClass", label: "Asset class" },
     { key: "dealSize",   label: "Deal size" },
     { key: "gpCheck",    label: "GP check" },
+    { key: "mpGpCheck",  label: "MP GP check" },
     { key: "lpCheck",    label: "LP check" },
     { key: "addedAt",    label: "Added" }
   ];
@@ -3976,7 +3989,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
 
      Anything it cannot read is printed exactly as written. A deal
      size of "TBD" is a real answer and a better one than a guess. */
-  var DEAL_MONEY_KEYS = { dealSize: 1, gpCheck: 1, lpCheck: 1 };
+  var DEAL_MONEY_KEYS = { dealSize: 1, gpCheck: 1, mpGpCheck: 1, lpCheck: 1 };
 
   function dealAmount(raw) {
     var s = String(raw == null ? "" : raw).trim();
@@ -4041,7 +4054,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
          looking for the deal they entered as "$42,000,000" types some of
          that, not the "$42m" the column shows them. */
       return [r.name, r.operator, r.market, r.assetClass, r.note, r.status,
-              r.dealSize, r.gpCheck, r.lpCheck]
+              r.dealSize, r.gpCheck, r.mpGpCheck, r.lpCheck]
         .join(" ").toLowerCase().indexOf(q) !== -1;
     });
 
@@ -4203,6 +4216,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
           ["Asset class", RowEdit.text("assetClass", rec.assetClass)],
           ["Deal size", RowEdit.text("dealSize", rec.dealSize, ' placeholder="$42m"')],
           ["GP check", RowEdit.text("gpCheck", rec.gpCheck, ' placeholder="$4m"')],
+          ["MP GP check", RowEdit.text("mpGpCheck", rec.mpGpCheck, ' placeholder="$1.2m"')],
           ["LP check", RowEdit.text("lpCheck", rec.lpCheck, ' placeholder="$38m"')],
           // Stamped when the record was written down, and not editable:
           // a date somebody could change is not a record of anything.
@@ -4221,6 +4235,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
           (rec.debt ? '<span class="crm-sub">debt on file</span>' : "") + '</td>' +
         dealMoneyCell(rec.dealSize) +
         dealMoneyCell(rec.gpCheck) +
+        dealMoneyCell(rec.mpGpCheck) +
         dealMoneyCell(rec.lpCheck) +
         '<td class="crm-date">' + (rec.addedAt ? esc(rec.addedAt) : '<span class="muted">—</span>') + '</td>' +
         '<td class="crm-actions">' + dealRowActions(rec, pile) + '</td>' +
@@ -4419,6 +4434,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
       dealField("Asset class", rec.assetClass) +
       dealField("Deal size", dealMoneyText(rec.dealSize)) +
       dealField("GP equity check", dealMoneyText(rec.gpCheck)) +
+      dealField("MP GP check", dealMoneyText(rec.mpGpCheck)) +
       dealField("LP equity check", dealMoneyText(rec.lpCheck)) +
       dealField("Added", rec.addedAt) +
       dealField("Note", rec.note, true) +
@@ -4497,7 +4513,9 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
         field("dealEditSize", "Deal size",
           text("dealEditSize", rec.dealSize, "$42m — total capitalisation")) +
         field("dealEditGpCheck", "GP equity check",
-          text("dealEditGpCheck", rec.gpCheck, "$4m — what we write")) +
+          text("dealEditGpCheck", rec.gpCheck, "$4m — the whole GP cheque")) +
+        field("dealEditMpGpCheck", "MP GP check",
+          text("dealEditMpGpCheck", rec.mpGpCheck, "$1.2m — Modillion's share of it")) +
         field("dealEditLpCheck", "LP equity check",
           text("dealEditLpCheck", rec.lpCheck, "$38m — what sits beside it")) +
         field("dealEditNote", "Note", text("dealEditNote", rec.note), true) +
@@ -4546,6 +4564,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
       // where it is read, so nothing is lost on the way in.
       dealSize: v("dealEditSize"),
       gpCheck: v("dealEditGpCheck"),
+      mpGpCheck: v("dealEditMpGpCheck"),
       lpCheck: v("dealEditLpCheck"),
       note: v("dealEditNote"),
       debt: anyDebt ? debt : null
@@ -4659,14 +4678,15 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
     var sheets = [{
       name: isClosed ? "Closed deals" : "Deals",
       rows: [["Deal", "Operator", "Where", "Status", "Why", "Market", "Asset class",
-              "Deal size", "GP equity check", "LP equity check", "Note", "Added"]]
+              "Deal size", "GP equity check", "MP GP check", "LP equity check",
+              "Note", "Added"]]
         .concat(list.map(function (r) {
           /* As typed, not as printed. This sheet is somebody's working
              copy — "$42,000,000" is what they can put in a formula, and
              "$42m" is what they would have to undo first. */
           return [r.name, r.operator, dealAreaLabel(r.area), r.status, r.statusWhy,
-                  r.market, r.assetClass, r.dealSize, r.gpCheck, r.lpCheck,
-                  r.note, r.addedAt];
+                  r.market, r.assetClass, r.dealSize, r.gpCheck, r.mpGpCheck,
+                  r.lpCheck, r.note, r.addedAt];
         }))
     }];
     var withDebt = isClosed
@@ -4778,7 +4798,11 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
                "$42m, $42,000,000 and 42.5mm all read the same. Anything that is not a " +
                "figure is kept and printed as typed, so \u201cTBD\u201d stays TBD.")) +
         field("dealNewGpCheck", "GP equity check",
-          '<input type="text" id="dealNewGpCheck" autocomplete="off" placeholder="$4m">') +
+          '<input type="text" id="dealNewGpCheck" autocomplete="off" placeholder="$4m">' +
+          note("The whole GP cheque on the deal, whoever writes it.")) +
+        field("dealNewMpGpCheck", "MP GP check",
+          '<input type="text" id="dealNewMpGpCheck" autocomplete="off" placeholder="$1.2m">' +
+          note("MP is Modillion Partners \u2014 our own share of the GP cheque above.")) +
         field("dealNewLpCheck", "LP equity check",
           '<input type="text" id="dealNewLpCheck" autocomplete="off" placeholder="$38m">') +
         field("dealNewNote", "Note",
@@ -4844,6 +4868,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
     var note     = $("dealNewNote").value.trim();
     var dealSize = $("dealNewSize").value.trim();
     var gpCheck  = $("dealNewGpCheck").value.trim();
+    var mpGpCheck = $("dealNewMpGpCheck").value.trim();
     var lpCheck  = $("dealNewLpCheck").value.trim();
 
     // An operator already on the Operator CRM picks the deal up on their
@@ -4855,7 +4880,8 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
     if (matched) operator = matched.name;
 
     var saved = Deals.addDeal(name, { area: area, operator: operator, note: note,
-                                      dealSize: dealSize, gpCheck: gpCheck, lpCheck: lpCheck });
+                                      dealSize: dealSize, gpCheck: gpCheck,
+                                      mpGpCheck: mpGpCheck, lpCheck: lpCheck });
     if (status !== "Live") Deals.setDealStatus(saved, status, "set when the deal was added");
 
     if (matched && matched.deals.indexOf(saved) === -1) {
@@ -6218,6 +6244,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
         note: fields.note || (already && already.note) || "",
         dealSize: fields.dealSize || (already && already.dealSize) || "",
         gpCheck: fields.gpCheck || (already && already.gpCheck) || "",
+        mpGpCheck: fields.mpGpCheck || (already && already.mpGpCheck) || "",
         lpCheck: fields.lpCheck || (already && already.lpCheck) || "",
         addedAt: (already && already.addedAt) || new Date().toISOString().slice(0, 10)
       };
@@ -8486,6 +8513,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
            add it here first. */
         dealSize: rec.dealSize || "",
         gpCheck: rec.gpCheck || "",
+        mpGpCheck: rec.mpGpCheck || "",
         lpCheck: rec.lpCheck || "",
         note: rec.note || "",
         addedAt: rec.addedAt || "",
@@ -16029,6 +16057,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
             // not to this one is typed, accepted, and quietly lost.
             dealSize: String(v.dealSize || "").trim(),
             gpCheck: String(v.gpCheck || "").trim(),
+            mpGpCheck: String(v.mpGpCheck || "").trim(),
             lpCheck: String(v.lpCheck || "").trim()
           });
         }
