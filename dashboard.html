@@ -6284,13 +6284,38 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
        destroy it. Archived records stay in the file and come back.
        -------------------------------------------------------------- */
     function archive(id, on) {
-      if (on === false) delete overlay.archived[id];
-      else overlay.archived[id] = new Date().toISOString().slice(0, 10);
+      // An explicit false, not a delete — see archivedNow().
+      overlay.archived[id] = on === false ? false : new Date().toISOString().slice(0, 10);
       writeOverlay();
       rebuild();
     }
 
-    function isArchived(id) { return !!overlay.archived[id] || !!(byIdAll(id) || {}).archived; }
+
+    /* ARCHIVED RIGHT NOW, resolving the overlay against the record.
+
+       Archiving used to be recorded only as overlay.archived[id] = true,
+       and un-archiving as `delete overlay.archived[id]`. That works right
+       up until somebody PUBLISHES: toFile() bakes the flag onto the record
+       itself and the server drops the deltas it accounted for, so the
+       record now says archived and the overlay says nothing.
+
+       At that point Restore deleted a key that was not there, rebuild
+       still read archived off the record, and the row stayed exactly where
+       it was — while the toast said it was back on the list. Sixteen deals
+       were in that state when it was reported.
+
+       So an un-archive is written down as `false` rather than as an
+       absence. It is the same reason _store.js records deletions as
+       tombstones: absent is not a statement this format can make, and only
+       an explicit value can overrule what the base already says. */
+    function archivedNow(rec) {
+      if (!rec) return false;
+      return Object.prototype.hasOwnProperty.call(overlay.archived, rec.id)
+        ? !!overlay.archived[rec.id]
+        : !!rec.archived;
+    }
+
+    function isArchived(id) { return archivedNow(byIdAll(id)); }
 
     /* ---- delete ---------------------------------------------------
        What archive is careful not to be. It is here because a CRM
@@ -6405,7 +6430,16 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
         dealsAdded: addedDealRecords(),
         dealsHidden: hiddenDeals(),
         learned: { aliases: keep },
-        investors: merged
+        /* Carrying the resolved flag, where this used to export `merged`
+           untouched. An investor archived here and then published came
+           back un-archived, because the archive lived only in the overlay
+           the publish then dropped — the same defect as the deal Restore,
+           pointing the other way. */
+        investors: merged.map(function (inv) {
+          var out = Object.assign({}, inv);
+          out.archived = archivedNow(inv);
+          return out;
+        })
       };
     }
 
@@ -6414,7 +6448,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
       meta: function () { return meta; },
       stages: function () { return CRM_STAGES; },
       all: function () {
-        return merged.filter(function (r) { return !overlay.archived[r.id] && !r.archived; });
+        return merged.filter(function (r) { return !archivedNow(r); });
       },
       allIncludingArchived: function () { return merged; },
       get: byId,
@@ -8570,7 +8604,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
         var out = normalise(rec);
         var patch = overlay.patches[out.id];
         if (patch) out = normalise(Object.assign({}, out, patch));
-        return parked(out, !!overlay.archived[out.id] || !!out.archived);
+        return parked(out, archivedNow(out));
       });
       merged.sort(function (a, b) { return a.name.localeCompare(b.name); });
     }
@@ -8693,8 +8727,8 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
     // Archive is not delete, same rule as both CRMs: the record leaves
     // the list and stays in the file.
     function archive(id, on) {
-      if (on === false) delete overlay.archived[id];
-      else overlay.archived[id] = true;
+      // An explicit false, not a delete — see archivedNow().
+      overlay.archived[id] = on !== false;
       writeOverlay();
       rebuild();
     }
@@ -8712,8 +8746,33 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
       return true;
     }
 
+
+    /* ARCHIVED RIGHT NOW, resolving the overlay against the record.
+
+       Archiving used to be recorded only as overlay.archived[id] = true,
+       and un-archiving as `delete overlay.archived[id]`. That works right
+       up until somebody PUBLISHES: toFile() bakes the flag onto the record
+       itself and the server drops the deltas it accounted for, so the
+       record now says archived and the overlay says nothing.
+
+       At that point Restore deleted a key that was not there, rebuild
+       still read archived off the record, and the row stayed exactly where
+       it was — while the toast said it was back on the list. Sixteen deals
+       were in that state when it was reported.
+
+       So an un-archive is written down as `false` rather than as an
+       absence. It is the same reason _store.js records deletions as
+       tombstones: absent is not a statement this format can make, and only
+       an explicit value can overrule what the base already says. */
+    function archivedNow(rec) {
+      if (!rec) return false;
+      return Object.prototype.hasOwnProperty.call(overlay.archived, rec.id)
+        ? !!overlay.archived[rec.id]
+        : !!rec.archived;
+    }
+
     function all() {
-      return merged.filter(function (r) { return !overlay.archived[r.id] && !r.archived; });
+      return merged.filter(function (r) { return !archivedNow(r); });
     }
 
     function toFile() {
@@ -8725,7 +8784,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
         stages: DEAL_STATES,
         deals: merged.map(function (r) {
           var out = Object.assign({}, r);
-          if (overlay.archived[r.id]) out.archived = true;
+          out.archived = archivedNow(r);
           return out;
         })
       };
@@ -8752,7 +8811,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
       status: status,
       archive: archive,
       remove: remove,
-      isArchived: function (id) { return !!overlay.archived[id]; },
+      isArchived: function (id) { return archivedNow(byId(id)); },
       areas: function () { return DEAL_AREAS.slice(); },
       statuses: function () { return DEAL_STATES.slice(); },
       statusNamed: statusNamed,
@@ -8803,7 +8862,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
       },
       isDealHidden: function (name) {
         var rec = byName(name);
-        return rec ? !!overlay.archived[rec.id] : false;
+        return rec ? archivedNow(rec) : false;
       },
       hasLocalEdits: hasOverlay,
       toFile: toFile,
@@ -9061,14 +9120,39 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
     // Archive is not delete, same rule as the Investor CRM: the record
     // leaves the list and stays in the file.
     function archive(id, on) {
-      if (on === false) delete overlay.archived[id];
-      else overlay.archived[id] = true;
+      // An explicit false, not a delete — see archivedNow().
+      overlay.archived[id] = on !== false;
       writeOverlay();
       rebuild();
     }
 
+
+    /* ARCHIVED RIGHT NOW, resolving the overlay against the record.
+
+       Archiving used to be recorded only as overlay.archived[id] = true,
+       and un-archiving as `delete overlay.archived[id]`. That works right
+       up until somebody PUBLISHES: toFile() bakes the flag onto the record
+       itself and the server drops the deltas it accounted for, so the
+       record now says archived and the overlay says nothing.
+
+       At that point Restore deleted a key that was not there, rebuild
+       still read archived off the record, and the row stayed exactly where
+       it was — while the toast said it was back on the list. Sixteen deals
+       were in that state when it was reported.
+
+       So an un-archive is written down as `false` rather than as an
+       absence. It is the same reason _store.js records deletions as
+       tombstones: absent is not a statement this format can make, and only
+       an explicit value can overrule what the base already says. */
+    function archivedNow(rec) {
+      if (!rec) return false;
+      return Object.prototype.hasOwnProperty.call(overlay.archived, rec.id)
+        ? !!overlay.archived[rec.id]
+        : !!rec.archived;
+    }
+
     function all() {
-      return merged.filter(function (r) { return !overlay.archived[r.id] && !r.archived; });
+      return merged.filter(function (r) { return !archivedNow(r); });
     }
 
     // Every value in use, whether or not it was in the starting vocabulary.
@@ -9092,7 +9176,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
         stages: OPERATOR_STAGES,
         operators: merged.map(function (r) {
           var out = Object.assign({}, r);
-          if (overlay.archived[r.id]) out.archived = true;
+          out.archived = archivedNow(r);
           return out;
         })
       };
@@ -9109,7 +9193,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
       patchMany: patchMany,
       archive: archive,
       remove: remove,
-      isArchived: function (id) { return !!overlay.archived[id]; },
+      isArchived: function (id) { return archivedNow(byId(id)); },
       investmentTypes: function () { return vocabulary("investmentTypes", OPERATOR_INVESTMENT_TYPES); },
       strategies: function () { return vocabulary("assetStrategies", OPERATOR_STRATEGIES); },
       markets: function () { return vocabulary("markets", OPERATOR_MARKETS); },
@@ -10274,14 +10358,39 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
     }
 
     function archive(id, on) {
-      if (on === false) delete overlay.archived[id];
-      else overlay.archived[id] = true;
+      // An explicit false, not a delete — see archivedNow().
+      overlay.archived[id] = on !== false;
       writeOverlay();
       rebuild();
     }
 
+
+    /* ARCHIVED RIGHT NOW, resolving the overlay against the record.
+
+       Archiving used to be recorded only as overlay.archived[id] = true,
+       and un-archiving as `delete overlay.archived[id]`. That works right
+       up until somebody PUBLISHES: toFile() bakes the flag onto the record
+       itself and the server drops the deltas it accounted for, so the
+       record now says archived and the overlay says nothing.
+
+       At that point Restore deleted a key that was not there, rebuild
+       still read archived off the record, and the row stayed exactly where
+       it was — while the toast said it was back on the list. Sixteen deals
+       were in that state when it was reported.
+
+       So an un-archive is written down as `false` rather than as an
+       absence. It is the same reason _store.js records deletions as
+       tombstones: absent is not a statement this format can make, and only
+       an explicit value can overrule what the base already says. */
+    function archivedNow(rec) {
+      if (!rec) return false;
+      return Object.prototype.hasOwnProperty.call(overlay.archived, rec.id)
+        ? !!overlay.archived[rec.id]
+        : !!rec.archived;
+    }
+
     function all() {
-      return merged.filter(function (r) { return !overlay.archived[r.id] && !r.archived; });
+      return merged.filter(function (r) { return !archivedNow(r); });
     }
 
     function vocabulary(field, seed) {
@@ -10316,7 +10425,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
         overlaps: COMPETITOR_OVERLAPS,
         competitors: merged.map(function (r) {
           var out = Object.assign({}, r);
-          if (overlay.archived[r.id]) out.archived = true;
+          out.archived = archivedNow(r);
           return out;
         })
       };
@@ -10336,7 +10445,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
       removeArticle: removeArticle,
       archive: archive,
       remove: remove,
-      isArchived: function (id) { return !!overlay.archived[id]; },
+      isArchived: function (id) { return archivedNow(byId(id)); },
       capitalTypes: function () { return vocabulary("capitalTypes", COMPETITOR_CAPITAL_TYPES); },
       strategies: function () { return vocabulary("assetStrategies", COMPETITOR_STRATEGIES); },
       markets: function () { return vocabulary("markets", COMPETITOR_MARKETS); },
