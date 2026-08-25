@@ -1894,82 +1894,73 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
   margin-left: auto; font-size: .72rem; color: var(--muted); max-width: 42ch;
 }
 
-/* A row being edited where it sits. Every field is one line of the same
-   height, centred against the others, so the row reads as a row rather
-   than as a form that has fallen into the table. The tighter padding is
-   the only way a text box gets a usable width out of a column sized for
-   wrapped text: sixteen pixels of gutter per cell is generous for reading
-   and wasted on an input. */
+/* A row being edited takes the width of the whole table and lays its
+   fields out itself, rather than putting one input in each column.
+
+   Column-aligned inputs were the obvious thing and they do not work. A
+   column is as wide as its READ content needs, which for nine columns of
+   operator data is about a hundred pixels — too narrow for a box, and
+   widening them pushes the table past the window, at which point the last
+   columns and the Save button are off the side. Pinning the button back
+   only parked it on top of Priority and AUM.
+
+   So the row gets one cell across the table and a grid inside it: fields
+   that size themselves, wrap when the window is narrow, and carry their
+   own labels, since a wrapped field is no longer under its heading. It
+   behaves the same on a five-column table and a nine-column one. */
 .crmtable tbody tr.is-editing td {
-  /* Solid rather than a tint, because the actions cell sticks to the
-     right edge below and has to hide what scrolls under it. A colour
-     with alpha in it cannot. This is that tint, already mixed. */
   background: #D8E4EE;
-  vertical-align: middle;
-  padding: 12px 8px 12px 0;
-  font-size: .84rem; color: var(--muted);
+  padding: 0;
+  box-shadow: inset 2px 0 0 var(--steel);
 }
-/* Save has to stay reachable. The operator list is nine columns wide and
-   grows further once its boxes claim a workable width, so on any ordinary
-   window the right-hand end of the row is off the side — and the button
-   that ends the edit was the part that had gone. */
-.crmtable tbody tr.is-editing td:last-child {
-  position: sticky; right: 0; z-index: 1;
-  box-shadow: -10px 0 14px -12px rgba(18, 34, 54, .45);
+.rowedit { padding: 20px 22px 18px 24px; }
+.rowedit__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 15px 20px;
 }
-/* The accent that says which row is open, in the gutter the drag handle
-   would be in — the handle is gone while the row is being edited. */
-.crmtable tbody tr.is-editing td:first-child { box-shadow: inset 2px 0 0 var(--steel); }
-.crmtable tbody tr.is-editing td:last-child { padding-right: 0; }
+.rowedit__field { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.rowedit__label {
+  font-family: var(--sans); font-size: .66rem; font-weight: 500;
+  letter-spacing: .13em; text-transform: uppercase; color: var(--muted);
+}
+/* A field nobody can change, shown so the row still reads as the record:
+   the same slot, without a box around it. */
+.rowedit__static { font-size: .88rem; color: var(--deep-space); padding: 7px 0; }
 
 .rowedit__input, .rowedit__select {
   width: 100%; min-width: 0; box-sizing: border-box;
-  height: 36px; line-height: 22px;
-  font-family: var(--sans); font-size: .84rem; color: var(--ink);
-  padding: 6px 9px; border: 1px solid var(--rule); border-radius: 3px;
+  height: 38px; line-height: 22px;
+  font-family: var(--sans); font-size: .88rem; color: var(--ink);
+  padding: 7px 10px; border: 1px solid var(--rule); border-radius: 3px;
   background: var(--paper);
 }
-.rowedit__select { padding-right: 4px; min-width: 110px; }
-
-/* A column is as wide as its READ content needs, and read content wraps
-   over two lines where a box cannot. Left alone, the name of a firm goes
-   into a box a hundred pixels wide and comes out as "Belltower Fam". A
-   floor per field widens the column for as long as the row is open; the
-   table scrolls sideways if the window is too narrow to hold it, which is
-   what it already does for any table wider than the page. */
-.rowedit__input[data-rowedit-field="name"] { min-width: 160px; }
-.rowedit__input[data-rowedit-field="assetClasses"],
-.rowedit__input[data-rowedit-field="investmentTypes"],
-.rowedit__input[data-rowedit-field="assetStrategies"],
-.rowedit__input[data-rowedit-field="markets"],
-.rowedit__input[data-rowedit-field="deals"] { min-width: 140px; }
-.rowedit__input[data-rowedit-field="operator"],
-.rowedit__input[data-rowedit-field="type"],
-.rowedit__input[data-rowedit-field="market"],
-.rowedit__input[data-rowedit-field="assetClass"],
-.rowedit__input[data-rowedit-field="check"],
-.rowedit__input[data-rowedit-field="aum"] { min-width: 115px; }
+.rowedit__select { padding-right: 6px; }
 .rowedit__input:focus, .rowedit__select:focus {
   outline: none; border-color: var(--steel); box-shadow: 0 0 0 3px rgba(119, 166, 182, .18);
 }
-.rowedit__input::placeholder { color: var(--muted); opacity: .65; }
+.rowedit__input::placeholder { color: var(--muted); opacity: .6; }
 /* A box with a datalist grows a picker button in Chrome. It is the size
    of the arrow on a select and means something quite different, and next
-   to a real select in the row beside it, it just reads as a mistake. The
-   suggestions still open on typing. */
+   to a real select it reads as a mistake. Suggestions still open on
+   typing. */
 .rowedit__input::-webkit-calendar-picker-indicator { display: none !important; }
 
-/* The row's own actions become Save and Cancel, in the cell the others
-   were in, so the column does not change width mid-edit. */
+.rowedit__bar {
+  display: flex; align-items: center; gap: 6px;
+  margin-top: 18px; padding-top: 16px;
+  border-top: 1px solid rgba(45, 58, 81, .12);
+}
 .rowedit__save, .rowedit__cancel {
   appearance: none; border: 0; cursor: pointer; white-space: nowrap;
-  font-family: var(--sans); font-size: .72rem; letter-spacing: .04em;
-  padding: 8px 12px; border-radius: 3px; margin-left: 6px;
+  font-family: var(--sans); font-size: .74rem; letter-spacing: .04em;
+  padding: 9px 18px; border-radius: 3px;
 }
 .rowedit__save { background: var(--deep-space); color: var(--paper); }
 .rowedit__save:hover { background: var(--prussian); }
-.rowedit__cancel { background: none; color: var(--muted); padding-left: 6px; padding-right: 0; }
+.rowedit__cancel { background: none; color: var(--muted); padding-left: 10px; }
 .rowedit__cancel:hover { color: var(--deep-space); text-decoration: underline; }
+.rowedit__hint { margin-left: auto; font-size: .72rem; color: var(--muted); }
 .rowedit__save:focus-visible, .rowedit__cancel:focus-visible {
   outline: 2px solid var(--steel); outline-offset: 2px;
 }
@@ -3810,14 +3801,13 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
          table, so they are not here — what the list shows is what the row
          can change, and the rest is the deal's own page. */
       if (RowEdit.on("deal", rec.id)) {
-        return '<tr class="is-editing" data-deal="' + esc(rec.id) + '">' +
-          '<td>' + RowEdit.text("name", rec.name) + '</td>' +
-          '<td>' + RowEdit.text("operator", rec.operator, ' list="dealOperatorNames"') + '</td>' +
-          '<td>' + RowEdit.select("status", Deals.statuses(), rec.status) + '</td>' +
-          '<td>' + RowEdit.text("market", rec.market) + '</td>' +
-          '<td>' + RowEdit.text("assetClass", rec.assetClass) + '</td>' +
-          RowEdit.actions("deal", rec.id) +
-          '</tr>';
+        return RowEdit.form("deal", rec.id, cols.length + 1, [
+          ["Deal", RowEdit.text("name", rec.name)],
+          ["Operator", RowEdit.text("operator", rec.operator, ' list="dealOperatorNames"')],
+          ["Status", RowEdit.select("status", Deals.statuses(), rec.status)],
+          ["Market", RowEdit.text("market", rec.market)],
+          ["Asset class", RowEdit.text("assetClass", rec.assetClass)]
+        ], "Enter saves · Esc cancels");
       }
       return '<tr data-deal="' + esc(rec.id) + '">' +
         '<td>' + rowGrip(rec.id, rec.name) +
@@ -6788,20 +6778,21 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
       /* Last contact is not here: it is read off the newest conversation
          rather than typed, so a box for it would be a box that lies. */
       if (RowEdit.on("investor", inv.id)) {
-        return '<tr class="is-editing" data-investor="' + esc(inv.id) + '">' +
-          '<td>' + RowEdit.text("name", inv.name) + '</td>' +
-          '<td>' + RowEdit.text("type", inv.type === "Unclassified" ? "" : inv.type,
-                    ' list="crmRowTypes"') + '</td>' +
-          '<td>' + RowEdit.text("assetClasses", inv.assetClasses.join(", "),
-                    ' placeholder="Comma separated"') + '</td>' +
-          '<td>' + RowEdit.select("stage", Crm.stages(), inv.stage) + '</td>' +
-          '<td>' + RowEdit.text("check", checkText(inv) || inv.checkSize.note,
-                    ' placeholder="$3m–$6m"') + '</td>' +
-          '<td>' + RowEdit.text("deals", inv.deals.join(", "),
-                    ' list="crmDealNames" placeholder="Comma separated"') + '</td>' +
-          '<td>' + (last ? esc(last) : '<span class="muted">Never</span>') + '</td>' +
-          RowEdit.actions("investor", inv.id) +
-          '</tr>';
+        return RowEdit.form("investor", inv.id, CRM_COLUMNS.length + 1, [
+          ["Investor", RowEdit.text("name", inv.name)],
+          ["Type", RowEdit.text("type", inv.type === "Unclassified" ? "" : inv.type,
+                    ' list="crmRowTypes"')],
+          ["Asset class", RowEdit.text("assetClasses", inv.assetClasses.join(", "),
+                    ' placeholder="Comma separated"')],
+          ["Stage", RowEdit.select("stage", Crm.stages(), inv.stage)],
+          ["Check size", RowEdit.text("check", checkText(inv) || inv.checkSize.note,
+                    ' placeholder="$3m–$6m"')],
+          ["Deals of interest", RowEdit.text("deals", inv.deals.join(", "),
+                    ' list="crmDealNames" placeholder="Comma separated"')],
+          // Read off the newest conversation rather than typed, so it is
+          // shown in its slot and not offered as a box.
+          ["Last contact", RowEdit.stat(last || "Never")]
+        ], "Enter saves · Esc cancels");
       }
       return '<tr data-investor="' + esc(inv.id) + '">' +
         '<td>' + (archived ? "" : rowGrip(inv.id, inv.name)) +
@@ -8799,21 +8790,20 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
         : '<span class="muted">—</span>';
 
       if (RowEdit.on("operator", rec.id)) {
-        return '<tr class="is-editing" data-operator="' + esc(rec.id) + '">' +
-          '<td>' + RowEdit.text("name", rec.name) + '</td>' +
-          '<td>' + RowEdit.select("stage", [""].concat(Operators.stages()), rec.stage) + '</td>' +
-          '<td>' + RowEdit.text("investmentTypes", rec.investmentTypes.join(", "),
-                    ' placeholder="Comma separated"') + '</td>' +
-          '<td>' + RowEdit.text("assetStrategies", rec.assetStrategies.join(", "),
-                    ' placeholder="Comma separated"') + '</td>' +
-          '<td>' + RowEdit.text("markets", rec.markets.join(", "),
-                    ' placeholder="Comma separated"') + '</td>' +
-          '<td>' + RowEdit.text("deals", rec.deals.join(", "),
-                    ' list="crmDealNames" placeholder="Comma separated"') + '</td>' +
-          '<td>' + RowEdit.select("priority", [""].concat(Operators.priorities()), rec.priority) + '</td>' +
-          '<td>' + RowEdit.text("aum", rec.aum, ' placeholder="$1.4B"') + '</td>' +
-          RowEdit.actions("operator", rec.id) +
-          '</tr>';
+        return RowEdit.form("operator", rec.id, OPERATOR_COLUMNS.length + 1, [
+          ["Company name", RowEdit.text("name", rec.name)],
+          ["Stage", RowEdit.select("stage", [""].concat(Operators.stages()), rec.stage)],
+          ["Investment type", RowEdit.text("investmentTypes", rec.investmentTypes.join(", "),
+                    ' placeholder="Comma separated"')],
+          ["Asset strategy", RowEdit.text("assetStrategies", rec.assetStrategies.join(", "),
+                    ' placeholder="Comma separated"')],
+          ["Market focus", RowEdit.text("markets", rec.markets.join(", "),
+                    ' placeholder="Comma separated"')],
+          ["Deals", RowEdit.text("deals", rec.deals.join(", "),
+                    ' list="crmDealNames" placeholder="Comma separated"')],
+          ["Priority", RowEdit.select("priority", [""].concat(Operators.priorities()), rec.priority)],
+          ["AUM", RowEdit.text("aum", rec.aum, ' placeholder="$1.4B"')]
+        ], "Enter saves · Esc cancels");
       }
       return '<tr data-operator="' + esc(rec.id) + '">' +
         '<td>' + (archived ? "" : rowGrip(rec.id, rec.name)) +
@@ -13876,12 +13866,30 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
         }).join("") + '</select>';
     }
 
-    function actions(kind, id) {
-      return '<td class="crm-actions">' +
-        '<button type="button" class="rowedit__save" data-rowedit-save="' + esc(kind + ":" + id) +
-          '">Save</button>' +
-        '<button type="button" class="rowedit__cancel" data-rowedit-cancel="1">Cancel</button>' +
-        '</td>';
+    function stat(value) {
+      return '<span class="rowedit__static">' + (value ? esc(value) : "—") + '</span>';
+    }
+
+    /* The whole editing row: one cell across the table, and the fields
+       laid out inside it. Each is [label, control] — the label because a
+       field that has wrapped onto a second line is no longer under its
+       column heading and would otherwise be a box with no name on it. */
+    function form(kind, id, colspan, fields, hint) {
+      return '<tr class="is-editing" data-' + esc(kind) + '="' + esc(id) + '">' +
+        '<td colspan="' + colspan + '"><div class="rowedit">' +
+          '<div class="rowedit__grid">' +
+            fields.map(function (f) {
+              return '<label class="rowedit__field">' +
+                '<span class="rowedit__label">' + esc(f[0]) + '</span>' + f[1] + '</label>';
+            }).join("") +
+          '</div>' +
+          '<div class="rowedit__bar">' +
+            '<button type="button" class="rowedit__save" data-rowedit-save="' +
+              esc(kind + ":" + id) + '">Save</button>' +
+            '<button type="button" class="rowedit__cancel" data-rowedit-cancel="1">Cancel</button>' +
+            (hint ? '<span class="rowedit__hint">' + esc(hint) + '</span>' : "") +
+          '</div>' +
+        '</div></td></tr>';
     }
 
     // The pencil that starts it, sitting with the row's other actions.
@@ -14032,8 +14040,8 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
       }
     });
 
-    return { on: on, text: text, select: select,
-             actions: actions, trigger: trigger, list: list,
+    return { on: on, text: text, select: select, stat: stat,
+             form: form, trigger: trigger, list: list,
              close: function () { stop(false); } };
   })();
 
