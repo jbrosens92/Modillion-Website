@@ -1790,9 +1790,57 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
   text-align: right; white-space: nowrap;
   font-variant-numeric: tabular-nums;
 }
-/* Only the deal tables gained columns; the CRMs are still 880 wide and
-   would grow a scrollbar for nothing if this were set on .crmtable. */
-.crmtable[data-reorder="deal"] { min-width: 1180px; }
+/* THE ACTIONS COLUMN IS PINNED, on the deal tabs only.
+
+   Ten columns do not fit every screen. At the workspace's full 1128px
+   they do; at 1024 the table's own minimum is about 1099 and the wrap
+   scrolls — and the column that goes over the edge is the last one,
+   which is the one holding Edit, Archive and Dead. A control that has
+   to be scrolled sideways to reach is a control most people will not
+   find, and that is how this was first reported.
+
+   So it sticks to the right edge and the other nine columns scroll
+   under it. It needs an opaque background to do that: the workspace is
+   section--alice, hence --alice, and the hover colour is the row's
+   rgba(119,166,182,.07) already flattened over it, because a
+   translucent hover on a sticky cell would let the scrolling text show
+   through the thing meant to cover it.
+
+   border-collapse is SEPARATE here for the same reason. Sticky table
+   cells are unreliable in a collapsed table — Safari in particular —
+   and the fix is not worth having if it only works in one browser.
+   Spacing is zero and every border on these rows is a border-bottom,
+   so nothing doubles up and the table looks as it did.
+
+   The two CRMs keep the collapsed table and no sticky column: they
+   have not gained columns and do not overflow. */
+.crmtable[data-reorder="deal"] { border-collapse: separate; border-spacing: 0; }
+/* A border set on a <tr> is not painted in a SEPARATE table — only a
+   collapsed one draws it — so the row rules that separate one deal from
+   the next vanish the moment the line above is added. Same line, moved
+   onto the cells, where it paints in both modes. */
+.crmtable[data-reorder="deal"] tbody tr { border-bottom: 0; }
+.crmtable[data-reorder="deal"] tbody td { border-bottom: 1px solid var(--rule); }
+.crmtable[data-reorder="deal"] th.crm-actions,
+.crmtable[data-reorder="deal"] td.crm-actions {
+  position: sticky; right: 0; z-index: 1;
+  background: var(--alice);
+  padding-left: 16px;
+  box-shadow: -10px 0 10px -10px rgba(45, 58, 81, 0.18);
+}
+.crmtable[data-reorder="deal"] tbody tr:hover td.crm-actions { background: #DBE5EF; }
+
+/* NO min-width of its own, and that is the point. The workspace these
+   tables sit in is 1240px wide with 56px gutters, so the widest they are
+   ever given is 1128px. Setting a floor above that — 1180 was tried —
+   overflows the wrap at EVERY viewport width, and the column that falls
+   off the right edge is the actions one: Edit, Archive and Dead, gone
+   behind a scrollbar nobody thinks to drag.
+
+   The inherited 880 is the right floor. Ten columns share 1128px
+   comfortably; below that they tighten, and below 880 the wrap scrolls
+   exactly as it does for the two CRMs. A column that is a little narrow
+   is a smaller problem than a control that is not there. */
 
 .crm-pill {
   display: inline-block;
@@ -2835,7 +2883,14 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
      column beside it any more. Back to the left margin with everything
      else, tabular figures kept. */
   .crmtable tbody td.crm-num { text-align: left; }
-  .crmtable[data-reorder="deal"] { min-width: 0; }
+
+  /* And the pinned actions column is undone entirely. A card has no right
+     edge to pin to and nothing scrolls sideways, so all the rule leaves
+     behind is a tinted block and a shadow sitting under three buttons. */
+  .crmtable[data-reorder="deal"] th.crm-actions,
+  .crmtable[data-reorder="deal"] td.crm-actions {
+    position: static; background: none; box-shadow: none; padding-left: 0;
+  }
   .crmtable tbody td.crm-actions .deal-rowaction,
   .crmtable tbody td.crm-actions .crm-rowdelete { padding-left: 0; min-width: 0; text-align: left; }
 
