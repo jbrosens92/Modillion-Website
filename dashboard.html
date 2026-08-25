@@ -4024,8 +4024,16 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
     });
   }
 
+  /* isArchived() is the WHOLE answer now — see archivedNow() in the store.
+     This read `isArchived(id) || rec.archived`, and that OR is precisely what
+     kept Restore looking broken after the store itself was fixed: the store
+     resolved the un-archive correctly, and then this put the record's own
+     stale flag straight back on top of it.
+
+     A record's raw .archived is the BASE's opinion, not the current one.
+     Nothing outside the store should read it. */
   function dealIsArchived(rec) {
-    return Deals.isArchived(rec.id) || !!rec.archived;
+    return Deals.isArchived(rec.id);
   }
 
   /* Three piles, in the order they are read: what is live, what was put
@@ -7245,7 +7253,8 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
      lying about what the CRM holds. */
   function crmArchived() {
     return Crm.allIncludingArchived()
-      .filter(function (inv) { return Crm.isArchived(inv.id) || inv.archived; })
+      // isArchived() is the whole answer — see archivedNow() in the store.
+      .filter(function (inv) { return Crm.isArchived(inv.id); })
       .filter(crmMatches)
       .sort(function (a, b) { return a.name.localeCompare(b.name); });
   }
@@ -9339,7 +9348,8 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
 
   function opArchived() {
     return Operators.allIncludingArchived()
-      .filter(function (rec) { return Operators.isArchived(rec.id) || rec.archived; })
+      // isArchived() is the whole answer — see archivedNow() in the store.
+      .filter(function (rec) { return Operators.isArchived(rec.id); })
       .filter(opMatches)
       .sort(function (a, b) { return a.name.localeCompare(b.name); });
   }
@@ -10570,7 +10580,8 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
 
   function compArchived() {
     return Competitors.allIncludingArchived()
-      .filter(function (rec) { return Competitors.isArchived(rec.id) || rec.archived; })
+      // isArchived() is the whole answer — see archivedNow() in the store.
+      .filter(function (rec) { return Competitors.isArchived(rec.id); })
       .filter(compMatches)
       .sort(function (a, b) { return a.name.localeCompare(b.name); });
   }
