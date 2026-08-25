@@ -1783,6 +1783,17 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
    it would otherwise break after the year. */
 .crmtable td.crm-date { white-space: nowrap; }
 
+/* The three money columns. Right-aligned with tabular figures so a column
+   of them can be read down rather than across — the whole reason for
+   printing "$42m" rather than what somebody typed. */
+.crmtable td.crm-num, .crmtable th.crm-num {
+  text-align: right; white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+/* Only the deal tables gained columns; the CRMs are still 880 wide and
+   would grow a scrollbar for nothing if this were set on .crmtable. */
+.crmtable[data-reorder="deal"] { min-width: 1180px; }
+
 .crm-pill {
   display: inline-block;
   font-size: .68rem;
@@ -2819,6 +2830,12 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
     border-top: 1px solid var(--rule);
   }
   .crmtable tbody td.crm-actions::before { display: none; }
+
+  /* Right-aligned against a card's edge reads as a mistake — there is no
+     column beside it any more. Back to the left margin with everything
+     else, tabular figures kept. */
+  .crmtable tbody td.crm-num { text-align: left; }
+  .crmtable[data-reorder="deal"] { min-width: 0; }
   .crmtable tbody td.crm-actions .deal-rowaction,
   .crmtable tbody td.crm-actions .crm-rowdelete { padding-left: 0; min-width: 0; text-align: left; }
 
@@ -3881,8 +3898,48 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
     { key: "status",     label: "Status" },
     { key: "market",     label: "Market" },
     { key: "assetClass", label: "Asset class" },
+    { key: "dealSize",   label: "Deal size" },
+    { key: "gpCheck",    label: "GP check" },
+    { key: "lpCheck",    label: "LP check" },
     { key: "addedAt",    label: "Added" }
   ];
+
+  /* ---- the three money columns ---------------------------------
+     Typed as prose and KEPT as prose. "$42m", "$42,000,000" and
+     "42.5mm" are all somebody being perfectly clear, and none of
+     them is wrong enough to correct on the way in — so what is
+     stored is what was typed. What is SHOWN is the parsed figure
+     when it parses, which is what lets a column of them line up
+     and sort by size rather than by first character.
+
+     Reader.matchCheck does the reading: the same matcher the
+     investor CRM finds check sizes with, so "$3-5m" means the
+     same thing on a deal as it does on an investor. It wants a
+     dollar sign and at least a thousand, which is what stops a
+     bare "42" being read as forty-two dollars — that one is
+     printed as typed instead, and the placeholder says the format.
+
+     Anything it cannot read is printed exactly as written. A deal
+     size of "TBD" is a real answer and a better one than a guess. */
+  var DEAL_MONEY_KEYS = { dealSize: 1, gpCheck: 1, lpCheck: 1 };
+
+  function dealAmount(raw) {
+    var s = String(raw == null ? "" : raw).trim();
+    if (!s) return null;
+    var c = Reader.matchCheck(/\$/.test(s) ? s : "$" + s);
+    return c ? { n: c.min, text: c.text } : { n: null, text: s };
+  }
+
+  function dealMoneyText(raw) {
+    var a = dealAmount(raw);
+    return a ? a.text : "";
+  }
+
+  function dealMoneyCell(raw) {
+    var a = dealAmount(raw);
+    return '<td class="crm-num">' +
+           (a ? esc(a.text) : '<span class="muted">—</span>') + '</td>';
+  }
 
   function dealAreaLabel(id) {
     var areas = Deals.areas();
@@ -3925,7 +3982,11 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
       if (f.status && r.status !== f.status) return false;
       if (f.operator && r.operator !== f.operator) return false;
       if (!q) return true;
-      return [r.name, r.operator, r.market, r.assetClass, r.note, r.status]
+      /* The money fields are searched AS TYPED, not as printed. Somebody
+         looking for the deal they entered as "$42,000,000" types some of
+         that, not the "$42m" the column shows them. */
+      return [r.name, r.operator, r.market, r.assetClass, r.note, r.status,
+              r.dealSize, r.gpCheck, r.lpCheck]
         .join(" ").toLowerCase().indexOf(q) !== -1;
     });
 
@@ -3965,6 +4026,27 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
       };
     }
     var dir = dirName === "asc" ? 1 : -1;
+
+    /* A money column sorts by what it means. Sorted as strings, "$9m"
+       would come after "$40m" — and a column nobody can trust the order
+       of is worse than one that does not sort at all.
+
+       Blank and unreadable sort together at the foot whichever way the
+       arrow points, for the same reason a blank does everywhere else
+       here: "TBD" is not a small number, it is an absent one. */
+    if (DEAL_MONEY_KEYS[key]) {
+      return function (a, b) {
+        var aa = dealAmount(a[key]), bb = dealAmount(b[key]);
+        var av = aa && aa.n != null ? aa.n : null;
+        var bv = bb && bb.n != null ? bb.n : null;
+        if (av == null && bv == null) return a.name.localeCompare(b.name);
+        if (av == null) return 1;
+        if (bv == null) return -1;
+        if (av !== bv) return (av - bv) * dir;
+        return a.name.localeCompare(b.name);
+      };
+    }
+
     return function (a, b) {
       var av = String(a[key] == null ? "" : a[key]);
       var bv = String(b[key] == null ? "" : b[key]);
@@ -4064,6 +4146,9 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
           ["Status", RowEdit.select("status", Deals.statuses(), rec.status)],
           ["Market", RowEdit.text("market", rec.market)],
           ["Asset class", RowEdit.text("assetClass", rec.assetClass)],
+          ["Deal size", RowEdit.text("dealSize", rec.dealSize, ' placeholder="$42m"')],
+          ["GP check", RowEdit.text("gpCheck", rec.gpCheck, ' placeholder="$4m"')],
+          ["LP check", RowEdit.text("lpCheck", rec.lpCheck, ' placeholder="$38m"')],
           // Stamped when the record was written down, and not editable:
           // a date somebody could change is not a record of anything.
           ["Added", RowEdit.stat(rec.addedAt || "Not recorded")]
@@ -4079,6 +4164,9 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
         '<td>' + (rec.market ? esc(rec.market) : '<span class="muted">—</span>') + '</td>' +
         '<td>' + (rec.assetClass ? esc(rec.assetClass) : '<span class="muted">—</span>') +
           (rec.debt ? '<span class="crm-sub">debt on file</span>' : "") + '</td>' +
+        dealMoneyCell(rec.dealSize) +
+        dealMoneyCell(rec.gpCheck) +
+        dealMoneyCell(rec.lpCheck) +
         '<td class="crm-date">' + (rec.addedAt ? esc(rec.addedAt) : '<span class="muted">—</span>') + '</td>' +
         '<td class="crm-actions">' + dealRowActions(rec, pile) + '</td>' +
         '</tr>';
@@ -4274,6 +4362,9 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
       dealField("Status", rec.status + (rec.statusWhy ? " — " + rec.statusWhy : "")) +
       dealField("Market", rec.market) +
       dealField("Asset class", rec.assetClass) +
+      dealField("Deal size", dealMoneyText(rec.dealSize)) +
+      dealField("GP equity check", dealMoneyText(rec.gpCheck)) +
+      dealField("LP equity check", dealMoneyText(rec.lpCheck)) +
       dealField("Added", rec.addedAt) +
       dealField("Note", rec.note, true) +
       '</div>';
@@ -4348,6 +4439,12 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
           "Only needed when it is not simply live")) +
         field("dealEditMarket", "Market", text("dealEditMarket", rec.market, "City, ST")) +
         field("dealEditAssetClass", "Asset class", text("dealEditAssetClass", rec.assetClass)) +
+        field("dealEditSize", "Deal size",
+          text("dealEditSize", rec.dealSize, "$42m — total capitalisation")) +
+        field("dealEditGpCheck", "GP equity check",
+          text("dealEditGpCheck", rec.gpCheck, "$4m — what we write")) +
+        field("dealEditLpCheck", "LP equity check",
+          text("dealEditLpCheck", rec.lpCheck, "$38m — what sits beside it")) +
         field("dealEditNote", "Note", text("dealEditNote", rec.note), true) +
       '</div>' +
       '<h4 class="crm-edit__sub">Debt</h4>' +
@@ -4390,6 +4487,11 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
         ? new Date().toISOString().slice(0, 10) : rec.statusSetAt,
       market: v("dealEditMarket"),
       assetClass: v("dealEditAssetClass"),
+      // Stored exactly as typed — see dealAmount(). Formatting happens
+      // where it is read, so nothing is lost on the way in.
+      dealSize: v("dealEditSize"),
+      gpCheck: v("dealEditGpCheck"),
+      lpCheck: v("dealEditLpCheck"),
       note: v("dealEditNote"),
       debt: anyDebt ? debt : null
     });
@@ -4501,10 +4603,15 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
     var list = Deals.inArea(scope.area);
     var sheets = [{
       name: isClosed ? "Closed deals" : "Deals",
-      rows: [["Deal", "Operator", "Where", "Status", "Why", "Market", "Asset class", "Note", "Added"]]
+      rows: [["Deal", "Operator", "Where", "Status", "Why", "Market", "Asset class",
+              "Deal size", "GP equity check", "LP equity check", "Note", "Added"]]
         .concat(list.map(function (r) {
+          /* As typed, not as printed. This sheet is somebody's working
+             copy — "$42,000,000" is what they can put in a formula, and
+             "$42m" is what they would have to undo first. */
           return [r.name, r.operator, dealAreaLabel(r.area), r.status, r.statusWhy,
-                  r.market, r.assetClass, r.note, r.addedAt];
+                  r.market, r.assetClass, r.dealSize, r.gpCheck, r.lpCheck,
+                  r.note, r.addedAt];
         }))
     }];
     var withDebt = isClosed
@@ -4610,6 +4717,15 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
             'placeholder="Who runs it">' +
           note("Optional. A name already on the Operator CRM picks the deal up on their record; " +
                "anything else is kept on the deal and no operator is invented.")) +
+        field("dealNewSize", "Deal size",
+          '<input type="text" id="dealNewSize" autocomplete="off" placeholder="$42m">' +
+          note("Optional, and all three of these are. Written how you would say it — " +
+               "$42m, $42,000,000 and 42.5mm all read the same. Anything that is not a " +
+               "figure is kept and printed as typed, so \u201cTBD\u201d stays TBD.")) +
+        field("dealNewGpCheck", "GP equity check",
+          '<input type="text" id="dealNewGpCheck" autocomplete="off" placeholder="$4m">') +
+        field("dealNewLpCheck", "LP equity check",
+          '<input type="text" id="dealNewLpCheck" autocomplete="off" placeholder="$38m">') +
         field("dealNewNote", "Note",
           '<textarea id="dealNewNote" placeholder="Anything worth carrying until the folder exists."></textarea>',
           true) +
@@ -4671,6 +4787,9 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
     var status   = $("dealNewStatus").value || "Live";
     var operator = $("dealNewOperator").value.trim();
     var note     = $("dealNewNote").value.trim();
+    var dealSize = $("dealNewSize").value.trim();
+    var gpCheck  = $("dealNewGpCheck").value.trim();
+    var lpCheck  = $("dealNewLpCheck").value.trim();
 
     // An operator already on the Operator CRM picks the deal up on their
     // record, so the two tabs agree without anyone typing the name twice.
@@ -4680,7 +4799,8 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
     })[0] : null;
     if (matched) operator = matched.name;
 
-    var saved = Deals.addDeal(name, { area: area, operator: operator, note: note });
+    var saved = Deals.addDeal(name, { area: area, operator: operator, note: note,
+                                      dealSize: dealSize, gpCheck: gpCheck, lpCheck: lpCheck });
     if (status !== "Live") Deals.setDealStatus(saved, status, "set when the deal was added");
 
     if (matched && matched.deals.indexOf(saved) === -1) {
@@ -6041,6 +6161,9 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
         area: fields.area || (already && already.area) || "active-deals",
         operator: fields.operator || (already && already.operator) || "",
         note: fields.note || (already && already.note) || "",
+        dealSize: fields.dealSize || (already && already.dealSize) || "",
+        gpCheck: fields.gpCheck || (already && already.gpCheck) || "",
+        lpCheck: fields.lpCheck || (already && already.lpCheck) || "",
         addedAt: (already && already.addedAt) || new Date().toISOString().slice(0, 10)
       };
       var at = -1;
@@ -15793,7 +15916,13 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
             statusSetAt: status !== rec.status
               ? new Date().toISOString().slice(0, 10) : rec.statusSetAt,
             market: String(v.market || "").trim(),
-            assetClass: String(v.assetClass || "").trim()
+            assetClass: String(v.assetClass || "").trim(),
+            // read() collects every field the row is holding, but this
+            // saves a named list — so a field added to the row form and
+            // not to this one is typed, accepted, and quietly lost.
+            dealSize: String(v.dealSize || "").trim(),
+            gpCheck: String(v.gpCheck || "").trim(),
+            lpCheck: String(v.lpCheck || "").trim()
           });
         }
       },
