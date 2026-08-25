@@ -8878,8 +8878,38 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
     }
 
     function rebuild() {
+      var seen = {};
       var rows = (base && base.operators ? base.operators : []).concat(overlay.created)
-        .filter(function (rec) { return !overlay.removed[rec.id]; });
+        .filter(function (rec) {
+          if (overlay.removed[rec.id]) return false;
+
+          /* A record created HERE and since published is in the base as
+             well as in this browser's overlay, and concatenating the two
+             lists it appears in shows it twice.
+
+             The browser that pressed Publish has its overlay cleared by
+             adoptPublished(). Nobody else's is. So a colleague who was
+             looking at the tab when the record was created keeps a copy of
+             it in localStorage indefinitely, and sees the record twice from
+             the moment somebody publishes.
+
+             That would be a display glitch if it stopped at display. It does
+             not: toFile() exports what is merged, so the next publish from
+             THAT browser writes both copies into the shared base, and the
+             duplicate becomes everyone's and permanent. Two got in this way
+             before it was noticed; tools/dedupe-records.py cleans up after
+             a browser that is still running the code from before this guard.
+
+             The base copy is the one kept, because it is the published one;
+             a local change to it is an overlay.patches entry and is applied
+             below regardless of which copy survives here.
+
+             Crm.rebuild() has guarded this since it was written — "caught up,
+             or deleted". These two stores were written without it. */
+          if (seen[rec.id]) return false;
+          seen[rec.id] = true;
+          return true;
+        });
       merged = rows.map(function (rec) {
         var out = normalise(rec);
         var patch = overlay.patches[out.id];
@@ -10045,8 +10075,17 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
     }
 
     function rebuild() {
+      var seen = {};
       var rows = (base && base.competitors ? base.competitors : []).concat(overlay.created)
-        .filter(function (rec) { return !overlay.removed[rec.id]; });
+        .filter(function (rec) {
+          if (overlay.removed[rec.id]) return false;
+          // Same guard, same reason as Operators.rebuild() above — a created
+          // record that has since been published is in both lists. This tab
+          // has no records yet, so it has not bitten here; it would have.
+          if (seen[rec.id]) return false;
+          seen[rec.id] = true;
+          return true;
+        });
       merged = rows.map(function (rec) {
         var out = normalise(rec);
         var patch = overlay.patches[out.id];
