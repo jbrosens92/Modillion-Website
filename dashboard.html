@@ -1894,6 +1894,33 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
   margin-left: auto; font-size: .72rem; color: var(--muted); max-width: 42ch;
 }
 
+/* A row being edited where it sits. The inputs are sized to the column
+   they are in rather than to their contents, so nothing jumps sideways
+   when a row goes from reading to editing and back. */
+.crmtable tbody tr.is-editing td { background: rgba(119, 166, 182, 0.07); vertical-align: middle; }
+.rowedit__input, .rowedit__select {
+  width: 100%; max-width: 100%; box-sizing: border-box;
+  font-family: var(--sans); font-size: .84rem; color: var(--ink);
+  padding: 7px 9px; border: 1px solid var(--rule); border-radius: 3px;
+  background: var(--paper);
+}
+.rowedit__input:focus, .rowedit__select:focus {
+  outline: none; border-color: var(--steel); box-shadow: 0 0 0 3px rgba(119, 166, 182, .18);
+}
+.rowedit__note {
+  display: block; margin-top: 4px; font-size: .68rem; color: var(--muted);
+}
+/* The row's own actions become Save and Cancel, in the same cell the
+   others were in, so the column does not change width mid-edit. */
+.rowedit__save, .rowedit__cancel {
+  appearance: none; background: none; border: 0; padding: 4px 0 4px 14px;
+  font-family: var(--sans); font-size: .72rem; cursor: pointer; white-space: nowrap;
+}
+.rowedit__save { color: var(--deep-space); font-weight: 500; }
+.rowedit__save:hover { text-decoration: underline; }
+.rowedit__cancel { color: var(--muted); }
+.rowedit__cancel:hover { color: var(--deep-space); text-decoration: underline; }
+
 /* The opening conversation, folded into the add-investor form. It reads
    as a section of that form rather than a second form stacked under it —
    one heading, one grid, the same fields as everywhere else. */
@@ -3697,7 +3724,8 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
              '<button type="button" class="deal-rowaction" data-deal-archive="' + esc(rec.id) +
              '" title="Archive ' + esc(rec.name) + '">Archive</button>';
     }
-    return '<button type="button" class="deal-rowaction" data-deal-archive="' + esc(rec.id) +
+    return RowEdit.trigger("deal", rec.id, rec.name) +
+           '<button type="button" class="deal-rowaction" data-deal-archive="' + esc(rec.id) +
            '" title="Archive ' + esc(rec.name) + '">Archive</button>' +
            '<button type="button" class="deal-rowaction" data-tone="dead" data-deal-dead="' + esc(rec.id) +
            '" title="Mark ' + esc(rec.name) + ' dead">Dead</button>';
@@ -3725,6 +3753,19 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
     '<th class="crm-actions"><span class="visually-hidden">Actions</span></th>';
 
     var rows = list.map(function (rec) {
+      /* The row, editable in place. Note and debt are not columns of this
+         table, so they are not here — what the list shows is what the row
+         can change, and the rest is the deal's own page. */
+      if (RowEdit.on("deal", rec.id)) {
+        return '<tr class="is-editing" data-deal="' + esc(rec.id) + '">' +
+          '<td>' + RowEdit.text("name", rec.name) + '</td>' +
+          '<td>' + RowEdit.text("operator", rec.operator, ' list="dealOperatorNames"') + '</td>' +
+          '<td>' + RowEdit.select("status", Deals.statuses(), rec.status) + '</td>' +
+          '<td>' + RowEdit.text("market", rec.market) + '</td>' +
+          '<td>' + RowEdit.text("assetClass", rec.assetClass) + '</td>' +
+          RowEdit.actions("deal", rec.id) +
+          '</tr>';
+      }
       return '<tr data-deal="' + esc(rec.id) + '">' +
         '<td>' + rowGrip(rec.id, rec.name) +
           '<span class="crm-name">' + esc(rec.name) + '</span>' +
@@ -6693,6 +6734,23 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
           (inv.deals.length > 2 ? '<span class="crm-tag">+' + (inv.deals.length - 2) + '</span>' : "")
         : '<span class="muted">—</span>';
 
+      /* Last contact is not here: it is read off the newest conversation
+         rather than typed, so a box for it would be a box that lies. */
+      if (RowEdit.on("investor", inv.id)) {
+        return '<tr class="is-editing" data-investor="' + esc(inv.id) + '">' +
+          '<td>' + RowEdit.text("name", inv.name) + '</td>' +
+          '<td>' + RowEdit.text("type", inv.type === "Unclassified" ? "" : inv.type,
+                    ' list="crmRowTypes"') + '</td>' +
+          '<td>' + RowEdit.text("assetClasses", inv.assetClasses.join(", ")) +
+            RowEdit.note("Commas") + '</td>' +
+          '<td>' + RowEdit.select("stage", Crm.stages(), inv.stage) + '</td>' +
+          '<td>' + RowEdit.text("check", checkText(inv) || inv.checkSize.note) + '</td>' +
+          '<td>' + RowEdit.text("deals", inv.deals.join(", "), ' list="crmDealNames"') +
+            RowEdit.note("Commas") + '</td>' +
+          '<td>' + (last ? esc(last) : '<span class="muted">Never</span>') + '</td>' +
+          RowEdit.actions("investor", inv.id) +
+          '</tr>';
+      }
       return '<tr data-investor="' + esc(inv.id) + '">' +
         '<td>' + (archived ? "" : rowGrip(inv.id, inv.name)) +
           '<span class="crm-name">' + esc(inv.name) + '</span>' +
@@ -6714,6 +6772,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
             '<span class="crm-sub">' + inv.conversations.length + ' logged</span>'
           : '<span class="muted">Never</span>') + '</td>' +
         '<td class="crm-actions">' +
+          (archived ? "" : RowEdit.trigger("investor", inv.id, inv.name)) +
           (archived
             ? '<button type="button" class="deal-rowaction" data-crm-restore="' + esc(inv.id) +
               '" title="Put ' + esc(inv.name) + ' back on the list">Restore</button>'
@@ -6728,7 +6787,17 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
     /* An archived record has no place in a hand-set order — it is not on
        the list to be ordered — so the pile's table carries no handles and
        no reorder hook. */
-    return (archived ? "" : orderNote(sortKey === "manual", "investor")) +
+    /* The types already in use, offered to the row's Type box. The record
+       form builds the same list into a dropdown; a row has no space for
+       one, so it is a datalist over a plain box — same vocabulary, and
+       still open to a type nobody has used yet. */
+    var typeList = '<datalist id="crmRowTypes">' +
+      Crm.allIncludingArchived().map(function (i) { return i.type; })
+        .filter(function (t, i, a) { return t && t !== "Unclassified" && a.indexOf(t) === i; })
+        .sort().map(function (t) { return '<option value="' + esc(t) + '">'; }).join("") +
+      '</datalist>';
+
+    return (archived ? "" : orderNote(sortKey === "manual", "investor")) + typeList +
            '<div class="crmtable-wrap"><table class="crmtable"' +
            (archived ? "" : ' data-reorder="investor"') + '>' +
            '<thead><tr>' + head + '</tr></thead><tbody>' + rows + '</tbody></table></div>';
@@ -7188,17 +7257,9 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
       return null;
     }
 
-    // One box for check size, read the same way the agent reads it. A range
-    // becomes numbers; anything else is kept verbatim as the note, which is
-    // exactly what the facts grid shows when there are no numbers.
-    var raw = val("editCheck");
-    var check = { min: null, max: null, note: "" };
-    if (raw) {
-      var probe = /\$/.test(raw) ? raw : raw.replace(/(^|[^\w$])(\d)/g, "$1$$$2");
-      var parsed = Reader.matchCheck(probe);
-      if (parsed) check = { min: parsed.min, max: parsed.max, note: "" };
-      else check.note = raw;
-    }
+    // One box for check size, read the same way the agent reads it and the
+    // same way the row does — see parseCheckInput().
+    var check = parseCheckInput(val("editCheck"));
 
     // One primary contact, written into the first slot. A title already on
     // the record is kept, and anyone further down the list is left alone —
@@ -8688,6 +8749,23 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
           (rec.deals.length > 2 ? '<span class="crm-tag">+' + (rec.deals.length - 2) + '</span>' : "")
         : '<span class="muted">—</span>';
 
+      if (RowEdit.on("operator", rec.id)) {
+        return '<tr class="is-editing" data-operator="' + esc(rec.id) + '">' +
+          '<td>' + RowEdit.text("name", rec.name) + '</td>' +
+          '<td>' + RowEdit.select("stage", [""].concat(Operators.stages()), rec.stage) + '</td>' +
+          '<td>' + RowEdit.text("investmentTypes", rec.investmentTypes.join(", ")) +
+            RowEdit.note("Commas") + '</td>' +
+          '<td>' + RowEdit.text("assetStrategies", rec.assetStrategies.join(", ")) +
+            RowEdit.note("Commas") + '</td>' +
+          '<td>' + RowEdit.text("markets", rec.markets.join(", ")) +
+            RowEdit.note("Commas") + '</td>' +
+          '<td>' + RowEdit.text("deals", rec.deals.join(", "), ' list="crmDealNames"') +
+            RowEdit.note("Commas") + '</td>' +
+          '<td>' + RowEdit.select("priority", [""].concat(Operators.priorities()), rec.priority) + '</td>' +
+          '<td>' + RowEdit.text("aum", rec.aum) + '</td>' +
+          RowEdit.actions("operator", rec.id) +
+          '</tr>';
+      }
       return '<tr data-operator="' + esc(rec.id) + '">' +
         '<td>' + (archived ? "" : rowGrip(rec.id, rec.name)) +
           '<span class="crm-name">' + esc(rec.name) + '</span>' +
@@ -8706,6 +8784,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
           : '<span class="muted">—</span>') + '</td>' +
         '<td>' + (rec.aum ? esc(rec.aum) : '<span class="muted">—</span>') + '</td>' +
         '<td class="crm-actions">' +
+          (archived ? "" : RowEdit.trigger("operator", rec.id, rec.name)) +
           (archived
             ? '<button type="button" class="deal-rowaction" data-op-restore="' + esc(rec.id) +
               '" title="Put ' + esc(rec.name) + ' back on the list">Restore</button>'
@@ -10780,6 +10859,9 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
      CRM — EVENTS
      ============================================================ */
   function switchTab(tab) {
+    // A row left open on a tab nobody is looking at is a half-finished
+    // edit waiting to be forgotten about.
+    RowEdit.close();
     crmState.tab = tab;
     Array.prototype.forEach.call(document.querySelectorAll(".dash-tabs button"), function (b) {
       var on = b.getAttribute("data-tab") === tab;
@@ -13692,6 +13774,229 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
     el.textContent = SharedOverlay.state() === "shared"
       ? "Shared — folding in shortly"
       : "Unsaved local edits";
+  }
+
+
+  /* ============================================================
+     EDITING A ROW WHERE IT SITS
+
+     Correcting a market, a stage, an AUM meant opening the record,
+     pressing Edit, changing one box, saving, and coming back — five
+     moves and a lost place in the list for a thing that is visible on
+     the row you were already looking at.
+
+     A row can be edited in place instead. The columns become the
+     fields, because the columns ARE the fields: what you can see is
+     what you can change, and anything the list does not show is still
+     the record's own page. Only one row at a time — two rows half
+     edited is a way to lose one of them.
+
+     The columns differ per list, so each table renders its own editing
+     row; what is shared is the state, the inputs, reading them back,
+     and the rules about what a click inside an open row means.
+     ============================================================ */
+  var RowEdit = (function () {
+    var open = null;   // { kind: "deal" | "investor" | "operator", id: "..." }
+
+    function on(kind, id) {
+      return !!open && open.kind === kind && open.id === id;
+    }
+
+    /* A comma list, as every other multi-value box on this page reads
+       one. Blank entries are dropped rather than stored as empty tags. */
+    function list(v) {
+      return String(v || "").split(",").map(function (x) { return x.trim(); })
+        .filter(function (x) { return x.length > 0; });
+    }
+
+    function text(field, value, extra) {
+      return '<input type="text" class="rowedit__input" data-rowedit-field="' + esc(field) +
+        '" value="' + esc(value == null ? "" : value) + '" autocomplete="off"' + (extra || "") + '>';
+    }
+
+    function select(field, values, current) {
+      return '<select class="rowedit__select" data-rowedit-field="' + esc(field) + '">' +
+        values.map(function (v) {
+          return '<option value="' + esc(v) + '"' + (v === current ? " selected" : "") + '>' +
+            esc(v || "not recorded") + '</option>';
+        }).join("") + '</select>';
+    }
+
+    function note(t) { return '<span class="rowedit__note">' + esc(t) + '</span>'; }
+
+    function actions(kind, id) {
+      return '<td class="crm-actions">' +
+        '<button type="button" class="rowedit__save" data-rowedit-save="' + esc(kind + ":" + id) +
+          '">Save</button>' +
+        '<button type="button" class="rowedit__cancel" data-rowedit-cancel="1">Cancel</button>' +
+        '</td>';
+    }
+
+    // The pencil that starts it, sitting with the row's other actions.
+    function trigger(kind, id, name) {
+      return '<button type="button" class="deal-rowaction" data-rowedit-open="' +
+        esc(kind + ":" + id) + '" title="Edit ' + esc(name) + ' on this row">Edit</button>';
+    }
+
+    // Everything the open row is holding, keyed by field name.
+    function read(row) {
+      var out = {};
+      Array.prototype.forEach.call(row.querySelectorAll("[data-rowedit-field]"), function (el) {
+        out[el.getAttribute("data-rowedit-field")] = el.value;
+      });
+      return out;
+    }
+
+    var KINDS = {
+      deal: {
+        render: function () { renderDeals(); },
+        save: function (id, v) {
+          var rec = Deals.get(id);
+          if (!rec) return;
+          var status = v.status;
+          Deals.patch(id, {
+            name: String(v.name || "").trim() || rec.name,
+            operator: String(v.operator || "").trim(),
+            status: status,
+            // Same rule the full form follows: the date moves only when
+            // the status itself does, so an unrelated edit does not
+            // restamp when the deal last changed hands.
+            statusSetAt: status !== rec.status
+              ? new Date().toISOString().slice(0, 10) : rec.statusSetAt,
+            market: String(v.market || "").trim(),
+            assetClass: String(v.assetClass || "").trim()
+          });
+        }
+      },
+      investor: {
+        render: function () { renderCrm(); },
+        save: function (id, v) {
+          var inv = Crm.get(id);
+          if (!inv) return;
+          Crm.patch(id, {
+            name: String(v.name || "").trim() || inv.name,
+            type: String(v.type || "").trim() || "Unclassified",
+            assetClasses: list(v.assetClasses),
+            stage: v.stage,
+            checkSize: parseCheckInput(v.check),
+            deals: list(v.deals)
+          });
+        }
+      },
+      operator: {
+        render: function () { renderOperators(); },
+        save: function (id, v) {
+          var rec = Operators.get(id);
+          if (!rec) return;
+          Operators.patch(id, {
+            name: String(v.name || "").trim() || rec.name,
+            stage: v.stage,
+            investmentTypes: list(v.investmentTypes),
+            assetStrategies: list(v.assetStrategies),
+            markets: list(v.markets),
+            deals: list(v.deals),
+            priority: v.priority,
+            aum: String(v.aum || "").trim()
+          });
+        }
+      }
+    };
+
+    function start(token) {
+      var bits = String(token).split(":");
+      if (!KINDS[bits[0]]) return;
+      var was = open;
+      open = { kind: bits[0], id: bits.slice(1).join(":") };
+      // Redraw whatever the last open row was on as well, or it would be
+      // left sitting in edit mode on a list nobody is looking at.
+      if (was && was.kind !== open.kind) KINDS[was.kind].render();
+      KINDS[open.kind].render();
+      focusFirst();
+    }
+
+    function stop(rerender) {
+      if (!open) return;
+      var kind = open.kind;
+      open = null;
+      if (rerender !== false) KINDS[kind].render();
+    }
+
+    function commit(token) {
+      if (!open) return;
+      var bits = String(token).split(":");
+      var kind = bits[0], id = bits.slice(1).join(":");
+      var row = document.querySelector("tr.is-editing");
+      if (!row || !KINDS[kind]) { stop(); return; }
+      KINDS[kind].save(id, read(row));
+      open = null;
+      // Both CRMs keep their filter dropdowns in step with what is on the
+      // records, and an edit here can be what puts a new value on one.
+      if (kind === "investor") renderCrmFilters();
+      if (kind === "operator") renderOperatorFilters();
+      KINDS[kind].render();
+      toast("Saved.");
+    }
+
+    function focusFirst() {
+      var el = document.querySelector("tr.is-editing [data-rowedit-field]");
+      if (el && el.focus) { el.focus(); if (el.select) el.select(); }
+    }
+
+    /* Capture, ahead of everything: a row that is clicked opens the
+       record, and while it is being edited every click inside it belongs
+       to the fields rather than to that. */
+    document.addEventListener("click", function (e) {
+      if (!e.target.closest) return;
+
+      var save = e.target.closest("[data-rowedit-save]");
+      if (save) {
+        e.stopPropagation(); e.preventDefault();
+        commit(save.getAttribute("data-rowedit-save"));
+        return;
+      }
+      var cancel = e.target.closest("[data-rowedit-cancel]");
+      if (cancel) { e.stopPropagation(); e.preventDefault(); stop(); return; }
+
+      var begin = e.target.closest("[data-rowedit-open]");
+      if (begin) {
+        e.stopPropagation(); e.preventDefault();
+        start(begin.getAttribute("data-rowedit-open"));
+        return;
+      }
+      if (e.target.closest("tr.is-editing")) e.stopPropagation();
+    }, true);
+
+    // Enter saves, Escape gives up — the two keys a row-shaped form owes
+    // anybody who is typing in it rather than reaching for the mouse.
+    document.addEventListener("keydown", function (e) {
+      if (!open || !e.target.closest || !e.target.closest("tr.is-editing")) return;
+      if (e.key === "Enter") {
+        e.preventDefault();
+        commit(open.kind + ":" + open.id);
+      } else if (e.key === "Escape") {
+        e.preventDefault();
+        e.stopPropagation();   // not the drag's Escape, which is not running
+        stop();
+      }
+    });
+
+    return { on: on, text: text, select: select, note: note,
+             actions: actions, trigger: trigger, list: list,
+             close: function () { stop(false); } };
+  })();
+
+  /* One box for a check size, read the way the agent reads one: a range
+     becomes numbers the list can sort on, anything else is kept verbatim.
+     Lives out here because the record form and the row both want it. */
+  function parseCheckInput(raw) {
+    var v = String(raw || "").trim();
+    var out = { min: null, max: null, note: "" };
+    if (!v) return out;
+    var probe = /\$/.test(v) ? v : v.replace(/(^|[^\w$])(\d)/g, "$1$$$2");
+    var parsed = Reader.matchCheck(probe);
+    if (parsed) return { min: parsed.min, max: parsed.max, note: "" };
+    out.note = v;
+    return out;
   }
 
   function renderIdentity() {
