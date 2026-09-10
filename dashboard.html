@@ -2026,8 +2026,12 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
 
 /* Same button, same reason, as .comp-articles__drop: a per-row
    withdrawal that must not read as a primary action. */
+/* The left gutter is how the row actions space themselves apart — the
+   same mechanism .deal-rowaction uses, so Edit and Remove sitting next to
+   each other on a send do not run together. It costs nothing where this is
+   the only button in the cell, because the cell is right-aligned. */
 .mat-drop {
-  appearance: none; background: none; border: 0; padding: 0;
+  appearance: none; background: none; border: 0; padding: 4px 0 4px 14px;
   font: inherit; font-size: .74rem; color: var(--muted);
   cursor: pointer; white-space: nowrap;
 }
@@ -8057,10 +8061,95 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
      that will ever happen on this panel, and a form behind a button
      is a form that gets skipped in favour of not recording it.
      ------------------------------------------------------------ */
+  /* One send by id, with the investor it belongs to. patchSend() takes an
+     id and nothing else, but correcting a version needs to know which
+     material's versions to look in. */
+  function sendFind(sendId) {
+    var all = Crm.sends();
+    for (var i = 0; i < all.length; i++) if (all[i].entry.id === sendId) return all[i];
+    return null;
+  }
+
+  /* The channels, arranged so that editing a row cannot quietly change a
+     field nobody touched. A blank channel gets a blank option to sit on —
+     without it the browser selects the first, and saving a row to fix a
+     typo in the note would silently declare the thing was emailed. A
+     channel the vocabulary no longer carries is kept for the same
+     reason. */
+  function sendChannelOptions(current) {
+    var vals = SEND_CHANNELS.slice();
+    if (!current) vals.unshift("");
+    else if (vals.indexOf(current) === -1) vals.unshift(current);
+    return vals;
+  }
+
+  /* Versions are picked by id and read by label, so this is a select
+     RowEdit cannot build from a list of strings. Newest first, matching
+     the log form, with the current one marked. A version the register has
+     since dropped stays selectable and says so — the log records what
+     went out, and a tidy-up on the register does not change that. */
+  function sendVersionPicker(sd) {
+    var mat = Crm.material(sd.materialId);
+    var versions = mat ? Crm.orderedVersions(mat) : [];
+    var known = false;
+    var opts = '<option value=""' + (sd.versionId ? "" : " selected") + '>not recorded</option>' +
+      versions.map(function (v, i) {
+        if (v.id === sd.versionId) known = true;
+        /* "current" before the date, unlike the log form's picker: this
+           select sits in a row-edit grid roughly half that one's width,
+           and a truncated option should lose the date rather than the one
+           word saying whether this is the cut they are still handing out. */
+        return '<option value="' + esc(v.id) + '"' + (v.id === sd.versionId ? " selected" : "") + '>' +
+          esc(v.label) + (i === 0 ? " — current" : "") + (v.date ? " · " + esc(v.date) : "") + '</option>';
+      }).join("");
+    if (sd.versionId && !known) {
+      opts += '<option value="' + esc(sd.versionId) + '" selected>' +
+        esc(sd.version || sd.versionId) + ' — no longer on the register</option>';
+    }
+    return '<select class="rowedit__select" data-rowedit-field="versionId">' + opts + '</select>';
+  }
+
+  /* Redraw whichever of the three lists a send is showing in. The same
+     entry appears on the investor's record, on the register, and on a
+     material's page, so an edit or a withdrawal made from any of them has
+     to land on the one the person is actually looking at. */
+  function renderSendViews(invId) {
+    renderCrm();
+    if (crmState.view === "material" && Crm.material(crmState.materialId)) {
+      renderMaterial(crmState.materialId);
+    } else if (crmState.view === "materials") {
+      renderMaterials();
+    } else if (crmState.view === "investor" && crmState.investorId && Crm.get(crmState.investorId)) {
+      renderInvestor(crmState.investorId);
+    } else if (invId && Crm.get(invId)) {
+      renderInvestor(invId);
+    }
+  }
+
   function sendRows(list, showInvestor) {
     return list.map(function (row) {
       var sd = row.entry || row;
       var invId = row.investorId || "";
+
+      /* Correcting the entry in place, the same way a deal row is
+         corrected. The MATERIAL is shown and not editable: changing it
+         would leave the versionId pointing into a different material's
+         list, and a send filed against the wrong document is a different
+         send rather than a typo. Remove it and log it again — which is
+         what the hint says. */
+      if (RowEdit.on("send", sd.id)) {
+        return RowEdit.form("send", sd.id, 6, [
+          [showInvestor ? "Investor" : "Material",
+           RowEdit.stat(showInvestor ? (row.investorName || "") : sendMaterialName(sd))],
+          ["Version", sendVersionPicker(sd)],
+          ["Sent", '<input type="date" class="rowedit__input" data-rowedit-field="date" value="' +
+            esc(sd.date || "") + '">'],
+          ["How", RowEdit.select("channel", sendChannelOptions(sd.channel), sd.channel)],
+          ["Who it went to", RowEdit.text("to", sd.to)],
+          ["Note", RowEdit.text("note", sd.note)]
+        ], "Enter saves · Esc cancels. Filed against the wrong material? Remove it and log it again.");
+      }
+
       return '<tr>' +
         (showInvestor
           ? '<td><button type="button" class="crm-tag crm-tag--link" data-investor="' +
@@ -8075,6 +8164,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
           (sd.to ? '<span class="crm-sub">' + esc(sd.to) + '</span>' : "") + '</td>' +
         '<td>' + sendPill(sd) + '</td>' +
         '<td class="crm-actions">' +
+          RowEdit.trigger("send", sd.id, sendMaterialName(sd)) +
           '<button type="button" class="mat-drop" data-send-drop="' +
             esc((invId || row.investorId || "") + ":" + sd.id) +
             '" title="Withdraw this log entry">Remove</button>' +
@@ -9338,14 +9428,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
     var bits = String(token).split(":");
     var invId = bits[0], sendId = bits.slice(1).join(":");
     Crm.removeSend(sendId);
-    renderCrm();
-    if (crmState.view === "material" && Crm.material(crmState.materialId)) {
-      renderMaterial(crmState.materialId);
-    } else if (crmState.view === "materials") {
-      renderMaterials();
-    } else if (invId && Crm.get(invId)) {
-      renderInvestor(invId);
-    }
+    renderSendViews(invId);
     toast("Removed from the log.");
   }
 
@@ -17713,6 +17796,36 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
             mpGpCheck: String(v.mpGpCheck || "").trim(),
             lpCheck: String(v.lpCheck || "").trim()
           });
+        }
+      },
+      /* A logged send. Unlike the other kinds this is not a record in a
+         store keyed by id — it hangs off an investor — so the save reaches
+         for patchSend() and the render redraws whichever of the three
+         lists the entry is showing in. */
+      send: {
+        render: function () { renderSendViews(); },
+        save: function (id, v) {
+          var found = sendFind(id);
+          if (!found) return;
+          var patch = {
+            date: String(v.date || "").trim(),
+            channel: String(v.channel || "").trim(),
+            to: String(v.to || "").trim(),
+            note: String(v.note || "").trim()
+          };
+          /* versionId and the label stored beside it move together, or
+             sendVersionName() falls back to a snapshot of the version
+             that was picked before the edit and the row contradicts the
+             box that set it. */
+          var vid = String(v.versionId || "");
+          patch.versionId = vid;
+          var mat = Crm.material(found.entry.materialId);
+          var ver = mat && vid ? Crm.versionOf(mat, vid) : null;
+          if (!vid) patch.version = "";
+          else if (ver) patch.version = ver.label;
+          // else: an id the register no longer carries. Keep the label
+          // already stored — it is the only record of what that cut was.
+          Crm.patchSend(id, patch);
         }
       },
       investor: {
