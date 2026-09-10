@@ -3283,17 +3283,11 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
             </span>
             <h3>Tell the agent</h3>
           </div>
-          <p class="crm-agent__hint">
-            Describe a conversation and it becomes a log entry — investor, date, channel,
-            deals discussed, check size, next step. Give it an instruction instead and it
-            becomes a set of edits: <em>drop East Blocks from their list</em>,
-            <em>mark them passed</em>, <em>set owner to JB</em>, <em>that deal fell
-            through</em>, <em>archive them</em>. Either way you see a draft first and
-            nothing is saved until you say so. Corrections you make are remembered.
-            This box is the careful route — every field of the draft is editable before
-            it is saved. For a back-and-forth, or to change something already logged,
-            use the agent in the corner; it works on every tab.
-          </p>
+          <!-- The paragraph that stood here explained both modes of this box:
+               a conversation becomes a log entry, an instruction becomes a set
+               of edits. It was ten lines above a box people already know how to
+               use, so it went. The placeholder carries the conversation case;
+               the instruction case is now undocumented in the interface. -->
 
           <label class="visually-hidden" for="agentInput">Conversation notes or pasted email</label>
           <textarea id="agentInput" spellcheck="true"
