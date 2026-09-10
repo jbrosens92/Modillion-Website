@@ -1802,6 +1802,15 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
    ordinary; a table that scrolls before you have done anything is not. */
 .crmtable[data-reorder="deal"] thead th.crm-num { white-space: normal; }
 
+/* Same problem on the investor list the moment it gained a Materials
+   column: ten columns wanted 1192px inside a 1128px workspace, and the
+   ones that went over the edge were Archive and Delete. Its headings are
+   words rather than figures — "Deals of interest" alone was holding 164px
+   — so all of them may wrap here, which brings it back to 1128 exactly
+   and makes the rows SHORTER, because the columns end up better
+   proportioned than nowrap had left them. */
+.crmtable[data-reorder="investor"] thead th { white-space: normal; }
+
 /* THE ACTIONS COLUMN IS PINNED, on the deal tabs only.
 
    Ten columns do not fit every screen. At the workspace's full 1128px
@@ -1824,23 +1833,31 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
    Spacing is zero and every border on these rows is a border-bottom,
    so nothing doubles up and the table looks as it did.
 
-   The two CRMs keep the collapsed table and no sticky column: they
-   have not gained columns and do not overflow. */
-.crmtable[data-reorder="deal"] { border-collapse: separate; border-spacing: 0; }
+   The investor CRM joined them when it gained a Materials column, for
+   exactly the same reason. The operator and competitor tables keep the
+   collapsed table and no sticky column: they have not gained columns and
+   do not overflow. */
+.crmtable[data-reorder="deal"],
+.crmtable[data-reorder="investor"] { border-collapse: separate; border-spacing: 0; }
 /* A border set on a <tr> is not painted in a SEPARATE table — only a
    collapsed one draws it — so the row rules that separate one deal from
    the next vanish the moment the line above is added. Same line, moved
    onto the cells, where it paints in both modes. */
-.crmtable[data-reorder="deal"] tbody tr { border-bottom: 0; }
-.crmtable[data-reorder="deal"] tbody td { border-bottom: 1px solid var(--rule); }
+.crmtable[data-reorder="deal"] tbody tr,
+.crmtable[data-reorder="investor"] tbody tr { border-bottom: 0; }
+.crmtable[data-reorder="deal"] tbody td,
+.crmtable[data-reorder="investor"] tbody td { border-bottom: 1px solid var(--rule); }
 .crmtable[data-reorder="deal"] th.crm-actions,
-.crmtable[data-reorder="deal"] td.crm-actions {
+.crmtable[data-reorder="deal"] td.crm-actions,
+.crmtable[data-reorder="investor"] th.crm-actions,
+.crmtable[data-reorder="investor"] td.crm-actions {
   position: sticky; right: 0; z-index: 1;
   background: var(--alice);
   padding-left: 16px;
   box-shadow: -10px 0 10px -10px rgba(45, 58, 81, 0.18);
 }
-.crmtable[data-reorder="deal"] tbody tr:hover td.crm-actions { background: #DBE5EF; }
+.crmtable[data-reorder="deal"] tbody tr:hover td.crm-actions,
+.crmtable[data-reorder="investor"] tbody tr:hover td.crm-actions { background: #DBE5EF; }
 
 /* NO min-width of its own, and that is the point. The workspace these
    tables sit in is 1240px wide with 56px gutters, so the widest they are
@@ -1909,6 +1926,11 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
 .crm-tag--type     { border-color: rgba(45, 58, 81, .28); color: var(--deep-space); }
 .crm-tag--strategy { border-color: rgba(138, 90, 59, .35); color: #8A5A3B; }
 .crm-tag--market   { border-color: rgba(90, 100, 119, .3); color: var(--muted); }
+/* Materials the investor holds. Green and oak rather than a new colour of
+   their own, because those are already what Current and Superseded mean on
+   a send — the list should not teach a second palette for the same fact. */
+.crm-tag--material { border-color: rgba(29, 111, 66, .35); color: #1D6F42; }
+.crm-tag--material.is-stale { border-color: rgba(138, 90, 59, .4); color: #8A5A3B; }
 
 .op-empty { color: var(--muted); font-style: italic; font-size: .82rem; }
 
@@ -2977,7 +2999,9 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
      edge to pin to and nothing scrolls sideways, so all the rule leaves
      behind is a tinted block and a shadow sitting under three buttons. */
   .crmtable[data-reorder="deal"] th.crm-actions,
-  .crmtable[data-reorder="deal"] td.crm-actions {
+  .crmtable[data-reorder="deal"] td.crm-actions,
+  .crmtable[data-reorder="investor"] th.crm-actions,
+  .crmtable[data-reorder="investor"] td.crm-actions {
     position: static; background: none; box-shadow: none; padding-left: 0;
   }
   .crmtable tbody td.crm-actions .deal-rowaction,
@@ -7618,6 +7642,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
     { key: "stage",       label: "Stage" },
     { key: "check",       label: "Check size" },
     { key: "deals",       label: "Deals of interest" },
+    { key: "materials",   label: "Materials" },
     { key: "lastContact", label: "Last contact" },
     { key: "addedAt",     label: "Added" }
   ];
@@ -7734,6 +7759,34 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
     return out;
   }
 
+  /* What this investor HOLDS, for the list. latestSends() is the newest
+     send per material, which is the honest answer to "what have they got"
+     — every send is on their own record, and a column that repeated three
+     versions of one deck would say less, not more.
+
+     The stale count is the part worth acting on and it goes underneath,
+     the same way the record's own heading carries it. */
+  function sentTags(inv) {
+    var held = latestSends(inv);
+    if (!held.length) return '<span class="muted">—</span>';
+    var stale = staleSends(inv);
+    return held.slice(0, 2).map(function (sd) {
+      var old = sendState(sd).state === "Superseded";
+      return '<span class="crm-tag crm-tag--material' + (old ? " is-stale" : "") + '"' +
+        (old ? ' title="' + esc(sendState(sd).note) + '"' : "") + '>' +
+        esc(sendMaterialName(sd)) + '</span>';
+    }).join("") +
+      (held.length > 2 ? '<span class="crm-tag">+' + (held.length - 2) + '</span>' : "") +
+      (stale.length ? '<span class="crm-sub">' + stale.length + ' on an old version</span>' : "");
+  }
+
+  function sentSummary(inv) {
+    var held = latestSends(inv);
+    if (!held.length) return "Nothing sent";
+    var stale = staleSends(inv).length;
+    return countOf(held.length, "material") + (stale ? " · " + stale + " out of date" : " · all current");
+  }
+
   function staleSends(inv) {
     return latestSends(inv).filter(function (sd) {
       return sendState(sd).state === "Superseded";
@@ -7755,6 +7808,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
       case "stage":       return String(CRM_STAGES.indexOf(inv.stage));
       case "check":       return inv.checkSize.max || inv.checkSize.min || 0;
       case "deals":       return inv.deals.length;
+      case "materials":   return latestSends(inv).length;
       case "lastContact": return lastContact(inv) || "";
       case "addedAt":     return inv.addedAt || "";
       default:            return "";
@@ -7774,6 +7828,8 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
 
     var haystack = [inv.name, inv.type, inv.location, inv.mandate, inv.why,
                     inv.aum, inv.assetClasses.join(" "), inv.tags.join(" "), inv.deals.join(" "),
+                    // Searchable by what they hold: "who has the Q2 deck?"
+                    (inv.sends || []).map(sendMaterialName).join(" "),
                     inv.contacts.map(function (c) { return (c.name || "") + " " + (c.email || ""); }).join(" "),
                     inv.research.map(function (r) { return r.note; }).join(" "),
                     inv.conversations.map(function (c) {
@@ -7882,6 +7938,10 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
                     ' placeholder="$3m–$6m"')],
           ["Deals of interest", RowEdit.text("deals", inv.deals.join(", "),
                     ' list="crmDealNames" placeholder="Comma separated"')],
+          /* Read off the send log rather than typed. A box here would be a
+             box that either lies or quietly rewrites history — a material
+             is recorded as sent, on the record's own panel. */
+          ["Materials", RowEdit.stat(sentSummary(inv))],
           // Read off the newest conversation rather than typed, so it is
           // shown in its slot and not offered as a box.
           ["Last contact", RowEdit.stat(last || "Never")],
@@ -7906,6 +7966,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
         '<td><span class="crm-pill" data-stage="' + esc(inv.stage) + '">' + esc(inv.stage) + '</span></td>' +
         '<td>' + (checkText(inv) ? esc(checkText(inv)) : '<span class="muted">—</span>') + '</td>' +
         '<td>' + deals + '</td>' +
+        '<td>' + sentTags(inv) + '</td>' +
         '<td>' + (last
           ? esc(last) + note +
             '<span class="crm-sub">' + inv.conversations.length + ' logged</span>'
