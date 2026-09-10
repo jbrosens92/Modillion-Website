@@ -2350,6 +2350,10 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
   gap: 18px 24px;
 }
 .crm-field { display: flex; flex-direction: column; }
+/* display:flex above outranks the browser's own [hidden] rule, so a field
+   hidden by the attribute would otherwise stay on screen. Same reason
+   every other block on this page carries one of these. */
+.crm-field[hidden] { display: none; }
 .crm-field--wide { grid-column: 1 / -1; }
 .crm-field label {
   font-size: .66rem; letter-spacing: .14em; text-transform: uppercase;
@@ -8097,12 +8101,23 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
         '</tbody></table></div>'
       : '<p class="mat-empty">Nothing recorded as sent to ' + esc(inv.name) + ' yet.</p>';
 
-    /* No register, no form. Offering boxes that cannot be filled in
-       reads as something being broken; saying what is missing and
-       where to add it does not. */
-    var form = live.length
-      ? '<div class="rec-form">' +
+    /* THE FORM IS ALWAYS DRAWN, and it can register what it needs as it
+       goes: "＋ New material" and "＋ New version" are options on the two
+       pickers, and choosing either opens a box beside it. This started
+       as a dead end — an empty register meant a panel with no boxes at
+       all and a button that sent you to another view — and the version
+       half is the commoner case anyway: you have just mailed a cut that
+       nobody has written down yet, and crossing to the register, adding
+       it and coming back is how it ends up not being logged.
+
+       What gets created is the SAME record the register would create,
+       through the same two methods. This is a shortcut into the
+       register, not a second, quieter way to keep materials. */
+    var form = '<div class="rec-form">' +
           '<h4>Log something sent</h4>' +
+          (live.length ? "" :
+            '<p class="mat-empty">Nothing is on the materials register yet — name what ' +
+            'you sent below and it is added to the register as you record it.</p>') +
           '<div class="rec-form__grid">' +
             '<div class="crm-field">' +
               '<label for="sendMaterial">Material</label>' +
@@ -8110,12 +8125,26 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
                 live.map(function (m) {
                   return '<option value="' + esc(m.id) + '">' + esc(m.name) + '</option>';
                 }).join("") +
+                '<option value="__new">＋ New material…</option>' +
               '</select>' +
+            '</div>' +
+            '<div class="crm-field" id="sendNewMaterialField" hidden>' +
+              '<label for="sendNewMaterial">Name it</label>' +
+              '<input type="text" id="sendNewMaterial" autocomplete="off" ' +
+                'placeholder="GP Fund I deck">' +
+              '<span class="crm-field__note">Added to the register when you record this.</span>' +
             '</div>' +
             '<div class="crm-field">' +
               '<label for="sendVersion">Version</label>' +
-              '<select id="sendVersion"></select>' +
-              '<span class="crm-field__note">Defaults to the current one.</span>' +
+              '<select id="sendVersion" data-send-version></select>' +
+              '<span class="crm-field__note" id="sendVersionNote"></span>' +
+            '</div>' +
+            '<div class="crm-field" id="sendNewVersionField" hidden>' +
+              '<label for="sendNewVersion">Call it</label>' +
+              '<input type="text" id="sendNewVersion" autocomplete="off" placeholder="v3, or Q3 2026">' +
+              '<input type="date" id="sendNewVersionDate" value="' +
+                new Date().toISOString().slice(0, 10) + '">' +
+              '<span class="crm-field__note">Dated, so the register knows which cut is current.</span>' +
             '</div>' +
             '<div class="crm-field">' +
               '<label for="sendDate">When</label>' +
@@ -8148,14 +8177,6 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
             '<span class="crm-research__hint">Records what went out. It does not send ' +
               'anything — nothing on this page can reach a mailbox.</span>' +
           '</div>' +
-        '</div>'
-      : '<div class="rec-form">' +
-          '<h4>Log something sent</h4>' +
-          '<p class="mat-empty">There is nothing on the materials register yet, so there is ' +
-            'nothing to record a send of. Add the deck, the letter or the model first — ' +
-            'a material needs a name and one version.</p>' +
-          '<button type="button" class="dash-refresh dash-refresh--primary" ' +
-            'data-action="crm-materials">Open the register</button>' +
         '</div>';
 
     return '<div class="crm-section"><h3>Materials sent' +
@@ -8660,18 +8681,49 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
      open a document; what it knows is what somebody typed, which is
      the same bargain every other record on this dashboard makes.
      ============================================================ */
+  /* Redraws the version picker under whatever material is chosen, and
+     opens or closes the two "new" boxes beside them. Called on every
+     change of either picker and once when the record is drawn.
+
+     A NEW MATERIAL HAS NO VERSIONS, so it forces the new-version box
+     open: the register cannot say what anybody holds without one, and
+     the two things are created together or not at all. */
   function fillSendVersions() {
     var sel = $("sendMaterial"), out = $("sendVersion");
     if (!sel || !out) return;
-    var mat = Crm.material(sel.value);
+
+    var isNewMaterial = sel.value === "__new";
+    var mat = isNewMaterial ? null : Crm.material(sel.value);
     var versions = mat ? Crm.orderedVersions(mat) : [];
-    out.innerHTML = versions.length
-      ? versions.map(function (v, i) {
-          return '<option value="' + esc(v.id) + '"' + (i === 0 ? " selected" : "") + '>' +
-                 esc(v.label) + (v.date ? " · " + esc(v.date) : "") +
-                 (i === 0 ? " — current" : "") + '</option>';
-        }).join("")
-      : '<option value="">No versions on the register yet</option>';
+
+    var newVersion = '<option value="__new"' + (versions.length ? "" : " selected") + '>' +
+                     '＋ New version…</option>';
+    out.innerHTML = versions.map(function (v, i) {
+      return '<option value="' + esc(v.id) + '"' + (i === 0 ? " selected" : "") + '>' +
+             esc(v.label) + (v.date ? " · " + esc(v.date) : "") +
+             (i === 0 ? " — current" : "") + '</option>';
+    }).join("") + newVersion;
+
+    var nameField = $("sendNewMaterialField");
+    if (nameField) nameField.hidden = !isNewMaterial;
+    var versionField = $("sendNewVersionField");
+    if (versionField) versionField.hidden = out.value !== "__new";
+
+    /* "Defaults to the current one" is a lie when there is no current
+       one — which is the state anybody meeting this form for the first
+       time is in. */
+    var note = $("sendVersionNote");
+    if (note) {
+      note.textContent = versions.length
+        ? "Defaults to the current one."
+        : "None registered — name the cut you sent.";
+    }
+  }
+
+  // The version picker's own change: only the second box to toggle.
+  function syncNewVersionField() {
+    var out = $("sendVersion"), field = $("sendNewVersionField");
+    if (out && field) field.hidden = out.value !== "__new";
   }
 
   // The newest send of one material PER INVESTOR — who holds it, and
@@ -9152,19 +9204,81 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
     toast("Deleted " + name + ".");
   }
 
-  // From the investor record: one material, one investor.
+  /* From the investor record: one material, one investor — registering
+     the material and the version first if the form was told to.
+
+     EVERYTHING IS CHECKED BEFORE ANYTHING IS CREATED, and that order is
+     the whole of this function's care. It used to create the material,
+     then discover the version box was empty and refuse the save — which
+     left a material with no versions sitting on the SHARED register for
+     a save that never happened, and pushed it to everyone else. A form
+     that is refused must leave nothing behind.
+     -------------------------------------------------------------- */
   function logSendFromInvestor(invId) {
     var inv = Crm.get(invId);
     if (!inv) return;
+
+    // ---- read and check, creating nothing ----
     var materialId = formValue("sendMaterial");
-    var versionId = formValue("sendVersion");
-    var mat = Crm.material(materialId);
-    if (!mat) { toast("Pick a material first."); return; }
-    if (!versionId) {
-      toast("“" + mat.name + "” has no versions yet, so there is nothing to record as sent. " +
-            "Add one on the register.");
+    var wantsNewMaterial = materialId === "__new";
+    var newName = formValue("sendNewMaterial");
+
+    if (wantsNewMaterial && !newName) {
+      toast("Name the material, or pick one from the list.");
+      if ($("sendNewMaterial")) $("sendNewMaterial").focus();
       return;
     }
+
+    /* A name already on the register is that material, not an error.
+       Refusing it here would be technically right and practically
+       useless — somebody typing a name that already exists means the
+       one that already exists. */
+    var mat = wantsNewMaterial
+      ? (Crm.materials().filter(function (m) {
+          return m.name.toLowerCase() === newName.toLowerCase();
+        })[0] || null)
+      : Crm.material(materialId);
+
+    if (!wantsNewMaterial && !mat) { toast("Pick a material first."); return; }
+
+    var versionId = formValue("sendVersion");
+    // A material about to be created carries no versions, so one has to
+    // be named whatever the picker says.
+    var wantsNewVersion = wantsNewMaterial || versionId === "__new" || !versionId;
+    var newLabel = formValue("sendNewVersion");
+
+    if (wantsNewVersion && !newLabel) {
+      toast("Call the version something — v3, or Q3 2026 — so the register knows which " +
+            "cut " + inv.name + " is holding.");
+      if ($("sendNewVersion")) $("sendNewVersion").focus();
+      return;
+    }
+
+    // ---- everything checked; now write, in order ----
+    var registered = false;
+    if (!mat) {
+      var made = Crm.createMaterial({ name: newName });
+      if (!made || made === "duplicate") { toast("Could not add “" + newName + "”."); return; }
+      mat = made;
+      registered = true;
+    }
+
+    if (wantsNewVersion) {
+      var added = Crm.addVersion(mat.id, {
+        label: newLabel,
+        date: formValue("sendNewVersionDate") || formValue("sendDate")
+      });
+      if (added === "duplicate") {
+        // Already registered under that label: use it rather than refusing.
+        added = Crm.orderedVersions(Crm.material(mat.id)).filter(function (v) {
+          return v.label.toLowerCase() === newLabel.toLowerCase();
+        })[0];
+      }
+      if (!added) { toast("Could not add that version."); return; }
+      mat = Crm.material(mat.id);
+      versionId = added.id;
+    }
+
     var version = Crm.versionOf(mat, versionId);
     Crm.addSend(invId, {
       materialId: mat.id, versionId: versionId,
@@ -9174,7 +9288,8 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
     });
     renderCrm();
     renderInvestor(invId);
-    toast("Recorded — " + mat.name + (version ? " " + version.label : "") + " to " + inv.name + ".");
+    toast("Recorded — " + mat.name + (version ? " " + version.label : "") + " to " + inv.name +
+          (registered ? ". " + mat.name + " is on the register now." : "."));
   }
 
   // From the material record: one version, as many investors as are ticked.
@@ -14475,6 +14590,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
      stops existing. Same arrangement as the Type box below. */
   document.addEventListener("change", function (e) {
     if (e.target.closest("[data-send-material]")) { fillSendVersions(); return; }
+    if (e.target.closest("[data-send-version]")) { syncNewVersionField(); return; }
   });
 
   document.addEventListener("change", function (e) {

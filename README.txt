@@ -960,10 +960,40 @@ Which version is current, decided mechanically:
   read on the day it went out, so a material later renamed or retired does not
   turn its own history blank.
 
+Registering as you go — 2026-09-10, and it REPLACES the two-step order the
+paragraphs below originally described:
+- IT USED TO BE A DEAD END. The panel on an investor record only drew a form when
+  the register already held something; with an empty register it showed an
+  explanation and a button that sent you to another view. So the first thing
+  anybody met was a screen with nothing to type into — which is where "I don't
+  see how to input which materials have been sent" came from, and it was a fair
+  reading of what was on screen.
+- Both pickers now carry a "＋ New material…" and a "＋ New version…" option, and
+  choosing either opens a box beside it. Name the material, call the version,
+  press Record it, and all three — material, version, send — are filed in one go.
+  The form is always drawn; the empty register just says so above it.
+- THE VERSION HALF IS THE COMMONER CASE and is the better reason for this. You
+  have just mailed a cut nobody has written down yet. Crossing to the register,
+  adding it, coming back and finding the investor again is exactly how a send
+  ends up not being logged at all.
+- What it creates is the SAME record the register creates, through the same two
+  methods. This is a shortcut into the register, not a second and quieter way of
+  keeping materials.
+- A name or a version label that already exists is REUSED rather than refused.
+  Somebody typing a name the register already holds means the one it holds, and
+  answering that with an error would be technically right and practically
+  useless. Matching is case-insensitive.
+- EVERYTHING IS CHECKED BEFORE ANYTHING IS CREATED, and that ordering is the
+  whole of the care in this path. The first cut of it created the material and
+  then discovered the version box was empty and refused the save — which left a
+  material with no versions on the SHARED register, pushed to everyone, for a
+  save that never happened. A form that is refused must leave nothing behind.
+
 Two ways in, because there are two shapes of the same act:
 - ON AN INVESTOR RECORD, between the research and the tasks: every send to that
   firm, newest first, with the version and the status, and an open form to record
-  another. The heading carries the count worth acting on — how many of the things
+  another — which can register the material and the version as it goes, per the
+  section above. The heading carries the count worth acting on — how many of the things
   they hold are behind. Every send is listed rather than the newest per document:
   "we sent v1 in March and v3 in July" is what explains a question about a number
   that is no longer in the deck.
@@ -1073,6 +1103,15 @@ hand-written send carrying no version id:
   they are in the localStorage overlay, which is what that fallback is for.
 - At 400px the tables kept their per-cell labels and the page did not scroll
   sideways.
+- Registering as you go, against a register with nothing in it at all: the form
+  was drawn with both boxes open, refused an unnamed material and then an unnamed
+  version, and — the case that found the bug — LEFT NOTHING ON THE REGISTER after
+  each refusal. One further click filed the material, the version and the send
+  together, and the register then showed the material with one holder.
+  Asking for a new version of a material that already existed worked from the
+  same form, and the investor holding the older cut turned Superseded. A material
+  name retyped in different case, with a version label the material already had,
+  produced no second material and no second version.
 - WHAT IS NOT COVERED: the shared store, for the same reason as everything else
   here — there is no Upstash to point at from this machine. The union merge for
   sends is the one conversations already use and the version merge is the one
