@@ -914,3 +914,167 @@ in those deltas. Re-seeding mentions-data.json from this folder after the
 blast has been running will discard what it found. publish.py prints the
 mention count in the local file for exactly this reason — a zero there is the
 thing to notice before you send it, not after.
+
+
+Materials and versions — what has been sent to whom (dashboard.html, Investor CRM
+tab) — added 2026-09-10:
+- ONE QUESTION, asked constantly and until now answered by searching somebody's
+  sent items: which document did this investor get, WHICH VERSION of it, and are
+  they still holding the current cut. Three pieces answer it — a register of
+  materials, each with its versions; a SEND, which is one version going to one
+  investor on one date; and a status pill on every send that says Current or
+  Superseded.
+- IT IS NOT A SIXTH RECORD SET and it is not a documents tab coming back. It
+  lives inside the crm set, alongside the investors, and the register sits behind
+  a "Materials" button on the Investor CRM toolbar as a third view of that tab.
+  Two reasons, and the first is the one that decided it: a material is here
+  BECAUSE it goes to investors — a tab of its own would invite a register of
+  documents nobody has sent anybody, which is exactly what "No documents at all"
+  above threw out. The second is mechanical: a send names a version, so the send
+  and the version must be published together or a publish can land half of one.
+- NOTHING HERE HOLDS A FILE. A version is a label, a date, a note and — if you
+  have one — a link to wherever the file actually lives. The page does not read
+  OneDrive, does not upload anything and cannot open a document. Same bargain
+  every other record on this dashboard makes.
+- NOTHING HERE SENDS ANYTHING either, and both forms say so out loud. Recording a
+  send is a note that something went out; the page has no route to a mailbox.
+
+Which version is current, decided mechanically:
+- THE NEWEST DATE WINS, ties broken by the order the versions were added, so the
+  later cut takes it. A version with no date sorts LAST whichever way the list is
+  read and therefore cannot be current — an undated version is an absent date,
+  not an early one, the same rule the deal columns follow. The add form fills
+  today's date in for exactly this reason.
+- Adding a version does not always make it current: an older date deliberately
+  does not jump the queue. The toast says which way it landed rather than leaving
+  it to be discovered from a pill somewhere else on the page.
+- The status pill carries its own attribute, [data-sent], rather than borrowing
+  [data-stage] or [data-overlap]. Those two are judgements somebody wrote down;
+  this is a comparison of two version ids and nothing else, and the day one gets
+  read as the other is the day it stops meaning anything. Where the register
+  cannot answer — a hand-written send naming no version — it says Unknown rather
+  than guessing either way.
+- A SEND POINTS AT A VERSION ID, NEVER A LABEL. The label is the field people
+  rewrite ("v3" becomes "v3 final"), and a link that follows a rename is a link
+  that quietly relinks itself. The names are carried alongside anyway, as they
+  read on the day it went out, so a material later renamed or retired does not
+  turn its own history blank.
+
+Two ways in, because there are two shapes of the same act:
+- ON AN INVESTOR RECORD, between the research and the tasks: every send to that
+  firm, newest first, with the version and the status, and an open form to record
+  another. The heading carries the count worth acting on — how many of the things
+  they hold are behind. Every send is listed rather than the newest per document:
+  "we sent v1 in March and v3 in July" is what explains a question about a number
+  that is no longer in the deck.
+- ON A MATERIAL, a tick-list of investors with what each of them currently holds
+  beside their name. Pick a version, tick the people, and it files one send
+  against each of their records. One document going to eleven people at once is
+  the case this feature exists for, and logging it eleven times on eleven records
+  is how it would stop being logged at all.
+- The register's list shows, per material, the current version, how many
+  investors have it and how many of those are behind. That last column is the
+  whole point of the tab.
+
+Delete, retire, withdraw — three different things:
+- RETIRE is for a document that has had its day. It drops out of the send pickers
+  and stays on the register, because a deck the firm has stopped sending is still
+  the deck eleven investors are holding.
+- DELETE is refused the moment anything has gone out from a material, and so is
+  removing a version anything points at. Deleting either would leave a log saying
+  an investor was sent something the register can no longer describe, which is
+  worse than an unused row on a list. The refusal says to retire it instead.
+  A material that has never been sent deletes on the second click, like every
+  other delete here.
+- WITHDRAWING A SEND is a tombstone on the log entry, not a claim that the email
+  was unsent. What went out, went out; this records that the note about it was
+  wrong. Same rule a withdrawn conversation follows.
+
+How it merges, which is the reason two people can use it at once:
+- A send is appended to the overlay under the investor's id and unioned BY SEND
+  ID — the same arrangement conversations have had since the beginning, and for
+  the same reason: two people mailing two investors on the same morning is the
+  expected case, not the awkward one.
+- A version goes in as a patch carrying the whole version list, unioned BY
+  VERSION ID — the arrangement the Competitor Tracker's articles use. Two people
+  filing two versions the same morning end with both.
+- Sends and versions that arrive in a hand-written crm-data.json with no id are
+  given a STABLE one derived from their own contents, so re-reading the same file
+  produces the same ids and does not double anything. Same hash convId has used
+  for conversations.
+- Both carry the standing overlay caveat: an overlay can only ever add, so a
+  version or material removed here comes back if another browser still has it
+  queued. "Publish to team" is what settles it. Read "Why concurrent editing
+  needs no locking" above before being surprised by that.
+
+Where it comes out:
+- crm-data.json now carries `materials` at the top level and `sends` on each
+  investor. Download and "Publish to team" both include them; neither needed a
+  change, because both go through toFile().
+- "Export Excel" on the Investor CRM has FIVE sheets rather than the three the
+  section above describes. Materials is one row PER VERSION — the question that
+  workbook gets opened to answer is "which cut is current and how many people
+  have it", and a material collapsed to one row cannot answer either half.
+  Materials sent is one row per send, with the same Current / Superseded status
+  the page shows, newest first.
+- The CRM search box matches what has been sent, so "who has the GP deck" finds
+  the firms from the list rather than needing the register at all.
+- /api/records needed nothing. It stores two documents per set and unions the
+  deltas; it still does not understand a record.
+
+What the agent can and cannot do with it:
+- The Claude-backed chat READS it: context.materials is the register with each
+  material's versions and which is current, and every investor carries their
+  sends with the status already computed. It can answer who is holding an old
+  deck, when somebody was last sent anything, and which version went out.
+- It CANNOT file one, and that is deliberate rather than unfinished. A send is a
+  claim about something that happened outside this page — an email nobody here
+  can see — and the two forms take four fields each. The system prompt says so,
+  so it proposes going to the form rather than an action that does not exist.
+- THE IN-PAGE ENGINE — the one that answers when /api/agent is not deployed —
+  knows nothing about materials and will say it cannot find that rather than
+  answering. Same gap the operator and competitor sets have on that engine.
+
+Known limits, deliberate:
+- "Sent" means "recorded as sent". Nothing reconciles against a real mailbox, so
+  a deck mailed without being logged is a deck this page believes nobody has.
+  That is the same honest limit the conversation log has always had, and the
+  reason both forms are open on the record rather than behind a button.
+- A version's link is a link. It is not checked, not fetched and not previewed.
+- The status pill compares the version SENT against the version CURRENT. It says
+  nothing about whether the investor read it, and nothing about whether the newer
+  cut actually matters to them.
+- There is no per-investor "should have been sent this" list, so nobody is
+  flagged for never having been sent the deck at all — only for holding an old
+  one. The tick-list on a material is the nearest thing: it shows "nothing yet"
+  beside everyone who has not had it.
+
+Tested 2026-09-10, in Chromium against a local server, with a seeded
+crm-data.json holding two investors, one material at two versions and one
+hand-written send carrying no version id:
+- The register listed the material, its current version and its holders; opening
+  it drew the versions newest first with the top one badged Current.
+- Adding v3 dated later made it current; adding "v0 draft" dated January did NOT,
+  and the toast said which one still held it. A second "V3" was refused as a
+  duplicate on the label, case-insensitively.
+- Ticking both investors against v3 filed one send each, on their own records.
+  The holders table showed two investors, both Current; the "Every send" pile
+  under it showed all three sends, the hand-written one reading Unknown because
+  it names no version — which is the state that must not be guessed at.
+- On the investor record: the panel listed every send, the heading counted the
+  ones behind, logging v2 from the record produced a Superseded pill immediately,
+  and withdrawing a send took one row out and left the rest.
+- Removing a version that had gone out was refused; so was deleting the material.
+  Deleting a material that had never been sent went through on the second click.
+  Retire and restore both took, and the register showed the retired badge.
+- Both exports built: the workbook came out with the two new sheets, and the JSON
+  export carried `materials` with four versions and both sends on the investor.
+- A reload with the shared store unreachable kept every version and every send —
+  they are in the localStorage overlay, which is what that fallback is for.
+- At 400px the tables kept their per-cell labels and the page did not scroll
+  sideways.
+- WHAT IS NOT COVERED: the shared store, for the same reason as everything else
+  here — there is no Upstash to point at from this machine. The union merge for
+  sends is the one conversations already use and the version merge is the one
+  articles already use, so both are exercised paths; neither has been watched
+  end to end with two browsers against a real store.

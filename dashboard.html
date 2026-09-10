@@ -1972,18 +1972,87 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
    behind a button: pasting a link is the commonest thing anybody will
    do on this tab, and a form you have to reveal first is a form that
    gets skipped in favour of not recording it at all. */
-.comp-addart { margin-top: 20px; padding: 18px 20px; border: 1px solid var(--rule); border-radius: 4px; }
-.comp-addart > h4 {
+.comp-addart, .rec-form { margin-top: 20px; padding: 18px 20px; border: 1px solid var(--rule); border-radius: 4px; }
+.comp-addart > h4, .rec-form > h4 {
   font-family: var(--sans); font-size: .72rem; font-weight: 500;
   letter-spacing: .16em; text-transform: uppercase; color: var(--muted);
   margin: 0 0 14px;
 }
-.comp-addart__grid {
+.comp-addart__grid, .rec-form__grid {
   display: grid; gap: 14px 20px;
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   margin-bottom: 14px;
 }
-.comp-addart__grid .crm-field--wide { grid-column: 1 / -1; }
+.comp-addart__grid .crm-field--wide,
+.rec-form__grid .crm-field--wide { grid-column: 1 / -1; }
+
+/* Materials, versions and what has gone out ----------------------
+   The register of what the firm sends investors, and the record of
+   WHICH VERSION each of them actually holds. It hangs off the
+   Investor CRM rather than being a sixth tab, because a document
+   nobody has sent to anybody is not a thing this firm needs to
+   track — the send is the record, and the send belongs to an
+   investor.
+
+   THE STATUS PILL IS THE POINT OF THE FEATURE, so it gets its own
+   attribute rather than borrowing [data-stage] or [data-overlap].
+   Those two are judgements somebody wrote down; this is a
+   mechanical comparison of two version ids and nothing else, and
+   the day one starts being read as the other is the day the pill
+   stops meaning anything. Amber for superseded rather than red:
+   an investor holding last month's deck is a thing to fix, not a
+   thing that went wrong.
+   ---------------------------------------------------------------- */
+.crm-pill[data-sent="Current"]    { background: rgba(29, 111, 66, 0.12); color: #1D6F42; }
+.crm-pill[data-sent="Superseded"] { background: rgba(232, 214, 203, 0.55); color: #8A5A3B; }
+.crm-pill[data-sent="Unknown"]    { background: rgba(90, 100, 119, 0.1); color: var(--muted); }
+
+.mat-versions { list-style: none; margin: 0; padding: 0; }
+.mat-versions li {
+  padding: 0 0 16px 0;
+  margin-bottom: 16px;
+  border-bottom: 1px solid var(--rule);
+  font-size: .92rem;
+  line-height: 1.6;
+}
+.mat-versions li:last-child { border-bottom: 0; margin-bottom: 0; padding-bottom: 0; }
+.mat-versions__head { display: flex; justify-content: space-between; align-items: baseline; gap: 16px; }
+.mat-versions__label { font-weight: 500; color: var(--deep-space); }
+.mat-versions__meta { display: block; margin-top: 6px; font-size: .76rem; color: var(--muted); }
+.mat-versions__meta a { color: var(--steel); text-decoration: none; word-break: break-all; }
+.mat-versions__meta a:hover { text-decoration: underline; }
+.mat-versions__note { margin: 8px 0 0; color: var(--muted); font-size: .88rem; }
+.mat-empty { color: var(--muted); font-size: .88rem; margin: 0 0 14px; }
+
+/* Same button, same reason, as .comp-articles__drop: a per-row
+   withdrawal that must not read as a primary action. */
+.mat-drop {
+  appearance: none; background: none; border: 0; padding: 0;
+  font: inherit; font-size: .74rem; color: var(--muted);
+  cursor: pointer; white-space: nowrap;
+}
+.mat-drop:hover { color: #C0392B; }
+
+/* The investor tick-list on a material, for the case this feature
+   exists to serve: one document going to eleven people at once. */
+.mat-who {
+  display: grid; gap: 8px 20px;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  margin: 0 0 16px;
+}
+.mat-who label { display: flex; gap: 8px; align-items: baseline; font-size: .88rem; }
+.mat-who input { margin: 0; }
+.mat-who__sub { color: var(--muted); font-size: .76rem; }
+
+.mat-count { font-variant-numeric: tabular-nums; }
+.mat-stale { color: #8A5A3B; }
+
+/* The count on the toolbar's Materials button. .dash-tabs__count is
+   styled only inside the tab bar, and this is the same number in a
+   different place, so it is given the same quiet treatment here. */
+.dash-refresh .dash-tabs__count {
+  margin-left: 6px; color: var(--muted); font-variant-numeric: tabular-nums;
+}
 
 /* Investor detail */
 .dash-investor__head {
@@ -3290,6 +3359,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
             <input type="search" id="crmSearch" placeholder="Search investors, notes and conversations" autocomplete="off">
           </div>
           <button class="dash-refresh dash-refresh--primary" id="crmAddBtn">Add investor</button>
+          <button class="dash-refresh" id="crmMaterialsBtn">Materials<span class="dash-tabs__count" id="crmMaterialsCount"></span></button>
           <button class="dash-refresh" id="crmExportBtn">Export Excel</button>
           <button class="dash-refresh" id="crmPublishBtn">Publish to team</button>
           <button class="dash-refresh" id="crmSaveFileBtn">Download crm-data.json</button>
@@ -3336,6 +3406,21 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
             <span class="current" id="investorCrumb"></span>
           </nav>
           <div id="investorBody"></div>
+        </div>
+
+        <!-- Materials and versions — the register behind the sends
+             logged on each investor record. Third view on this tab
+             rather than a sixth workspace: it is only ever read as
+             "what have we sent, and who has the old one". -->
+        <div class="dash-investor" id="viewMaterials" hidden>
+          <nav class="dash-crumbs" aria-label="Breadcrumb">
+            <button type="button" data-action="crm-home">All investors</button>
+            <span class="sep">/</span>
+            <button type="button" data-action="crm-materials" id="materialsCrumbRoot">Materials</button>
+            <span class="sep" id="materialsCrumbSep" hidden>/</span>
+            <span class="current" id="materialsCrumb" hidden></span>
+          </nav>
+          <div id="materialsBody"></div>
         </div>
 
       </div><!-- /#wsCrm -->
@@ -5811,6 +5896,16 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
                            "Hospitality", "Mixed-use", "Student housing", "Self storage",
                            "Data centres", "Senior housing", "Land"];
 
+  /* WHAT THE FIRM SENDS, and how it goes out. Starting vocabularies
+     rather than closed lists — a kind typed onto a material joins the
+     picker on the next render, the same way a market typed onto an
+     operator does. */
+  var MATERIAL_KINDS = ["Pitch deck", "Investor letter", "Quarterly update",
+                        "Financial model", "Investment memo", "DDQ", "Track record",
+                        "Subscription documents", "Legal", "Market study", "Other"];
+
+  var SEND_CHANNELS = ["Email", "Data room", "Meeting", "Post", "Other"];
+
   // Empty. Real records arrive from the shared store, or from crm-data.json behind it.
   var CRM_FALLBACK = {
     generatedAt: null,
@@ -5826,6 +5921,8 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
     var OVERLAY_KEY = "modillion-crm-overlay";
     var overlay = { patches: {}, conversations: {}, created: [],
                     convPatches: {}, convRemoved: {},
+                    sends: {}, sendPatches: {}, sendRemoved: {},
+                    materialsAdded: [], materialPatches: {}, materialsRemoved: {},
                     dealStatus: {}, dealsAdded: [], dealsDropped: {}, dealsHidden: {},
                     archived: {}, removed: {},
                     learned: { aliases: {} } };
@@ -5840,6 +5937,12 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
         overlay.created       = o.created || [];
         overlay.convPatches   = o.convPatches || {};
         overlay.convRemoved   = o.convRemoved || {};
+        overlay.sends            = o.sends || {};
+        overlay.sendPatches      = o.sendPatches || {};
+        overlay.sendRemoved      = o.sendRemoved || {};
+        overlay.materialsAdded   = o.materialsAdded || [];
+        overlay.materialPatches  = o.materialPatches || {};
+        overlay.materialsRemoved = o.materialsRemoved || {};
         overlay.dealStatus    = o.dealStatus || {};
         overlay.dealsAdded    = o.dealsAdded || [];
         overlay.dealsDropped  = o.dealsDropped || {};
@@ -5873,6 +5976,8 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
       if (doc) base = doc;
       overlay = { patches: {}, conversations: {}, created: [],
                  convPatches: {}, convRemoved: {},
+                 sends: {}, sendPatches: {}, sendRemoved: {},
+                 materialsAdded: [], materialPatches: {}, materialsRemoved: {},
                  dealStatus: {}, dealsAdded: [], dealsDropped: {}, dealsHidden: {},
                  archived: {}, removed: {},
                  learned: { aliases: {} } };
@@ -5887,6 +5992,12 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
              Object.keys(overlay.conversations).length > 0 ||
              Object.keys(overlay.convPatches).length > 0 ||
              Object.keys(overlay.convRemoved).length > 0 ||
+             Object.keys(overlay.sends).length > 0 ||
+             Object.keys(overlay.sendPatches).length > 0 ||
+             Object.keys(overlay.sendRemoved).length > 0 ||
+             overlay.materialsAdded.length > 0 ||
+             Object.keys(overlay.materialPatches).length > 0 ||
+             Object.keys(overlay.materialsRemoved).length > 0 ||
              Object.keys(overlay.dealStatus).length > 0 ||
              overlay.dealsAdded.length > 0 ||
              Object.keys(overlay.dealsDropped).length > 0 ||
@@ -5901,13 +6012,46 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
     // One that arrived in crm-data.json may not have one, and patches are
     // keyed by id — so derive a stable one from its own contents. Same file
     // in, same id out, every reload.
-    function convId(invId, entry, index) {
-      if (entry.id) return entry.id;
-      var seed = invId + "|" + (entry.date || "") + "|" + (entry.channel || "") + "|" +
-                 String(entry.summary || "").slice(0, 120) + "|" + index;
+    function stableId(prefix, seed) {
       var h = 5381;
       for (var i = 0; i < seed.length; i++) h = ((h * 33) ^ seed.charCodeAt(i)) >>> 0;
-      return "c-file-" + h.toString(36);
+      return prefix + h.toString(36);
+    }
+
+    function convId(invId, entry, index) {
+      if (entry.id) return entry.id;
+      return stableId("c-file-", invId + "|" + (entry.date || "") + "|" + (entry.channel || "") +
+                      "|" + String(entry.summary || "").slice(0, 120) + "|" + index);
+    }
+
+    /* A SEND is one delivery of one version of one material to one
+       investor. It points at a version by ID, never by label, because
+       the label is the field people rewrite — "v3" becomes "v3 final"
+       — and a link that follows a rename is a link that quietly
+       relinks itself. The names are carried alongside anyway, as they
+       read ON THE DAY IT WENT OUT: the register says what a version
+       is now, the send says what was recognisable then, and a material
+       later renamed or retired must not turn its own history blank. */
+    function normaliseSend(invId, sd, index) {
+      return {
+        id: sd.id || stableId("s-file-", invId + "|" + (sd.materialId || "") + "|" +
+                              (sd.versionId || "") + "|" + (sd.date || "") + "|" + index),
+        materialId: sd.materialId || "",
+        versionId: sd.versionId || "",
+        material: sd.material || "",
+        version: sd.version || "",
+        date: sd.date || "",
+        channel: sd.channel || "",
+        to: sd.to || "",
+        by: sd.by || "",
+        note: sd.note || "",
+        loggedAt: sd.loggedAt || ""
+      };
+    }
+
+    function signedInName() {
+      var who = typeof signedInUser === "function" ? signedInUser() : null;
+      return who ? (who.name || who.username || "") : "";
     }
 
     function normalise(inv) {
@@ -5948,6 +6092,10 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
           Object.keys(c).forEach(function (k) { copy[k] = c[k]; });
           copy.id = convId(inv.id, c, i);
           return copy;
+        }),
+        // What has been sent to them, and which version of it.
+        sends: (inv.sends || []).map(function (sd, i) {
+          return normaliseSend(inv.id, sd, i);
         })
       };
     }
@@ -6003,6 +6151,19 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
         });
       });
 
+      // Sends follow conversations exactly: added here, corrected by a
+      // patch against the id, withdrawn by a tombstone. Nothing about a
+      // send is rewritten in the file it came from.
+      Object.keys(overlay.sends).forEach(function (id) {
+        var rec = byId[id];
+        if (!rec) return;
+        var seen = {};
+        rec.sends.forEach(function (sd) { seen[sd.id] = 1; });
+        overlay.sends[id].forEach(function (sd, i) {
+          if (!seen[sd.id]) rec.sends.push(normaliseSend(id, sd, rec.sends.length + i));
+        });
+      });
+
       // A conversation that came from the file can still be corrected or
       // withdrawn. The overlay holds the correction, not a rewritten entry —
       // re-loading a newer crm-data.json keeps the correction on top.
@@ -6018,6 +6179,20 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
             return copy;
           });
         rec.conversations.sort(function (a, b) {
+          return String(b.date || "").localeCompare(String(a.date || ""));
+        });
+
+        rec.sends = rec.sends
+          .filter(function (sd) { return !overlay.sendRemoved[sd.id]; })
+          .map(function (sd) {
+            var patch = overlay.sendPatches[sd.id];
+            if (!patch) return sd;
+            var copy = {};
+            Object.keys(sd).forEach(function (k) { copy[k] = sd[k]; });
+            Object.keys(patch).forEach(function (k) { copy[k] = patch[k]; });
+            return copy;
+          });
+        rec.sends.sort(function (a, b) {
           return String(b.date || "").localeCompare(String(a.date || ""));
         });
       });
@@ -6156,6 +6331,293 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
         return String(b.entry.date || "").localeCompare(String(a.entry.date || ""));
       });
       return out;
+    }
+
+    /* ---- what has been sent, and which version of it -------------
+       ADDING A SEND IS ITS OWN METHOD rather than a patch on the
+       record, for the same reason logging a conversation is: two
+       people mailing two investors on the same morning is the
+       expected case, and a patch that carries the whole list would
+       let the second overwrite the first. Each addition is one entry
+       unioned by id.
+       -------------------------------------------------------------- */
+    function addSend(investorId, entry) {
+      var inv = byId(investorId);
+      if (!inv) return null;
+      var stamped = normaliseSend(investorId, Object.assign({
+        id: "s-" + Date.now().toString(36) + "-" + Math.random().toString(36).slice(2, 7),
+        by: signedInName(),
+        loggedAt: new Date().toISOString().slice(0, 10)
+      }, entry), inv.sends.length);
+      overlay.sends[investorId] = overlay.sends[investorId] || [];
+      overlay.sends[investorId].push(stamped);
+      writeOverlay();
+      rebuild();
+      return stamped;
+    }
+
+    /* SEVERAL AT ONCE — the tick-list on a material, where one version
+       goes to eleven people. Written as one overlay push rather than
+       eleven, for the same reason addArticles() exists on the
+       Competitor Tracker: eleven pushes is eleven round trips and
+       eleven auto-publish timers for what a person did once. */
+    function addSends(entries) {
+      var out = [], stamp = Date.now().toString(36), who = signedInName();
+      var today = new Date().toISOString().slice(0, 10);
+      (entries || []).forEach(function (entry, i) {
+        var inv = byId(entry.investorId);
+        if (!inv) return;
+        var stamped = normaliseSend(inv.id, Object.assign({
+          id: "s-" + stamp + "-" + i + "-" + Math.random().toString(36).slice(2, 6),
+          by: who,
+          loggedAt: today
+        }, entry), inv.sends.length + i);
+        overlay.sends[inv.id] = overlay.sends[inv.id] || [];
+        overlay.sends[inv.id].push(stamped);
+        out.push({ investorId: inv.id, investorName: inv.name, entry: stamped });
+      });
+      if (!out.length) return out;
+      writeOverlay();
+      rebuild();
+      return out;
+    }
+
+    function patchSend(sendId, fields) {
+      overlay.sendPatches[sendId] = overlay.sendPatches[sendId] || {};
+      Object.keys(fields).forEach(function (k) { overlay.sendPatches[sendId][k] = fields[k]; });
+      writeOverlay();
+      rebuild();
+    }
+
+    // A tombstone, not a delete — the same rule a withdrawn
+    // conversation follows. What went out, went out; this records
+    // that the log entry was wrong, not that the email was unsent.
+    function removeSend(sendId) {
+      overlay.sendRemoved[sendId] = new Date().toISOString().slice(0, 10);
+      writeOverlay();
+      rebuild();
+    }
+
+    // Every send across every investor, newest first, each carrying the
+    // record it belongs to. What the material register reads.
+    function sendsAll() {
+      var out = [];
+      merged.forEach(function (inv) {
+        inv.sends.forEach(function (sd) {
+          out.push({ entry: sd, investorId: inv.id, investorName: inv.name,
+                     archived: archivedNow(inv) });
+        });
+      });
+      out.sort(function (a, b) {
+        return String(b.entry.date || "").localeCompare(String(a.entry.date || ""));
+      });
+      return out;
+    }
+
+    function sendsForMaterial(materialId) {
+      return sendsAll().filter(function (row) { return row.entry.materialId === materialId; });
+    }
+
+    function sendsForVersion(versionId) {
+      return sendsAll().filter(function (row) { return row.entry.versionId === versionId; });
+    }
+
+    /* ---- the register of materials --------------------------------
+       A MATERIAL is a thing the firm sends — the GP fund deck, the
+       quarterly letter, the model. A VERSION is one cut of it, and it
+       is the version, not the material, that a send points at.
+
+       It lives in the crm set rather than in a sixth record set of
+       its own, deliberately. A material exists here BECAUSE it gets
+       sent to investors: the register and the sends are read
+       together, published together and downloaded together, and
+       splitting them across two stores would mean a publish that
+       could land half of a send.
+       -------------------------------------------------------------- */
+    function normaliseVersion(matId, v, index) {
+      return {
+        id: v.id || stableId("mv-file-", matId + "|" + (v.label || "") + "|" +
+                             (v.date || "") + "|" + index),
+        label: String(v.label || "").trim(),
+        date: v.date || "",
+        note: v.note || "",
+        url: v.url || "",
+        addedAt: v.addedAt || "",
+        addedBy: v.addedBy || ""
+      };
+    }
+
+    function normaliseMaterial(m) {
+      var id = m.id || slug(m.name || "") || "material";
+      return {
+        id: id,
+        name: String(m.name || "").trim(),
+        kind: m.kind || "",
+        note: m.note || "",
+        owner: m.owner || "",
+        // Retired, not archived, and not deleted: a deck the firm has
+        // stopped sending is still the deck eleven investors are holding.
+        // It drops out of the pickers and stays on the register.
+        retired: !!m.retired,
+        addedAt: m.addedAt || "",
+        addedBy: m.addedBy || "",
+        versions: (m.versions || []).map(function (v, i) { return normaliseVersion(id, v, i); })
+      };
+    }
+
+    function materialsAll() {
+      var out = [], at = {};
+      function take(m) {
+        if (!m || overlay.materialsRemoved[m.id]) return;
+        var rec = normaliseMaterial(m);
+        if (!rec.name) return;
+        if (at[rec.id] !== undefined) { out[at[rec.id]] = rec; return; }
+        at[rec.id] = out.length;
+        out.push(rec);
+      }
+      ((base && base.materials) || []).forEach(take);
+      overlay.materialsAdded.forEach(take);
+      out = out.map(function (rec) {
+        var patch = overlay.materialPatches[rec.id];
+        return patch ? normaliseMaterial(Object.assign({}, rec, patch)) : rec;
+      });
+      out.sort(function (a, b) { return a.name.localeCompare(b.name); });
+      return out;
+    }
+
+    function material(id) {
+      var list = materialsAll();
+      for (var i = 0; i < list.length; i++) if (list[i].id === id) return list[i];
+      return null;
+    }
+
+    /* NEWEST FIRST, and a blank date sorts LAST whichever way it is
+       read — an undated version is an absent date, not an early one,
+       the same rule the deal columns follow. Two cuts on one date fall
+       back to the order they were added, so the later one wins. Which
+       makes the first entry the current version, and that is the only
+       thing the whole feature actually compares against. */
+    function orderedVersions(mat) {
+      var order = {};
+      (mat && mat.versions || []).forEach(function (v, i) { order[v.id] = i; });
+      return ((mat && mat.versions) || []).slice().sort(function (a, b) {
+        if (a.date === b.date) return order[b.id] - order[a.id];
+        if (!a.date) return 1;
+        if (!b.date) return -1;
+        return a.date < b.date ? 1 : -1;
+      });
+    }
+
+    function currentVersion(mat) {
+      return orderedVersions(mat)[0] || null;
+    }
+
+    function versionOf(mat, versionId) {
+      var list = (mat && mat.versions) || [];
+      for (var i = 0; i < list.length; i++) if (list[i].id === versionId) return list[i];
+      return null;
+    }
+
+    function materialId(name) {
+      var s2 = slug(name) || "material";
+      var candidate = s2, i = 2;
+      while (material(candidate)) { candidate = s2 + "-" + i; i++; }
+      return candidate;
+    }
+
+    function createMaterial(fields) {
+      var name = String(fields.name || "").trim();
+      if (!name) return null;
+      if (materialsAll().some(function (m) { return m.name.toLowerCase() === name.toLowerCase(); })) {
+        return "duplicate";
+      }
+      var rec = normaliseMaterial({
+        id: materialId(name),
+        name: name,
+        kind: fields.kind || "",
+        note: fields.note || "",
+        owner: fields.owner || "",
+        addedAt: new Date().toISOString().slice(0, 10),
+        addedBy: signedInName(),
+        versions: []
+      });
+      delete overlay.materialsRemoved[rec.id];
+      overlay.materialsAdded.push(rec);
+      writeOverlay();
+      return material(rec.id);
+    }
+
+    function patchMaterial(id, fields) {
+      if (!material(id)) return null;
+      overlay.materialPatches[id] = overlay.materialPatches[id] || {};
+      Object.keys(fields).forEach(function (k) { overlay.materialPatches[id][k] = fields[k]; });
+      writeOverlay();
+      return material(id);
+    }
+
+    /* One more cut of the same document. The whole list goes into the
+       patch and the shared merge unions it BY VERSION ID, so two people
+       filing two versions on the same morning end with both — the same
+       arrangement the Competitor Tracker's articles use. */
+    function addVersion(id, fields) {
+      var mat = material(id);
+      if (!mat) return null;
+      var label = String(fields.label || "").trim();
+      if (!label) return null;
+      if (mat.versions.some(function (v) { return v.label.toLowerCase() === label.toLowerCase(); })) {
+        return "duplicate";
+      }
+      var stamped = normaliseVersion(id, {
+        id: "mv-" + Date.now().toString(36) + "-" + Math.random().toString(36).slice(2, 7),
+        label: label,
+        date: fields.date || "",
+        note: fields.note || "",
+        url: fields.url || "",
+        addedAt: new Date().toISOString().slice(0, 10),
+        addedBy: signedInName()
+      }, mat.versions.length);
+      patchMaterial(id, { versions: mat.versions.concat([stamped]) });
+      return stamped;
+    }
+
+    /* Refused while anything points at it. A send names a version id,
+       so removing the version underneath one would leave a log entry
+       that says an investor was sent something the register can no
+       longer describe — which is worse than a version nobody uses
+       sitting on a list.
+
+       The same caveat the Competitor Tracker's articles carry applies
+       to the removal itself: the overlay can only ever add, so a
+       version withdrawn here comes back if another browser still has
+       it queued. Publish is what settles it. */
+    function removeVersion(id, versionId) {
+      var mat = material(id);
+      if (!mat) return false;
+      if (sendsForVersion(versionId).length) return "in-use";
+      var kept = mat.versions.filter(function (v) { return v.id !== versionId; });
+      if (kept.length === mat.versions.length) return false;
+      patchMaterial(id, { versions: kept });
+      return true;
+    }
+
+    function retireMaterial(id, on) {
+      if (!material(id)) return false;
+      patchMaterial(id, { retired: on !== false });
+      return true;
+    }
+
+    // Refused the moment anything has gone out from it, for the reason
+    // above: the sends are the history and this would orphan them.
+    // Retiring is what to do with a material that has had its day.
+    function removeMaterial(id) {
+      if (!material(id)) return false;
+      if (sendsForMaterial(id).length) return "in-use";
+      var inFile = ((base && base.materials) || []).some(function (m) { return m.id === id; });
+      overlay.materialsAdded = overlay.materialsAdded.filter(function (m) { return m.id !== id; });
+      delete overlay.materialPatches[id];
+      if (inFile) overlay.materialsRemoved[id] = new Date().toISOString().slice(0, 10);
+      writeOverlay();
+      return true;
     }
 
     /* ---- deal status ---------------------------------------------
@@ -6434,6 +6896,10 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
         source: "local",
         note: "Exported from the dashboard. A backup, or a seed for tools/publish.py — the live copy is in the shared store. Gitignored — never commit.",
         stages: CRM_STAGES,
+        // The register travels with the records that reference it: a
+        // publish that could land a send without the version it names
+        // is a publish that can lie about what an investor holds.
+        materials: materialsAll(),
         dealStatus: dealStatuses(),
         dealsAdded: addedDealRecords(),
         dealsHidden: hiddenDeals(),
@@ -6467,6 +6933,24 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
       patchConversation: patchConversation,
       removeConversation: removeConversation,
       conversations: conversations,
+      addSend: addSend,
+      addSends: addSends,
+      patchSend: patchSend,
+      removeSend: removeSend,
+      sends: sendsAll,
+      sendsForMaterial: sendsForMaterial,
+      sendsForVersion: sendsForVersion,
+      materials: materialsAll,
+      material: material,
+      createMaterial: createMaterial,
+      patchMaterial: patchMaterial,
+      removeMaterial: removeMaterial,
+      retireMaterial: retireMaterial,
+      addVersion: addVersion,
+      removeVersion: removeVersion,
+      orderedVersions: orderedVersions,
+      currentVersion: currentVersion,
+      versionOf: versionOf,
       dealStatus: dealStatus,
       dealStatuses: dealStatuses,
       setDealStatus: setDealStatus,
@@ -6490,6 +6974,8 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
       clearOverlay: function () {
         overlay = { patches: {}, conversations: {}, created: [],
                     convPatches: {}, convRemoved: {},
+                    sends: {}, sendPatches: {}, sendRemoved: {},
+                    materialsAdded: [], materialPatches: {}, materialsRemoved: {},
                     dealStatus: {}, dealsAdded: [], dealsDropped: {}, dealsHidden: {},
                     archived: {}, removed: {},
                     learned: { aliases: {} } };
@@ -7099,8 +7585,9 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
      ============================================================ */
   var crmState = {
     tab: "home",           // the tab the dashboard opens on
-    view: "list",          // list | investor
+    view: "list",          // list | new | investor | materials | material
     investorId: null,
+    materialId: null,      // the material open on the register view
     editing: false,        // investor detail: fields open for hand editing
     query: "",
     filters: { type: "", asset: "", stage: "", deal: "" },
@@ -7180,6 +7667,78 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
     return c.summary || c.subject || "";
   }
 
+  /* ------------------------------------------------------------
+     MATERIALS — reading a send
+
+     One question runs through all of this: does the investor hold
+     the current version, or an older one? It is answered by
+     comparing two version ids and nothing else. No date arithmetic,
+     no guessing from a label — "v3 final" and "v3 FINAL" are two
+     labels and could be two cuts, and a feature that quietly
+     decided they were the same would be a feature that tells
+     somebody a stale deck is current.
+
+     Where the register cannot answer, the pill says Unknown rather
+     than guessing either way. That is the honest state for a send
+     whose material was deleted out from under it, or one typed into
+     the file by hand against no version at all.
+     ------------------------------------------------------------ */
+  function sendMaterialName(sd) {
+    var mat = Crm.material(sd.materialId);
+    return (mat && mat.name) || sd.material || "Unnamed material";
+  }
+
+  function sendVersionName(sd) {
+    var mat = Crm.material(sd.materialId);
+    var v = mat ? Crm.versionOf(mat, sd.versionId) : null;
+    return (v && v.label) || sd.version || "";
+  }
+
+  function sendState(sd) {
+    var mat = Crm.material(sd.materialId);
+    if (!mat) return { state: "Unknown", note: "No longer on the register" };
+    var current = Crm.currentVersion(mat);
+    var sent = Crm.versionOf(mat, sd.versionId);
+    if (!sent) return { state: "Unknown", note: "That version is not on the register" };
+    if (!current || sent.id === current.id) return { state: "Current", note: "" };
+    return { state: "Superseded", note: current.label + " is current" };
+  }
+
+  function sendPill(sd) {
+    var st = sendState(sd);
+    return '<span class="crm-pill" data-sent="' + esc(st.state) + '">' + esc(st.state) + '</span>' +
+           (st.note ? '<span class="crm-sub">' + esc(st.note) + '</span>' : "");
+  }
+
+  /* The newest send per material — what the investor HAS, as opposed
+     to everything they have ever been sent. Sends are already newest
+     first, so the first one seen for a material wins. A send with no
+     material id behind it is keyed by the name it was filed under, so
+     a hand-written row still counts as something they hold. */
+  function latestSends(inv) {
+    var seen = {}, out = [];
+    (inv.sends || []).forEach(function (sd) {
+      var key = sd.materialId || ("name:" + String(sd.material || "").toLowerCase());
+      if (seen[key]) return;
+      seen[key] = true;
+      out.push(sd);
+    });
+    return out;
+  }
+
+  function staleSends(inv) {
+    return latestSends(inv).filter(function (sd) {
+      return sendState(sd).state === "Superseded";
+    });
+  }
+
+  // What this investor holds of one material, for the tick-list on a
+  // material record: the version they were last sent, or nothing.
+  function heldVersion(inv, materialId) {
+    var list = (inv.sends || []).filter(function (sd) { return sd.materialId === materialId; });
+    return list[0] || null;
+  }
+
   function crmSortValue(inv, key) {
     switch (key) {
       case "name":        return inv.name.toLowerCase();
@@ -7211,6 +7770,11 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
                     inv.research.map(function (r) { return r.note; }).join(" "),
                     inv.conversations.map(function (c) {
                       return [c.summary, c.next, c.who, c.subject].join(" ");
+                    }).join(" "),
+                    // "who has the deck" is a search somebody will type into
+                    // this box, so what has been sent is part of the record.
+                    inv.sends.map(function (sd) {
+                      return [sendMaterialName(sd), sendVersionName(sd), sd.to, sd.note].join(" ");
                     }).join(" ")].join(" ").toLowerCase();
     return haystack.indexOf(q) !== -1;
   }
@@ -7446,6 +8010,8 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
       ? list.length + " investor" + (list.length === 1 ? "" : "s")
       : list.length + " of " + Crm.all().length + " shown";
     $("tabCrmCount").textContent = Crm.all().length ? "(" + Crm.all().length + ")" : "";
+    var mats = Crm.materials().length;
+    $("crmMaterialsCount").textContent = mats ? "(" + mats + ")" : "";
     markUnsaved("crmUnsaved", Crm.hasLocalEdits());
     $("crmInvestorNames").innerHTML = Crm.all().map(function (i) {
       return '<option value="' + esc(i.name) + '">';
@@ -7465,6 +8031,136 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
         SharedOverlay.note()
       : "No investor records loaded — neither the shared store nor a local crm-data.json " +
         "answered. Anything shown here was entered in this browser." + SharedOverlay.note();
+  }
+
+  /* ------------------------------------------------------------
+     MATERIALS SENT — the panel on an investor record
+
+     It sits between the research and the tasks, which is where the
+     question gets asked: you have just read who they are and what
+     they want, and the next thing anybody wants to know is what
+     they have actually been given.
+
+     EVERY SEND IS LISTED, not just the newest per document. "We
+     sent v1 in March and v3 in July" is the history somebody needs
+     when an investor refers to a number that is no longer in the
+     deck, and collapsing it to the last row would throw that away.
+     The heading carries the count that is worth acting on: how many
+     of them are holding something out of date.
+
+     The form sits open, on the same reasoning as the Competitor
+     Tracker's article box — recording a send is the commonest thing
+     that will ever happen on this panel, and a form behind a button
+     is a form that gets skipped in favour of not recording it.
+     ------------------------------------------------------------ */
+  function sendRows(list, showInvestor) {
+    return list.map(function (row) {
+      var sd = row.entry || row;
+      var invId = row.investorId || "";
+      return '<tr>' +
+        (showInvestor
+          ? '<td><button type="button" class="crm-tag crm-tag--link" data-investor="' +
+            esc(invId) + '">' + esc(row.investorName || "") + '</button></td>'
+          : '<td><span class="crm-name">' + esc(sendMaterialName(sd)) + '</span>' +
+            (sd.note ? '<span class="crm-sub">' + esc(sd.note) + '</span>' : "") + '</td>') +
+        '<td>' + (sendVersionName(sd)
+          ? esc(sendVersionName(sd))
+          : '<span class="muted">—</span>') + '</td>' +
+        '<td class="crm-date">' + (sd.date ? esc(sd.date) : '<span class="muted">Undated</span>') + '</td>' +
+        '<td>' + (sd.channel ? esc(sd.channel) : '<span class="muted">—</span>') +
+          (sd.to ? '<span class="crm-sub">' + esc(sd.to) + '</span>' : "") + '</td>' +
+        '<td>' + sendPill(sd) + '</td>' +
+        '<td class="crm-actions">' +
+          '<button type="button" class="mat-drop" data-send-drop="' +
+            esc((invId || row.investorId || "") + ":" + sd.id) +
+            '" title="Withdraw this log entry">Remove</button>' +
+        '</td></tr>';
+    }).join("");
+  }
+
+  function investorMaterials(inv) {
+    var live = Crm.materials().filter(function (m) { return !m.retired; });
+    var stale = staleSends(inv);
+    var aside = inv.sends.length
+      ? inv.sends.length + " sent" +
+        (stale.length ? " · " + stale.length + " on an old version" : " · all current")
+      : "nothing sent yet";
+
+    var table = inv.sends.length
+      ? '<div class="crmtable-wrap"><table class="crmtable"><thead><tr>' +
+          '<th>Material</th><th>Version</th><th>Sent</th><th>How</th><th>Status</th>' +
+          '<th class="crm-actions"><span class="visually-hidden">Actions</span></th>' +
+        '</tr></thead><tbody>' +
+        sendRows(inv.sends.map(function (sd) {
+          return { entry: sd, investorId: inv.id, investorName: inv.name };
+        }), false) +
+        '</tbody></table></div>'
+      : '<p class="mat-empty">Nothing recorded as sent to ' + esc(inv.name) + ' yet.</p>';
+
+    /* No register, no form. Offering boxes that cannot be filled in
+       reads as something being broken; saying what is missing and
+       where to add it does not. */
+    var form = live.length
+      ? '<div class="rec-form">' +
+          '<h4>Log something sent</h4>' +
+          '<div class="rec-form__grid">' +
+            '<div class="crm-field">' +
+              '<label for="sendMaterial">Material</label>' +
+              '<select id="sendMaterial" data-send-material>' +
+                live.map(function (m) {
+                  return '<option value="' + esc(m.id) + '">' + esc(m.name) + '</option>';
+                }).join("") +
+              '</select>' +
+            '</div>' +
+            '<div class="crm-field">' +
+              '<label for="sendVersion">Version</label>' +
+              '<select id="sendVersion"></select>' +
+              '<span class="crm-field__note">Defaults to the current one.</span>' +
+            '</div>' +
+            '<div class="crm-field">' +
+              '<label for="sendDate">When</label>' +
+              '<input type="date" id="sendDate" value="' + new Date().toISOString().slice(0, 10) + '">' +
+            '</div>' +
+            '<div class="crm-field">' +
+              '<label for="sendChannel">How</label>' +
+              '<select id="sendChannel">' +
+                SEND_CHANNELS.map(function (c) {
+                  return '<option value="' + esc(c) + '">' + esc(c) + '</option>';
+                }).join("") +
+              '</select>' +
+            '</div>' +
+            '<div class="crm-field">' +
+              '<label for="sendTo">Who it went to</label>' +
+              '<input type="text" id="sendTo" autocomplete="off" value="' +
+                esc((primaryContact(inv) || {}).name || "") + '">' +
+            '</div>' +
+            '<div class="crm-field crm-field--wide">' +
+              '<label for="sendNote">Note</label>' +
+              '<input type="text" id="sendNote" autocomplete="off" ' +
+                'placeholder="Optional — what it was for, what was redacted, what they asked for next">' +
+            '</div>' +
+          '</div>' +
+          '<div class="crm-research__actions">' +
+            '<button type="button" class="dash-refresh dash-refresh--primary" ' +
+              'data-send-add="' + esc(inv.id) + '">Record it</button>' +
+            '<button type="button" class="dash-refresh" data-action="crm-materials">' +
+              'The register</button>' +
+            '<span class="crm-research__hint">Records what went out. It does not send ' +
+              'anything — nothing on this page can reach a mailbox.</span>' +
+          '</div>' +
+        '</div>'
+      : '<div class="rec-form">' +
+          '<h4>Log something sent</h4>' +
+          '<p class="mat-empty">There is nothing on the materials register yet, so there is ' +
+            'nothing to record a send of. Add the deck, the letter or the model first — ' +
+            'a material needs a name and one version.</p>' +
+          '<button type="button" class="dash-refresh dash-refresh--primary" ' +
+            'data-action="crm-materials">Open the register</button>' +
+        '</div>';
+
+    return '<div class="crm-section"><h3>Materials sent' +
+      '<span class="crm-section__aside">' + esc(aside) + '</span></h3>' +
+      table + form + '</div>';
   }
 
   function renderInvestor(id) {
@@ -7594,6 +8290,8 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
       '</div>' +
       '</div>');
 
+    parts.push(investorMaterials(inv));
+
     parts.push(recordTaskPanel(inv.name));
 
     parts.push('<div class="crm-section"><h3>Conversations' +
@@ -7621,6 +8319,11 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
       '</div>');
 
     $("investorBody").innerHTML = parts.join("");
+    // The sends table is a .crmtable, so it wants the same per-cell
+    // labels the list gets — without them it loses its headings on a
+    // phone and becomes six unlabelled values in a column.
+    labelCells($("investorBody"));
+    fillSendVersions();
   }
 
   /* ------------------------------------------------------------
@@ -7886,7 +8589,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
                   owner: "", location: "", website: "", aum: "", assetClasses: [],
                   checkSize: { min: null, max: null, note: "" }, mandate: "", priority: "",
                   tags: [], deals: [], contacts: [], research: [], why: "",
-                  archived: false, conversations: [] };
+                  archived: false, conversations: [], sends: [] };
     $("investorCrumb").textContent = "New investor";
     $("investorBody").innerHTML =
       '<div class="dash-investor__head"><div><h2>Add an investor</h2>' +
@@ -7939,13 +8642,611 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
       : "Added " + fields.name + ". Log a conversation against it with the agent above.");
   }
 
+  /* ============================================================
+     MATERIALS — THE REGISTER
+
+     Third view on this tab, alongside the list and the record. It is
+     not a sixth workspace, and that is the decision worth writing
+     down: a material earns its place here BECAUSE it goes to
+     investors. A tab of its own would invite a register of documents
+     nobody has sent anybody, which is the thing this dashboard
+     already decided it is not (see "No documents at all" in
+     README.txt) — and it would put the register in a different store
+     from the sends that point at it.
+
+     Nothing here holds a file. A version is a name, a date, a note
+     and optionally a link to wherever the file actually lives. The
+     page does not read OneDrive, does not upload anything and cannot
+     open a document; what it knows is what somebody typed, which is
+     the same bargain every other record on this dashboard makes.
+     ============================================================ */
+  function fillSendVersions() {
+    var sel = $("sendMaterial"), out = $("sendVersion");
+    if (!sel || !out) return;
+    var mat = Crm.material(sel.value);
+    var versions = mat ? Crm.orderedVersions(mat) : [];
+    out.innerHTML = versions.length
+      ? versions.map(function (v, i) {
+          return '<option value="' + esc(v.id) + '"' + (i === 0 ? " selected" : "") + '>' +
+                 esc(v.label) + (v.date ? " · " + esc(v.date) : "") +
+                 (i === 0 ? " — current" : "") + '</option>';
+        }).join("")
+      : '<option value="">No versions on the register yet</option>';
+  }
+
+  // The newest send of one material PER INVESTOR — who holds it, and
+  // which cut. Rows arrive newest first, so the first one wins.
+  function materialHolders(mat) {
+    var seen = {}, out = [];
+    Crm.sendsForMaterial(mat.id).forEach(function (row) {
+      if (seen[row.investorId]) return;
+      seen[row.investorId] = true;
+      out.push(row);
+    });
+    return out;
+  }
+
+  function materialStale(mat) {
+    return materialHolders(mat).filter(function (row) {
+      return sendState(row.entry).state === "Superseded";
+    });
+  }
+
+  function materialKindList() {
+    var used = Crm.materials().map(function (m) { return m.kind; });
+    return MATERIAL_KINDS.concat(used)
+      .filter(function (v, i, a) { return v && a.indexOf(v) === i; });
+  }
+
+  function factGrid(pairs) {
+    return '<div class="crm-facts">' + pairs.map(function (pair) {
+      var empty = !pair[1];
+      return '<div class="crm-fact"><span class="crm-fact__label">' + esc(pair[0]) + '</span>' +
+             '<span class="crm-fact__value' + (empty ? " is-empty" : "") + '">' +
+             (empty ? esc(pair[2] || "not recorded") : pair[1]) + '</span></div>';
+    }).join("") + '</div>';
+  }
+
+  function renderMaterials() {
+    var list = Crm.materials();
+    // Retired ones sort to the end rather than into a pile of their own:
+    // the whole list is short, and a deck people are still holding is
+    // not something to hide behind a disclosure triangle.
+    list = list.slice().sort(function (a, b) {
+      if (!!a.retired !== !!b.retired) return a.retired ? 1 : -1;
+      return a.name.localeCompare(b.name);
+    });
+
+    var rows = list.map(function (m) {
+      var current = Crm.currentVersion(m);
+      var holders = materialHolders(m);
+      var stale = materialStale(m);
+      var last = holders[0] ? holders[0].entry.date : "";
+      return '<tr data-mat-open="' + esc(m.id) + '">' +
+        '<td><span class="crm-name">' + esc(m.name) + '</span>' +
+          (m.retired ? '<span class="crm-tag">Retired</span>' : "") +
+          (m.note ? '<span class="crm-sub">' + esc(m.note) + '</span>' : "") + '</td>' +
+        '<td>' + (m.kind ? esc(m.kind) : '<span class="muted">—</span>') + '</td>' +
+        '<td>' + (current
+          ? esc(current.label) +
+            '<span class="crm-sub">' + (current.date ? esc(current.date) : "undated") + '</span>'
+          : '<span class="muted">No versions yet</span>') + '</td>' +
+        '<td class="mat-count">' + (holders.length
+          ? holders.length + " investor" + (holders.length === 1 ? "" : "s")
+          : '<span class="muted">Nobody yet</span>') + '</td>' +
+        '<td class="mat-count">' + (stale.length
+          ? '<span class="mat-stale">' + stale.length + '</span>'
+          : '<span class="muted">—</span>') + '</td>' +
+        '<td class="crm-date">' + (last ? esc(last) : '<span class="muted">—</span>') + '</td>' +
+        '</tr>';
+    }).join("");
+
+    var table = list.length
+      ? '<div class="crmtable-wrap"><table class="crmtable"><thead><tr>' +
+          '<th>Material</th><th>Kind</th><th>Current version</th><th>Sent to</th>' +
+          '<th>On an old version</th><th>Last sent</th>' +
+        '</tr></thead><tbody>' + rows + '</tbody></table></div>'
+      : '<div class="dash-state"><h3>Nothing on the register yet</h3>' +
+        '<p>A material is a thing the firm sends investors — the deck, the quarterly ' +
+        'letter, the model. Add one below, give it a version, and it can be recorded ' +
+        'against an investor from their own record.</p></div>';
+
+    var totals = list.reduce(function (acc, m) {
+      acc.versions += m.versions.length;
+      acc.stale += materialStale(m).length;
+      return acc;
+    }, { versions: 0, stale: 0 });
+
+    $("materialsBody").innerHTML =
+      '<div class="dash-investor__head"><div><h2>Materials</h2>' +
+        '<p class="dash-investor__sub">What the firm sends investors, and which cut of it. ' +
+          'Sends are recorded on the investor’s own record; this is the register they ' +
+          'point at.</p></div></div>' +
+      '<p class="report-note">' +
+        (list.length
+          ? esc(list.length + " material" + (list.length === 1 ? "" : "s") + ", " +
+                totals.versions + " version" + (totals.versions === 1 ? "" : "s") + ". ") +
+            (totals.stale
+              ? '<span class="mat-stale">' + countOf(totals.stale, "copy", "copies") +
+                (totals.stale === 1 ? " is" : " are") + ' behind the current version.</span>'
+              : "Nobody is holding a superseded version.")
+          : "Nothing is registered yet.") +
+        ' Nothing here stores a file — a version is a name, a date and, if you have one, ' +
+        'a link to where the file actually lives.</p>' +
+      table +
+      '<div class="rec-form">' +
+        '<h4>Add a material</h4>' +
+        '<div class="rec-form__grid">' +
+          '<div class="crm-field">' +
+            '<label for="matNewName">Name</label>' +
+            '<input type="text" id="matNewName" autocomplete="off" ' +
+              'placeholder="GP Fund I deck">' +
+          '</div>' +
+          '<div class="crm-field">' +
+            '<label for="matNewKind">Kind</label>' +
+            '<input type="text" id="matNewKind" autocomplete="off" list="matKinds" ' +
+              'placeholder="Pitch deck">' +
+            '<datalist id="matKinds">' +
+              materialKindList().map(function (k) {
+                return '<option value="' + esc(k) + '">';
+              }).join("") +
+            '</datalist>' +
+          '</div>' +
+          '<div class="crm-field crm-field--wide">' +
+            '<label for="matNewNote">What it is</label>' +
+            '<input type="text" id="matNewNote" autocomplete="off" ' +
+              'placeholder="Optional — one line, so the next person knows which document this is">' +
+          '</div>' +
+        '</div>' +
+        '<div class="crm-research__actions">' +
+          '<button type="button" class="dash-refresh dash-refresh--primary" data-mat-add>Add it</button>' +
+          '<span class="crm-research__hint">A name is all it needs. Versions go on the ' +
+            'record after that.</span>' +
+        '</div>' +
+      '</div>';
+
+    labelCells($("materialsBody"));
+    $("crmMaterialsCount").textContent = list.length ? "(" + list.length + ")" : "";
+  }
+
+  function renderMaterial(id) {
+    var mat = Crm.material(id);
+    if (!mat) { showMaterials(); return; }
+    crmState.materialId = id;
+
+    $("materialsCrumb").textContent = mat.name;
+    $("materialsCrumb").hidden = false;
+    $("materialsCrumbSep").hidden = false;
+
+    var versions = Crm.orderedVersions(mat);
+    var current = Crm.currentVersion(mat);
+    var holders = materialHolders(mat);
+    var stale = materialStale(mat);
+    var everySend = Crm.sendsForMaterial(mat.id);
+
+    var parts = [];
+
+    parts.push('<div class="dash-investor__head"><div>' +
+      '<h2>' + esc(mat.name) + (mat.retired ? ' <span class="crm-tag">Retired</span>' : "") + '</h2>' +
+      '<p class="dash-investor__sub">' + esc(mat.note || mat.kind || "No description recorded.") +
+      '</p></div>' +
+      '<div class="dash-investor__actions">' +
+        '<button class="dash-refresh" data-mat-retire="' + esc(mat.id) + ':' +
+          (mat.retired ? "off" : "on") + '">' +
+          (mat.retired ? "Put it back in use" : "Retire it") + '</button>' +
+        '<button class="dash-refresh" data-mat-delete="' + esc(mat.id) + '">Delete</button>' +
+      '</div></div>');
+
+    parts.push(factGrid([
+      ["Kind", esc(mat.kind)],
+      ["Current version", current
+        ? esc(current.label) + (current.date ? " · " + esc(current.date) : "")
+        : "", "no versions yet"],
+      ["Versions", versions.length ? String(versions.length) : "", "none"],
+      ["Sent to", holders.length
+        ? holders.length + " investor" + (holders.length === 1 ? "" : "s")
+        : "", "nobody yet"],
+      ["On an old version", stale.length
+        ? '<span class="mat-stale">' + stale.length + '</span>'
+        : "", holders.length ? "none — everybody has the current cut" : "nobody has it yet"],
+      ["Added", esc(mat.addedAt)]
+    ]));
+
+    /* THE VERSION LIST IS THE SPINE OF THE FEATURE. Newest first, and
+       the top one is labelled as current rather than left to be worked
+       out — every status pill on every send is a comparison against
+       this one row, so it says which row it is. */
+    parts.push('<div class="crm-section"><h3>Versions' +
+      '<span class="crm-section__aside">newest first</span></h3>' +
+      (versions.length
+        ? '<ul class="mat-versions">' + versions.map(function (v, i) {
+            var used = Crm.sendsForVersion(v.id).length;
+            return '<li>' +
+              '<div class="mat-versions__head">' +
+                '<span><span class="mat-versions__label">' + esc(v.label) + '</span>' +
+                  (i === 0 ? ' <span class="crm-pill" data-sent="Current">Current</span>' : "") +
+                '</span>' +
+                '<button type="button" class="mat-drop" data-mat-version-drop="' +
+                  esc(mat.id + ":" + v.id) + '">Remove</button>' +
+              '</div>' +
+              (v.note ? '<p class="mat-versions__note">' + esc(v.note) + '</p>' : "") +
+              '<span class="mat-versions__meta">' +
+                (v.date ? esc(v.date) : "Undated — it sorts last, so it cannot be current") +
+                (used ? " · sent " + used + " time" + (used === 1 ? "" : "s") : " · never sent") +
+                (v.url ? ' · <a href="' + esc(v.url) + '" target="_blank" rel="noopener noreferrer">' +
+                  esc(v.url) + '</a>' : "") +
+                (v.addedBy ? " · added by " + esc(v.addedBy) : "") +
+              '</span>' +
+              '</li>';
+          }).join("") + '</ul>'
+        : '<p class="mat-empty">No versions yet. The first one is what a send can point at.</p>') +
+      '<div class="rec-form">' +
+        '<h4>Add a version</h4>' +
+        '<div class="rec-form__grid">' +
+          '<div class="crm-field">' +
+            '<label for="matVerLabel">Version</label>' +
+            '<input type="text" id="matVerLabel" autocomplete="off" placeholder="v3, or Q3 2026">' +
+          '</div>' +
+          '<div class="crm-field">' +
+            '<label for="matVerDate">Dated</label>' +
+            '<input type="date" id="matVerDate" value="' +
+              new Date().toISOString().slice(0, 10) + '">' +
+            '<span class="crm-field__note">The newest date is the current version.</span>' +
+          '</div>' +
+          '<div class="crm-field crm-field--wide">' +
+            '<label for="matVerUrl">Link</label>' +
+            '<input type="url" id="matVerUrl" autocomplete="off" ' +
+              'placeholder="Optional — where the file itself lives">' +
+          '</div>' +
+          '<div class="crm-field crm-field--wide">' +
+            '<label for="matVerNote">What changed</label>' +
+            '<input type="text" id="matVerNote" autocomplete="off" ' +
+              'placeholder="Optional — the one line that says why this cut is not the last one">' +
+          '</div>' +
+        '</div>' +
+        '<div class="crm-research__actions">' +
+          '<button type="button" class="dash-refresh dash-refresh--primary" ' +
+            'data-mat-version-add="' + esc(mat.id) + '">Add version</button>' +
+        '</div>' +
+      '</div>' +
+      '</div>');
+
+    /* WHO HAS IT — one row per investor, showing the cut they hold.
+       The full history of every send is under it, because "we sent
+       them v1 in March" is the thing that explains a question about
+       a number that is no longer in the deck. */
+    parts.push('<div class="crm-section"><h3>Who has it' +
+      '<span class="crm-section__aside">' +
+        (holders.length
+          ? holders.length + " investor" + (holders.length === 1 ? "" : "s") +
+            (stale.length ? " · " + stale.length + " behind" : " · all current")
+          : "nobody yet") +
+      '</span></h3>' +
+      (holders.length
+        ? '<div class="crmtable-wrap"><table class="crmtable"><thead><tr>' +
+            '<th>Investor</th><th>Version</th><th>Sent</th><th>How</th><th>Status</th>' +
+            '<th class="crm-actions"><span class="visually-hidden">Actions</span></th>' +
+          '</tr></thead><tbody>' + sendRows(holders, true) + '</tbody></table></div>'
+        : '<p class="mat-empty">This has not gone to anybody yet.</p>') +
+      (everySend.length > holders.length
+        ? '<details class="deal-pile"><summary>' +
+            '<span class="deal-pile__chev" aria-hidden="true">›</span>Every send' +
+            '<span class="deal-pile__count">(' + everySend.length + ')</span></summary>' +
+            '<p class="deal-pile__hint">Including the earlier versions each investor was ' +
+              'sent before the one they hold now.</p>' +
+            '<div class="crmtable-wrap"><table class="crmtable"><thead><tr>' +
+              '<th>Investor</th><th>Version</th><th>Sent</th><th>How</th><th>Status</th>' +
+              '<th class="crm-actions"><span class="visually-hidden">Actions</span></th>' +
+            '</tr></thead><tbody>' + sendRows(everySend, true) + '</tbody></table></div>' +
+          '</details>'
+        : "") +
+      materialSendForm(mat) +
+      '</div>');
+
+    $("materialsBody").innerHTML = parts.join("");
+    labelCells($("materialsBody"));
+  }
+
+  /* ONE DOCUMENT GOING TO ELEVEN PEOPLE AT ONCE is the case this
+     feature exists for, and logging it eleven times on eleven records
+     is how it would stop being logged at all. So the material record
+     carries a tick-list: pick the version, tick the investors, and it
+     files one send against each of them. */
+  function materialSendForm(mat) {
+    var versions = Crm.orderedVersions(mat);
+    if (!versions.length) {
+      return '<div class="rec-form"><h4>Record a send</h4>' +
+        '<p class="mat-empty">Add a version first — a send has to point at one, otherwise ' +
+        'the record cannot say what anybody is holding.</p></div>';
+    }
+    var investors = Crm.all();
+    if (!investors.length) {
+      return '<div class="rec-form"><h4>Record a send</h4>' +
+        '<p class="mat-empty">There are no investor records to send it to yet.</p></div>';
+    }
+
+    return '<div class="rec-form">' +
+      '<h4>Record a send</h4>' +
+      '<div class="rec-form__grid">' +
+        '<div class="crm-field">' +
+          '<label for="matSendVersion">Version</label>' +
+          '<select id="matSendVersion">' +
+            versions.map(function (v, i) {
+              return '<option value="' + esc(v.id) + '"' + (i === 0 ? " selected" : "") + '>' +
+                esc(v.label) + (v.date ? " · " + esc(v.date) : "") +
+                (i === 0 ? " — current" : "") + '</option>';
+            }).join("") +
+          '</select>' +
+        '</div>' +
+        '<div class="crm-field">' +
+          '<label for="matSendDate">When</label>' +
+          '<input type="date" id="matSendDate" value="' +
+            new Date().toISOString().slice(0, 10) + '">' +
+        '</div>' +
+        '<div class="crm-field">' +
+          '<label for="matSendChannel">How</label>' +
+          '<select id="matSendChannel">' +
+            SEND_CHANNELS.map(function (c) {
+              return '<option value="' + esc(c) + '">' + esc(c) + '</option>';
+            }).join("") +
+          '</select>' +
+        '</div>' +
+        '<div class="crm-field crm-field--wide">' +
+          '<label for="matSendNote">Note</label>' +
+          '<input type="text" id="matSendNote" autocomplete="off" ' +
+            'placeholder="Optional — filed against every investor ticked below">' +
+        '</div>' +
+      '</div>' +
+      '<div class="mat-who">' +
+        investors.map(function (inv) {
+          var held = heldVersion(inv, mat.id);
+          var sub = held
+            ? "has " + (sendVersionName(held) || "an unnamed version") +
+              (held.date ? " from " + held.date : "")
+            : "nothing yet";
+          return '<label><input type="checkbox" data-mat-who value="' + esc(inv.id) + '">' +
+            '<span>' + esc(inv.name) +
+            '<span class="mat-who__sub"> — ' + esc(sub) + '</span></span></label>';
+        }).join("") +
+      '</div>' +
+      '<div class="crm-research__actions">' +
+        '<button type="button" class="dash-refresh dash-refresh--primary" ' +
+          'data-mat-send="' + esc(mat.id) + '">Record against those ticked</button>' +
+        '<span class="crm-research__hint">One entry per investor, on their own record. ' +
+          'It records what went out; it does not send anything.</span>' +
+      '</div>' +
+    '</div>';
+  }
+
+  function showMaterials() {
+    crmState.materialId = null;
+    $("materialsCrumb").hidden = true;
+    $("materialsCrumbSep").hidden = true;
+    showCrmView("materials");
+    renderMaterials();
+    scrollToMaterials();
+  }
+
+  function openMaterial(id) {
+    showCrmView("material");
+    renderMaterial(id);
+    scrollToMaterials();
+  }
+
+  function scrollToMaterials() {
+    var el = $("viewMaterials");
+    if (!el) return;
+    var bar = document.querySelector(".dash-topbar");
+    var offset = (bar ? bar.getBoundingClientRect().height : 0) + 20;
+    var top = window.scrollY + el.getBoundingClientRect().top - offset;
+    window.scrollTo({ top: top < 0 ? 0 : top, behavior: "smooth" });
+  }
+
+  /* ------------------------------------------------------------
+     MATERIALS — what the buttons do
+     ------------------------------------------------------------ */
+  function formValue(id) { var el = $(id); return el ? el.value.trim() : ""; }
+
+  function addMaterialFromForm() {
+    var name = formValue("matNewName");
+    if (!name) {
+      toast("A material needs a name.");
+      if ($("matNewName")) $("matNewName").focus();
+      return;
+    }
+    var res = Crm.createMaterial({ name: name, kind: formValue("matNewKind"),
+                                   note: formValue("matNewNote") });
+    if (res === "duplicate") {
+      toast("“" + name + "” is already on the register.");
+      return;
+    }
+    if (!res) { toast("Could not add that."); return; }
+    renderCrm();
+    openMaterial(res.id);
+    toast("Added " + res.name + ". Give it a version and it can be recorded against an investor.");
+  }
+
+  function addVersionFromForm(id) {
+    var label = formValue("matVerLabel");
+    if (!label) {
+      toast("A version needs a label — v3, or Q3 2026.");
+      if ($("matVerLabel")) $("matVerLabel").focus();
+      return;
+    }
+    var url = formValue("matVerUrl");
+    if (url && !/^https?:\/\//i.test(url)) {
+      toast("That does not look like a link — it needs to start with http:// or https://.");
+      $("matVerUrl").focus();
+      return;
+    }
+    var res = Crm.addVersion(id, { label: label, date: formValue("matVerDate"),
+                                   url: url, note: formValue("matVerNote") });
+    if (res === "duplicate") {
+      toast("There is already a version called “" + label + "” on this material.");
+      return;
+    }
+    if (!res) { toast("Could not add that version."); return; }
+    renderCrm();
+    renderMaterial(id);
+    /* Adding a version does not always make it the current one — an
+       older date deliberately does not jump the queue — so the toast
+       says which way it landed rather than leaving it to be found out
+       from a pill somewhere else on the page. */
+    var current = Crm.currentVersion(Crm.material(id));
+    toast(current && current.id === res.id
+      ? label + " added, and it is now the current version."
+      : label + " added. " + ((current && current.label) || "Another version") +
+        " is still current — it carries the later date.");
+  }
+
+  function dropVersion(token) {
+    var bits = String(token).split(":");
+    var id = bits[0], versionId = bits.slice(1).join(":");
+    var res = Crm.removeVersion(id, versionId);
+    if (res === "in-use") {
+      toast("That version has gone out to somebody, so it stays. The sends against it would " +
+            "otherwise stop being able to say what anybody holds.");
+      return;
+    }
+    if (!res) return;
+    renderCrm();
+    renderMaterial(id);
+    toast("Version removed.");
+  }
+
+  function setMaterialRetired(token) {
+    var bits = String(token).split(":");
+    var id = bits[0], on = bits[1] !== "off";
+    var mat = Crm.material(id);
+    if (!mat) return;
+    Crm.retireMaterial(id, on);
+    renderCrm();
+    renderMaterial(id);
+    toast(on
+      ? mat.name + " retired — it drops out of the pickers and stays on the register, " +
+        "because people are still holding it."
+      : mat.name + " is back in use.");
+  }
+
+  function deleteMaterialRecord(button) {
+    var id = button.getAttribute("data-mat-delete");
+    var mat = Crm.material(id);
+    if (!mat) return;
+    /* Refused rather than cascaded. Deleting a material that has gone
+       out would take the answer to "what does this investor hold" with
+       it, and that answer is the whole point of the register. Retiring
+       is the gesture for a document that has had its day. */
+    if (Crm.sendsForMaterial(id).length) {
+      toast("“" + mat.name + "” has gone out to investors, so it cannot be deleted. " +
+            "Retire it instead — what they are holding does not stop being true.");
+      return;
+    }
+    if (!armed(button, "Delete?",
+        "Click Delete again to remove " + mat.name +
+        (mat.versions.length ? ", and with it " + countOf(mat.versions.length, "version") : "") +
+        ". Nothing has been sent from it, so nothing else is affected.")) return;
+    var name = mat.name;
+    Crm.removeMaterial(id);
+    renderCrm();
+    showMaterials();
+    toast("Deleted " + name + ".");
+  }
+
+  // From the investor record: one material, one investor.
+  function logSendFromInvestor(invId) {
+    var inv = Crm.get(invId);
+    if (!inv) return;
+    var materialId = formValue("sendMaterial");
+    var versionId = formValue("sendVersion");
+    var mat = Crm.material(materialId);
+    if (!mat) { toast("Pick a material first."); return; }
+    if (!versionId) {
+      toast("“" + mat.name + "” has no versions yet, so there is nothing to record as sent. " +
+            "Add one on the register.");
+      return;
+    }
+    var version = Crm.versionOf(mat, versionId);
+    Crm.addSend(invId, {
+      materialId: mat.id, versionId: versionId,
+      material: mat.name, version: version ? version.label : "",
+      date: formValue("sendDate"), channel: formValue("sendChannel"),
+      to: formValue("sendTo"), note: formValue("sendNote")
+    });
+    renderCrm();
+    renderInvestor(invId);
+    toast("Recorded — " + mat.name + (version ? " " + version.label : "") + " to " + inv.name + ".");
+  }
+
+  // From the material record: one version, as many investors as are ticked.
+  function recordSendsFromMaterial(id) {
+    var mat = Crm.material(id);
+    if (!mat) return;
+    var versionId = formValue("matSendVersion");
+    var version = Crm.versionOf(mat, versionId);
+    if (!version) { toast("Pick a version first."); return; }
+
+    var ticked = Array.prototype.filter.call(
+      document.querySelectorAll("#materialsBody [data-mat-who]"),
+      function (box) { return box.checked; });
+    if (!ticked.length) {
+      toast("Tick whoever it went to — nothing was recorded.");
+      return;
+    }
+
+    var date = formValue("matSendDate");
+    var channel = formValue("matSendChannel");
+    var note = formValue("matSendNote");
+
+    var filed = Crm.addSends(ticked.map(function (box) {
+      var inv = Crm.get(box.value);
+      return {
+        investorId: box.value,
+        materialId: mat.id, versionId: version.id,
+        material: mat.name, version: version.label,
+        date: date, channel: channel,
+        to: (inv && primaryContact(inv) || {}).name || "", note: note
+      };
+    }));
+    if (!filed.length) { toast("Nothing was recorded."); return; }
+
+    var names = filed.map(function (row) { return row.investorName; });
+    renderCrm();
+    renderMaterial(id);
+    toast("Recorded " + mat.name + " " + version.label + " against " +
+          countOf(names.length, "investor") + " — " + names.join(", ") + ".");
+  }
+
+  /* A tombstone on the log entry, not a claim that the email was
+     unsent. What went out, went out; this says the record of it was
+     wrong. Same rule as withdrawing a conversation. */
+  function dropSend(token) {
+    var bits = String(token).split(":");
+    var invId = bits[0], sendId = bits.slice(1).join(":");
+    Crm.removeSend(sendId);
+    renderCrm();
+    if (crmState.view === "material" && Crm.material(crmState.materialId)) {
+      renderMaterial(crmState.materialId);
+    } else if (crmState.view === "materials") {
+      renderMaterials();
+    } else if (invId && Crm.get(invId)) {
+      renderInvestor(invId);
+    }
+    toast("Removed from the log.");
+  }
+
   function showCrmView(name) {
     crmState.view = name;
     if (name !== "investor") crmState.editing = false;
     $("viewCrm").hidden = name !== "list";
     // "new" borrows the record pane, the way the operator tab does: it is
     // the same form in the same place, just without a record behind it yet.
-    $("viewInvestor").hidden = name === "list";
+    /* Named explicitly now that there are four views rather than three.
+       This used to read `name === "list"`, meaning "anything that is not
+       the list is a record" — which was true right up until the materials
+       register arrived, at which point it would have drawn both panes at
+       once. */
+    $("viewInvestor").hidden = name !== "investor" && name !== "new";
+    $("viewMaterials").hidden = name !== "materials" && name !== "material";
   }
 
   // Land on the record itself, not the top of the page. The agent box and
@@ -8377,9 +9678,53 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
       rows: [["Investor", "Note", "Source", "Checked"]].concat(research)
     });
 
+    /* One row per VERSION, not per material. The question this sheet
+       gets opened to answer is "which cut is current and how many
+       people have it", and a material collapsed to one row cannot
+       answer either half of that. */
+    var materials = Crm.materials();
+    var versionRows = [];
+    materials.forEach(function (m) {
+      var current = Crm.currentVersion(m);
+      var versions = Crm.orderedVersions(m);
+      if (!versions.length) {
+        versionRows.push([m.name, m.kind, "", "", "No versions recorded", m.note || "", 0,
+                          m.retired ? "Retired" : ""]);
+        return;
+      }
+      versions.forEach(function (v) {
+        versionRows.push([m.name, m.kind, v.label, v.date || "",
+                          current && v.id === current.id ? "Current" : "Superseded",
+                          v.note || "", Crm.sendsForVersion(v.id).length,
+                          m.retired ? "Retired" : ""]);
+      });
+    });
+    sheets.push({
+      name: "Materials",
+      widths: [34, 20, 16, 12, 14, 50, 10, 10],
+      rows: [["Material", "Kind", "Version", "Dated", "Status", "Note", "Times sent", "Retired"]]
+        .concat(versionRows)
+    });
+
+    // Archived investors are left out here for the same reason they are
+    // left out of the sheets above: this workbook is the live list.
+    var sent = Crm.sends().filter(function (row) { return !row.archived; })
+      .map(function (row) {
+        var sd = row.entry;
+        return [sd.date || "", row.investorName, sendMaterialName(sd), sendVersionName(sd),
+                sendState(sd).state, sd.channel || "", sd.to || "", sd.by || "", sd.note || ""];
+      });
+    sheets.push({
+      name: "Materials sent",
+      widths: [12, 30, 34, 16, 14, 14, 26, 20, 50],
+      rows: [["Date", "Investor", "Material", "Version", "Status", "How", "To", "Logged by", "Note"]]
+        .concat(sent)
+    });
+
     download(Xlsx.build(sheets),
              "modillion-investor-crm-" + new Date().toISOString().slice(0, 10) + ".xlsx");
-    toast("Excel workbook downloaded — " + list.length + " investors, " + log.length + " conversations.");
+    toast("Excel workbook downloaded — " + list.length + " investors, " + log.length +
+          " conversations, " + sent.length + " materials sent.");
   }
 
   /* ============================================================
@@ -13125,6 +14470,13 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
   // The Type dropdown's escape hatch. The form is drawn with innerHTML, so
   // the listener sits on the document rather than on a select that stops
   // existing every time the record is redrawn.
+  /* The send form is drawn with innerHTML and redrawn on every save,
+     so the listener sits on the document rather than on a select that
+     stops existing. Same arrangement as the Type box below. */
+  document.addEventListener("change", function (e) {
+    if (e.target.closest("[data-send-material]")) { fillSendVersions(); return; }
+  });
+
   document.addEventListener("change", function (e) {
     if (!e.target.closest("[data-crm-type]")) return;
     var other = $("editTypeOther");
@@ -13139,6 +14491,39 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
 
     var crmHome = e.target.closest("[data-action='crm-home']");
     if (crmHome) { showCrmView("list"); renderCrm(); scrollToWorkspace(); return; }
+
+    var matsHome = e.target.closest("[data-action='crm-materials']");
+    if (matsHome) { showMaterials(); return; }
+
+    /* These four sit ABOVE the [data-investor] row handler at the foot
+       of this listener, and have to: a Remove button inside a row that
+       opens an investor would otherwise open the investor as well. */
+    var matAdd = e.target.closest("[data-mat-add]");
+    if (matAdd) { addMaterialFromForm(); return; }
+
+    var matVerAdd = e.target.closest("[data-mat-version-add]");
+    if (matVerAdd) { addVersionFromForm(matVerAdd.getAttribute("data-mat-version-add")); return; }
+
+    var matVerDrop = e.target.closest("[data-mat-version-drop]");
+    if (matVerDrop) { dropVersion(matVerDrop.getAttribute("data-mat-version-drop")); return; }
+
+    var matRetire = e.target.closest("[data-mat-retire]");
+    if (matRetire) { setMaterialRetired(matRetire.getAttribute("data-mat-retire")); return; }
+
+    var matDelete = e.target.closest("[data-mat-delete]");
+    if (matDelete) { deleteMaterialRecord(matDelete); return; }
+
+    var matSend = e.target.closest("[data-mat-send]");
+    if (matSend) { recordSendsFromMaterial(matSend.getAttribute("data-mat-send")); return; }
+
+    var sendAdd = e.target.closest("[data-send-add]");
+    if (sendAdd) { logSendFromInvestor(sendAdd.getAttribute("data-send-add")); return; }
+
+    var sendDrop = e.target.closest("[data-send-drop]");
+    if (sendDrop) { dropSend(sendDrop.getAttribute("data-send-drop")); return; }
+
+    var matOpen = e.target.closest("[data-mat-open]");
+    if (matOpen) { openMaterial(matOpen.getAttribute("data-mat-open")); return; }
 
     var editBtn = e.target.closest("[data-crm-edit]");
     if (editBtn) {
@@ -13362,6 +14747,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
 
   $("crmSaveFileBtn").addEventListener("click", exportCrmFile);
   $("crmAddBtn").addEventListener("click", renderNewInvestor);
+  $("crmMaterialsBtn").addEventListener("click", showMaterials);
 
   $("crmPublishBtn").addEventListener("click", function () {
     publishRecords("crm", "Investor CRM", Crm.toFile, "crmPublishBtn", Crm);
@@ -13786,6 +15172,17 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
           assetClasses: inv.assetClasses.slice(),
           check: checkText(inv), deals: inv.deals.slice(),
           lastContact: lastContact(inv) || "",
+          /* What they have been sent, and whether it is still the
+             current cut. Read-only in the snapshot: there is no action
+             that files a send, and the status is a comparison the page
+             has already done rather than something to be worked out
+             from dates in a prompt. */
+          sends: inv.sends.map(function (sd) {
+            return { material: sendMaterialName(sd), version: sendVersionName(sd),
+                     date: sd.date || "", channel: sd.channel || "",
+                     to: sd.to || "", note: sd.note || "",
+                     status: sendState(sd).state };
+          }),
           conversations: inv.conversations.map(function (c) {
             return {
               id: c.id, date: c.date || "", channel: c.channel || "",
@@ -13856,6 +15253,25 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
       });
     }
 
+    /* The register behind those sends. Read-only, on the same terms as
+       operators and competitors: it can answer "who is holding an old
+       deck" without being able to change a record. */
+    function materials() {
+      return Crm.materials().map(function (m) {
+        var current = Crm.currentVersion(m);
+        return {
+          id: m.id, name: m.name, kind: m.kind, retired: m.retired,
+          currentVersion: current ? current.label : "",
+          currentDated: current ? current.date : "",
+          versions: Crm.orderedVersions(m).map(function (v) {
+            return { label: v.label, date: v.date || "", note: v.note || "" };
+          }),
+          sentTo: materialHolders(m).length,
+          behind: materialStale(m).length
+        };
+      });
+    }
+
     function build() {
       return {
         today: new Date().toISOString().slice(0, 10),
@@ -13867,6 +15283,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
         statuses: TASK_STATUSES.slice(),
         team: Tasks.team().map(function (p) { return { id: p.id, name: p.name }; }),
         investors: investors(),
+        materials: materials(),
         operators: operators(),
         competitors: competitors(),
         tasks: tasks(),
