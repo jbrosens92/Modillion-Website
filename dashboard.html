@@ -4462,7 +4462,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
       blurb: "What is still to be raised — the co-invest target on each deal, who has " +
              "committed against it, and how much is left to find.",
       count: function () {
-        var open = Deals.withRaise().filter(function (r) { return !raiseIsDone(r); });
+        var open = Deals.withRaise().filter(function (r) { return !raiseIsCompleted(r); });
         if (!open.length) return null;
         var short = open.reduce(function (n, rec) {
           var t = raiseTotals(rec);
@@ -5350,6 +5350,30 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
   function raiseIsDone(rec) {
     var t = raiseTotals(rec);
     return t.target != null && t.committed >= t.target;
+  }
+
+  /* COMPLETED, WHICH IS NOT THE SAME AS RAISED.
+
+     A raise leaves the working list two ways: it filled, or the deal
+     under it finished. Both mean there is no week's work left in it,
+     which is the only question the top list is sorted to answer.
+
+     The second route is a change of mind, and worth saying why. A deal
+     kept its raise up top through a close on the reasoning that the
+     money is still out there to be found — see normalise(). True, and
+     it was still wrong to leave it in front of the one list anybody
+     reads to decide where to go next: a closed deal nobody is working
+     is noise there, however unraised it is. The shortfall is not lost.
+     It is counted and stated on the Completed section itself, so the
+     figure survives the move even though the row does not.
+
+     On hold is deliberately not here. A parked deal is a deal somebody
+     means to come back to, and burying it is how it never comes back. */
+  var RAISE_SHUT = { closed: 1, dead: 1 };
+
+  function raiseIsCompleted(rec) {
+    if (raiseIsDone(rec)) return true;
+    return !!RAISE_SHUT[String((rec && rec.status) || "").trim().toLowerCase()];
   }
 
   /* WHAT THE RAISE IS AIMING AT, typed over in place.
@@ -6347,7 +6371,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
      be counting it twice over. */
   function raiseShownLine() {
     var all = Deals.withRaise();
-    var open = all.filter(function (r) { return !raiseIsDone(r); });
+    var open = all.filter(function (r) { return !raiseIsCompleted(r); });
     var shortfall = open.filter(function (rec) {
       var t = raiseTotals(rec);
       return t.remaining != null && t.remaining > 0;
@@ -6366,13 +6390,46 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
     }
   }
 
+  /* The finished raises, open by default rather than folded away.
+
+     They are here to be read — which deal or fund is done, and who is
+     in it — so the chevron on every row opens its commitments the same
+     way it does above. Folding the section shut would put the answer
+     two clicks from the question it was added to answer.
+
+     The line under it carries what the move costs. A closed deal that
+     never filled leaves the working list with money still unraised, and
+     that figure would otherwise be stated nowhere: the toolbar counts
+     open raises and the table foot counts everything, so neither of
+     them says "there is money down here". This does. */
+  function completedRaises(done) {
+    var short = done.filter(function (rec) {
+      var t = raiseTotals(rec);
+      return t.remaining != null && t.remaining > 0;
+    });
+    var owed = short.reduce(function (n, rec) { return n + raiseTotals(rec).remaining; }, 0);
+
+    return '<details class="deal-pile" open><summary>' +
+      '<span class="deal-pile__chev" aria-hidden="true">\u203A</span>Completed raises' +
+      '<span class="deal-pile__count">(' + done.length + ')</span></summary>' +
+      '<p class="deal-pile__hint">Raised to target, or on a deal that has closed. Nothing is ' +
+      'closed off here \u2014 the deal keeps its raise and its commitments, and the chevron ' +
+      'on a row opens who is in it.' +
+      (owed ? ' ' + countOf(short.length, "raise") + " down here still " +
+              (short.length === 1 ? "has" : "have") + " money outstanding \u2014 " +
+              raiseMoney(owed) + (short.length === 1 ? " of it" : " between them") +
+              ", which is not in the figure above."
+            : "") +
+      '</p>' + raiseTable(done, "raised") + '</details>';
+  }
+
   function renderRaises() {
     var body = $("raiseBody");
     if (!body) return;
 
     var all = Deals.withRaise();
-    var open = all.filter(function (r) { return !raiseIsDone(r); });
-    var done = all.filter(raiseIsDone);
+    var open = all.filter(function (r) { return !raiseIsCompleted(r); });
+    var done = all.filter(raiseIsCompleted);
 
     /* Sorted by what is left to find, largest first — the list is read
        to decide where the next week goes, and that is the order that
@@ -6391,22 +6448,19 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
     body.innerHTML = (open.length
       ? raiseTable(open, "open")
       : '<div class="dash-state"><h3>' +
-        (all.length ? "Everything is raised" : "No raise open") + '</h3><p>' +
+        (all.length ? "Nothing open" : "No raise open") + '</h3><p>' +
         (all.length
-          ? "Every raise on the books has reached its target. The finished ones are below."
+          // Not "everything is raised" any more: a raise also leaves this
+          // list by its deal closing, which can happen at nothing raised
+          // at all. The completed section below says which is which.
+          ? "Every raise on the books is finished \u2014 raised to target, or on a deal " +
+            "that has closed. They are below."
           : "Nothing is being raised yet. Two ways in: pick a deal above and press Start " +
             "a raise, which takes you to that deal\u2019s Capital raise panel; or press New " +
             "fund or program for something that is not a deal at all \u2014 a fund, a " +
             "programmatic line \u2014 which gets a record of its own and appears only here.") +
         '</p></div>') +
-      (done.length
-        ? '<details class="deal-pile"><summary>' +
-          '<span class="deal-pile__chev" aria-hidden="true">\u203A</span>Raised' +
-          '<span class="deal-pile__count">(' + done.length + ')</span></summary>' +
-          '<p class="deal-pile__hint">Committed has reached the target. Nothing is closed off ' +
-          'here — the deal keeps its raise and its commitments.</p>' +
-          raiseTable(done, "raised") + '</details>'
-        : "");
+      (done.length ? completedRaises(done) : "");
 
     raiseShownLine();
 

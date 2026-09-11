@@ -1531,3 +1531,34 @@ GP OR LP, AND WHAT THE MONEY PAYS, 2026-09-11:
 - NOT DONE, and worth deciding separately: the roll-up's Committed figure is
   still one number. Splitting it GP/LP, or showing what share of a raise is fee
   free, is a reporting question rather than a recording one.
+
+COMPLETED RAISES, BELOW THE OPEN ONES, 2026-09-11:
+- Asked for: "Show Completed Raises below. That way we can track deals that are
+  done and which investors are in the deals or funds."
+- There WAS already a section below — "Raised", for a raise whose committed
+  figure had reached target. It was invisible because neither live raise had
+  reached one, and it did not cover the row that prompted this: Casa Hope, deal
+  status CLOSED, sitting in the working list at 0%.
+- A raise now leaves the working list two ways: it filled (raiseIsDone), or the
+  deal under it is Closed or Dead (raiseIsCompleted). Both mean no week's work
+  is left in it, which is the only question the top list is sorted to answer.
+- ON HOLD IS DELIBERATELY NOT ONE OF THEM. A parked deal is one somebody means
+  to come back to, and burying it is how it never comes back.
+- This REVERSES a stated decision. normalise() keeps a deal's raise through a
+  close because "the money is still out there to be found" — true, and still
+  the wrong thing to leave in front of the one list read to decide where to go
+  next. The shortfall is not lost: the Completed section counts what is
+  outstanding among its own rows and says so ("2 raises down here still have
+  money outstanding — $3m between them, which is not in the figure above"),
+  because the toolbar counts open raises and the table foot counts everything,
+  so neither of them would have said it.
+- Open by default, unlike every other deal-pile. It exists to be read — which
+  fund is done, who is in it — and the chevron on each row opens the
+  commitments the same way it does above. Folding it shut would put the answer
+  two clicks from the question.
+- One notion of "open" across all four places that ask: the home tile's "$X to
+  raise", the toolbar line, the tab count, and the list itself. They would
+  contradict each other within a screen otherwise.
+- The empty state no longer says "Everything is raised". With this rule the
+  last open raise can leave by its deal closing at nothing raised at all, so it
+  says "Nothing open", and that they are finished — raised, or closed.
