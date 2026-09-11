@@ -737,6 +737,28 @@ section { padding: var(--section) 0; }
    in (see the DataProvider seam at the bottom of this file).
    ------------------------------------------------------------- */
 
+/* Width --------------------------------------------------------
+   The marketing pages are prose and keep the 1240px measure, which is
+   about as wide as a paragraph should ever be read. This page is a
+   workbench: its tables carry a dozen columns, and every pixel spent on
+   margin is a column pushed off into a horizontal scroll. So the app
+   takes the width of the window instead, still capped — past about
+   1900px a table stops being scannable and starts being a hike — and
+   still gutters, narrower ones. Overriding the tokens rather than the
+   rule keeps the topbar, the hero and the content on one edge, and
+   leaves every prose block inside (the agent hints, the empty states)
+   on the measures they already set for themselves.
+
+   Below the cap the width rule is still the plain 100% underneath, so a
+   laptop and a phone are unchanged but for the narrower gutter, which
+   hands them a little more room rather than less. Deliberately not
+   100vw minus something: vw counts the scrollbar, and the arithmetic to
+   dodge that costs more width on a phone than it ever wins on a desk. */
+.dash-app {
+  --container: 1900px;
+  --gutter: clamp(16px, 2vw, 32px);
+}
+
 /* State switching --------------------------------------------- */
 body[data-state="locked"] .dash-app  { display: none; }
 body[data-state="locked"] .agent-dock { display: none; }
