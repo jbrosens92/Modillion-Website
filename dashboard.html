@@ -2249,6 +2249,65 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
   padding-left: 22px;
 }
 
+/* THE ROLL-UP, WORKING.
+
+   Target and Close by are boxes in their own columns, quiet until
+   touched, the same treatment the commitments table gets and for the same
+   reason: this is a record to be read that happens to be editable, not a
+   form to be filled in. Everything between them is computed and stays
+   read-only — typing over a total is not an edit, it is a wish. */
+.raise-roll .report-table td { vertical-align: middle; }
+.raise-roll__input {
+  font-family: var(--sans); font-size: .86rem; color: var(--deep-space);
+  background: none; border: 1px solid transparent; border-radius: 2px;
+  padding: 5px 8px; margin: -5px -8px; width: 100%; min-width: 90px;
+}
+.raise-roll__input--num { text-align: right; font-variant-numeric: tabular-nums; }
+.raise-roll__input::placeholder { color: var(--muted); }
+.raise-roll__input:hover { border-color: var(--rule); }
+.raise-roll__input:focus {
+  outline: none; border-color: var(--steel); background: var(--paper);
+}
+
+/* The chevron that opens a row onto its commitments, with the number of
+   them beside it — so the column says whether opening it is worth it. */
+.raise-roll .report-table th.raise-roll__toggle,
+.raise-roll .report-table td.raise-roll__toggle {
+  width: 1%; padding-right: 8px; white-space: nowrap;
+}
+.raise-roll__toggle button {
+  appearance: none; background: none; border: 0; padding: 4px 2px;
+  display: inline-flex; align-items: center; gap: 6px;
+  font: inherit; color: var(--muted); cursor: pointer;
+}
+.raise-roll__toggle button:hover { color: var(--deep-space); }
+.raise-roll__toggle button:focus-visible { outline: 2px solid var(--steel); outline-offset: 2px; }
+.raise-roll__chev {
+  display: inline-block; font-size: .9rem; line-height: 1;
+  transition: transform .18s ease;
+}
+.raise-roll__row.is-open .raise-roll__chev { transform: rotate(90deg); }
+.raise-roll__count { font-size: .7rem; letter-spacing: .06em; }
+
+/* An opened row. The commitments sit in a cell spanning the table, tinted
+   so it reads as belonging to the row above rather than as another row. */
+.raise-roll__row.is-open > td { border-bottom: 0; }
+.raise-roll__detail > td {
+  padding: 4px 0 24px;
+  background: rgba(119, 166, 182, 0.05);
+  box-shadow: inset 3px 0 0 var(--steel);
+}
+.raise-roll__detail .raise-table-wrap,
+.raise-roll__detail .rec-form { margin-left: 22px; margin-right: 22px; }
+.raise-roll__detail .raise-empty { margin: 18px 22px 0; }
+.raise-roll__detail .raise-table { min-width: 640px; }
+
+@media (max-width: 760px) {
+  .raise-roll__input { border-color: var(--rule); margin: 0; }
+  .raise-roll__detail .raise-table-wrap,
+  .raise-roll__detail .rec-form { margin-left: 12px; margin-right: 12px; }
+}
+
 /* On the roll-up: what is left to find, and what no longer is. */
 .report-table td.raise-short { color: var(--deep-space); font-weight: 500; }
 .raise-over { color: #1D6F42; }
@@ -5193,9 +5252,48 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
       '<tbody>' + rows + '</tbody></table></div>';
   }
 
+  /* The add form, drawn on the deal's panel AND inside an opened row on
+     the Capital Raises tab. The ids are prefixed because both surfaces
+     can exist in the DOM at once — the deal detail keeps its HTML while
+     you are looking at another tab — and two <label for> pointing at one
+     id is a label that clicks the wrong box. The handler reads the boxes
+     by data attribute within the form it was pressed in, so the ids are
+     only there for the labels. */
+  function raiseAddForm(rec, prefix) {
+    var today = new Date().toISOString().slice(0, 10);
+    function id(n) { return prefix + n; }
+    return '<div class="rec-form" data-raise-new>' +
+      '<h4>Record a commitment</h4>' +
+      '<div class="rec-form__grid">' +
+        '<div class="crm-field"><label for="' + id("Investor") + '">Investor</label>' +
+          '<input type="text" id="' + id("Investor") + '" data-raise-field="investor" ' +
+            'list="raiseInvestorNames" autocomplete="off" placeholder="Who is in">' +
+          '<span class="crm-field__note">Matched to the investor CRM by name, the same ' +
+            'way every other reference to a record on this page is.</span></div>' +
+        '<div class="crm-field"><label for="' + id("Amount") + '">Amount</label>' +
+          '<input type="text" id="' + id("Amount") + '" data-raise-field="amount" ' +
+            'autocomplete="off" placeholder="$1.5m"></div>' +
+        '<div class="crm-field"><label for="' + id("Status") + '">How firm</label>' +
+          '<select id="' + id("Status") + '" data-raise-field="status">' +
+            raiseStatusOptions(RAISE_STATES[0]) + '</select>' +
+          '<span class="crm-field__note">Soft is an indication. Hard and Funded are ' +
+            'what the committed figure counts.</span></div>' +
+        '<div class="crm-field"><label for="' + id("Date") + '">When</label>' +
+          '<input type="date" id="' + id("Date") + '" data-raise-field="date" value="' + today + '"></div>' +
+        '<div class="crm-field crm-field--wide"><label for="' + id("Note") + '">Note</label>' +
+          '<input type="text" id="' + id("Note") + '" data-raise-field="note" autocomplete="off" ' +
+            'placeholder="Optional \u2014 what it is contingent on, what they asked for next"></div>' +
+      '</div>' +
+      '<div class="crm-research__actions">' +
+        '<button type="button" class="dash-refresh dash-refresh--primary" ' +
+          'data-raise-add="' + esc(rec.id) + '">Record it</button>' +
+        '<span class="crm-research__hint">Nothing here moves any money. It records what ' +
+          'somebody has said they will put in.</span>' +
+      '</div></div>';
+  }
+
   function dealRaisePanel(rec) {
     var r = rec.raise;
-    var today = new Date().toISOString().slice(0, 10);
 
     var empty = (!r || !r.commitments.length)
       ? '<p class="raise-empty">' +
@@ -5208,34 +5306,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
         '</p>'
       : "";
 
-    var form = '<div class="rec-form" data-raise-new>' +
-      '<h4>Record a commitment</h4>' +
-      '<div class="rec-form__grid">' +
-        '<div class="crm-field"><label for="raiseNewInvestor">Investor</label>' +
-          '<input type="text" id="raiseNewInvestor" data-raise-field="investor" ' +
-            'list="raiseInvestorNames" autocomplete="off" placeholder="Who is in">' +
-          '<span class="crm-field__note">Matched to the investor CRM by name, the same ' +
-            'way every other reference to a record on this page is.</span></div>' +
-        '<div class="crm-field"><label for="raiseNewAmount">Amount</label>' +
-          '<input type="text" id="raiseNewAmount" data-raise-field="amount" ' +
-            'autocomplete="off" placeholder="$1.5m"></div>' +
-        '<div class="crm-field"><label for="raiseNewStatus">How firm</label>' +
-          '<select id="raiseNewStatus" data-raise-field="status">' +
-            raiseStatusOptions(RAISE_STATES[0]) + '</select>' +
-          '<span class="crm-field__note">Soft is an indication. Hard and Funded are ' +
-            'what the committed figure counts.</span></div>' +
-        '<div class="crm-field"><label for="raiseNewDate">When</label>' +
-          '<input type="date" id="raiseNewDate" data-raise-field="date" value="' + today + '"></div>' +
-        '<div class="crm-field crm-field--wide"><label for="raiseNewNote">Note</label>' +
-          '<input type="text" id="raiseNewNote" data-raise-field="note" autocomplete="off" ' +
-            'placeholder="Optional — what it is contingent on, what they asked for next"></div>' +
-      '</div>' +
-      '<div class="crm-research__actions">' +
-        '<button type="button" class="dash-refresh dash-refresh--primary" ' +
-          'data-raise-add="' + esc(rec.id) + '">Record it</button>' +
-        '<span class="crm-research__hint">Nothing here moves any money. It records what ' +
-          'somebody has said they will put in.</span>' +
-      '</div></div>';
+    var form = raiseAddForm(rec, "raiseNew");
 
     return '<div class="crm-section raise-panel" data-raise-for="' + esc(rec.id) + '">' +
       '<h3>Capital raise<span class="crm-section__aside">' + esc(raiseAside(rec)) + '</span></h3>' +
@@ -5484,6 +5555,23 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
     return panel ? Deals.get(panel.getAttribute("data-raise-for")) : null;
   }
 
+  /* WHERE A RAISE CONTROL WAS USED. The panel on a deal and a row on the
+     Capital Raises tab carry the same attributes and share every handler
+     below; the only thing that differs is what has to be redrawn after a
+     write, and redrawing the wrong one either does nothing visible or
+     takes the box out from under the cursor. */
+  function raiseOnRollUp(el) { return !!el.closest("#raiseBody"); }
+
+  /* Back to a readable state after a write, from whichever side it came.
+     On the roll-up the row is rewritten in place rather than the table
+     being rebuilt — the target and close-by boxes live in that row, and a
+     rebuild mid-edit is exactly what a person tabbing across them would
+     feel as the page fighting back. */
+  function repaintRaise(el, rec) {
+    if (!raiseOnRollUp(el)) openDeal(rec.id, scopeFromEl(el));
+    renderRaises();
+  }
+
   function addRaiseCommitment(btn) {
     var rec = Deals.get(btn.getAttribute("data-raise-add"));
     if (!rec) return;
@@ -5506,8 +5594,9 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
       status: v("status"), date: v("date"), note: v("note")
     });
     raiseSave(rec, { commitments: list });
-    openDeal(rec.id, scopeFromEl(btn));
-    renderRaises();
+    // An open row is what you were looking at, so it stays open.
+    RAISE_EXPANDED[rec.id] = RAISE_EXPANDED[rec.id] || raiseOnRollUp(btn);
+    repaintRaise(btn, rec);
     toast((investor || amount) + " is on the raise for \u201C" + rec.name + "\u201D.");
   }
 
@@ -5522,8 +5611,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
     var who = hit.investor || hit.amount || "this commitment";
     if (!armed(btn, "Remove?", "Click again to take " + who + " off this raise.")) return;
     raiseSave(rec, { commitments: list.filter(function (c) { return c.id !== cid; }) });
-    openDeal(rec.id, scopeFromEl(btn));
-    renderRaises();
+    repaintRaise(btn, rec);
     toast(who + " is off the raise.");
   }
 
@@ -5537,15 +5625,30 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
     var rec = raiseRecordOf(input);
     if (!block || !panel || !rec) return;
 
-    function v(k) {
+    /* ONLY THE BOXES THIS BLOCK ACTUALLY HAS. The panel carries all three;
+       a row on the roll-up carries Target and Close by and no Note. Reading
+       a missing box as "" and writing it would wipe the note off every deal
+       whose target was corrected from the roll-up — so an absent box is not
+       written at all, and raiseSave() keeps what is already stored. */
+    var parts = {};
+    ["target", "closeBy", "note"].forEach(function (k) {
       var el = block.querySelector('[data-raise-set="' + k + '"]');
-      return el ? el.value.trim() : "";
-    }
-    raiseSave(rec, { target: v("target"), closeBy: v("closeBy"), note: v("note") });
-    renderRaises();
+      if (el) parts[k] = el.value.trim();
+    });
+    raiseSave(rec, parts);
 
     var fresh = Deals.get(rec.id);
     if (!fresh) return;
+
+    if (raiseOnRollUp(input)) {
+      /* The row, rewritten around the boxes rather than over them. Every
+         figure on it is derived from the target, so all of them move; the
+         two inputs are left exactly as typed. */
+      raiseRepaintRow(input.closest("[data-raise-rollrow]"), fresh);
+      raiseRepaintTotals();
+      return;
+    }
+
     var sum = panel.querySelector(".raise-summary");
     if (sum) sum.innerHTML = fresh.raise ? raiseSummaryHtml(fresh) : "";
     var aside = panel.querySelector(".crm-section__aside");
@@ -5559,6 +5662,45 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
         ? "Nothing committed against it yet. Add the first one below."
         : note.textContent;
     }
+    renderRaises();
+  }
+
+  /* One row's figures, swapped for freshly computed ones. The boxes on
+     either side of them are untouched — that is the whole reason this
+     exists rather than a call to renderRaises().
+
+     A row does NOT move between the open table and the Raised pile here,
+     even when the target just typed has already been met. The row is
+     under somebody's cursor; having it vanish mid-edit is worse than its
+     being filed in the wrong place until the next full draw. */
+  function raiseRepaintRow(row, rec) {
+    if (!row || !rec || !rec.raise) return;
+    var holder = document.createElement("tbody");
+    holder.innerHTML = "<tr>" + raiseRowFigures(rec) + "</tr>";
+    var next = Array.prototype.slice.call(holder.firstChild.children);
+    var current = Array.prototype.slice.call(row.querySelectorAll("[data-raise-cell]"));
+    current.forEach(function (td, i) {
+      if (next[i]) row.replaceChild(next[i], td);
+    });
+  }
+
+  /* The totals under each table and the line beside the toolbar, redrawn
+     without touching the rows above them. Each table's total is computed
+     from the rows ACTUALLY IN IT rather than from the deals that ought to
+     be — so while a row is sitting in the wrong table mid-edit, the figure
+     under it still adds up to what is printed above it. */
+  function raiseRepaintTotals() {
+    var body = $("raiseBody");
+    if (!body) return;
+    Array.prototype.forEach.call(body.querySelectorAll("[data-raise-roll]"), function (wrap) {
+      var recs = Array.prototype.map.call(
+        wrap.querySelectorAll("[data-raise-rollrow]"), function (tr) {
+          return Deals.get(tr.getAttribute("data-raise-for"));
+        }).filter(Boolean);
+      var foot = wrap.querySelector("tfoot");
+      if (foot) foot.innerHTML = raiseFootHtml(recs);
+    });
+    raiseShownLine();
   }
 
   /* A box in the commitments table, saved as it is left.
@@ -5587,14 +5729,32 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
       if (el) hit[k] = el.value.trim();
     });
     raiseSave(rec, { commitments: list });
-    renderRaises();
 
     var fresh = Deals.get(rec.id);
     if (!fresh) return;
-    if (!fresh.raise || fresh.raise.commitments.length !== list.length) {
-      openDeal(fresh.id, scopeFromEl(input));
+
+    /* An edit that emptied the row took it off the record, so the table
+       has to agree with that. There is no box left to protect, which is
+       the only reason a full redraw is allowed here. */
+    var dropped = !fresh.raise || fresh.raise.commitments.length !== list.length;
+    if (dropped) {
+      if (raiseOnRollUp(input)) renderRaises();
+      else { renderRaises(); openDeal(fresh.id, scopeFromEl(input)); }
       return;
     }
+
+    if (raiseOnRollUp(input)) {
+      /* The commitments table sits in a row of its own UNDER the deal's
+         row, so the figures to move are the ones on the row above it. */
+      var host = input.closest("[data-raise-roll]");
+      var owner = host && host.querySelector('[data-raise-rollrow][data-raise-for="' +
+        fresh.id.replace(/"/g, '\\"') + '"]');
+      raiseRepaintRow(owner, fresh);
+      raiseRepaintTotals();
+      return;
+    }
+
+    renderRaises();
     var sum = panel.querySelector(".raise-summary");
     if (sum) sum.innerHTML = raiseSummaryHtml(fresh);
     var aside = panel.querySelector(".crm-section__aside");
@@ -5615,41 +5775,103 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
      the thing anybody is being asked to do something about.
      ============================================================ */
 
-  function raiseRowFor(rec) {
+  /* ============================================================
+     THE ROLL-UP ROW, EDITED WHERE IT IS READ
+
+     This tab was read-only to begin with: a roll-up, with the editing
+     on the deal each row belongs to. That was reported as wrong for the
+     same reason the target was, one change earlier — somebody is looking
+     at the line that is out of date, and the fix is three clicks and two
+     screens away.
+
+     So a row is the deal's raise, working. Target and Close by are boxes
+     in their own columns; the chevron opens the commitments underneath,
+     which is the SAME table and the same add form the deal's panel
+     draws, carrying the same data attributes and handled by the same
+     handlers. What differs between the two surfaces is only what gets
+     repainted afterwards — see raiseSurface().
+
+     Everything else on the row is computed and stays read-only, because
+     typing over a total is not an edit, it is a wish.
+     ============================================================ */
+
+  // Which rows are open. Survives a repaint; not written anywhere, because
+  // whether somebody expanded a row is not a fact about the deal.
+  var RAISE_EXPANDED = {};
+
+  /* The figures on a row, as cells. Kept apart from the row itself so a
+     target typed into the row can rewrite exactly these and leave the
+     boxes either side of it alone — see saveRaiseTarget(). */
+  function raiseRowFigures(rec) {
     var t = raiseTotals(rec);
-    function num(v, cls) {
-      return { v: v ? esc(v) : '<span class="muted">—</span>', cls: "num" + (cls ? " " + cls : "") };
+    function num(key, v, cls) {
+      return '<td class="num' + (cls ? " " + cls : "") + '" data-raise-cell="' + key + '">' +
+             (v ? esc(v) : '<span class="muted">\u2014</span>') + '</td>';
     }
-    return [
-      '<button type="button" class="debt-link" data-raise-open="' + esc(rec.id) + '">' +
-        esc(rec.name) + '</button>',
-      rec.operator ? esc(rec.operator) : '<span class="muted">—</span>',
-      '<span class="crm-pill" data-stage="' + esc(rec.status) + '">' + esc(rec.status) + '</span>',
-      num(t.targetText || (rec.raise.target || "")),
-      num(t.committed ? raiseMoney(t.committed) : ""),
-      num(t.soft ? raiseMoney(t.soft) : ""),
+    return num("committed", t.committed ? raiseMoney(t.committed) : "") +
+      num("soft", t.soft ? raiseMoney(t.soft) : "") +
       /* The column the tab is for. Negative means oversubscribed, and it
          says so rather than printing a minus sign somebody has to work
          out the meaning of at a glance. */
-      t.remaining == null
-        ? { v: '<span class="muted">no target</span>', cls: "num" }
+      (t.remaining == null
+        ? '<td class="num" data-raise-cell="remaining"><span class="muted">no target</span></td>'
         : t.remaining > 0
-          ? num(raiseMoney(t.remaining), "raise-short")
-          : { v: '<span class="raise-over">' +
-                 (t.remaining === 0 ? "fully raised" : "over by " + esc(raiseMoney(-t.remaining))) +
-                 '</span>', cls: "num" },
-      num(t.pct == null ? "" : t.pct + "%"),
-      rec.raise.closeBy ? esc(rec.raise.closeBy) : '<span class="muted">—</span>'
-    ];
+          ? num("remaining", raiseMoney(t.remaining), "raise-short")
+          : '<td class="num" data-raise-cell="remaining"><span class="raise-over">' +
+            (t.remaining === 0 ? "fully raised" : "over by " + esc(raiseMoney(-t.remaining))) +
+            '</span></td>') +
+      num("pct", t.pct == null ? "" : t.pct + "%");
   }
 
-  var RAISE_COLUMNS = ["Deal", "Operator", "Deal status",
-                       { label: "Target", num: true }, { label: "Committed", num: true },
-                       { label: "Soft", num: true }, { label: "Still to raise", num: true },
-                       { label: "%", num: true }, "Close by"];
+  function raiseRowHtml(rec) {
+    var open = !!RAISE_EXPANDED[rec.id];
+    var n = (rec.raise.commitments || []).length;
 
-  function raiseTable(list) {
-    var totals = list.reduce(function (acc, rec) {
+    /* data-raise-for and data-raise-target are what make the shared
+       handlers work here: the first says which deal every control in this
+       row belongs to, the second marks the block the target boxes are
+       read out of. The panel on the deal carries both too. */
+    var row = '<tr class="raise-roll__row' + (open ? " is-open" : "") + '"' +
+      ' data-raise-for="' + esc(rec.id) + '" data-raise-target data-raise-rollrow>' +
+      '<td class="raise-roll__toggle">' +
+        '<button type="button" data-raise-expand="' + esc(rec.id) + '" aria-expanded="' +
+          (open ? "true" : "false") + '" title="' +
+          (open ? "Hide" : "Show") + ' who is in on ' + esc(rec.name) + '">' +
+          '<span class="raise-roll__chev" aria-hidden="true">\u203A</span>' +
+          '<span class="visually-hidden">' + (open ? "Hide" : "Show") + ' commitments</span>' +
+          (n ? '<span class="raise-roll__count">' + n + '</span>' : "") +
+        '</button></td>' +
+      '<td><button type="button" class="debt-link" data-raise-open="' + esc(rec.id) + '">' +
+        esc(rec.name) + '</button></td>' +
+      '<td>' + (rec.operator ? esc(rec.operator) : '<span class="muted">\u2014</span>') + '</td>' +
+      '<td><span class="crm-pill" data-stage="' + esc(rec.status) + '">' +
+        esc(rec.status) + '</span></td>' +
+      '<td class="num"><input type="text" class="raise-roll__input raise-roll__input--num" ' +
+        'data-raise-set="target" value="' + esc(rec.raise.target || "") + '" ' +
+        'placeholder="Set one" autocomplete="off" aria-label="Target for ' + esc(rec.name) + '"></td>' +
+      raiseRowFigures(rec) +
+      '<td><input type="text" class="raise-roll__input" data-raise-set="closeBy" ' +
+        'value="' + esc(rec.raise.closeBy || "") + '" placeholder="\u2014" autocomplete="off" ' +
+        'aria-label="Close by for ' + esc(rec.name) + '"></td>' +
+      '</tr>';
+
+    if (!open) return row;
+
+    /* The commitments, in a row of their own spanning the table. It is
+       raiseRows() — the deal panel's own table — so there is one
+       commitments table in this file and not two that drift apart. */
+    return row +
+      '<tr class="raise-roll__detail" data-raise-for="' + esc(rec.id) + '">' +
+        '<td colspan="10">' +
+          (n ? "" : '<p class="raise-empty">Nobody is in yet. Add the first one below.</p>') +
+          raiseRows(rec) +
+          raiseAddForm(rec, "rollNew_" + rec.id + "_") +
+        '</td>' +
+      '</tr>';
+  }
+
+  function raiseFootTotals(list) {
+    return list.reduce(function (acc, rec) {
       var t = raiseTotals(rec);
       acc.target += t.target || 0;
       acc.committed += t.committed;
@@ -5661,24 +5883,66 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
       if (t.target == null) acc.untargeted++;
       return acc;
     }, { target: 0, committed: 0, soft: 0, remaining: 0, untargeted: 0 });
+  }
 
-    var foot = [
-      countOf(list.length, "deal"), "", "",
-      { v: totals.target ? esc(raiseMoney(totals.target)) : "", cls: "num" },
-      { v: totals.committed ? esc(raiseMoney(totals.committed)) : "", cls: "num" },
-      { v: totals.soft ? esc(raiseMoney(totals.soft)) : "", cls: "num" },
-      { v: totals.remaining ? esc(raiseMoney(totals.remaining)) : "", cls: "num" },
-      { v: totals.target ? Math.round((totals.committed / totals.target) * 100) + "%" : "", cls: "num" },
-      totals.untargeted
-        ? '<span class="muted">' + countOf(totals.untargeted, "deal") + " with no target</span>"
-        : ""
-    ];
+  function raiseFootHtml(list) {
+    var f = raiseFootTotals(list);
+    function num(v) {
+      return '<td class="num">' + (v ? esc(v) : "") + '</td>';
+    }
+    return '<tr><td></td><td>' + esc(countOf(list.length, "deal")) + '</td><td></td><td></td>' +
+      num(f.target ? raiseMoney(f.target) : "") +
+      num(f.committed ? raiseMoney(f.committed) : "") +
+      num(f.soft ? raiseMoney(f.soft) : "") +
+      num(f.remaining ? raiseMoney(f.remaining) : "") +
+      num(f.target ? Math.round((f.committed / f.target) * 100) + "%" : "") +
+      '<td>' + (f.untargeted
+        ? '<span class="muted">' + esc(countOf(f.untargeted, "deal")) + " with no target</span>"
+        : "") + '</td></tr>';
+  }
 
-    /* Wrapped so the column spacing applies here and not to every report
-       on the page — see .numcols. A .num cell has no right padding,
-       because it is usually the last column, and five of them in a row
-       followed by a date run into each other. */
-    return '<div class="numcols">' + table(RAISE_COLUMNS, list.map(raiseRowFor), foot) + '</div>';
+  function raiseTable(list, key) {
+    var head = '<tr><th class="raise-roll__toggle"><span class="visually-hidden">' +
+      'Show commitments</span></th><th>Deal</th><th>Operator</th><th>Deal status</th>' +
+      '<th class="num">Target</th><th class="num">Committed</th><th class="num">Soft</th>' +
+      '<th class="num">Still to raise</th><th class="num">%</th><th>Close by</th></tr>';
+
+    /* .numcols so a right-aligned figure gets air on its left — a .num
+       cell has no right padding, because on every other report it is the
+       last column, and here there are five of them in a row. */
+    return '<div class="numcols raise-roll" data-raise-roll="' + esc(key || "open") + '">' +
+      '<div class="report-table-wrap"><table class="report-table">' +
+        '<thead>' + head + '</thead>' +
+        '<tbody>' + list.map(raiseRowHtml).join("") + '</tbody>' +
+        '<tfoot>' + raiseFootHtml(list) + '</tfoot>' +
+      '</table></div></div>';
+  }
+
+  /* The headline figure, beside the toolbar and on the tab.
+
+     Counted over the deals that actually have a shortfall, not over every
+     open raise: a deal with no target contributes nothing to the figure,
+     and saying it is one of the deals the figure is spread across would
+     be counting it twice over. */
+  function raiseShownLine() {
+    var all = Deals.withRaise();
+    var open = all.filter(function (r) { return !raiseIsDone(r); });
+    var shortfall = open.filter(function (rec) {
+      var t = raiseTotals(rec);
+      return t.remaining != null && t.remaining > 0;
+    });
+    var short = shortfall.reduce(function (n, rec) {
+      return n + raiseTotals(rec).remaining;
+    }, 0);
+    if ($("raiseShown")) {
+      $("raiseShown").textContent = all.length
+        ? (short ? raiseMoney(short) + " still to raise across " + countOf(shortfall.length, "deal")
+                 : countOf(all.length, "raise") + " on the books")
+        : "";
+    }
+    if ($("tabRaiseCount")) {
+      $("tabRaiseCount").textContent = open.length ? "(" + open.length + ")" : "";
+    }
   }
 
   function renderRaises() {
@@ -5704,7 +5968,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
     done.sort(function (a, b) { return a.name.localeCompare(b.name); });
 
     body.innerHTML = (open.length
-      ? raiseTable(open)
+      ? raiseTable(open, "open")
       : '<div class="dash-state"><h3>' +
         (all.length ? "Everything is raised" : "No raise open") + '</h3><p>' +
         (all.length
@@ -5720,25 +5984,10 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
           '<span class="deal-pile__count">(' + done.length + ')</span></summary>' +
           '<p class="deal-pile__hint">Committed has reached the target. Nothing is closed off ' +
           'here — the deal keeps its raise and its commitments.</p>' +
-          raiseTable(done) + '</details>'
+          raiseTable(done, "raised") + '</details>'
         : "");
 
-    /* Counted over the deals that actually have a shortfall, not over
-       every open raise: a deal with no target contributes nothing to the
-       figure, and saying it is one of the deals the figure is spread
-       across would be counting it twice over. */
-    var shortfall = open.filter(function (rec) {
-      var t = raiseTotals(rec);
-      return t.remaining != null && t.remaining > 0;
-    });
-    var short = shortfall.reduce(function (n, rec) {
-      return n + raiseTotals(rec).remaining;
-    }, 0);
-    $("raiseShown").textContent = all.length
-      ? (short ? raiseMoney(short) + " still to raise across " + countOf(shortfall.length, "deal")
-               : countOf(all.length, "raise") + " on the books")
-      : "";
-    $("tabRaiseCount").textContent = open.length ? "(" + open.length + ")" : "";
+    raiseShownLine();
 
     /* Every deal NOT already raising, from both areas. A deal that is
        already on the list above is left out: the way to its raise is the
@@ -16450,6 +16699,14 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
     }
 
     /* ---- the capital raise on a deal, and the roll-up tab ------- */
+
+    var raiseExpand = e.target.closest("[data-raise-expand]");
+    if (raiseExpand) {
+      var xid = raiseExpand.getAttribute("data-raise-expand");
+      RAISE_EXPANDED[xid] = !RAISE_EXPANDED[xid];
+      renderRaises();
+      return;
+    }
 
     var raiseAdd = e.target.closest("[data-raise-add]");
     if (raiseAdd) { addRaiseCommitment(raiseAdd); return; }

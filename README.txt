@@ -1276,3 +1276,39 @@ THE TARGET MOVED TO WHERE THE RAISE IS, 2026-09-11:
 - The target placeholder reads "Set a target — $12m" rather than "$12m". A bare
   figure in the Target slot in placeholder grey is still a figure in the Target
   slot, and at a glance it reads as the target.
+
+THE ROLL-UP WORKS NOW, 2026-09-11:
+- Third report of the same thing in one day, and the pattern is worth writing
+  down: every time the editing was put somewhere other than where the number is
+  read, it was reported as missing. The target on Edit deal. Now the roll-up.
+- The Capital Raises tab was read-only by design — a roll-up, with the editing
+  on the deal each row belongs to. Somebody looking at the line that is out of
+  date should not have to cross two screens to fix it.
+- Target and Close by are boxes in their own columns on the row, saving when
+  they are left. Everything between them stays read-only: typing over a total is
+  not an edit, it is a wish.
+- The chevron opens a row onto its commitments — the SAME raiseRows() table and
+  the same add form the deal's panel draws, carrying the same data attributes
+  and handled by the same handlers. One commitments table in this file, not two
+  that drift apart. raiseAddForm() takes an id prefix because both surfaces can
+  be in the DOM at once and two <label for> pointing at one id is a label that
+  clicks the wrong box.
+- THE BUG THIS DESIGN HAD TO AVOID: saveRaiseTarget() read all three boxes and
+  wrote all three. A row on the roll-up has Target and Close by and NO note, so
+  reading the missing one as "" would have wiped the note off every deal whose
+  target was corrected from this tab. It now writes only the boxes the block
+  actually has, and raiseSave() keeps what is already stored for the rest.
+  Tested by correcting a target from the roll-up and checking the note survived.
+- Writes from the roll-up repaint the row's figures in place rather than
+  rebuilding the table — the boxes are IN that row, and a rebuild mid-edit is
+  what a person tabbing across them would feel as the page fighting back. Each
+  table's footer is recomputed from the rows actually in it, so it always adds
+  up to what is printed above it.
+- A row does not move between the open table and the Raised pile mid-edit, even
+  when the target just typed has already been met. It moves on the next full
+  draw. A row vanishing from under the cursor is worse than a row filed in the
+  wrong place for a few seconds.
+- WHAT IS NOT GREAT: on a phone the roll-up scrolls sideways inside its own box
+  as it always has, and an opened row's add form is as wide as the table, so it
+  scrolls with it. The page itself does not move. The deal's own panel is the
+  better surface on a phone and is unaffected.
