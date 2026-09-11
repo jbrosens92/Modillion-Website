@@ -1607,3 +1607,29 @@ NO SOFT COLUMN ON THE RAISES ROLL-UP, 2026-09-11:
 - Why it is the right column to lose there: that list is read to ask how much is
   left to find, and an indication is not money towards that — see the note over
   RAISE_STATES, which is the whole reason soft is excluded from Committed.
+
+THE TWO RAISE TABLES LINE UP, 2026-09-11:
+- Reported as "Top and bottom categories should line up." Open raises and
+  completed raises are two separate <table>s — the second has to be, because it
+  lives inside a <details> that folds — and with automatic layout each sized its
+  columns to its own contents. Short names under long ones put Sponsor two
+  hundred pixels adrift, and two tables of the same thing that do not line up
+  read as two different tables.
+- table-layout: fixed plus a <colgroup> of percentages, emitted by raiseTable so
+  both lists get the identical one. A colgroup rather than nth-child widths
+  because the opened row is a single cell spanning all ten, and a width rule
+  matching on position would land on that too.
+- The min-width is set by the two columns holding a BOX rather than text. Target
+  and Close by carry inputs with a min-width of 90px; a column narrower than the
+  input inside it overflows the cell and puts a scrollbar under one table and
+  not the other. Close by went from 7% to 9% and the table floor to 1100px, so
+  both stay clear of it at every width and below 1100 the wraps scroll together.
+- VERIFIED IN A BROWSER, not by reading. The tables were rendered out of the
+  real raiseTable() under jsc, dropped into a page carrying the dashboard's own
+  stylesheet, and the header positions measured: drift 0px at 1900, 1000 and in
+  between, against ~200px before.
+- A TRAP WORTH RECORDING: the first version of that test page pulled in only the
+  FIRST <style> block. dashboard.html has two (lines 12-731 and 733-3480) and
+  all the raise CSS is in the second, so the rule under test was not loaded at
+  all and the measurement showed a 10px drift that had nothing to do with the
+  change. Any future harness like this must take both blocks.

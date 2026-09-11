@@ -2351,6 +2351,18 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
    form to be filled in. Everything between them is computed and stays
    read-only — typing over a total is not an edit, it is a wish. */
 .raise-roll .report-table td { vertical-align: middle; }
+/* Fixed, so the colgroup above decides the columns and both lists agree.
+   See the note over RAISE_COLS. */
+/* The min-width is set by the two columns that hold a BOX rather than
+   text: Target and Close by carry inputs with a min-width of their own,
+   and a column narrower than the input inside it overflows the cell and
+   puts a scrollbar under one table and not the other. 1100 keeps both
+   above that everywhere, and below it the wraps scroll together. */
+.raise-roll__table { table-layout: fixed; width: 100%; min-width: 1100px; }
+/* A long deal name is the one thing here that will not fit its column at
+   every width. It wraps rather than pushing the column wider, which is
+   what pulled the two tables out of step in the first place. */
+.raise-roll__table td:nth-child(2) { overflow-wrap: anywhere; }
 .raise-roll__input {
   font-family: var(--sans); font-size: .86rem; color: var(--deep-space);
   background: none; border: 1px solid transparent; border-radius: 2px;
@@ -2366,9 +2378,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
 /* The chevron that opens a row onto its commitments, with the number of
    them beside it — so the column says whether opening it is worth it. */
 .raise-roll .report-table th.raise-roll__toggle,
-.raise-roll .report-table td.raise-roll__toggle {
-  width: 1%; padding-right: 8px; white-space: nowrap;
-}
+.raise-roll .report-table td.raise-roll__toggle { padding-right: 8px; white-space: nowrap; }
 .raise-roll__toggle button {
   appearance: none; background: none; border: 0; padding: 4px 2px;
   display: inline-flex; align-items: center; gap: 6px;
@@ -2380,7 +2390,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
 /* Moving a raise between the two lists. Quiet, like the other in-table
    verbs here — it is a thing you do occasionally, not the point of the row. */
 .raise-roll .report-table th.raise-roll__move,
-.raise-roll .report-table td.raise-roll__move { width: 1%; white-space: nowrap; text-align: right; }
+.raise-roll .report-table td.raise-roll__move { white-space: nowrap; text-align: right; }
 .raise-move {
   appearance: none; background: none; border: 0; padding: 0;
   font-family: var(--sans); font-size: .72rem; color: var(--muted); cursor: pointer;
@@ -6424,6 +6434,23 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
         : "") + '</td><td></td></tr>';
   }
 
+  /* ONE COLUMN LAYOUT FOR BOTH LISTS.
+
+     Open raises and completed raises are two separate tables — the second
+     lives inside a <details> that folds — and with automatic layout each
+     sized its columns to its own contents. A list of short names under a
+     list of long ones put Sponsor two hundred pixels adrift, and two
+     tables of the same thing that do not line up read as two different
+     tables.
+
+     A colgroup rather than nth-child widths, because the opened row is a
+     single cell spanning all ten and a width rule matching on position
+     would land on that too. Percentages, so both resolve the same at any
+     width; the min-width on the table is what makes a narrow window
+     scroll the wrap instead of crushing a deal name into four lines. */
+  var RAISE_COLS = [4, 23, 14, 9, 10, 10, 11, 5, 9, 5]
+    .map(function (w) { return '<col style="width:' + w + '%">'; }).join("");
+
   function raiseTable(list, key) {
     var head = '<tr><th class="raise-roll__toggle"><span class="visually-hidden">' +
       'Show commitments</span></th><th>Deal or fund</th><th>Sponsor</th><th>Status</th>' +
@@ -6435,7 +6462,8 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
        cell has no right padding, because on every other report it is the
        last column, and here there are five of them in a row. */
     return '<div class="numcols raise-roll" data-raise-roll="' + esc(key || "open") + '">' +
-      '<div class="report-table-wrap"><table class="report-table">' +
+      '<div class="report-table-wrap"><table class="report-table raise-roll__table">' +
+        '<colgroup>' + RAISE_COLS + '</colgroup>' +
         '<thead>' + head + '</thead>' +
         '<tbody>' + list.map(raiseRowHtml).join("") + '</tbody>' +
         '<tfoot>' + raiseFootHtml(list) + '</tfoot>' +
