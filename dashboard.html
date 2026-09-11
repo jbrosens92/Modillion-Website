@@ -1542,6 +1542,24 @@ button.link-arrow {
   align-items: center;
   margin-bottom: 28px;
 }
+/* The deal picker on the Capital Raises toolbar. A <select> in a toolbar
+   rather than in a filter bar, so it borrows the filter bar's look — the
+   same box in two places should not be two different boxes. */
+.dash-toolbar select {
+  appearance: none;
+  font-family: var(--sans);
+  font-size: .8rem;
+  color: var(--deep-space);
+  background: var(--paper) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 8'%3E%3Cpath d='M1 1.5L6 6.5L11 1.5' fill='none' stroke='%235A6477' stroke-width='1.4'/%3E%3C/svg%3E") no-repeat right 12px center/10px;
+  border: 1px solid var(--rule);
+  border-radius: 2px;
+  padding: 10px 34px 10px 14px;
+  max-width: 280px;
+  cursor: pointer;
+}
+.dash-toolbar select:focus { outline: none; border-color: var(--steel); }
+.dash-toolbar select:disabled { color: var(--muted); cursor: default; }
+
 .dash-crm__filters select {
   appearance: none;
   font-family: var(--sans);
@@ -2116,6 +2134,42 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
 .raise-meter__bar  { background: var(--deep-space); }
 .raise-meter__soft { background: rgba(45, 58, 81, 0.26); }
 
+/* THE TARGET, typed over where the raise is read.
+
+   Styled as figures rather than as a form, because that is what they
+   are: the same size and weight as the computed ones below, with the
+   frame appearing only on hover and focus. A row of framed boxes at the
+   top of a record reads as "fill this in before you may continue"; this
+   should read as "this number is yours to set". */
+.raise-head {
+  display: grid;
+  grid-template-columns: minmax(120px, 0.7fr) minmax(120px, 0.8fr) minmax(200px, 2fr);
+  gap: 18px 28px;
+  margin-bottom: 26px;
+  padding-bottom: 24px;
+  border-bottom: 1px solid var(--rule);
+}
+.raise-set { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.raise-set__label {
+  font-family: var(--sans); font-size: .62rem; font-weight: 500;
+  letter-spacing: .14em; text-transform: uppercase; color: var(--muted);
+}
+.raise-set__input {
+  font-family: var(--sans); font-size: 1.12rem; color: var(--deep-space);
+  font-variant-numeric: tabular-nums;
+  background: none; border: 1px solid transparent; border-radius: 2px;
+  padding: 4px 8px; margin-left: -8px; width: 100%; min-width: 0;
+}
+.raise-set__input::placeholder { font-size: .88rem; color: var(--muted); }
+.raise-set__input:hover { border-color: var(--rule); }
+.raise-set__input:focus {
+  outline: none; border-color: var(--steel); background: var(--paper);
+}
+.raise-set__note { font-size: .72rem; color: var(--muted); }
+/* The note is prose, not a figure, and setting it in figure type would
+   make a sentence shout. */
+.raise-set:last-child .raise-set__input { font-size: .92rem; }
+
 .raise-figs {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(132px, 1fr));
@@ -2133,9 +2187,6 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
 }
 .raise-fig__value.is-empty { font-size: .88rem; color: var(--muted); }
 
-.raise-note {
-  margin: -4px 0 22px; font-size: .88rem; line-height: 1.6; color: var(--deep-space);
-}
 .raise-empty { margin: 0 0 24px; font-size: .88rem; color: var(--muted); }
 /* Said in words rather than by a missing row, because a total that has
    quietly dropped a commitment is the failure worth shouting about. */
@@ -2207,6 +2258,8 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
      left to keep quiet for, and a borderless input on a narrow screen is
      a thing nobody can see is tappable. */
   .raise-table input, .raise-table select { border-color: var(--rule); }
+  .raise-set__input { border-color: var(--rule); margin-left: 0; }
+  .raise-head { grid-template-columns: 1fr; gap: 16px; }
   .raise-figs { gap: 16px 20px; }
 }
 
@@ -3510,7 +3563,16 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
 
         <p class="report-note" id="raiseSourceNote"></p>
 
+        <!-- The way IN. This tab is a roll-up and everything on it is
+             edited on the deal it belongs to, which left it a dead end
+             for the one person it matters most to: somebody opening it
+             to start tracking a raise that is not on it yet. The picker
+             lists the deals that carry no raise, and takes you to the
+             target box on the one you choose. -->
         <div class="dash-toolbar">
+          <label class="visually-hidden" for="raiseStartDeal">Start a raise on a deal</label>
+          <select id="raiseStartDeal"></select>
+          <button class="dash-refresh dash-refresh--primary" id="raiseStartBtn">Start a raise</button>
           <button class="dash-refresh" id="raiseExportBtn">Export Excel</button>
           <span class="dash-crm__shown" id="raiseShown"></span>
         </div>
@@ -4985,19 +5047,65 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
     return t.target != null && t.committed >= t.target;
   }
 
+  /* WHAT THE RAISE IS AIMING AT, typed over in place.
+
+     This lived on Edit deal at first, next to the debt block, on the
+     reasoning that one form should say what a raise IS and the panel
+     should keep what has happened to it. That reasoning was wrong in
+     practice and was reported as such: somebody looking at a raise and
+     wanting to set its target has to leave the raise, open a form that
+     is mostly about something else, find three boxes at the bottom of
+     it, and save. Most people conclude there is no target field.
+
+     So it is here, where the raise is, in boxes that save when they are
+     left — the same way the commitments below them do. Edit deal no
+     longer carries it: two places to set one number is worse than a
+     number in the wrong place.
+
+     It sits OUTSIDE .raise-summary deliberately. The summary is
+     repainted whenever a commitment changes, and a repaint would pull
+     these boxes out from under somebody tabbing across them. Nothing in
+     here changes when a commitment does, so nothing here needs redrawing
+     when one does. */
+  function raiseHeadHtml(rec) {
+    var r = rec.raise || {};
+    function box(key, label, value, placeholder, note) {
+      return '<div class="raise-set">' +
+        '<label class="raise-set__label" for="raiseSet_' + key + '">' + esc(label) + '</label>' +
+        '<input type="text" class="raise-set__input" id="raiseSet_' + key + '" ' +
+          'data-raise-set="' + key + '" value="' + esc(value || "") + '" ' +
+          'placeholder="' + esc(placeholder) + '" autocomplete="off">' +
+        (note ? '<span class="raise-set__note">' + esc(note) + '</span>' : "") +
+      '</div>';
+    }
+    /* Close by is TYPED rather than a date picker, for the same reason
+       the debt block's maturity is: "end of Q1" is a real answer and a
+       date input would refuse it, or worse, silently blank it. */
+    return '<div class="raise-head" data-raise-target>' +
+      /* The placeholder says "set one", not "$12m". A bare figure sitting
+         in the Target slot in placeholder grey is still a figure in the
+         Target slot, and at a glance it reads as the target. */
+      box("target", "Target", r.target, "Set a target \u2014 $12m",
+          "What has to be raised on this deal.") +
+      box("closeBy", "Close by", r.closeBy, "When it has to be in by") +
+      box("note", "Note", r.note, "Optional \u2014 terms, structure, who is leading it") +
+      '</div>';
+  }
+
   /* The figures, on their own so a field edited in the table can update
      them without redrawing the table underneath the cursor. */
   function raiseSummaryHtml(rec) {
     var t = raiseTotals(rec);
-    var r = rec.raise || {};
 
+    /* Only what is COMPUTED. Target and Close by are what somebody set,
+       and they are boxes above this rather than figures in it — see
+       raiseHeadHtml(). Printing them twice would leave two places
+       showing the same number and only one of them editable. */
     var cells = [
-      ["Target", t.targetText || (r.target ? r.target : "")],
       ["Committed", raiseMoney(t.committed)],
       ["Soft-circled", raiseMoney(t.soft)],
       [t.remaining != null && t.remaining < 0 ? "Oversubscribed by" : "Still to raise",
-       t.remaining == null ? "" : raiseMoney(Math.abs(t.remaining))],
-      ["Close by", r.closeBy || ""]
+       t.remaining == null ? "" : raiseMoney(Math.abs(t.remaining))]
     ].map(function (pair) {
       var empty = !pair[1];
       return '<div class="raise-fig"><span class="raise-fig__label">' + esc(pair[0]) + '</span>' +
@@ -5092,10 +5200,11 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
     var empty = (!r || !r.commitments.length)
       ? '<p class="raise-empty">' +
         (r && r.target
-          ? "Nothing committed yet. Add the first one below."
-          : "No raise open on this deal. Record a commitment below, or set a " +
-            "target first so there is something to measure it against — the " +
-            "target is on Edit deal, under Capital raise.") +
+          ? "Nothing committed against it yet. Add the first one below."
+          : "No raise open on this deal. Put a target in the box above to say what " +
+            "has to be raised, then record who is in below. Either one on its own " +
+            "opens the raise \u2014 a target with nobody in it yet is still worth " +
+            "writing down.") +
         '</p>'
       : "";
 
@@ -5130,7 +5239,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
 
     return '<div class="crm-section raise-panel" data-raise-for="' + esc(rec.id) + '">' +
       '<h3>Capital raise<span class="crm-section__aside">' + esc(raiseAside(rec)) + '</span></h3>' +
-      (r && r.note ? '<p class="raise-note">' + esc(r.note) + '</p>' : "") +
+      raiseHeadHtml(rec) +
       '<div class="raise-summary">' + (r ? raiseSummaryHtml(rec) : "") + '</div>' +
       empty + raiseRows(rec) + form + '</div>';
   }
@@ -5138,8 +5247,6 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
   /* The edit form. Deliberately the same fields the add form
      collects, plus the debt block, so there is one vocabulary for a
      deal however it got here. */
-  function raiseVal(rec, key) { return (rec.raise && rec.raise[key]) || ""; }
-
   function dealEditForm(rec) {
     function field(id, label, control, wide) {
       return '<div class="crm-field' + (wide ? " crm-field--wide" : "") + '">' +
@@ -5189,26 +5296,11 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
           text("dealEditLpCheck", rec.lpCheck, "$38m — what sits beside it")) +
         field("dealEditNote", "Note", text("dealEditNote", rec.note), true) +
       '</div>' +
-      /* The target, and nothing else about the raise. The commitments
-         against it are kept on the record's own panel, where they are
-         edited where they are read — a form that collected both would
-         make setting a target mean scrolling past six investors, and
-         make correcting one investor mean opening the whole deal for
-         editing. One form sets what the raise IS; the panel keeps what
-         has happened to it. */
-      '<h4 class="crm-edit__sub">Capital raise</h4>' +
-      '<p class="crm-edit__lede">The co-invest target for this deal, if there is one. ' +
-        'It stays with the deal after it closes — that is the point of it. Who is in, ' +
-        'and for how much, is on the deal\u2019s own page under Capital raise.</p>' +
-      '<div class="crm-edit__grid">' +
-        field("dealEditRaiseTarget", "Target",
-          text("dealEditRaiseTarget", raiseVal(rec, "target"), "$12m — what has to be raised")) +
-        field("dealEditRaiseCloseBy", "Close by",
-          text("dealEditRaiseCloseBy", raiseVal(rec, "closeBy"), "When it has to be in by")) +
-        field("dealEditRaiseNote", "Note",
-          text("dealEditRaiseNote", raiseVal(rec, "note"),
-               "Optional — terms, the structure, who is leading it"), true) +
-      '</div>' +
+      /* NO CAPITAL RAISE BLOCK HERE, and there was one. The target, the
+         close-by and the note were collected on this form for a fortnight
+         and nobody found them: a raise is looked at on the deal's own
+         page, and a target set anywhere else may as well not exist. They
+         are boxes on that panel now — see raiseHeadHtml(). */
       '<h4 class="crm-edit__sub">Debt</h4>' +
       '<p class="crm-edit__lede">Typed in, not read from a workbook. Blank is blank — ' +
         'these are printed exactly as written and nothing is calculated from them.</p>' +
@@ -5256,19 +5348,11 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
       mpGpCheck: v("dealEditMpGpCheck"),
       lpCheck: v("dealEditLpCheck"),
       note: v("dealEditNote"),
-      debt: anyDebt ? debt : null,
-      /* The commitments are NOT on this form, so they are carried across
-         from the record rather than rebuilt from it. Writing `raise` as
-         just the three boxes above would take every investor on the deal
-         with it — the field is replaced wholesale by patch(), not merged
-         into. normaliseRaise() turns the whole thing back to null when
-         all four parts come out empty. */
-      raise: {
-        target: v("dealEditRaiseTarget"),
-        closeBy: v("dealEditRaiseCloseBy"),
-        note: v("dealEditRaiseNote"),
-        commitments: (rec.raise && rec.raise.commitments) || []
-      }
+      debt: anyDebt ? debt : null
+      /* `raise` is deliberately absent. patch() replaces the fields it is
+         given and leaves the rest of the record alone, so not naming it
+         here is what keeps the target and every commitment on the deal
+         through an edit of anything else. */
     });
 
     renderDeals();
@@ -5375,13 +5459,14 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
      beside them. Carrying all four parts every time is the cheap way
      to make that impossible rather than merely unlikely.
      --------------------------------------------------------------- */
-  function raiseWrite(rec, commitments) {
+  function raiseSave(rec, parts) {
+    var r = rec.raise || {};
     Deals.patch(rec.id, {
       raise: {
-        target: raiseVal(rec, "target"),
-        closeBy: raiseVal(rec, "closeBy"),
-        note: raiseVal(rec, "note"),
-        commitments: commitments
+        target:  parts.target      != null ? parts.target      : (r.target || ""),
+        closeBy: parts.closeBy     != null ? parts.closeBy     : (r.closeBy || ""),
+        note:    parts.note        != null ? parts.note        : (r.note || ""),
+        commitments: parts.commitments != null ? parts.commitments : (r.commitments || [])
       }
     });
   }
@@ -5420,7 +5505,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
       investor: investor, amount: amount,
       status: v("status"), date: v("date"), note: v("note")
     });
-    raiseWrite(rec, list);
+    raiseSave(rec, { commitments: list });
     openDeal(rec.id, scopeFromEl(btn));
     renderRaises();
     toast((investor || amount) + " is on the raise for \u201C" + rec.name + "\u201D.");
@@ -5436,10 +5521,44 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
     if (!hit) return;
     var who = hit.investor || hit.amount || "this commitment";
     if (!armed(btn, "Remove?", "Click again to take " + who + " off this raise.")) return;
-    raiseWrite(rec, list.filter(function (c) { return c.id !== cid; }));
+    raiseSave(rec, { commitments: list.filter(function (c) { return c.id !== cid; }) });
     openDeal(rec.id, scopeFromEl(btn));
     renderRaises();
     toast(who + " is off the raise.");
+  }
+
+  /* The target, close-by and note, saved as they are left. Repaints the
+     figures below and the heading beside — a target is the thing every
+     one of them is measured against, so all of them move when it does —
+     and leaves this bar alone, because nothing in it has changed. */
+  function saveRaiseTarget(input) {
+    var block = input.closest("[data-raise-target]");
+    var panel = input.closest("[data-raise-for]");
+    var rec = raiseRecordOf(input);
+    if (!block || !panel || !rec) return;
+
+    function v(k) {
+      var el = block.querySelector('[data-raise-set="' + k + '"]');
+      return el ? el.value.trim() : "";
+    }
+    raiseSave(rec, { target: v("target"), closeBy: v("closeBy"), note: v("note") });
+    renderRaises();
+
+    var fresh = Deals.get(rec.id);
+    if (!fresh) return;
+    var sum = panel.querySelector(".raise-summary");
+    if (sum) sum.innerHTML = fresh.raise ? raiseSummaryHtml(fresh) : "";
+    var aside = panel.querySelector(".crm-section__aside");
+    if (aside) aside.textContent = raiseAside(fresh);
+    /* The empty-state sentence changes the moment a target exists, and it
+       is the sentence telling somebody what to do next — so it is worth
+       the one extra line to keep it true. */
+    var note = panel.querySelector(".raise-empty");
+    if (note) {
+      note.textContent = fresh.raise && fresh.raise.target
+        ? "Nothing committed against it yet. Add the first one below."
+        : note.textContent;
+    }
   }
 
   /* A box in the commitments table, saved as it is left.
@@ -5467,7 +5586,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
       var el = row.querySelector('[data-raise-field="' + k + '"]');
       if (el) hit[k] = el.value.trim();
     });
-    raiseWrite(rec, list);
+    raiseSave(rec, { commitments: list });
     renderRaises();
 
     var fresh = Deals.get(rec.id);
@@ -5590,9 +5709,10 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
         (all.length ? "Everything is raised" : "No raise open") + '</h3><p>' +
         (all.length
           ? "Every raise on the books has reached its target. The finished ones are below."
-          : "A deal appears here once it carries a capital raise. Open a deal on the " +
-            "pipeline or in Closed Deals, set a target under Capital raise on Edit deal, " +
-            "and record the commitments on the deal\u2019s own page.") +
+          : "Nothing is being raised yet. Pick a deal above and press Start a raise: " +
+            "it takes you to that deal\u2019s Capital raise panel, where the target goes " +
+            "in and the commitments under it. The deal appears here the moment it has " +
+            "either one.") +
         '</p></div>') +
       (done.length
         ? '<details class="deal-pile"><summary>' +
@@ -5619,6 +5739,26 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
                : countOf(all.length, "raise") + " on the books")
       : "";
     $("tabRaiseCount").textContent = open.length ? "(" + open.length + ")" : "";
+
+    /* Every deal NOT already raising, from both areas. A deal that is
+       already on the list above is left out: the way to its raise is the
+       row it is sitting on. */
+    var pick = $("raiseStartDeal");
+    if (pick) {
+      var without = Deals.all().filter(function (r) { return !r.raise; })
+        .sort(function (a, b) { return a.name.localeCompare(b.name); });
+      var was = pick.value;
+      pick.innerHTML = without.length
+        ? without.map(function (r) {
+            return '<option value="' + esc(r.id) + '">' + esc(r.name) +
+                   (r.area === "closed-deals" ? " (closed)" : "") + '</option>';
+          }).join("")
+        : '<option value="">Every deal is already raising</option>';
+      pick.value = was;
+      if (!pick.value && without.length) pick.selectedIndex = 0;
+      pick.disabled = !without.length;
+      $("raiseStartBtn").disabled = !without.length;
+    }
 
     $("raiseSourceNote").textContent = all.length
       ? "Every deal carrying a raise, from the pipeline and from Closed Deals both — a " +
@@ -15929,6 +16069,9 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
      caught here: it has no row, and nothing it holds is saved until
      "Record it" is pressed. */
   document.addEventListener("change", function (e) {
+    var targetField = e.target.closest("[data-raise-set]");
+    if (targetField) { saveRaiseTarget(targetField); return; }
+
     var raiseField = e.target.closest("[data-raise-field]");
     if (raiseField && raiseField.closest("[data-raise-row]")) {
       saveRaiseField(raiseField);
@@ -16388,6 +16531,45 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
 
   // Hidden when no deal carries debt, rather than opening an empty report.
   $("closedDebtBtn").addEventListener("click", openDealDebtReport);
+
+  /* Takes you to the deal's own panel and puts the cursor in the target
+     box. It does NOT create anything: a raise with nothing in it comes
+     back from normaliseRaise() as no raise at all, so "starting" one and
+     then typing nothing would leave the list exactly as it was and look
+     like a button that did not work. Typing the target is what starts it. */
+  $("raiseStartBtn").addEventListener("click", function () {
+    var id = $("raiseStartDeal").value;
+    var rec = id ? Deals.get(id) : null;
+    if (!rec) return;
+    var scope = scopeForArea(rec.area);
+    switchTab(scope.tab);
+    openDeal(rec.id, scope);
+
+    /* Deferred, because switchTab() ends with a SMOOTH scroll to the top
+       of the workspace and a smooth scroll already running will animate
+       straight over an instant one issued before it. Scrolling a moment
+       later replaces that animation instead of losing to it. Focus is
+       taken first and told not to scroll, so the only thing moving the
+       page is the line below it. */
+    setTimeout(function () {
+      var box = scopeEl(scope, "DetailBody").querySelector('[data-raise-set="target"]');
+      var panel = box && box.closest(".raise-panel");
+      if (!panel) return;
+      try { box.focus({ preventScroll: true }); } catch (e) { box.focus(); }
+      /* Clear of BOTH sticky bars — the dark one at the top of the window
+         and the tab row parked under it — or the panel's own heading
+         arrives underneath them and the section looks like it starts at
+         the target box. */
+      var bar = document.querySelector(".dash-tabs");
+      var topbar = parseFloat(getComputedStyle(document.documentElement)
+        .getPropertyValue("--topbar-h")) || 0;
+      var clear = topbar + (bar ? bar.getBoundingClientRect().height : 52) + 28;
+      window.scrollTo({
+        top: panel.getBoundingClientRect().top + window.pageYOffset - clear,
+        behavior: "smooth"
+      });
+    }, 80);
+  });
 
   $("raiseExportBtn").addEventListener("click", function () {
     try { exportRaisesXlsx(); }

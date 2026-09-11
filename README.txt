@@ -1237,3 +1237,42 @@ CAPITAL RAISES — a tab, added 2026-09-11:
   here. `raise` goes through normalise() like every other field, so it publishes
   and merges the way debt does, but that has not been watched with two browsers
   against a real store.
+
+THE TARGET MOVED TO WHERE THE RAISE IS, 2026-09-11:
+- Reported the same day the tracker shipped: "let's add a target raise". The
+  field already existed. Nobody could find it, which is the same thing.
+- It was on Edit deal, next to the debt block, on the reasoning that one form
+  should say what a raise IS and the panel should keep what has happened to it.
+  That reasoning does not survive contact with the page: somebody looking at a
+  raise and wanting to set a target has to leave the raise, open a form that is
+  mostly about something else, find three boxes at the bottom of it, and save.
+  Most people conclude there is no target field.
+- Target, Close by and Note are now boxes at the top of the Capital raise panel,
+  in the same type as the computed figures below them, framed only on hover and
+  focus. They save when they are left, like the commitment boxes do. Edit deal
+  no longer carries them: two places to set one number is worse than a number in
+  the wrong place.
+- They sit OUTSIDE .raise-summary on purpose. The summary is repainted whenever
+  a commitment changes, and a repaint would pull these boxes out from under
+  somebody tabbing across them. Nothing in them changes when a commitment does.
+- Target and Close by came OUT of the figure grid at the same time. They are
+  what somebody set rather than what was computed, and printing them twice would
+  leave two places showing one number with only one of them editable. The grid
+  is now Committed, Soft-circled, Still to raise.
+- Close by is typed, not a date picker, for the reason the debt block's maturity
+  is: "End of Q1" is a real answer, and a date input would refuse it or silently
+  blank it. Tested with exactly that.
+- The Capital Raises tab had no way in. It is a roll-up, everything on it is
+  edited on the deal it belongs to, and when it was empty it offered nothing at
+  all to the one person it matters most to. It now carries a picker of the deals
+  with no raise and a Start a raise button, which opens that deal's panel and
+  puts the cursor in the target box. It CREATES NOTHING — a raise with nothing
+  in it comes back from normaliseRaise() as no raise, so a button that made one
+  and left it empty would look like a button that did not work. Typing the
+  target is what starts it.
+- The landing scroll is deferred by 80ms. switchTab() ends with a smooth scroll
+  to the top of the workspace, and a smooth scroll already running animates
+  straight over an instant one issued before it.
+- The target placeholder reads "Set a target — $12m" rather than "$12m". A bare
+  figure in the Target slot in placeholder grey is still a figure in the Target
+  slot, and at a glance it reads as the target.
