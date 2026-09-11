@@ -1384,3 +1384,39 @@ THE DEAL BOX IS A PICKER, 2026-09-11:
   "Switchback – Casa Hope (Williamsburg, NY)": the register flagged it, the
   picker kept and labelled it, and choosing the real deal lit up both sends that
   were already on the register — neither of which carried a deal of its own.
+
+A RAISE THAT IS NOT A DEAL, 2026-09-11:
+- Asked for: track the raise for Modillion GP Fund I, which is not a deal and
+  must not sit on the Deal Pipeline.
+- A THIRD AREA, AND IT HAS NO TAB. DEAL_AREAS gains "fund-raises", labelled
+  "Fund or programme". The two deal tabs filter by area, so a record filed
+  there appears on neither of them without a line being written to keep it out
+  — see dealsInScope(). What puts it on Capital Raises is what puts anything
+  there: it carries a raise.
+- WHY A DEAL-SHAPED RECORD AND NOT A NEW KIND. Every join on this page goes
+  through a deal's NAME: commitments, materials filed against a deal, tasks, an
+  investor's interests. A separate record type would have had to re-earn all
+  four and would have drifted from them. A fund raise needs everything a deal's
+  raise has and nothing a deal's pipeline has, so it is a deal record filed
+  somewhere the pipeline does not look.
+- New fund or programme, on the Capital Raises toolbar: name, target, close by,
+  sponsor, note. The same three name guards the Add deal form uses, for the same
+  reason — two records sharing a name would both answer to it.
+- A FUND WITH NO TARGET IS NOT LOST. normaliseRaise() returns null for a raise
+  with nothing in it, and a fund filed where no deal list shows it would then be
+  a record with nowhere at all: created, saved, invisible. So withRaise() takes
+  anything in the fund-raises area whether or not it carries a raise yet, and
+  every reader of rec.raise now tolerates null. The row says "no target" and the
+  target box is there to type into.
+- It is READ on the pipeline's detail pane, because that pane exists and the
+  record has to be readable somewhere. Two things are corrected so the page does
+  not lie about it: the breadcrumb says "All raises" and goes back to this tab,
+  and the tab bar underlines Capital Raises rather than Deal Pipeline
+  (markTabCurrent, split out of switchTab for exactly this).
+- The "Start a raise" picker skips fund records — they are already on the list,
+  so offering to start one would be a second way to reach a row you can see.
+- Wording followed the data: the roll-up's columns are Deal or fund / Sponsor /
+  Status, the footer counts raises rather than deals, and the same two names go
+  into the Excel export.
+- "Where it sits" on Edit deal offers all three areas, so a fund can be moved
+  onto a deal list and a deal filed as a programme, both without special cases.

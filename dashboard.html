@@ -3666,9 +3666,20 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
           <label class="visually-hidden" for="raiseStartDeal">Start a raise on a deal</label>
           <select id="raiseStartDeal"></select>
           <button class="dash-refresh dash-refresh--primary" id="raiseStartBtn">Start a raise</button>
+          <!-- A raise with no deal under it: a fund, a programme. It gets a
+               record of its own so that commitments, materials and tasks all
+               join to it the way they join to anything else here — see
+               DEAL_AREAS — but that record is filed where neither deal list
+               will show it. -->
+          <button class="dash-refresh" id="raiseNewFundBtn">New fund or programme</button>
           <button class="dash-refresh" id="raiseExportBtn">Export Excel</button>
           <span class="dash-crm__shown" id="raiseShown"></span>
         </div>
+
+        <!-- Written by raiseFundForm() when the button is pressed, and sitting
+             above the list rather than inside it so it opens over whatever the
+             tab was showing. -->
+        <div class="deal-add" id="raiseFundPanel" hidden></div>
 
         <div id="raiseBody"></div>
 
@@ -4470,9 +4481,16 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
   function dealScope(id) { return DEAL_SCOPES[id] || DEAL_SCOPES.docs; }
 
   // Which tab a deal belongs on is its area, and nothing else.
+  /* Which tab's DETAIL PANE a record opens in. A fund raise belongs to
+     neither list, but it still has to be readable somewhere, and the
+     pipeline's pane is the one that is not the closed list. Its
+     breadcrumb is corrected in openDeal() so that going back does not
+     land on a list the record is not on. */
   function scopeForArea(area) {
     return area === "closed-deals" ? DEAL_SCOPES.closed : DEAL_SCOPES.docs;
   }
+
+  function isFundRaise(rec) { return !!rec && rec.area === "fund-raises"; }
 
   /* The click handlers are shared by both tabs, so the element that was
      clicked is what says which tab it was in — the workspace it sits
@@ -4971,6 +4989,23 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
     scope = scope || scopeForArea(rec.area);
     scope.state.dealId = id;
     scopeEl(scope, "Crumb").textContent = rec.name;
+
+    /* A fund raise is read on this pane but is not on the list behind
+       it, so "All deals" would be a button that takes you somewhere the
+       record is not. It goes back to the tab the record IS on. */
+    var fund = isFundRaise(rec);
+    var back = scopeEl(scope, "Detail").querySelector("[data-action='deal-home'], [data-action='raise-home']");
+    if (back) {
+      back.setAttribute("data-action", fund ? "raise-home" : "deal-home");
+      back.textContent = fund
+        ? "All raises"
+        : (scope.tab === "closed" ? "All closed deals" : "All deals");
+    }
+    /* And the tab bar agrees with the breadcrumb. A fund raise is READ on
+       the pipeline's pane because that pane exists and the record has to
+       live somewhere, but it is not on the pipeline and the underline
+       should not claim it is. */
+    if (fund) markTabCurrent("raises");
     scopeEl(scope, "DetailBody").innerHTML = dealDetail(rec);
     showDealView("deal", scope);
   }
@@ -5998,7 +6033,10 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
 
   function raiseRowHtml(rec) {
     var open = !!RAISE_EXPANDED[rec.id];
-    var n = (rec.raise.commitments || []).length;
+    // A fund filed here before anybody has set a target carries no raise
+    // object at all yet — see Deals.withRaise().
+    var r = rec.raise || { target: "", closeBy: "", note: "", commitments: [] };
+    var n = (r.commitments || []).length;
 
     /* data-raise-for and data-raise-target are what make the shared
        handlers work here: the first says which deal every control in this
@@ -6020,11 +6058,11 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
       '<td><span class="crm-pill" data-stage="' + esc(rec.status) + '">' +
         esc(rec.status) + '</span></td>' +
       '<td class="num"><input type="text" class="raise-roll__input raise-roll__input--num" ' +
-        'data-raise-set="target" value="' + esc(rec.raise.target || "") + '" ' +
+        'data-raise-set="target" value="' + esc(r.target || "") + '" ' +
         'placeholder="Set one" autocomplete="off" aria-label="Target for ' + esc(rec.name) + '"></td>' +
       raiseRowFigures(rec) +
       '<td><input type="text" class="raise-roll__input" data-raise-set="closeBy" ' +
-        'value="' + esc(rec.raise.closeBy || "") + '" placeholder="\u2014" autocomplete="off" ' +
+        'value="' + esc(r.closeBy || "") + '" placeholder="\u2014" autocomplete="off" ' +
         'aria-label="Close by for ' + esc(rec.name) + '"></td>' +
       '</tr>';
 
@@ -6064,20 +6102,20 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
     function num(v) {
       return '<td class="num">' + (v ? esc(v) : "") + '</td>';
     }
-    return '<tr><td></td><td>' + esc(countOf(list.length, "deal")) + '</td><td></td><td></td>' +
+    return '<tr><td></td><td>' + esc(countOf(list.length, "raise")) + '</td><td></td><td></td>' +
       num(f.target ? raiseMoney(f.target) : "") +
       num(f.committed ? raiseMoney(f.committed) : "") +
       num(f.soft ? raiseMoney(f.soft) : "") +
       num(f.remaining ? raiseMoney(f.remaining) : "") +
       num(f.target ? Math.round((f.committed / f.target) * 100) + "%" : "") +
       '<td>' + (f.untargeted
-        ? '<span class="muted">' + esc(countOf(f.untargeted, "deal")) + " with no target</span>"
+        ? '<span class="muted">' + esc(countOf(f.untargeted, "raise")) + " with no target</span>"
         : "") + '</td></tr>';
   }
 
   function raiseTable(list, key) {
     var head = '<tr><th class="raise-roll__toggle"><span class="visually-hidden">' +
-      'Show commitments</span></th><th>Deal</th><th>Operator</th><th>Deal status</th>' +
+      'Show commitments</span></th><th>Deal or fund</th><th>Sponsor</th><th>Status</th>' +
       '<th class="num">Target</th><th class="num">Committed</th><th class="num">Soft</th>' +
       '<th class="num">Still to raise</th><th class="num">%</th><th>Close by</th></tr>';
 
@@ -6110,7 +6148,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
     }, 0);
     if ($("raiseShown")) {
       $("raiseShown").textContent = all.length
-        ? (short ? raiseMoney(short) + " still to raise across " + countOf(shortfall.length, "deal")
+        ? (short ? raiseMoney(short) + " still to raise across " + countOf(shortfall.length, "raise")
                  : countOf(all.length, "raise") + " on the books")
         : "";
     }
@@ -6147,10 +6185,10 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
         (all.length ? "Everything is raised" : "No raise open") + '</h3><p>' +
         (all.length
           ? "Every raise on the books has reached its target. The finished ones are below."
-          : "Nothing is being raised yet. Pick a deal above and press Start a raise: " +
-            "it takes you to that deal\u2019s Capital raise panel, where the target goes " +
-            "in and the commitments under it. The deal appears here the moment it has " +
-            "either one.") +
+          : "Nothing is being raised yet. Two ways in: pick a deal above and press Start " +
+            "a raise, which takes you to that deal\u2019s Capital raise panel; or press New " +
+            "fund or programme for something that is not a deal at all \u2014 a fund, a " +
+            "programmatic line \u2014 which gets a record of its own and appears only here.") +
         '</p></div>') +
       (done.length
         ? '<details class="deal-pile"><summary>' +
@@ -6168,7 +6206,9 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
        row it is sitting on. */
     var pick = $("raiseStartDeal");
     if (pick) {
-      var without = Deals.all().filter(function (r) { return !r.raise; })
+      var without = Deals.all().filter(function (r) {
+        return !r.raise && r.area !== "fund-raises";
+      })
         .sort(function (a, b) { return a.name.localeCompare(b.name); });
       var was = pick.value;
       pick.innerHTML = without.length
@@ -6184,17 +6224,127 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
     }
 
     $("raiseSourceNote").textContent = all.length
-      ? "Every deal carrying a raise, from the pipeline and from Closed Deals both — a " +
-        "deal keeps its raise after it closes. Commitments are recorded on the deal itself; " +
-        "this adds them up."
+      ? "Every raise on the books: deals from the pipeline, deals that have closed — a deal " +
+        "keeps its raise after it closes — and funds and programmes, which are on no deal " +
+        "list at all. Commitments are recorded against each one; this adds them up."
       : "";
+  }
+
+  /* ---- a raise with no deal under it ----------------------------
+     Modillion GP Fund I is the case this was asked for: the firm is
+     raising for it, every investor conversation is about it, and it is
+     not a building anybody is buying. It gets a record because a raise
+     without one cannot hold commitments, cannot be filed against by a
+     memo and cannot carry a task — all three join by name to a record.
+     What it does not get is a place on either deal list.
+     ---------------------------------------------------------------- */
+  function raiseFundForm() {
+    return '<div class="crm-edit"><h3>New fund or programme</h3>' +
+      '<p class="crm-edit__lede">A raise that is not a deal \u2014 a fund, a programmatic ' +
+      'line, anything the firm is raising for that it is not buying. It appears here and ' +
+      'on nothing else: not the Deal Pipeline, not Closed Deals. Everything a deal\u2019s ' +
+      'raise can do, this can do.</p>' +
+      '<div class="crm-edit__grid">' +
+        '<div class="crm-field"><label for="fundNewName">Name</label>' +
+          '<input type="text" id="fundNewName" autocomplete="off" ' +
+            'placeholder="Modillion GP Fund I"></div>' +
+        '<div class="crm-field"><label for="fundNewTarget">Target</label>' +
+          '<input type="text" id="fundNewTarget" autocomplete="off" ' +
+            'placeholder="$25m \u2014 what has to be raised"></div>' +
+        '<div class="crm-field"><label for="fundNewCloseBy">Close by</label>' +
+          '<input type="text" id="fundNewCloseBy" autocomplete="off" ' +
+            'placeholder="When it has to be in by"></div>' +
+        '<div class="crm-field"><label for="fundNewOperator">Sponsor</label>' +
+          '<input type="text" id="fundNewOperator" list="dealOperatorNames" ' +
+            'autocomplete="off" placeholder="Modillion, or whoever is running it"></div>' +
+        '<div class="crm-field crm-field--wide"><label for="fundNewNote">Note</label>' +
+          '<input type="text" id="fundNewNote" autocomplete="off" ' +
+            'placeholder="Optional \u2014 terms, structure, who is leading it"></div>' +
+      '</div>' +
+      '<div class="crm-edit__actions">' +
+        '<button class="dash-refresh dash-refresh--primary" id="fundNewSave">Create it</button>' +
+        '<button class="dash-refresh" id="fundNewCancel">Cancel</button>' +
+      '</div></div>';
+  }
+
+  function closeRaiseFund() {
+    var panel = $("raiseFundPanel");
+    if (!panel) return;
+    panel.hidden = true;
+    panel.innerHTML = "";
+  }
+
+  function openRaiseFund() {
+    var panel = $("raiseFundPanel");
+    if (!panel.hidden) { closeRaiseFund(); return; }   // the button is a toggle
+    panel.innerHTML = raiseFundForm();
+    panel.hidden = false;
+    $("fundNewSave").addEventListener("click", saveRaiseFund);
+    $("fundNewCancel").addEventListener("click", closeRaiseFund);
+    $("fundNewName").addEventListener("keydown", function (e) {
+      if (e.key === "Enter") { e.preventDefault(); saveRaiseFund(); }
+    });
+    $("fundNewName").focus();
+  }
+
+  function saveRaiseFund() {
+    var name = $("fundNewName").value.trim();
+    if (!name) {
+      toast("Give it a name first.");
+      $("fundNewName").focus();
+      return;
+    }
+    /* The same three guards the Add deal form uses, and for the same
+       reason: every join here is by name, so two records sharing one
+       would both answer to it and neither would be wrong. */
+    if (matchesDeal(name)) {
+      toast("\u201C" + name + "\u201D is already on the deal list.");
+      return;
+    }
+    if (matchesInvestor(name)) {
+      toast("\u201C" + name + "\u201D is an investor on the CRM, not something to raise for.");
+      return;
+    }
+
+    var target = $("fundNewTarget").value.trim();
+    var closeBy = $("fundNewCloseBy").value.trim();
+    var note = $("fundNewNote").value.trim();
+    var operator = $("fundNewOperator").value.trim();
+
+    // Same courtesy the deal form does: an operator already on the CRM
+    // gets their own spelling rather than whatever was typed.
+    var matched = operator ? Operators.all().filter(function (o) {
+      return o.name.toLowerCase() === operator.toLowerCase();
+    })[0] : null;
+    if (matched) operator = matched.name;
+
+    var rec = Deals.create({
+      name: name,
+      area: "fund-raises",
+      status: "Live",
+      operator: operator,
+      addedAt: new Date().toISOString().slice(0, 10),
+      /* A target is what makes it appear on this tab at all — see
+         normaliseRaise(), which returns null for a raise with nothing in
+         it. Created without one it would be a record nobody could find,
+         so the empty case is allowed and says so on the row instead. */
+      raise: { target: target, closeBy: closeBy, note: note, commitments: [] }
+    });
+    if (!rec) { toast("Could not create that."); return; }
+
+    closeRaiseFund();
+    afterLinkAdd();       // the pickers and the link offers take it up
+    renderDeals();
+    renderRaises();
+    toast("\u201C" + rec.name + "\u201D is on the Capital Raises list. It is not on the " +
+          "Deal Pipeline \u2014 it is not a deal.");
   }
 
   function exportRaisesXlsx() {
     var list = Deals.withRaise();
     var sheets = [{
       name: "Raises",
-      rows: [["Deal", "Operator", "Where", "Deal status", "Target", "Committed",
+      rows: [["Deal or fund", "Sponsor", "Where", "Status", "Target", "Committed",
               "Soft-circled", "Still to raise", "Close by", "Note"]]
         .concat(list.map(function (rec) {
           var t = raiseTotals(rec);
@@ -6202,23 +6352,24 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
              somebody's own words and belongs in a working copy that way;
              the totals were computed here and there is no earlier form of
              them to preserve. */
+          var r = rec.raise || { target: "", closeBy: "", note: "" };
           return [rec.name, rec.operator, dealAreaLabel(rec.area), rec.status,
-                  rec.raise.target, t.committed || "", t.soft || "",
+                  r.target, t.committed || "", t.soft || "",
                   t.remaining == null ? "" : t.remaining,
-                  rec.raise.closeBy, rec.raise.note];
+                  r.closeBy, r.note];
         }))
     }];
 
     var lines = [];
     list.forEach(function (rec) {
-      rec.raise.commitments.forEach(function (c) {
+      ((rec.raise && rec.raise.commitments) || []).forEach(function (c) {
         lines.push([rec.name, c.investor, c.amount, c.status, c.date, c.note]);
       });
     });
     if (lines.length) {
       sheets.push({
         name: "Commitments",
-        rows: [["Deal", "Investor", "Amount", "How firm", "When", "Note"]].concat(lines)
+        rows: [["Deal or fund", "Investor", "Amount", "How firm", "When", "Note"]].concat(lines)
       });
     }
 
@@ -10002,7 +10153,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
     if (!want) return [];
     var out = [];
     Deals.withRaise().forEach(function (rec) {
-      rec.raise.commitments.forEach(function (c) {
+      ((rec.raise && rec.raise.commitments) || []).forEach(function (c) {
         if (c.investor.trim().toLowerCase() === want) out.push({ deal: rec, c: c });
       });
     });
@@ -11904,9 +12055,29 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
      convenience here, it is the join everything else depends on.
      ============================================================ */
 
+  /* THREE AREAS, AND THE THIRD ONE HAS NO TAB.
+
+     Active and Closed are the two deal lists. "Fund or programme" is a
+     raise that is not a deal at all — Modillion GP Fund I, a programmatic
+     line with a sponsor — and it exists because a fund raise needs every
+     single thing a deal's raise has (a target, commitments joined to the
+     investor CRM, materials filed against it, tasks, an entry on the
+     roll-up) and none of what a deal's PIPELINE has. Putting it on the
+     Deal Pipeline would say the firm is buying it.
+
+     It is a deal-shaped record for one reason worth stating plainly:
+     every join on this page goes through a deal's NAME. Commitments,
+     materials, tasks, an investor's interests. A separate record type
+     would have had to re-earn all of them, and would have drifted.
+
+     The tabs filter by area, so a record filed here appears on neither
+     of them without anything being written to keep it out — see
+     dealsInScope(). What puts it on the Capital Raises tab is what puts
+     anything there: it carries a raise. */
   var DEAL_AREAS = [
     { id: "active-deals", label: "Active Deals" },
-    { id: "closed-deals", label: "Closed Deals" }
+    { id: "closed-deals", label: "Closed Deals" },
+    { id: "fund-raises",  label: "Fund or programme" }
   ];
 
   // Empty. Real records arrive from the shared store, or from
@@ -12324,7 +12495,14 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
          still being raised. That is the whole reason the Capital Raises
          tab exists rather than a column on the pipeline. */
       withRaise: function () {
-        return all().filter(function (r) { return !!r.raise; });
+        /* Carrying a raise, OR being a record that exists for no other
+           reason. A fund or programme is filed where neither deal list
+           shows it, so if it dropped off this tab for want of a target
+           it would be a record with nowhere at all — created, saved, and
+           invisible. It appears, and its row says the target is unset. */
+        return all().filter(function (r) {
+          return !!r.raise || r.area === "fund-raises";
+        });
       },
       create: create,
       patch: patch,
@@ -16608,16 +16786,24 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
   /* ============================================================
      CRM — EVENTS
      ============================================================ */
-  function switchTab(tab) {
-    // A row left open on a tab nobody is looking at is a half-finished
-    // edit waiting to be forgotten about.
-    RowEdit.close();
-    crmState.tab = tab;
+  /* Which tab reads as the current one. Pulled out of switchTab because
+     opening a fund raise needs this half and not the other half: the
+     record is drawn on the pipeline's pane, and moving the workspaces
+     would take it off the screen. */
+  function markTabCurrent(tab) {
     Array.prototype.forEach.call(document.querySelectorAll(".dash-tabs button"), function (b) {
       var on = b.getAttribute("data-tab") === tab;
       b.classList.toggle("is-active", on);
       if (on) b.setAttribute("aria-current", "page"); else b.removeAttribute("aria-current");
     });
+  }
+
+  function switchTab(tab) {
+    // A row left open on a tab nobody is looking at is a half-finished
+    // edit waiting to be forgotten about.
+    RowEdit.close();
+    crmState.tab = tab;
+    markTabCurrent(tab);
     $("wsHome").hidden = tab !== "home";
     $("wsDocs").hidden = tab !== "docs";
     $("wsClosed").hidden = tab !== "closed";
@@ -17009,6 +17195,9 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
     var dealOpen = e.target.closest("[data-deal-open]");
     if (dealOpen) { openDeal(dealOpen.getAttribute("data-deal-open"), scopeFromEl(dealOpen)); return; }
 
+    var raiseBack = e.target.closest("[data-action='raise-home']");
+    if (raiseBack) { switchTab("raises"); return; }
+
     var dealBack = e.target.closest("[data-action='deal-home']");
     if (dealBack) { dealHome(scopeFromEl(dealBack)); return; }
 
@@ -17191,6 +17380,8 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
       });
     }, 80);
   });
+
+  $("raiseNewFundBtn").addEventListener("click", openRaiseFund);
 
   $("raiseExportBtn").addEventListener("click", function () {
     try { exportRaisesXlsx(); }
