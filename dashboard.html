@@ -1489,7 +1489,15 @@ button.link-arrow {
   border: 0;
   border-bottom: 2px solid transparent;
   margin-bottom: -1px;
-  padding: 12px 20px;
+  /* 20px each side fitted seven tabs across the container. The eighth —
+     Capital Raises — put the row over it, and a flex row that cannot fit
+     does not wrap the ROW, it wraps the words inside each button: every
+     label broke onto two lines at once. Fourteen buttons them all back
+     onto one line with room to spare, and nowrap below makes sure a label
+     never splits again; below 1100px the bar scrolls instead, which is
+     what it already did on a phone. */
+  padding: 12px 14px;
+  white-space: nowrap;
   font-family: var(--sans);
   font-size: .74rem;
   letter-spacing: .14em;
@@ -1509,9 +1517,11 @@ button.link-arrow {
   letter-spacing: .06em;
   color: var(--steel);
 }
-/* Six labels do not fit a phone — five did not either, which used to drag the
-   whole page sideways. Scroll the bar instead, and keep the page still. */
-@media (max-width: 760px) {
+/* Eight labels do not fit a phone — five did not either, which used to drag
+   the whole page sideways. Scroll the bar instead, and keep the page still.
+   The breakpoint is 1100 rather than 760 now: eight tabs need about 1050px,
+   so a narrow laptop window runs out well before a phone does. */
+@media (max-width: 1100px) {
   .dash-tabs {
     flex-wrap: nowrap;
     overflow-x: auto;
@@ -1790,17 +1800,90 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
   text-align: right; white-space: nowrap;
   font-variant-numeric: tabular-nums;
 }
-/* Four money columns whose headings are longer than anything under them.
-   "MP GP CHECK" is eleven characters holding up a column that says "$1.2m",
-   and with thead th nowrap those headings set the table's minimum width:
-   eleven columns wanted 1236px inside a 1128px workspace, so the table
-   scrolled at every width the moment the fourth one was added.
+/* The money headings on the deal tabs used to be the only ones allowed to
+   wrap: "MP GP CHECK" is eleven characters holding up a column that says
+   "$1.2m", and with thead th nowrap those four headings alone were setting
+   the table's minimum width. Every deal heading may wrap now — see ONE
+   DEAL, ONE LINE below, where the columns are given fixed shares of the
+   workspace and the headings are what has to give. */
 
-   Letting just these four headings wrap to two lines gives it all back —
-   1236 to 1128, nothing clipped, and the deal and asset-class columns get
-   a little wider into the bargain. Two-line headings over numbers are
-   ordinary; a table that scrolls before you have done anything is not. */
-.crmtable[data-reorder="deal"] thead th.crm-num { white-space: normal; }
+/* ONE DEAL, ONE LINE — the deal tabs only.
+
+   A pipeline is read DOWN the Deal column, and it cannot be read down
+   when one deal stands four lines tall and the next stands one. Three
+   things were making the rows ragged: the note printed under the deal
+   name, the "why" and "debt on file" sub-lines, and every prose column
+   wrapping. The note is off the list entirely now — see dealMark() —
+   and the rest is clipped to a single line with the whole value on the
+   cell's title.
+
+   THE COLUMNS ARE FIXED WIDTHS, which is the other half of it. Clipping
+   alone made the table WIDER, not narrower: an auto-layout table asks
+   each column for the widest thing in it, and a column that has stopped
+   wrapping asks for all of it. Eleven columns came to 1499px inside a
+   1128px workspace — 371px of sideways scroll where wrapping had cost
+   89. Fixed layout turns that around: the shares below are of the
+   workspace, so the table is exactly as wide as the space it has and
+   nothing scrolls sideways at all. They add to 100, and they have to.
+
+   What it costs is deal names: "Switchback – Casa Hope (Williamsburg,
+   NY)" does not fit the 190px this gives it, and is cut. Hovering shows the whole of it and
+   the deal's own page has it in full. The Deal column takes the largest
+   share for this reason and the money columns the smallest — a figure is
+   short and its heading is the only long thing about it, which is why
+   the headings below are allowed to wrap to two lines.
+
+   Below 1100px the table keeps these proportions and the wrap scrolls,
+   with the actions column pinned to the right edge as it already was.
+   Below 760px the rows become cards and all of this is undone. */
+.crmtable[data-reorder="deal"] { table-layout: fixed; width: 100%; min-width: 1100px; }
+.crmtable[data-reorder="deal"] tbody td { vertical-align: middle; padding-top: 13px; padding-bottom: 13px; }
+/* A heading may wrap to two lines; a row may not. The button is the
+   heading's whole content, and it has to be a block for the text inside
+   it to wrap — an inline-block sizes itself to the longest word and
+   spills out of a fixed column instead. */
+.crmtable[data-reorder="deal"] thead th { white-space: normal; }
+.crmtable[data-reorder="deal"] thead th button { display: block; }
+
+.crmtable[data-reorder="deal"] thead th:nth-child(1)  { width: 16.8%; }  /* Deal        */
+.crmtable[data-reorder="deal"] thead th:nth-child(2)  { width: 9%; }     /* Operator    */
+.crmtable[data-reorder="deal"] thead th:nth-child(3)  { width: 10.4%; }  /* Status      */
+.crmtable[data-reorder="deal"] thead th:nth-child(4)  { width: 9%; }     /* Market      */
+.crmtable[data-reorder="deal"] thead th:nth-child(5)  { width: 8.9%; }   /* Asset class */
+.crmtable[data-reorder="deal"] thead th:nth-child(6)  { width: 6.3%; }   /* Deal size   */
+.crmtable[data-reorder="deal"] thead th:nth-child(7)  { width: 6.3%; }   /* GP check    */
+.crmtable[data-reorder="deal"] thead th:nth-child(8)  { width: 6.3%; }   /* MP GP check */
+.crmtable[data-reorder="deal"] thead th:nth-child(9)  { width: 6.3%; }   /* LP check    */
+.crmtable[data-reorder="deal"] thead th:nth-child(10) { width: 7.7%; }   /* Added       */
+.crmtable[data-reorder="deal"] thead th:nth-child(11) { width: 13%; }    /* Actions     */
+
+/* One line, clipped at the column's edge. The flex is so that a mark
+   keeps its place at the end rather than being eaten by the ellipsis:
+   the text shrinks and the mark does not. */
+.crmtable[data-reorder="deal"] .crm-cell {
+  display: flex; align-items: baseline; gap: 8px; min-width: 0;
+}
+.crmtable[data-reorder="deal"] .crm-clip {
+  min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.crmtable[data-reorder="deal"] .crm-cell--status { align-items: center; }
+/* The built-in statuses all fit. A longer one added to the shared store
+   would not, and a pill that has grown past its column looks like a
+   fault rather than a long word — so it clips like everything else. */
+.crmtable[data-reorder="deal"] .crm-cell--status .crm-pill {
+  min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+
+/* "note" and "debt" — a word saying the deal carries something the
+   list no longer prints. Quiet, because it is a signpost and not a value:
+   findable when you are looking down a column for it, invisible when you
+   are not. Hovering shows what it points at; the row opens it. */
+.crmtable .crm-mark {
+  flex: none; font-size: .6rem; letter-spacing: .1em; text-transform: uppercase;
+  color: var(--muted); border: 1px solid var(--rule); border-radius: 2px;
+  padding: 1px 5px; line-height: 1.5; cursor: help;
+}
+.crmtable tbody tr:hover .crm-mark { border-color: rgba(90, 100, 119, .38); color: var(--steel); }
 
 /* Same problem on the investor list the moment it gained a Materials
    column: ten columns wanted 1192px inside a 1128px workspace, and the
@@ -2007,6 +2090,125 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
 }
 .comp-addart__grid .crm-field--wide,
 .rec-form__grid .crm-field--wide { grid-column: 1 / -1; }
+
+/* CAPITAL RAISE ---------------------------------------------------
+   The panel on a deal, and the roll-up tab behind it.
+
+   The figures come first and the commitments under them, because the
+   question is "how much is left" and the list is the working out. The
+   meter is there so the answer registers before anybody has read a
+   number: a raise that is nearly away and a raise that has barely
+   started should not look alike at arm's length. */
+.raise-summary:empty { display: none; }
+.raise-meter {
+  position: relative;
+  display: flex;
+  height: 8px;
+  border-radius: 4px;
+  background: rgba(45, 58, 81, 0.09);
+  overflow: hidden;
+  margin: 0 0 22px;
+}
+/* Committed is solid and soft-circled is the same colour at a quarter
+   strength, sitting immediately after it in the same track. Two tones of
+   one colour rather than two colours: a soft circle is the same money in
+   a weaker state, not a different kind of thing. */
+.raise-meter__bar  { background: var(--deep-space); }
+.raise-meter__soft { background: rgba(45, 58, 81, 0.26); }
+
+.raise-figs {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(132px, 1fr));
+  gap: 20px 28px;
+  margin-bottom: 26px;
+}
+.raise-fig { display: flex; flex-direction: column; gap: 5px; }
+.raise-fig__label {
+  font-family: var(--sans); font-size: .62rem; font-weight: 500;
+  letter-spacing: .14em; text-transform: uppercase; color: var(--muted);
+}
+.raise-fig__value {
+  font-size: 1.12rem; color: var(--deep-space);
+  font-variant-numeric: tabular-nums;
+}
+.raise-fig__value.is-empty { font-size: .88rem; color: var(--muted); }
+
+.raise-note {
+  margin: -4px 0 22px; font-size: .88rem; line-height: 1.6; color: var(--deep-space);
+}
+.raise-empty { margin: 0 0 24px; font-size: .88rem; color: var(--muted); }
+/* Said in words rather than by a missing row, because a total that has
+   quietly dropped a commitment is the failure worth shouting about. */
+.raise-warn {
+  margin: -10px 0 22px; padding: 10px 14px;
+  border-left: 3px solid #8A5A3B;
+  background: rgba(232, 214, 203, 0.4);
+  font-size: .8rem; line-height: 1.55; color: #6B4630;
+}
+
+/* The commitments, as boxes rather than as text with an Edit button.
+   See raiseRows() for why. The inputs are quiet until they are touched —
+   a grid of framed boxes reads as a form to be filled in, and this is a
+   record to be read that happens to be editable. */
+.raise-table-wrap { overflow-x: auto; margin-bottom: 26px; }
+.raise-table { width: 100%; border-collapse: collapse; min-width: 700px; }
+.raise-table th {
+  text-align: left; font-family: var(--sans); font-size: .62rem; font-weight: 500;
+  letter-spacing: .14em; text-transform: uppercase; color: var(--muted);
+  padding: 0 12px 10px 0; border-bottom: 1px solid var(--rule); white-space: nowrap;
+}
+.raise-table td { padding: 4px 12px 4px 0; border-bottom: 1px solid var(--rule); }
+.raise-table td:last-child, .raise-table th:last-child { padding-right: 0; }
+.raise-table input, .raise-table select {
+  font-family: var(--sans); font-size: .86rem; color: var(--deep-space);
+  background: none; border: 1px solid transparent; border-radius: 2px;
+  padding: 7px 8px; width: 100%; min-width: 0;
+}
+.raise-table input:hover, .raise-table select:hover { border-color: var(--rule); }
+.raise-table input:focus, .raise-table select:focus {
+  outline: none; border-color: var(--steel); background: var(--paper);
+}
+.raise-table .raise-amount { font-variant-numeric: tabular-nums; }
+.raise-table th.raise-table__actions, .raise-table td.raise-table__actions {
+  width: 1%; text-align: right; white-space: nowrap;
+}
+/* A date box is as wide as its own text and no wider; left to the column
+   it would take a third of the table for ten characters. */
+.raise-table input[type="date"] { width: auto; min-width: 140px; }
+
+/* How firm a commitment is, on the investor's record where it is read
+   rather than edited. Soft is the quiet one on purpose. */
+.raise-pill {
+  display: inline-block; font-size: .66rem; letter-spacing: .08em;
+  text-transform: uppercase; padding: 3px 9px; border-radius: 2px;
+  background: rgba(90, 100, 119, 0.1); color: var(--muted);
+}
+.raise-pill[data-firm="Hard"]   { background: rgba(119, 166, 182, 0.2); color: #3E6C7C; }
+.raise-pill[data-firm="Funded"] { background: rgba(29, 111, 66, 0.12); color: #1D6F42; }
+.raise-pill[data-firm="Passed"] { background: rgba(192, 57, 43, 0.08); color: #C0392B; }
+
+/* A right-aligned figure needs air on its left, or the column before it
+   ends where this one starts. .report-table gives .num no right padding
+   because it is normally the LAST column — which it is on the debt report
+   and on every report written before this one. The raise tables have
+   figures in the middle: five in a row followed by a date on the roll-up,
+   an amount followed by a pill on an investor's record. Opting in by
+   wrapping the table leaves those older reports exactly as they were. */
+.numcols .report-table td.num + td, .numcols .report-table th.num + th {
+  padding-left: 22px;
+}
+
+/* On the roll-up: what is left to find, and what no longer is. */
+.report-table td.raise-short { color: var(--deep-space); font-weight: 500; }
+.raise-over { color: #1D6F42; }
+
+@media (max-width: 760px) {
+  /* The boxes get their frames back on a phone. There is no column grid
+     left to keep quiet for, and a borderless input on a narrow screen is
+     a thing nobody can see is tappable. */
+  .raise-table input, .raise-table select { border-color: var(--rule); }
+  .raise-figs { gap: 16px 20px; }
+}
 
 /* Materials, versions and what has gone out ----------------------
    The register of what the firm sends investors, and the record of
@@ -2970,6 +3172,16 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
     letter-spacing: .12em; text-transform: uppercase; color: var(--muted);
   }
 
+  /* A card has no columns to keep in line, so the one-line clip on the
+     deal rows is undone here: the value wraps and the whole of it shows.
+     The marks stay — the note is still on the deal's own page, which is
+     a tap away on the card as it is a click away on the row. */
+  .crmtable[data-reorder="deal"] { table-layout: auto; min-width: 0; }
+  .crmtable[data-reorder="deal"] .crm-cell { display: block; }
+  .crmtable[data-reorder="deal"] .crm-clip { white-space: normal; overflow: visible; }
+  .crmtable[data-reorder="deal"] .crm-cell--status .crm-pill { white-space: normal; overflow: visible; }
+  .crmtable[data-reorder="deal"] .crm-mark { margin-left: 8px; }
+
   /* The name is the card's heading rather than a labelled field. */
   .crmtable tbody td:first-child {
     display: block; padding: 0 0 11px; margin-bottom: 6px;
@@ -3125,6 +3337,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
         <button type="button" data-tab="home" class="is-active" aria-current="page">Home</button>
         <button type="button" data-tab="docs">Deal Pipeline<span class="dash-tabs__count" id="tabDealCount"></span></button>
         <button type="button" data-tab="closed">Closed Deals<span class="dash-tabs__count" id="tabClosedCount"></span></button>
+        <button type="button" data-tab="raises">Capital Raises<span class="dash-tabs__count" id="tabRaiseCount"></span></button>
         <button type="button" data-tab="operators">Operator CRM<span class="dash-tabs__count" id="tabOperatorCount"></span></button>
         <button type="button" data-tab="crm">Investor CRM<span class="dash-tabs__count" id="tabCrmCount"></span></button>
         <button type="button" data-tab="tasks">Task List<span class="dash-tabs__count" id="tabTaskCount"></span></button>
@@ -3134,8 +3347,8 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
       <!-- ========================== HOME ========================== -->
       <div id="wsHome">
         <p class="dash-home__lede">
-          Six workspaces, each backed by its own data. The documents are a mirror of
-          the OneDrive folders as they stand; everything else is recorded here.
+          Seven workspaces, each backed by its own data. Everything here is
+          recorded on this page — nothing is read from a folder.
         </p>
         <div class="dash-grid dash-grid--home" id="homeGrid"></div>
       </div><!-- /#wsHome -->
@@ -3191,6 +3404,12 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
         </div>
 
         <datalist id="dealOperatorNames"></datalist>
+        <!-- Investor names for the capital-raise panel. One list for the
+             whole page: a datalist is addressed by id from anywhere in the
+             document, and the panel is drawn on this tab and on Closed
+             Deals, which is the same arrangement dealOperatorNames above
+             already has. -->
+        <datalist id="raiseInvestorNames"></datalist>
 
       </div><!-- /#wsDocs -->
 
@@ -3271,6 +3490,34 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
         </div>
 
       </div><!-- /#wsClosed -->
+
+      <!-- ====================== CAPITAL RAISES ======================
+           What is still to be raised, across every deal that is raising.
+
+           It is NOT a third list of deals, and that distinction is the
+           whole design. Everything on this page joins deals by NAME —
+           operators, tasks, an investor's interests — so a deal that
+           existed twice would be a deal those references could not
+           resolve. A deal appears here because it carries a raise, and
+           it carries that raise through its close: Casa Hope moves to
+           Closed Deals and stays on this tab until the co-invest is
+           away, which is exactly what this was asked for.
+
+           Read-only on purpose. Commitments are recorded on the deal
+           they belong to, where the deal's own facts are in front of
+           you; this rolls them up and links back. -->
+      <div id="wsRaises" hidden>
+
+        <p class="report-note" id="raiseSourceNote"></p>
+
+        <div class="dash-toolbar">
+          <button class="dash-refresh" id="raiseExportBtn">Export Excel</button>
+          <span class="dash-crm__shown" id="raiseShown"></span>
+        </div>
+
+        <div id="raiseBody"></div>
+
+      </div><!-- /#wsRaises -->
 
       <!-- ====================== INVESTOR CRM ====================== -->
       <div id="wsCrm" hidden>
@@ -3973,6 +4220,19 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
         var n = Deals.inArea("closed-deals").length;
         return n ? n + " deal" + (n === 1 ? "" : "s") : null;
       } },
+    { tab: "raises", label: "Capital Raises", icon: "coins",
+      blurb: "What is still to be raised — the co-invest target on each deal, who has " +
+             "committed against it, and how much is left to find.",
+      count: function () {
+        var open = Deals.withRaise().filter(function (r) { return !raiseIsDone(r); });
+        if (!open.length) return null;
+        var short = open.reduce(function (n, rec) {
+          var t = raiseTotals(rec);
+          return n + (t.remaining != null && t.remaining > 0 ? t.remaining : 0);
+        }, 0);
+        return short ? raiseMoney(short) + " to raise"
+                     : open.length + " raise" + (open.length === 1 ? "" : "s") + " open";
+      } },
     { tab: "operators", label: "Operator CRM", icon: "shield",
       blurb: "The sponsors running the deals — track record, GP co-invest, vertical " +
              "integration, and which pipeline deals each one is behind.",
@@ -4118,6 +4378,33 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
     var a = dealAmount(raw);
     return '<td class="crm-num">' +
            (a ? esc(a.text) : '<span class="muted">—</span>') + '</td>';
+  }
+
+  /* A cell that holds prose rather than a figure. It is one line, it is
+     clipped at a width set per column in the stylesheet, and the untruncated
+     value is on the title so a long market or a two-part asset class can
+     still be read without opening the deal.
+
+     The <span> is what carries the width, not the <td>: max-width on a
+     table cell is advice an auto-layout table is free to ignore, and this
+     one did. On a phone the rows are cards and the clip is undone — there
+     are no columns left to keep in line. */
+  function dealCell(value, kind, mark) {
+    return '<td><span class="crm-cell crm-cell--' + kind + '"' +
+           (value ? ' title="' + esc(value) + '"' : "") + '>' +
+           (value ? '<span class="crm-clip">' + esc(value) + '</span>'
+                  : '<span class="muted">—</span>') +
+           (mark || "") + '</span></td>';
+  }
+
+  /* A word saying something else is recorded here, where the thing itself
+     used to be printed. The note was a sub-line under every deal name and
+     it is what made the rows ragged — four lines against one — so it
+     lives on the deal's own page now, with this to say it is there and the
+     row itself to open it. The text is on the title for a quick look. */
+  function dealMark(label, title) {
+    return '<span class="crm-mark"' + (title ? ' title="' + esc(title) + '"' : "") +
+           '>' + esc(label) + '</span>';
   }
 
   function dealAreaLabel(id) {
@@ -4342,16 +4629,30 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
           ["Added", RowEdit.stat(rec.addedAt || "Not recorded")]
         ], "Enter saves · Esc cancels");
       }
+      /* ONE DEAL, ONE LINE. Nothing in a row wraps and nothing sits under
+         anything else: a list where one deal is four lines deep and the
+         next is one cannot be read DOWN, which is the only way anybody
+         reads a pipeline. What will not fit is clipped, the whole value
+         is on the cell's title, and the deal's own page has all of it. */
       return '<tr data-deal="' + esc(rec.id) + '">' +
         '<td>' + rowGrip(rec.id, rec.name) +
-          '<span class="crm-name">' + esc(rec.name) + '</span>' +
-          (rec.note ? '<span class="crm-sub">' + esc(rec.note) + '</span>' : "") + '</td>' +
-        '<td>' + (rec.operator ? esc(rec.operator) : '<span class="muted">—</span>') + '</td>' +
-        '<td><span class="crm-pill" data-stage="' + esc(rec.status) + '">' + esc(rec.status) + '</span>' +
-          (rec.statusWhy ? '<span class="crm-sub">' + esc(rec.statusWhy) + '</span>' : "") + '</td>' +
-        '<td>' + (rec.market ? esc(rec.market) : '<span class="muted">—</span>') + '</td>' +
-        '<td>' + (rec.assetClass ? esc(rec.assetClass) : '<span class="muted">—</span>') +
-          (rec.debt ? '<span class="crm-sub">debt on file</span>' : "") + '</td>' +
+          '<span class="crm-cell crm-cell--name" title="' + esc(rec.name) + '">' +
+            '<span class="crm-clip crm-name">' + esc(rec.name) + '</span>' +
+            // The note itself is off the list — see dealMark(). This says
+            // there is one, and the row opens the deal that holds it.
+            (rec.note ? dealMark("note", rec.note) : "") + '</span></td>' +
+        dealCell(rec.operator, "operator") +
+        /* "Why" was a second line under the pill and it is on the pill's
+           own title now, with no mark of its own beside the note's: a
+           mark and a pill sharing this column left the pill about 36px
+           to say "LIVE" in, and the why is a sentence ABOUT the status
+           rather than a second thing filed next to it. */
+        '<td><span class="crm-cell crm-cell--status">' +
+          '<span class="crm-pill" data-stage="' + esc(rec.status) + '" title="' +
+            esc(rec.status + (rec.statusWhy ? " — " + rec.statusWhy : "")) + '">' +
+            esc(rec.status) + '</span></span></td>' +
+        dealCell(rec.market, "market") +
+        dealCell(rec.assetClass, "asset", rec.debt ? dealMark("debt", "Debt is recorded on this deal") : "") +
         dealMoneyCell(rec.dealSize) +
         dealMoneyCell(rec.gpCheck) +
         dealMoneyCell(rec.mpGpCheck) +
@@ -4423,6 +4724,13 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
         return '<option value="' + esc(o.name) + '">';
       }).join("");
     }
+
+    var idl = $("raiseInvestorNames");
+    if (idl) {
+      idl.innerHTML = Crm.all().map(function (i) {
+        return '<option value="' + esc(i.name) + '">';
+      }).join("");
+    }
   }
 
   /* Called with a scope to draw one tab, and without one to draw both —
@@ -4432,6 +4740,10 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
     if (!scope) {
       renderDeals(DEAL_SCOPES.docs);
       renderDeals(DEAL_SCOPES.closed);
+      // The raises tab is drawn from the same records, so anything that
+      // repaints every deal repaints it too — including the live poll,
+      // which is how somebody else's commitment arrives on this screen.
+      renderRaises();
       return;
     }
 
@@ -4584,12 +4896,250 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
        page that sent you to write it was the one page that could not show
        it back. Tasks join by NAME, the same join every reference to a deal
        uses — see the note over Deals.byName(). */
-    return head + fields + debt + recordTaskPanel(rec.name) + actions;
+    /* The raise sits above Tasks and below Debt: it is the live question
+       on a deal that is raising, and the one thing on this page somebody
+       opens the record specifically to update. */
+    return head + fields + debt + dealRaisePanel(rec) +
+           recordTaskPanel(rec.name) + actions;
+  }
+
+  /* ============================================================
+     CAPITAL RAISE
+
+     The one place on this page that does arithmetic.
+
+     Everything else here prints what somebody typed and leaves the
+     reading to the reader — a deal size is "$122.5m" because that is
+     what it says on the term sheet, and nothing is gained by adding a
+     column of them up. A raise is different. "What is left to find" is
+     the question the whole thing exists to answer, and it cannot be
+     answered by looking down a column: it is a target minus a sum.
+
+     So amounts are still stored as typed, and still printed as typed,
+     and the SUM is computed where it is shown — the same arrangement
+     dealAmount() already uses, pushed one step further. Anything the
+     matcher cannot read is left out of the total and counted, and the
+     panel says so in words. A total that has quietly dropped somebody's
+     commitment is worse than no total.
+
+     WHAT THE STATUSES MEAN, because the arithmetic turns on it:
+       Soft   — soft-circled. An indication, not a commitment.
+       Hard   — committed. Signed, or as good as.
+       Funded — the money has arrived.
+       Passed — they looked and said no. Kept, because "who have we
+                already asked" is a question worth being able to answer.
+     Committed is Hard plus Funded. Soft is counted and shown, and is
+     NOT in the committed figure — the entire point of the distinction
+     is that a soft circle is not money.
+     ============================================================ */
+
+  var RAISE_STATES = ["Soft", "Hard", "Funded", "Passed"];
+  var RAISE_COUNTED = { Hard: 1, Funded: 1 };
+
+  /* Adds up what it can read and counts what it cannot. dealAmount()
+     wants a dollar sign and at least a thousand — see the note over it —
+     so "TBD" and a bare "5" are unread rather than wrong, and both are
+     reported rather than silently treated as zero. */
+  function raiseSum(list) {
+    var n = 0, unread = 0;
+    list.forEach(function (c) {
+      var a = dealAmount(c.amount);
+      if (a && a.n != null) n += a.n;
+      else if (c.amount) unread++;
+    });
+    return { n: n, unread: unread };
+  }
+
+  function raiseTotals(rec) {
+    var r = rec.raise;
+    var cs = (r && r.commitments) || [];
+    var committed = raiseSum(cs.filter(function (c) { return RAISE_COUNTED[c.status]; }));
+    var soft = raiseSum(cs.filter(function (c) { return c.status === "Soft"; }));
+    var target = dealAmount(r && r.target);
+    var t = target && target.n != null ? target.n : null;
+    return {
+      target: t,
+      targetText: target ? target.text : "",
+      committed: committed.n,
+      soft: soft.n,
+      unread: committed.unread + soft.unread,
+      // Null when there is no readable target: "still to raise" against a
+      // target nobody has set is not zero, it is unanswerable.
+      remaining: t == null ? null : t - committed.n,
+      pct: t ? Math.round((committed.n / t) * 100) : null
+    };
+  }
+
+  /* Named for its section rather than just `money`, because Reader has a
+     private one of its own and two functions of that name in one file is
+     a trap for whoever reads it next. */
+  function raiseMoney(n) { return n ? Reader.fmtMoney(n) : "$0"; }
+
+  /* A raise is DONE when the committed money has reached the target. It
+     stops being on the Capital Raises tab's live list then and files
+     itself under Raised, which is the same shape as the piles at the
+     foot of a deal list. Without a readable target it can never be done,
+     because nothing says what done would be. */
+  function raiseIsDone(rec) {
+    var t = raiseTotals(rec);
+    return t.target != null && t.committed >= t.target;
+  }
+
+  /* The figures, on their own so a field edited in the table can update
+     them without redrawing the table underneath the cursor. */
+  function raiseSummaryHtml(rec) {
+    var t = raiseTotals(rec);
+    var r = rec.raise || {};
+
+    var cells = [
+      ["Target", t.targetText || (r.target ? r.target : "")],
+      ["Committed", raiseMoney(t.committed)],
+      ["Soft-circled", raiseMoney(t.soft)],
+      [t.remaining != null && t.remaining < 0 ? "Oversubscribed by" : "Still to raise",
+       t.remaining == null ? "" : raiseMoney(Math.abs(t.remaining))],
+      ["Close by", r.closeBy || ""]
+    ].map(function (pair) {
+      var empty = !pair[1];
+      return '<div class="raise-fig"><span class="raise-fig__label">' + esc(pair[0]) + '</span>' +
+             '<span class="raise-fig__value' + (empty ? " is-empty" : "") + '">' +
+             esc(empty ? "not set" : pair[1]) + '</span></div>';
+    }).join("");
+
+    /* Two bars, not one: committed is solid and the soft circles sit
+       behind it in the same track, so "we are at 60, and there is another
+       20 that might turn up" reads as one picture. Both are capped at the
+       track — an oversubscribed raise is said in words above, and a bar
+       running past its own end says nothing extra. */
+    var meter = "";
+    if (t.target != null) {
+      var cw = Math.min(100, (t.committed / t.target) * 100);
+      var sw = Math.min(100 - cw, (t.soft / t.target) * 100);
+      meter = '<div class="raise-meter" role="img" aria-label="' +
+        esc(raiseMoney(t.committed) + " committed of " + (t.targetText || raiseMoney(t.target)) +
+            (t.soft ? ", " + raiseMoney(t.soft) + " soft-circled" : "")) + '">' +
+        '<span class="raise-meter__bar" style="width:' + cw.toFixed(1) + '%"></span>' +
+        '<span class="raise-meter__soft" style="width:' + sw.toFixed(1) + '%"></span>' +
+        '</div>';
+    }
+
+    var warn = t.unread
+      ? '<p class="raise-warn">' + countOf(t.unread, "commitment") +
+        ' could not be read as an amount and ' + (t.unread === 1 ? "is" : "are") +
+        ' not in these totals. A figure counts when it carries a dollar sign ' +
+        'and is at least a thousand — "$1.5m", "$1,500,000".</p>'
+      : "";
+
+    return meter + '<div class="raise-figs">' + cells + '</div>' + warn;
+  }
+
+  function raiseAside(rec) {
+    var t = raiseTotals(rec);
+    if (!rec.raise) return "None open";
+    if (t.target == null) return raiseMoney(t.committed) + " committed · no target set";
+    return raiseMoney(t.committed) + " of " + (t.targetText || raiseMoney(t.target)) +
+           " · " + t.pct + "%";
+  }
+
+  function raiseStatusOptions(current) {
+    return RAISE_STATES.map(function (v) {
+      return '<option value="' + esc(v) + '"' + (v === current ? " selected" : "") +
+             '>' + esc(v) + '</option>';
+    }).join("");
+  }
+
+  /* The commitments, editable where they are read.
+
+     This is a table of boxes rather than a list with an Edit button on
+     each row, and deliberately: a commitment changes in small ways and
+     often — a soft circle firms up, a number moves by a quarter — and
+     making that a three-click round trip is how a tracker stops being
+     kept up to date. Each box saves when it is left. The live poll does
+     not redraw a page with a cursor in a field (see Live.typing), so
+     nothing lands on top of a half-typed figure. */
+  function raiseRows(rec) {
+    var cs = (rec.raise && rec.raise.commitments) || [];
+    if (!cs.length) return "";
+
+    var rows = cs.map(function (c) {
+      return '<tr data-raise-row="' + esc(c.id) + '">' +
+        '<td><input type="text" data-raise-field="investor" list="raiseInvestorNames" ' +
+          'value="' + esc(c.investor) + '" autocomplete="off" aria-label="Investor"></td>' +
+        '<td><input type="text" data-raise-field="amount" class="raise-amount" ' +
+          'value="' + esc(c.amount) + '" placeholder="$1.5m" autocomplete="off" aria-label="Amount"></td>' +
+        '<td><select data-raise-field="status" aria-label="How firm">' +
+          raiseStatusOptions(c.status) + '</select></td>' +
+        '<td><input type="date" data-raise-field="date" value="' + esc(c.date) +
+          '" aria-label="Date"></td>' +
+        '<td><input type="text" data-raise-field="note" value="' + esc(c.note) +
+          '" placeholder="Optional" autocomplete="off" aria-label="Note"></td>' +
+        '<td class="raise-table__actions">' +
+          '<button type="button" class="crm-rowdelete" data-raise-remove="' + esc(c.id) +
+            '" title="Remove this commitment">Remove</button>' +
+        '</td></tr>';
+    }).join("");
+
+    return '<div class="raise-table-wrap"><table class="raise-table">' +
+      '<thead><tr><th>Investor</th><th>Amount</th><th>How firm</th>' +
+      '<th>When</th><th>Note</th><th class="raise-table__actions">' +
+      '<span class="visually-hidden">Remove</span></th></tr></thead>' +
+      '<tbody>' + rows + '</tbody></table></div>';
+  }
+
+  function dealRaisePanel(rec) {
+    var r = rec.raise;
+    var today = new Date().toISOString().slice(0, 10);
+
+    var empty = (!r || !r.commitments.length)
+      ? '<p class="raise-empty">' +
+        (r && r.target
+          ? "Nothing committed yet. Add the first one below."
+          : "No raise open on this deal. Record a commitment below, or set a " +
+            "target first so there is something to measure it against — the " +
+            "target is on Edit deal, under Capital raise.") +
+        '</p>'
+      : "";
+
+    var form = '<div class="rec-form" data-raise-new>' +
+      '<h4>Record a commitment</h4>' +
+      '<div class="rec-form__grid">' +
+        '<div class="crm-field"><label for="raiseNewInvestor">Investor</label>' +
+          '<input type="text" id="raiseNewInvestor" data-raise-field="investor" ' +
+            'list="raiseInvestorNames" autocomplete="off" placeholder="Who is in">' +
+          '<span class="crm-field__note">Matched to the investor CRM by name, the same ' +
+            'way every other reference to a record on this page is.</span></div>' +
+        '<div class="crm-field"><label for="raiseNewAmount">Amount</label>' +
+          '<input type="text" id="raiseNewAmount" data-raise-field="amount" ' +
+            'autocomplete="off" placeholder="$1.5m"></div>' +
+        '<div class="crm-field"><label for="raiseNewStatus">How firm</label>' +
+          '<select id="raiseNewStatus" data-raise-field="status">' +
+            raiseStatusOptions(RAISE_STATES[0]) + '</select>' +
+          '<span class="crm-field__note">Soft is an indication. Hard and Funded are ' +
+            'what the committed figure counts.</span></div>' +
+        '<div class="crm-field"><label for="raiseNewDate">When</label>' +
+          '<input type="date" id="raiseNewDate" data-raise-field="date" value="' + today + '"></div>' +
+        '<div class="crm-field crm-field--wide"><label for="raiseNewNote">Note</label>' +
+          '<input type="text" id="raiseNewNote" data-raise-field="note" autocomplete="off" ' +
+            'placeholder="Optional — what it is contingent on, what they asked for next"></div>' +
+      '</div>' +
+      '<div class="crm-research__actions">' +
+        '<button type="button" class="dash-refresh dash-refresh--primary" ' +
+          'data-raise-add="' + esc(rec.id) + '">Record it</button>' +
+        '<span class="crm-research__hint">Nothing here moves any money. It records what ' +
+          'somebody has said they will put in.</span>' +
+      '</div></div>';
+
+    return '<div class="crm-section raise-panel" data-raise-for="' + esc(rec.id) + '">' +
+      '<h3>Capital raise<span class="crm-section__aside">' + esc(raiseAside(rec)) + '</span></h3>' +
+      (r && r.note ? '<p class="raise-note">' + esc(r.note) + '</p>' : "") +
+      '<div class="raise-summary">' + (r ? raiseSummaryHtml(rec) : "") + '</div>' +
+      empty + raiseRows(rec) + form + '</div>';
   }
 
   /* The edit form. Deliberately the same fields the add form
      collects, plus the debt block, so there is one vocabulary for a
      deal however it got here. */
+  function raiseVal(rec, key) { return (rec.raise && rec.raise[key]) || ""; }
+
   function dealEditForm(rec) {
     function field(id, label, control, wide) {
       return '<div class="crm-field' + (wide ? " crm-field--wide" : "") + '">' +
@@ -4639,6 +5189,26 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
           text("dealEditLpCheck", rec.lpCheck, "$38m — what sits beside it")) +
         field("dealEditNote", "Note", text("dealEditNote", rec.note), true) +
       '</div>' +
+      /* The target, and nothing else about the raise. The commitments
+         against it are kept on the record's own panel, where they are
+         edited where they are read — a form that collected both would
+         make setting a target mean scrolling past six investors, and
+         make correcting one investor mean opening the whole deal for
+         editing. One form sets what the raise IS; the panel keeps what
+         has happened to it. */
+      '<h4 class="crm-edit__sub">Capital raise</h4>' +
+      '<p class="crm-edit__lede">The co-invest target for this deal, if there is one. ' +
+        'It stays with the deal after it closes — that is the point of it. Who is in, ' +
+        'and for how much, is on the deal\u2019s own page under Capital raise.</p>' +
+      '<div class="crm-edit__grid">' +
+        field("dealEditRaiseTarget", "Target",
+          text("dealEditRaiseTarget", raiseVal(rec, "target"), "$12m — what has to be raised")) +
+        field("dealEditRaiseCloseBy", "Close by",
+          text("dealEditRaiseCloseBy", raiseVal(rec, "closeBy"), "When it has to be in by")) +
+        field("dealEditRaiseNote", "Note",
+          text("dealEditRaiseNote", raiseVal(rec, "note"),
+               "Optional — terms, the structure, who is leading it"), true) +
+      '</div>' +
       '<h4 class="crm-edit__sub">Debt</h4>' +
       '<p class="crm-edit__lede">Typed in, not read from a workbook. Blank is blank — ' +
         'these are printed exactly as written and nothing is calculated from them.</p>' +
@@ -4686,7 +5256,19 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
       mpGpCheck: v("dealEditMpGpCheck"),
       lpCheck: v("dealEditLpCheck"),
       note: v("dealEditNote"),
-      debt: anyDebt ? debt : null
+      debt: anyDebt ? debt : null,
+      /* The commitments are NOT on this form, so they are carried across
+         from the record rather than rebuilt from it. Writing `raise` as
+         just the three boxes above would take every investor on the deal
+         with it — the field is replaced wholesale by patch(), not merged
+         into. normaliseRaise() turns the whole thing back to null when
+         all four parts come out empty. */
+      raise: {
+        target: v("dealEditRaiseTarget"),
+        closeBy: v("dealEditRaiseCloseBy"),
+        note: v("dealEditRaiseNote"),
+        commitments: (rec.raise && rec.raise.commitments) || []
+      }
     });
 
     renderDeals();
@@ -4784,6 +5366,303 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
       $("closedReportBody").innerHTML = table(head, rows);
     }
     showDealView("report", DEAL_SCOPES.closed);
+  }
+
+  /* ---- editing a raise -----------------------------------------
+     Every write goes through here, and every one of them sends the
+     WHOLE raise: patch() replaces a field rather than merging into it,
+     so a write that named only the commitments would drop the target
+     beside them. Carrying all four parts every time is the cheap way
+     to make that impossible rather than merely unlikely.
+     --------------------------------------------------------------- */
+  function raiseWrite(rec, commitments) {
+    Deals.patch(rec.id, {
+      raise: {
+        target: raiseVal(rec, "target"),
+        closeBy: raiseVal(rec, "closeBy"),
+        note: raiseVal(rec, "note"),
+        commitments: commitments
+      }
+    });
+  }
+
+  // Copies, because these are edited before they are written back and
+  // the records in the store are not this code's to mutate.
+  function raiseCommitments(rec) {
+    return ((rec.raise && rec.raise.commitments) || []).map(function (c) {
+      return Object.assign({}, c);
+    });
+  }
+
+  function raiseRecordOf(el) {
+    var panel = el.closest("[data-raise-for]");
+    return panel ? Deals.get(panel.getAttribute("data-raise-for")) : null;
+  }
+
+  function addRaiseCommitment(btn) {
+    var rec = Deals.get(btn.getAttribute("data-raise-add"));
+    if (!rec) return;
+    var form = btn.closest("[data-raise-for]").querySelector("[data-raise-new]");
+    function v(k) {
+      var el = form.querySelector('[data-raise-field="' + k + '"]');
+      return el ? el.value.trim() : "";
+    }
+    var investor = v("investor"), amount = v("amount");
+    // A row with neither is a row normaliseRaise drops on the way in, so
+    // it would look like a save that silently did nothing.
+    if (!investor && !amount) {
+      toast("A commitment needs a name or an amount \u2014 ideally both.");
+      return;
+    }
+    var list = raiseCommitments(rec);
+    list.push({
+      id: "c-" + Date.now().toString(36) + "-" + Math.random().toString(36).slice(2, 7),
+      investor: investor, amount: amount,
+      status: v("status"), date: v("date"), note: v("note")
+    });
+    raiseWrite(rec, list);
+    openDeal(rec.id, scopeFromEl(btn));
+    renderRaises();
+    toast((investor || amount) + " is on the raise for \u201C" + rec.name + "\u201D.");
+  }
+
+  function removeRaiseCommitment(btn) {
+    var rec = raiseRecordOf(btn);
+    if (!rec) return;
+    var cid = btn.getAttribute("data-raise-remove");
+    var list = raiseCommitments(rec);
+    var hit = null;
+    for (var i = 0; i < list.length; i++) if (list[i].id === cid) hit = list[i];
+    if (!hit) return;
+    var who = hit.investor || hit.amount || "this commitment";
+    if (!armed(btn, "Remove?", "Click again to take " + who + " off this raise.")) return;
+    raiseWrite(rec, list.filter(function (c) { return c.id !== cid; }));
+    openDeal(rec.id, scopeFromEl(btn));
+    renderRaises();
+    toast(who + " is off the raise.");
+  }
+
+  /* A box in the commitments table, saved as it is left.
+
+     It repaints the FIGURES and not the table. Redrawing the whole panel
+     here would pull the next box out from under somebody tabbing across
+     the row — which is the normal way of filling one in. The exception is
+     an edit that drops the row altogether (both name and amount cleared):
+     there is no box left to protect, and the table has to agree with the
+     record. */
+  function saveRaiseField(input) {
+    var row = input.closest("[data-raise-row]");
+    var panel = input.closest("[data-raise-for]");
+    if (!row || !panel) return;
+    var rec = raiseRecordOf(input);
+    if (!rec) return;
+
+    var cid = row.getAttribute("data-raise-row");
+    var list = raiseCommitments(rec);
+    var hit = null;
+    for (var i = 0; i < list.length; i++) if (list[i].id === cid) hit = list[i];
+    if (!hit) return;
+
+    ["investor", "amount", "status", "date", "note"].forEach(function (k) {
+      var el = row.querySelector('[data-raise-field="' + k + '"]');
+      if (el) hit[k] = el.value.trim();
+    });
+    raiseWrite(rec, list);
+    renderRaises();
+
+    var fresh = Deals.get(rec.id);
+    if (!fresh) return;
+    if (!fresh.raise || fresh.raise.commitments.length !== list.length) {
+      openDeal(fresh.id, scopeFromEl(input));
+      return;
+    }
+    var sum = panel.querySelector(".raise-summary");
+    if (sum) sum.innerHTML = raiseSummaryHtml(fresh);
+    var aside = panel.querySelector(".crm-section__aside");
+    if (aside) aside.textContent = raiseAside(fresh);
+  }
+
+  /* ============================================================
+     CAPITAL RAISES — RENDER
+
+     One row per deal that is raising, from both areas, with the
+     firm-wide total under it. That total is the number this tab was
+     asked for: not "how is Casa Hope going" — the deal's own page
+     answers that — but "how much do we have to find, in all."
+
+     A raise that has reached its target files itself under Raised,
+     the same way an archived deal files itself at the foot of the
+     pipeline. It is not deleted and not hidden; it is just no longer
+     the thing anybody is being asked to do something about.
+     ============================================================ */
+
+  function raiseRowFor(rec) {
+    var t = raiseTotals(rec);
+    function num(v, cls) {
+      return { v: v ? esc(v) : '<span class="muted">—</span>', cls: "num" + (cls ? " " + cls : "") };
+    }
+    return [
+      '<button type="button" class="debt-link" data-raise-open="' + esc(rec.id) + '">' +
+        esc(rec.name) + '</button>',
+      rec.operator ? esc(rec.operator) : '<span class="muted">—</span>',
+      '<span class="crm-pill" data-stage="' + esc(rec.status) + '">' + esc(rec.status) + '</span>',
+      num(t.targetText || (rec.raise.target || "")),
+      num(t.committed ? raiseMoney(t.committed) : ""),
+      num(t.soft ? raiseMoney(t.soft) : ""),
+      /* The column the tab is for. Negative means oversubscribed, and it
+         says so rather than printing a minus sign somebody has to work
+         out the meaning of at a glance. */
+      t.remaining == null
+        ? { v: '<span class="muted">no target</span>', cls: "num" }
+        : t.remaining > 0
+          ? num(raiseMoney(t.remaining), "raise-short")
+          : { v: '<span class="raise-over">' +
+                 (t.remaining === 0 ? "fully raised" : "over by " + esc(raiseMoney(-t.remaining))) +
+                 '</span>', cls: "num" },
+      num(t.pct == null ? "" : t.pct + "%"),
+      rec.raise.closeBy ? esc(rec.raise.closeBy) : '<span class="muted">—</span>'
+    ];
+  }
+
+  var RAISE_COLUMNS = ["Deal", "Operator", "Deal status",
+                       { label: "Target", num: true }, { label: "Committed", num: true },
+                       { label: "Soft", num: true }, { label: "Still to raise", num: true },
+                       { label: "%", num: true }, "Close by"];
+
+  function raiseTable(list) {
+    var totals = list.reduce(function (acc, rec) {
+      var t = raiseTotals(rec);
+      acc.target += t.target || 0;
+      acc.committed += t.committed;
+      acc.soft += t.soft;
+      // A deal with no target contributes its commitments and no shortfall.
+      // Adding zero for it would say the firm needs nothing more on that
+      // deal, which is not the same as not knowing.
+      if (t.remaining != null && t.remaining > 0) acc.remaining += t.remaining;
+      if (t.target == null) acc.untargeted++;
+      return acc;
+    }, { target: 0, committed: 0, soft: 0, remaining: 0, untargeted: 0 });
+
+    var foot = [
+      countOf(list.length, "deal"), "", "",
+      { v: totals.target ? esc(raiseMoney(totals.target)) : "", cls: "num" },
+      { v: totals.committed ? esc(raiseMoney(totals.committed)) : "", cls: "num" },
+      { v: totals.soft ? esc(raiseMoney(totals.soft)) : "", cls: "num" },
+      { v: totals.remaining ? esc(raiseMoney(totals.remaining)) : "", cls: "num" },
+      { v: totals.target ? Math.round((totals.committed / totals.target) * 100) + "%" : "", cls: "num" },
+      totals.untargeted
+        ? '<span class="muted">' + countOf(totals.untargeted, "deal") + " with no target</span>"
+        : ""
+    ];
+
+    /* Wrapped so the column spacing applies here and not to every report
+       on the page — see .numcols. A .num cell has no right padding,
+       because it is usually the last column, and five of them in a row
+       followed by a date run into each other. */
+    return '<div class="numcols">' + table(RAISE_COLUMNS, list.map(raiseRowFor), foot) + '</div>';
+  }
+
+  function renderRaises() {
+    var body = $("raiseBody");
+    if (!body) return;
+
+    var all = Deals.withRaise();
+    var open = all.filter(function (r) { return !raiseIsDone(r); });
+    var done = all.filter(raiseIsDone);
+
+    /* Sorted by what is left to find, largest first — the list is read
+       to decide where the next week goes, and that is the order that
+       question is asked in. A raise with no target has no shortfall to
+       sort by and sits under the ones that do. */
+    open.sort(function (a, b) {
+      var ar = raiseTotals(a).remaining, br = raiseTotals(b).remaining;
+      if (ar == null && br == null) return a.name.localeCompare(b.name);
+      if (ar == null) return 1;
+      if (br == null) return -1;
+      if (ar !== br) return br - ar;
+      return a.name.localeCompare(b.name);
+    });
+    done.sort(function (a, b) { return a.name.localeCompare(b.name); });
+
+    body.innerHTML = (open.length
+      ? raiseTable(open)
+      : '<div class="dash-state"><h3>' +
+        (all.length ? "Everything is raised" : "No raise open") + '</h3><p>' +
+        (all.length
+          ? "Every raise on the books has reached its target. The finished ones are below."
+          : "A deal appears here once it carries a capital raise. Open a deal on the " +
+            "pipeline or in Closed Deals, set a target under Capital raise on Edit deal, " +
+            "and record the commitments on the deal\u2019s own page.") +
+        '</p></div>') +
+      (done.length
+        ? '<details class="deal-pile"><summary>' +
+          '<span class="deal-pile__chev" aria-hidden="true">\u203A</span>Raised' +
+          '<span class="deal-pile__count">(' + done.length + ')</span></summary>' +
+          '<p class="deal-pile__hint">Committed has reached the target. Nothing is closed off ' +
+          'here — the deal keeps its raise and its commitments.</p>' +
+          raiseTable(done) + '</details>'
+        : "");
+
+    /* Counted over the deals that actually have a shortfall, not over
+       every open raise: a deal with no target contributes nothing to the
+       figure, and saying it is one of the deals the figure is spread
+       across would be counting it twice over. */
+    var shortfall = open.filter(function (rec) {
+      var t = raiseTotals(rec);
+      return t.remaining != null && t.remaining > 0;
+    });
+    var short = shortfall.reduce(function (n, rec) {
+      return n + raiseTotals(rec).remaining;
+    }, 0);
+    $("raiseShown").textContent = all.length
+      ? (short ? raiseMoney(short) + " still to raise across " + countOf(shortfall.length, "deal")
+               : countOf(all.length, "raise") + " on the books")
+      : "";
+    $("tabRaiseCount").textContent = open.length ? "(" + open.length + ")" : "";
+
+    $("raiseSourceNote").textContent = all.length
+      ? "Every deal carrying a raise, from the pipeline and from Closed Deals both — a " +
+        "deal keeps its raise after it closes. Commitments are recorded on the deal itself; " +
+        "this adds them up."
+      : "";
+  }
+
+  function exportRaisesXlsx() {
+    var list = Deals.withRaise();
+    var sheets = [{
+      name: "Raises",
+      rows: [["Deal", "Operator", "Where", "Deal status", "Target", "Committed",
+              "Soft-circled", "Still to raise", "Close by", "Note"]]
+        .concat(list.map(function (rec) {
+          var t = raiseTotals(rec);
+          /* The target AS TYPED and the sums as figures. The target is
+             somebody's own words and belongs in a working copy that way;
+             the totals were computed here and there is no earlier form of
+             them to preserve. */
+          return [rec.name, rec.operator, dealAreaLabel(rec.area), rec.status,
+                  rec.raise.target, t.committed || "", t.soft || "",
+                  t.remaining == null ? "" : t.remaining,
+                  rec.raise.closeBy, rec.raise.note];
+        }))
+    }];
+
+    var lines = [];
+    list.forEach(function (rec) {
+      rec.raise.commitments.forEach(function (c) {
+        lines.push([rec.name, c.investor, c.amount, c.status, c.date, c.note]);
+      });
+    });
+    if (lines.length) {
+      sheets.push({
+        name: "Commitments",
+        rows: [["Deal", "Investor", "Amount", "How firm", "When", "Note"]].concat(lines)
+      });
+    }
+
+    download(Xlsx.build(sheets),
+      "modillion-capital-raises-" + new Date().toISOString().slice(0, 10) + ".xlsx");
+    toast("Excel workbook downloaded \u2014 " + countOf(list.length, "raise") +
+          (lines.length ? ", " + countOf(lines.length, "commitment") : "") + ".");
   }
 
   /* One workbook per tab: the pipeline exports the live deals, Closed Deals
@@ -8515,6 +9394,74 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
       table + form + '</div>';
   }
 
+  /* ============================================================
+     WHAT THIS INVESTOR IS IN FOR
+
+     The other end of the capital raise. Commitments are recorded on the
+     deal, because that is where somebody is looking when one is made —
+     and they are read here, because "what is this investor in for" is
+     asked of the investor.
+
+     Joined by NAME, which is the join every reference to a record on
+     this page uses. An investor renamed here is an investor the
+     commitments stop finding, exactly as it goes for deal tags and
+     tasks; the note over Deals.byName() has the reasoning.
+     ============================================================ */
+  function commitmentsForInvestor(name) {
+    var want = String(name || "").trim().toLowerCase();
+    if (!want) return [];
+    var out = [];
+    Deals.withRaise().forEach(function (rec) {
+      rec.raise.commitments.forEach(function (c) {
+        if (c.investor.trim().toLowerCase() === want) out.push({ deal: rec, c: c });
+      });
+    });
+    return out;
+  }
+
+  function investorCommitments(inv) {
+    var rows = commitmentsForInvestor(inv.name);
+
+    /* Drawn on every record, not only the ones with something in it.
+       A section that vanishes when empty reads as "this investor has no
+       commitments section"; one that says nothing yet reads as "nobody
+       has put anything here", and only the second invites somebody to. */
+    if (!rows.length) {
+      return '<div class="crm-section"><h3>Commitments' +
+        '<span class="crm-section__aside">None yet</span></h3>' +
+        '<p class="crm-research__empty">Nothing recorded against ' + esc(inv.name) +
+        ' on any raise. Commitments are recorded on the deal, under Capital raise.</p>' +
+        '</div>';
+    }
+
+    var committed = raiseSum(rows.filter(function (r) { return RAISE_COUNTED[r.c.status]; })
+                                 .map(function (r) { return r.c; }));
+    var soft = raiseSum(rows.filter(function (r) { return r.c.status === "Soft"; })
+                            .map(function (r) { return r.c; }));
+
+    var aside = raiseMoney(committed.n) + " committed" +
+                (soft.n ? " \u00B7 " + raiseMoney(soft.n) + " soft" : "");
+
+    var body = rows.map(function (r) {
+      return [
+        '<button type="button" class="debt-link" data-raise-open="' + esc(r.deal.id) + '">' +
+          esc(r.deal.name) + '</button>',
+        { v: r.c.amount ? esc(r.c.amount) : '<span class="muted">\u2014</span>', cls: "num" },
+        '<span class="raise-pill" data-firm="' + esc(r.c.status) + '">' + esc(r.c.status) + '</span>',
+        r.c.date ? esc(r.c.date) : '<span class="muted">\u2014</span>',
+        r.c.note ? esc(r.c.note) : '<span class="muted">\u2014</span>'
+      ];
+    });
+
+    return '<div class="crm-section"><h3>Commitments' +
+      '<span class="crm-section__aside">' + esc(aside) + '</span></h3>' +
+      '<div class="numcols">' +
+        table(["Deal", { label: "Amount", num: true }, "How firm", "When", "Note"], body) +
+      '</div>' +
+      '<p class="crm-research__note">Recorded on the deal, not here \u2014 the deal name ' +
+      'opens it. Soft circles are listed but are not in the committed figure.</p></div>';
+  }
+
   function renderInvestor(id) {
     var inv = Crm.get(id);
     if (!inv) { showCrmView("list"); return; }
@@ -8641,6 +9588,8 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
           'takes up to a minute. Nothing is written to the record until you add it.</span>' +
       '</div>' +
       '</div>');
+
+    parts.push(investorCommitments(inv));
 
     parts.push(investorMaterials(inv));
 
@@ -10313,6 +11262,49 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
       return any ? out : null;
     }
 
+    /* THE CAPITAL RAISE, per deal. A target and the commitments against
+       it — who is in, for how much, and how firm it is.
+
+       Amounts are strings like every other figure on a deal (see
+       dealAmount), so "$1.5m" and "$1,500,000" both stay as typed. The
+       DIFFERENCE is that these get added up: a raise is the one place on
+       this page where arithmetic happens, because "how much is left"
+       cannot be eyeballed down a column. Anything the matcher cannot
+       read is left out of the sum and COUNTED, and the panel says how
+       many — a total quietly missing a commitment is worse than no
+       total at all.
+
+       Null when there is nothing in it, the same as debt: a deal with no
+       raise is not a raise of zero, it is a deal nobody is raising for. */
+    function normaliseRaise(r) {
+      if (!r) return null;
+      var seen = {};
+      var out = {
+        target:  String(r.target  == null ? "" : r.target).trim(),
+        closeBy: String(r.closeBy == null ? "" : r.closeBy).trim(),
+        note:    String(r.note    == null ? "" : r.note).trim(),
+        commitments: (r.commitments || []).map(function (c, i) {
+          /* An id that survives a rebuild, because the panel edits and
+             removes by id. Records written before ids existed, or by a
+             hand-edited file, get a positional one — stable for as long
+             as the list is, which is as much as they can be given. */
+          var id = String(c.id || "").trim() || ("c-" + i);
+          while (seen[id]) id = id + "-" + i;
+          seen[id] = true;
+          return {
+            id: id,
+            investor: String(c.investor == null ? "" : c.investor).trim(),
+            amount:   String(c.amount   == null ? "" : c.amount).trim(),
+            status:   RAISE_STATES.indexOf(c.status) === -1 ? RAISE_STATES[0] : c.status,
+            date:     String(c.date     == null ? "" : c.date).trim(),
+            note:     String(c.note     == null ? "" : c.note).trim()
+          };
+        }).filter(function (c) { return c.investor || c.amount; })
+      };
+      return (out.target || out.closeBy || out.note || out.commitments.length)
+        ? out : null;
+    }
+
     function normalise(rec) {
       var area = rec.area || "active-deals";
       return {
@@ -10346,6 +11338,11 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
         addedAt: rec.addedAt || "",
         lastActivity: rec.lastActivity || "",
         debt: normaliseDebt(rec.debt),
+        // The co-invest raise against this deal, if there is one. It stays
+        // with the deal through a close: Casa Hope moves to Closed Deals
+        // and its raise moves with it, because the money is still out
+        // there to be found. See the Capital Raises tab.
+        raise: normaliseRaise(rec.raise),
         // Where the deal sits when the list is in a hand-set order. Null
         // is the ordinary case — a deal nobody has dragged has no opinion
         // about its position, and sorts to the foot of the list by name.
@@ -10596,6 +11593,14 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
       },
       withDebt: function () {
         return all().filter(function (r) { return !!r.debt; });
+      },
+      /* Every deal carrying a raise, from BOTH areas. This is the one
+         list on the page that deliberately ignores which tab a deal sits
+         on: a deal closes, moves to Closed Deals, and its co-invest is
+         still being raised. That is the whole reason the Capital Raises
+         tab exists rather than a column on the pipeline. */
+      withRaise: function () {
+        return all().filter(function (r) { return !!r.raise; });
       },
       create: create,
       patch: patch,
@@ -14892,6 +15897,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
     $("wsHome").hidden = tab !== "home";
     $("wsDocs").hidden = tab !== "docs";
     $("wsClosed").hidden = tab !== "closed";
+    $("wsRaises").hidden = tab !== "raises";
     $("wsCrm").hidden = tab !== "crm";
     $("wsOperators").hidden = tab !== "operators";
     $("wsTasks").hidden = tab !== "tasks";
@@ -14901,6 +15907,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
     if (tab === "operators") { renderOperatorFilters(); renderOperators(); }
     if (tab === "docs") { renderDeals(DEAL_SCOPES.docs); }
     if (tab === "closed") { renderDeals(DEAL_SCOPES.closed); }
+    if (tab === "raises") { renderRaises(); }
     if (tab === "tasks") { fillTaskSelects(); renderTasks(); }
     if (tab === "competitors") { renderCompetitorFilters(); renderCompetitors(); }
     scrollToWorkspace();
@@ -14915,6 +15922,17 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
   document.addEventListener("change", function (e) {
     if (e.target.closest("[data-send-material]")) { fillSendVersions(); return; }
     if (e.target.closest("[data-send-version]")) { syncNewVersionField(); return; }
+  });
+
+  /* A box in the commitments table saves when it is left. The add form
+     carries the same data-raise-field attributes and is deliberately NOT
+     caught here: it has no row, and nothing it holds is saved until
+     "Record it" is pressed. */
+  document.addEventListener("change", function (e) {
+    var raiseField = e.target.closest("[data-raise-field]");
+    if (raiseField && raiseField.closest("[data-raise-row]")) {
+      saveRaiseField(raiseField);
+    }
   });
 
   document.addEventListener("change", function (e) {
@@ -15288,6 +16306,28 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
       return;
     }
 
+    /* ---- the capital raise on a deal, and the roll-up tab ------- */
+
+    var raiseAdd = e.target.closest("[data-raise-add]");
+    if (raiseAdd) { addRaiseCommitment(raiseAdd); return; }
+
+    var raiseRemove = e.target.closest("[data-raise-remove]");
+    if (raiseRemove) { removeRaiseCommitment(raiseRemove); return; }
+
+    /* From the roll-up to the deal itself. It has to switch tab as well
+       as open the record — the raises tab is not a deal tab, so there is
+       no scope to read off the element the way the two deal lists do. */
+    var raiseOpen = e.target.closest("[data-raise-open]");
+    if (raiseOpen) {
+      var raiseRec = Deals.get(raiseOpen.getAttribute("data-raise-open"));
+      if (raiseRec) {
+        var raiseScope = scopeForArea(raiseRec.area);
+        switchTab(raiseScope.tab);
+        openDeal(raiseRec.id, raiseScope);
+      }
+      return;
+    }
+
     var dealTask = e.target.closest("[data-deal-task]");
     if (dealTask) { addTaskFor(dealTask.getAttribute("data-deal-task")); return; }
 
@@ -15348,6 +16388,11 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
 
   // Hidden when no deal carries debt, rather than opening an empty report.
   $("closedDebtBtn").addEventListener("click", openDealDebtReport);
+
+  $("raiseExportBtn").addEventListener("click", function () {
+    try { exportRaisesXlsx(); }
+    catch (err) { toast("Could not build the workbook: " + err.message); }
+  });
 
   $("closedReportXlsxBtn").addEventListener("click", function () {
     exportDealsXlsx(DEAL_SCOPES.closed);

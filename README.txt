@@ -1170,3 +1170,70 @@ hand-written send carrying no version id:
   sends is the one conversations already use and the version merge is the one
   articles already use, so both are exercised paths; neither has been watched
   end to end with two browsers against a real store.
+
+ONE DEAL, ONE LINE — the deal tabs, 2026-09-11:
+- Reported from the pipeline itself: "some of them are four rows and some two",
+  and it is hard to read down a list whose rows are not the same height.
+- Three things were doing it. The note printed as a sub-line under the deal name;
+  "why" and "debt on file" printed as sub-lines of their own; and every prose
+  column wrapped. All three are gone from the row. The note and the debt flag are
+  now a small NOTE / DEBT mark after the value they belong to, with the text on
+  the mark's title; "why" is on the status pill's title. Every row is 52px.
+- The note itself lives on the deal's record, which is what was asked for — the
+  row opens it. It is still searched: a search matching only a note will surface
+  the row, and the NOTE mark on it is what explains why.
+- Clipping alone made the table WIDER. An auto-layout table asks each column for
+  its widest value, and a column that has stopped wrapping asks for all of it:
+  eleven columns wanted 1499px inside a 1128px workspace, where wrapping had cost
+  89px of sideways scroll. So the deal tables are table-layout:fixed with the
+  columns given shares of the workspace — they add to 100 and they have to. The
+  sheet now fits with NO horizontal scroll at all, which it did not before.
+- What it costs is long deal names: about 190px, so "Switchback – Casa Hope
+  (Williamsburg, NY)" is cut. Hover has the whole of it and so does the record.
+  If that becomes the complaint, the lever is one fewer column — Added is the
+  obvious candidate and would give the name column another 85px.
+- Below 1100px the proportions hold and the wrap scrolls, actions pinned right as
+  before. Below 760px the rows are cards and all of it is undone.
+
+CAPITAL RAISES — a tab, added 2026-09-11:
+- Asked for as an "Investment Pipeline": a deal comes off the Deal Pipeline when
+  it closes, but the co-invest piece still has to be raised and tracked.
+- IT IS NOT A THIRD LIST OF DEALS, and that is the whole design. Everything on
+  this page joins deals BY NAME — operators, tasks, an investor's interests — so
+  a deal that existed twice is a deal those references cannot resolve. Instead a
+  deal carries a `raise`, and it carries it through its close: Casa Hope moves to
+  Closed Deals and stays on this tab until the co-invest is away.
+- On the deal: a Capital raise panel with the target, a meter, Target /
+  Committed / Soft-circled / Still to raise / Close by, and the commitments as a
+  table of boxes — investor, amount, how firm, when, note. Each box saves when it
+  is left. The target, close-by and note are on Edit deal beside the debt block;
+  the commitments are not, so setting a target does not mean scrolling past six
+  investors and correcting one investor does not mean opening the whole deal.
+- How firm: Soft, Hard, Funded, Passed. COMMITTED IS HARD PLUS FUNDED. A soft
+  circle is counted and shown and is deliberately not in the committed figure —
+  that distinction is the only reason to have the field. Passed is kept because
+  "who have we already asked" is worth being able to answer.
+- THE ONE PLACE ON THIS PAGE THAT DOES ARITHMETIC. Everywhere else a figure is
+  printed as typed and the reading is left to the reader; here "how much is left"
+  is a target minus a sum. Amounts are still stored as typed. Anything the matcher
+  cannot read — "TBD", a bare "5" — is left OUT of the sum and counted, and the
+  panel says in words how many. A total that has quietly dropped a commitment is
+  worse than no total.
+- The tab is a roll-up and is read-only on purpose: one row per raising deal from
+  both areas, sorted by what is left to find, with the firm-wide total under it
+  and the deal name linking back to where the editing happens. A raise whose
+  committed figure has reached its target files itself under Raised, the same way
+  an archived deal files itself at the foot of the pipeline.
+- On an investor's record: a Commitments panel — what they are in for, across
+  deals, joined by name like every other reference. Recorded on the deal, read
+  here.
+- Export Excel gives two sheets: Raises (target as typed, the sums as figures)
+  and Commitments (every line, per deal).
+- The eighth tab did not fit. A flex row that cannot fit does not wrap the row,
+  it wraps the words inside every button, so all eight labels broke onto two lines
+  at once. Button padding is 14px rather than 20px now, labels are nowrap, and the
+  bar scrolls below 1100px rather than below 760px.
+- WHAT IS NOT COVERED: the shared store, for the same reason as everything else
+  here. `raise` goes through normalise() like every other field, so it publishes
+  and merges the way debt does, but that has not been watched with two browsers
+  against a real store.
