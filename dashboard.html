@@ -5269,6 +5269,40 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
   var RAISE_STATES = ["Soft", "Hard", "Funded", "Passed"];
   var RAISE_COUNTED = { Hard: 1, Funded: 1 };
 
+  /* WHICH SIDE THE MONEY IS ON, AND WHAT IT PAYS.
+
+     Two things a commitment carries that its size does not say. GP money
+     is the firm's own side of the deal and LP money is outside capital,
+     and the same name can be both on two different raises — which is why
+     these sit on the commitment and not on the investor record.
+
+     Fees are the other half of the same answer. A friends-and-family
+     cheque coming in fee free and an institutional one paying full
+     freight are the same figure in the Committed column and are not the
+     same money, and the difference was being kept in somebody's head.
+
+     Neither is guessed. Both are blank until somebody says, because
+     every commitment recorded before today predates the question and
+     defaulting them would put an answer in the file that nobody gave.
+     Blank prints as "—", the same as everywhere else here. */
+  var RAISE_SIDES = ["LP", "GP"];
+  var RAISE_FEES  = ["Fee paying", "Discounted fees", "Fee free"];
+
+  /* Case-insensitively, because these can arrive from a hand-edited file
+     as well as from the two selects, and "gp" meaning nothing while "GP"
+     means GP is the kind of silent blanking this file goes out of its way
+     to avoid elsewhere. Anything genuinely unrecognised still comes back
+     empty: a fee treatment nobody here has a word for is better read as
+     unanswered than as one of the three it is not. */
+  function raiseVocab(list, value) {
+    var want = String(value == null ? "" : value).trim().toLowerCase();
+    if (!want) return "";
+    for (var i = 0; i < list.length; i++) {
+      if (list[i].toLowerCase() === want) return list[i];
+    }
+    return "";
+  }
+
   /* Adds up what it can read and counts what it cannot. dealAmount()
      wants a dollar sign and at least a thousand — see the note over it —
      so "TBD" and a bare "5" are unread rather than wrong, and both are
@@ -5426,6 +5460,16 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
     }).join("");
   }
 
+  /* The same, for a list that may legitimately hold nothing. The empty
+     option is first and reads as what it is rather than as a blank gap. */
+  function raiseOptions(values, current, blank) {
+    return ['<option value=""' + (current ? "" : " selected") + '>' + esc(blank) + '</option>']
+      .concat(values.map(function (v) {
+        return '<option value="' + esc(v) + '"' + (v === current ? " selected" : "") +
+               '>' + esc(v) + '</option>';
+      })).join("");
+  }
+
   /* The commitments, editable where they are read.
 
      This is a table of boxes rather than a list with an Edit button on
@@ -5447,6 +5491,10 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
           'value="' + esc(c.amount) + '" placeholder="$1.5m" autocomplete="off" aria-label="Amount"></td>' +
         '<td><select data-raise-field="status" aria-label="How firm">' +
           raiseStatusOptions(c.status) + '</select></td>' +
+        '<td><select data-raise-field="side" aria-label="GP or LP">' +
+          raiseOptions(RAISE_SIDES, c.side, "\u2014") + '</select></td>' +
+        '<td><select data-raise-field="fee" aria-label="Fees">' +
+          raiseOptions(RAISE_FEES, c.fee, "\u2014") + '</select></td>' +
         '<td><input type="date" data-raise-field="date" value="' + esc(c.date) +
           '" aria-label="Date"></td>' +
         '<td><input type="text" data-raise-field="note" value="' + esc(c.note) +
@@ -5459,6 +5507,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
 
     return '<div class="raise-table-wrap"><table class="raise-table">' +
       '<thead><tr><th>Investor</th><th>Amount</th><th>How firm</th>' +
+      '<th>GP or LP</th><th>Fees</th>' +
       '<th>When</th><th>Note</th><th class="raise-table__actions">' +
       '<span class="visually-hidden">Remove</span></th></tr></thead>' +
       '<tbody>' + rows + '</tbody></table></div>';
@@ -5490,6 +5539,16 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
             raiseStatusOptions(RAISE_STATES[0]) + '</select>' +
           '<span class="crm-field__note">Soft is an indication. Hard and Funded are ' +
             'what the committed figure counts.</span></div>' +
+        '<div class="crm-field"><label for="' + id("Side") + '">GP or LP</label>' +
+          '<select id="' + id("Side") + '" data-raise-field="side">' +
+            raiseOptions(RAISE_SIDES, "", "\u2014 not recorded") + '</select>' +
+          '<span class="crm-field__note">The firm\u2019s own side of the deal, or outside ' +
+            'capital. The same name can be either, on two different raises.</span></div>' +
+        '<div class="crm-field"><label for="' + id("Fee") + '">Fees</label>' +
+          '<select id="' + id("Fee") + '" data-raise-field="fee">' +
+            raiseOptions(RAISE_FEES, "", "\u2014 not recorded") + '</select>' +
+          '<span class="crm-field__note">What this money pays. It does not change the ' +
+            'committed figure \u2014 it says what the figure is worth.</span></div>' +
         '<div class="crm-field"><label for="' + id("Date") + '">When</label>' +
           '<input type="date" id="' + id("Date") + '" data-raise-field="date" value="' + today + '"></div>' +
         '<div class="crm-field crm-field--wide"><label for="' + id("Note") + '">Note</label>' +
@@ -5948,7 +6007,8 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
     list.push({
       id: "c-" + Date.now().toString(36) + "-" + Math.random().toString(36).slice(2, 7),
       investor: investor, amount: amount,
-      status: v("status"), date: v("date"), note: v("note")
+      status: v("status"), side: v("side"), fee: v("fee"),
+      date: v("date"), note: v("note")
     });
     raiseSave(rec, { commitments: list });
     // An open row is what you were looking at, so it stays open.
@@ -6081,7 +6141,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
     for (var i = 0; i < list.length; i++) if (list[i].id === cid) hit = list[i];
     if (!hit) return;
 
-    ["investor", "amount", "status", "date", "note"].forEach(function (k) {
+    ["investor", "amount", "status", "side", "fee", "date", "note"].forEach(function (k) {
       var el = row.querySelector('[data-raise-field="' + k + '"]');
       if (el) hit[k] = el.value.trim();
     });
@@ -6540,13 +6600,14 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
     var lines = [];
     list.forEach(function (rec) {
       ((rec.raise && rec.raise.commitments) || []).forEach(function (c) {
-        lines.push([rec.name, c.investor, c.amount, c.status, c.date, c.note]);
+        lines.push([rec.name, c.investor, c.amount, c.status, c.side, c.fee, c.date, c.note]);
       });
     });
     if (lines.length) {
       sheets.push({
         name: "Commitments",
-        rows: [["Deal or fund", "Investor", "Amount", "How firm", "When", "Note"]].concat(lines)
+        rows: [["Deal or fund", "Investor", "Amount", "How firm", "GP or LP", "Fees",
+                "When", "Note"]].concat(lines)
       });
     }
 
@@ -10489,6 +10550,11 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
           esc(r.deal.name) + '</button>',
         { v: r.c.amount ? esc(r.c.amount) : '<span class="muted">\u2014</span>', cls: "num" },
         '<span class="raise-pill" data-firm="' + esc(r.c.status) + '">' + esc(r.c.status) + '</span>',
+        // Read-only here. Both are set on the deal, with the commitment
+        // they describe, and this is the side that asks the question —
+        // one name, every raise they are in, on what terms.
+        r.c.side ? esc(r.c.side) : '<span class="muted">\u2014</span>',
+        r.c.fee ? esc(r.c.fee) : '<span class="muted">\u2014</span>',
         r.c.date ? esc(r.c.date) : '<span class="muted">\u2014</span>',
         r.c.note ? esc(r.c.note) : '<span class="muted">\u2014</span>'
       ];
@@ -10497,7 +10563,8 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
     return '<div class="crm-section"><h3>Commitments' +
       '<span class="crm-section__aside">' + esc(aside) + '</span></h3>' +
       '<div class="numcols">' +
-        table(["Deal", { label: "Amount", num: true }, "How firm", "When", "Note"], body) +
+        table(["Deal", { label: "Amount", num: true }, "How firm", "GP or LP", "Fees",
+               "When", "Note"], body) +
       '</div>' +
       '<p class="crm-research__note">Recorded on the deal, not here \u2014 the deal name ' +
       'opens it. Soft circles are listed but are not in the committed figure.</p></div>';
@@ -12516,6 +12583,11 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
             investor: String(c.investor == null ? "" : c.investor).trim(),
             amount:   String(c.amount   == null ? "" : c.amount).trim(),
             status:   RAISE_STATES.indexOf(c.status) === -1 ? RAISE_STATES[0] : c.status,
+            // Unlike status, these two have no sensible default: a
+            // commitment written before the question existed has no answer
+            // to it, and inventing one would be a fact nobody stated.
+            side:     raiseVocab(RAISE_SIDES, c.side),
+            fee:      raiseVocab(RAISE_FEES, c.fee),
             date:     String(c.date     == null ? "" : c.date).trim(),
             note:     String(c.note     == null ? "" : c.note).trim()
           };

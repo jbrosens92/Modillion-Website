@@ -1501,3 +1501,33 @@ PROGRAMME → PROGRAM, 2026-09-11:
   that is where it is coming from, not from this file.
 - Left alone: api/_news.js says "programmes" twice inside model prompts, once
   meaning a conference agenda. Nothing user-visible, different sense.
+
+GP OR LP, AND WHAT THE MONEY PAYS, 2026-09-11:
+- Asked for: "We should be able to differentiate between GP and LP and if the
+  investor is Fee Paying, Discounted Fees, or Fee Free."
+- Two new fields ON THE COMMITMENT, not on the investor record. The same name
+  can be GP on one raise and LP on another, and can pay full freight on one and
+  nothing on the next — an attribute of the investor could not say either.
+- GP or LP: LP, GP. Fees: Fee paying, Discounted fees, Fee free.
+- NEITHER IS GUESSED. Both are blank until somebody picks, and blank prints as
+  an em dash. Every commitment recorded before today predates the question, and
+  defaulting them to "LP" and "Fee paying" would have put an answer in the file
+  that nobody gave. This is why the selects carry an empty first option where
+  How firm does not: a new commitment is at least soft, but it is not
+  automatically anybody's LP.
+- Both are added to normaliseRaise's commitment literal FIRST — see the standing
+  note there. A field the form writes and that literal does not name is stored
+  in the overlay, stripped on the way out, and looks like a save that did
+  nothing.
+- Read case-insensitively (raiseVocab). These can arrive from a hand-edited
+  deals-data.json as well as from the selects, and "gp" silently meaning
+  nothing while "GP" means GP is exactly the sort of quiet blanking the rest of
+  this file works to avoid. A genuinely unknown word still reads as blank.
+- Shown in four places: the commitments table on the deal panel and inside an
+  opened roll-up row (editable), the Record a commitment form, the read-only
+  Commitments table on the investor record — which is the side that asks "on
+  what terms is this investor in?" — and the Commitments sheet of the Excel
+  export.
+- NOT DONE, and worth deciding separately: the roll-up's Committed figure is
+  still one number. Splitting it GP/LP, or showing what share of a raise is fee
+  free, is a reporting question rather than a recording one.
