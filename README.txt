@@ -1447,3 +1447,20 @@ TAGGING SOMETHING ALREADY SENT, 2026-09-11:
   to its WIDEST option, and the widest option is a deal name like "Switchback –
   Casa Hope (Williamsburg, NY)" — uncapped it took 304px out of a table that
   already had six columns and pushed it over the workspace.
+
+WHAT IS RAISING COMES FIRST, 2026-09-11:
+- Reported the moment the Deal column shipped: "I don't see an option to connect
+  this to Modillion GP Fund I. Capital Raises should come up first."
+- Two halves. The picker was grouped by AREA, so the thing anybody is tagging a
+  document against — almost always the thing currently being raised for — sat
+  below two groups of buildings. A quarterly update for a fund was three
+  scrolls down a list of property deals.
+- Every record on the Capital Raises tab is now lifted into a "Capital raises"
+  group at the top of every deal picker: the sends column, the send form, the
+  material's own box. Everything else follows by area underneath, and a record
+  appears ONCE — raising, or filed where it lives.
+- The list is still every deal. A memo can be tagged against something that is
+  not raising yet, and refusing that would be worse than a long list.
+- The other half is not a bug: a fund only appears in the picker once the
+  record EXISTS. Capital Raises → New fund or programme creates it. Nothing can
+  be tagged against a raise nobody has set up.

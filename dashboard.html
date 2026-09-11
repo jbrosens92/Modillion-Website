@@ -10902,8 +10902,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
              ' \u2014 not a deal on the list</option>';
     }
 
-    function group(area, label) {
-      var rows = list.filter(function (r) { return r.area === area; });
+    function group(label, rows) {
       if (!rows.length) return "";
       return '<optgroup label="' + esc(label) + '">' + rows.map(function (r) {
         return '<option value="' + esc(r.name) + '"' +
@@ -10911,14 +10910,32 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
                (Deals.isArchived(r.id) ? " (archived)" : "") + '</option>';
       }).join("") + '</optgroup>';
     }
-    /* All THREE areas. Funds and programmes were missing from this list
-       when the third area was added, which made the one thing anybody
-       would want to tag a quarterly update against — Modillion GP Fund I —
-       the one thing that could not be picked. Built from DEAL_AREAS so a
-       fourth area cannot be forgotten the same way. */
-    return out + DEAL_AREAS.map(function (a) {
-      return group(a.id, a.label);
-    }).join("");
+
+    /* WHAT IS RAISING COMES FIRST.
+
+       Reported after the Deal column shipped: the thing anybody is
+       tagging a document against is almost always the thing currently
+       being raised for, and it was filed down the list under whichever
+       area it happened to belong to — a quarterly update for Modillion
+       GP Fund I sat below two groups of buildings.
+
+       So the records on the Capital Raises tab are lifted into a group
+       of their own at the top, in the order that tab lists them, and
+       everything else follows by area underneath. A record appears
+       ONCE: raising, or filed where it lives. The list is still every
+       deal, because a memo can be tagged to something not yet raising
+       and refusing that would be worse than a long list. */
+    var raising = {};
+    Deals.withRaise().forEach(function (r) { raising[r.id] = true; });
+
+    out += group("Capital raises", list.filter(function (r) { return raising[r.id]; }));
+
+    DEAL_AREAS.forEach(function (a) {
+      out += group(a.label, list.filter(function (r) {
+        return r.area === a.id && !raising[r.id];
+      }));
+    });
+    return out;
   }
 
   /* Setting a picker to a value it may not have an option for — the
