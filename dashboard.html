@@ -5919,8 +5919,8 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
 
      WHAT IT COSTS. One small request on a timer, not a document.
      /api/records?op=stamps answers with an integer per set that
-     moves when that set moves — six of them, pipelined into a
-     single Redis round trip. The records themselves are fetched
+     moves when that set moves — all six read out of a single Redis
+     hash, one command. The records themselves are fetched
      only for a set whose stamp has actually changed, so a quiet
      team costs one tiny poll every few seconds and nothing else.
      A browser's own writes record their own stamp, so nobody ever
@@ -5935,7 +5935,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
      ============================================================ */
   var Live = (function () {
     var ENDPOINT = "/api/records";
-    var ACTIVE_MS = 4000;
+    var ACTIVE_MS = 2000;
     var IDLE_MS = 20000;
 
     var timer = null;

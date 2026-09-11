@@ -158,11 +158,15 @@ Other people's edits arriving without a reload — added 2026-09-11:
   have rewritten a whole document per keystroke and made writes MORE likely to land on top of
   each other, while still leaving every screen stale until somebody pressed F5. What was missing
   was nobody ever asking whether anything had changed.
-- THE CHANGE STAMP is what makes asking cheap. One integer per set in Redis, bumped by every
-  append and every fold. GET /api/records?op=stamps returns all six, pipelined into a single
-  Redis round trip, and the records themselves are fetched only for a set whose stamp actually
-  moved. A quiet team costs one small poll every four seconds and nothing else — measured: 14
-  seconds idle with two browsers open is 4 polls and zero record reads.
+- THE CHANGE STAMP is what makes asking cheap. One integer per set, bumped by every append and
+  every fold. GET /api/records?op=stamps returns all six and the records themselves are fetched
+  only for a set whose stamp actually moved, so a quiet team costs one small poll and nothing
+  else — measured: 20 seconds idle with two browsers open is 14 polls and ZERO record reads.
+- ALL SIX STAMPS LIVE IN ONE REDIS HASH, which is a billing decision as much as a tidy one.
+  Upstash charges by the command, not by the request, so six GETs pipelined into one HTTP call
+  is still six commands. HGETALL is one. At a two-second poll with four people that is roughly
+  60,000 commands a day rather than 350,000, and it is what makes a poll this fast reasonable
+  to leave running all day. If the cadence is ever raised again, this is the number to check.
 - A browser records the stamp its own writes produce, so nobody pulls a set back down to
   discover the change was their own. Without that, every save anybody made would cost every
   browser a full re-read, including the one that made it.
@@ -172,20 +176,24 @@ Other people's edits arriving without a reload — added 2026-09-11:
   released. The test for "in any field" is deliberately coarse rather than five per-tab flags,
   because the tabs that edit a row in place keep no flag to read, and a list redrawing under a
   half-typed row is the one outcome worth being clumsy to avoid.
-- CADENCE. Four seconds when the tab is visible, twenty when it is not — less often, never
+- CADENCE. Two seconds when the tab is visible, twenty when it is not — less often, never
   nothing. Browsers throttle and eventually freeze timers in a tab they believe is hidden, and
   some embedded and pinned tabs believe that while sitting in front of a reader, so a click or a
   keypress also wakes the poll. A dashboard that had quietly stopped listening while still
   saying "edits are shared" is the one failure this must not have.
 
 Tested 2026-09-11, two browsers on two ports so they had genuinely separate localStorage:
-- A task added in one appeared in the other in under nine seconds with NO reload and no
-  interaction in the receiving tab — the page instance was confirmed to be the same one.
+- A task added in one appeared in the other 4.1 seconds later with NO reload and no interaction
+  in the receiving tab — and that 4.1s is the whole round trip, including the click, the save
+  debounce and the poll. The page instance was confirmed to be the same one.
 - With a half-typed line in the receiving tab's own box, the list did NOT redraw and the typed
   text survived; it redrew the moment the field was blurred, showing the change that had been
   waiting.
-- Untouched sets were read only at boot. Fourteen seconds idle produced four stamp polls and
-  zero record fetches.
+- Untouched sets were read only at boot. Twenty seconds idle across two tabs produced fourteen
+  stamp polls and zero record fetches.
+- readStamps was unit-tested against both shapes Upstash can answer HGETALL with — an object and
+  a flat [field, value, …] array — plus an empty hash and no reply at all, which all read as
+  zero. A stamp hash that has been flushed therefore costs one refresh per page, not a fault.
 - The one publish seen in a window was AutoPublish firing after its quiet period; the two reads
   around it are its own pre-publish load and the other tab noticing the new base, which is
   correct rather than churn.
