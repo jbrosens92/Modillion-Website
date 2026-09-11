@@ -89,9 +89,73 @@ async function redis(command) {
   return j ? j.result : null;
 }
 
+/* Several commands, one HTTP round trip. Upstash's REST API takes an
+   array of command arrays at /pipeline and answers with one result per
+   command, in order. The live poll asks for every set's change stamp at
+   once, and this is what keeps that ONE request rather than six — which
+   is the difference between a poll that can run every few seconds and
+   one that cannot. */
+async function redisPipeline(commands) {
+  const { url, token } = redisEnv();
+  if (!url || !token) throw new Error("No Redis store configured.");
+  const r = await fetch(url.replace(/\/+$/, "") + "/pipeline", {
+    method: "POST",
+    headers: { Authorization: "Bearer " + token, "Content-Type": "application/json" },
+    body: JSON.stringify(commands)
+  });
+  if (!r.ok) throw new Error("Redis pipeline failed: HTTP " + r.status);
+  const j = await r.json();
+  if (!Array.isArray(j)) throw new Error("Redis pipeline: unexpected answer.");
+  // One entry per command. An individual failure reads as null rather than
+  // throwing the whole batch away — a missing stamp is simply "unknown".
+  return j.map(x => (x && x.error) ? null : (x ? x.result : null));
+}
+
 function parse(raw, fallback) {
   if (raw === null || raw === undefined) return fallback;
   try { return JSON.parse(raw); } catch (e) { return fallback; }
+}
+
+/* ============================================================
+   THE CHANGE STAMP — what makes a live poll affordable
+
+   One integer per set, bumped by every append and every fold. A
+   page that remembers the stamp it last read can ask "has anything
+   moved?" without pulling a 35 KB document to discover that nothing
+   has.
+
+   ALL SIX LIVE IN ONE HASH, and that is a billing decision as much
+   as a tidiness one. Upstash charges by the command, not by the
+   request, so six GETs pipelined into one HTTP call is still six
+   commands. HGETALL is one. At a two-second poll with four people
+   that is the difference between roughly 350,000 commands a day and
+   under 60,000 — which is what makes a poll this fast reasonable to
+   leave running all day.
+
+   It is not a version anybody can reason about and it is not
+   ordered against anything else. It changes when the set changes.
+   That is the only property asked of it. Nothing persists across a
+   flush either: an empty hash reads as zero everywhere, every page
+   sees a difference once, refreshes once, and carries on.
+   ============================================================ */
+const STAMP_HASH = "modillion:stamps";
+
+export async function readStamps(sets) {
+  const list = (sets || []).slice();
+  const out = {};
+  if (!list.length) return out;
+  /* HGETALL comes back as an object from Upstash's REST API, and as a
+     flat [field, value, field, value] array from some clients. Both are
+     accepted because which one you get is not worth a bug later. */
+  const raw = await redis(["HGETALL", STAMP_HASH]);
+  const got = {};
+  if (Array.isArray(raw)) {
+    for (let i = 0; i + 1 < raw.length; i += 2) got[raw[i]] = raw[i + 1];
+  } else if (raw && typeof raw === "object") {
+    Object.assign(got, raw);
+  }
+  list.forEach(s => { out[s] = Number(got[s]) || 0; });
+  return out;
 }
 
 /* The base document — the same shape crm-data.json has on disk.
@@ -102,7 +166,12 @@ export async function readBase(set) {
 }
 
 export async function writeBase(set, doc) {
-  await redis(["SET", KEY("base", set), JSON.stringify(doc)]);
+  // Stamped in the same round trip, so a fold is never visible to the
+  // poll before the poll can tell that it happened.
+  await redisPipeline([
+    ["SET", KEY("base", set), JSON.stringify(doc)],
+    ["HINCRBY", STAMP_HASH, set, 1]
+  ]);
   return doc;
 }
 
@@ -111,7 +180,14 @@ export async function writeBase(set, doc) {
    entries rather than one overwriting the other. Nothing is read
    first, so there is nothing to read stale. */
 export async function appendOverlay(set, delta) {
-  const len = await redis(["RPUSH", KEY("overlay", set), JSON.stringify(delta)]);
+  /* RPUSH and the stamp together. The append is still the atomic thing
+     that matters; INCR rides along so no edit can sit in the list
+     unannounced. Returns the list length exactly as before — blast.js
+     appends through here too. */
+  const [len] = await redisPipeline([
+    ["RPUSH", KEY("overlay", set), JSON.stringify(delta)],
+    ["HINCRBY", STAMP_HASH, set, 1]
+  ]);
   if (typeof len === "number" && len >= COMPACT_AT) {
     // Housekeeping, and deliberately best-effort: a failure here
     // costs a longer list, not an edit.

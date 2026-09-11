@@ -145,6 +145,59 @@ Base and overlay are still separate, and that is deliberate:
 - "Publish to team" sits next to "Download" on all three record tabs. Download is now a BACKUP,
   not a step anybody has to take.
 
+Other people's edits arriving without a reload — added 2026-09-11:
+- WHAT THIS CLOSED. Saving was already instant in one direction: an edit becomes a delta in the
+  shared overlay the moment it is made, and it is the team's from that instant. The other
+  direction was not. Nothing on the page ever asked the store whether anything had changed, so a
+  colleague's work showed up only when somebody happened to reload — the source line said so, in
+  those words. Two people on the same list at the same time could not see each other, which is
+  the state a shared list exists to prevent.
+- IT IS NOT WHAT PUBLISH DOES, and this is worth being clear about because the two get confused.
+  Publishing folds the accumulated deltas into a fresh base. It is housekeeping. It has never
+  been what makes work visible, so publishing on every edit would not have fixed this — it would
+  have rewritten a whole document per keystroke and made writes MORE likely to land on top of
+  each other, while still leaving every screen stale until somebody pressed F5. What was missing
+  was nobody ever asking whether anything had changed.
+- THE CHANGE STAMP is what makes asking cheap. One integer per set, bumped by every append and
+  every fold. GET /api/records?op=stamps returns all six and the records themselves are fetched
+  only for a set whose stamp actually moved, so a quiet team costs one small poll and nothing
+  else — measured: 20 seconds idle with two browsers open is 14 polls and ZERO record reads.
+- ALL SIX STAMPS LIVE IN ONE REDIS HASH, which is a billing decision as much as a tidy one.
+  Upstash charges by the command, not by the request, so six GETs pipelined into one HTTP call
+  is still six commands. HGETALL is one. At a two-second poll with four people that is roughly
+  60,000 commands a day rather than 350,000, and it is what makes a poll this fast reasonable
+  to leave running all day. If the cadence is ever raised again, this is the number to check.
+- A browser records the stamp its own writes produce, so nobody pulls a set back down to
+  discover the change was their own. Without that, every save anybody made would cost every
+  browser a full re-read, including the one that made it.
+- NEVER UNDER SOMEBODY'S HANDS. Incoming data is merged the moment it arrives — safe, because
+  the merge is a union and cannot lose what is being typed. The REPAINT is what waits: a record
+  open in its edit form, or a cursor in any field, defers the redraw until the field is
+  released. The test for "in any field" is deliberately coarse rather than five per-tab flags,
+  because the tabs that edit a row in place keep no flag to read, and a list redrawing under a
+  half-typed row is the one outcome worth being clumsy to avoid.
+- CADENCE. Two seconds when the tab is visible, twenty when it is not — less often, never
+  nothing. Browsers throttle and eventually freeze timers in a tab they believe is hidden, and
+  some embedded and pinned tabs believe that while sitting in front of a reader, so a click or a
+  keypress also wakes the poll. A dashboard that had quietly stopped listening while still
+  saying "edits are shared" is the one failure this must not have.
+
+Tested 2026-09-11, two browsers on two ports so they had genuinely separate localStorage:
+- A task added in one appeared in the other 4.1 seconds later with NO reload and no interaction
+  in the receiving tab — and that 4.1s is the whole round trip, including the click, the save
+  debounce and the poll. The page instance was confirmed to be the same one.
+- With a half-typed line in the receiving tab's own box, the list did NOT redraw and the typed
+  text survived; it redrew the moment the field was blurred, showing the change that had been
+  waiting.
+- Untouched sets were read only at boot. Twenty seconds idle across two tabs produced fourteen
+  stamp polls and zero record fetches.
+- readStamps was unit-tested against both shapes Upstash can answer HGETALL with — an object and
+  a flat [field, value, …] array — plus an empty hash and no reply at all, which all read as
+  zero. A stamp hash that has been flushed therefore costs one refresh per page, not a fault.
+- The one publish seen in a window was AutoPublish firing after its quiet period; the two reads
+  around it are its own pre-publish load and the other tab noticing the new base, which is
+  correct rather than churn.
+
 Why concurrent editing needs no locking, which is luck rather than design:
 - The overlays already recorded DELETIONS AS TOMBSTONES rather than as absent keys — removed[id],
   convRemoved, dealsHidden, an alias marked { forgotten: true } — so that re-loading a newer

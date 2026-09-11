@@ -76,6 +76,7 @@ import {
   readBase,
   writeBase,
   appendOverlay,
+  readStamps,
   readOverlay,
   clearOverlay,
   overlayLength,
@@ -137,6 +138,17 @@ export default async function handler(req, res) {
     return;
   }
 
+  /* THE LIVE POLL. Every set's change stamp in one small answer, so a
+     page can find out whether anything moved without reading a single
+     record. This is deliberately ahead of the `set` check below: the
+     question is about all of them at once. */
+  if (q.op === "stamps") {
+    const stamps = await readStamps([...SETS]);
+    res.setHeader("Cache-Control", "no-store");
+    res.status(200).json({ ok: true, stamps });
+    return;
+  }
+
   const set = String(q.set || "");
   if (!SETS.has(set)) {
     res.status(400).json({ error: "Unknown set.", sets: [...SETS] });
@@ -159,13 +171,15 @@ export default async function handler(req, res) {
 
   try {
     if (req.method === "GET") {
-      const [base, overlay, count] = await Promise.all([
-        readBase(set), readOverlay(set), overlayLength(set)
+      const [base, overlay, count, stamps] = await Promise.all([
+        readBase(set), readOverlay(set), overlayLength(set), readStamps([set])
       ]);
       res.setHeader("Cache-Control", "no-store");
       // `count` is how many deltas produced that overlay. The page hands it
       // back when it publishes, so the trim can be exact — see trimOverlay().
-      res.status(200).json({ ok: true, set, base, overlay, count });
+      // `stamp` is where this payload sits in the set's history, so the live
+      // poll has something to compare against without guessing.
+      res.status(200).json({ ok: true, set, base, overlay, count, stamp: stamps[set] || 0 });
       return;
     }
 
@@ -206,8 +220,10 @@ export default async function handler(req, res) {
         const seen = Number(payload.seen);
         if (Number.isFinite(seen) && seen > 0) await trimOverlay(set, seen);
         else await clearOverlay(set);
+        const after = await readStamps([set]);
         res.setHeader("Cache-Control", "no-store");
-        res.status(200).json({ ok: true, set, published: true, base: stamped, overlay: {} });
+        res.status(200).json({ ok: true, set, published: true, base: stamped,
+                               overlay: {}, stamp: after[set] || 0 });
         return;
       }
 
@@ -219,9 +235,13 @@ export default async function handler(req, res) {
 
       // Return the folded overlay so the writer immediately sees
       // whatever other people have saved since their last load.
-      const overlay = await readOverlay(set);
+      const [overlay, stamps] = await Promise.all([
+        readOverlay(set), readStamps([set])
+      ]);
       res.setHeader("Cache-Control", "no-store");
-      res.status(200).json({ ok: true, set, overlay });
+      // The stamp this write produced. Handed back so the writer's own
+      // edit does not read as somebody else's change on the next poll.
+      res.status(200).json({ ok: true, set, overlay, stamp: stamps[set] || 0 });
       return;
     }
 

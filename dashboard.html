@@ -5676,6 +5676,11 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
        much — see trimOverlay() in _store.js. */
     var seenCount = {};
 
+    /* Where each set stood when this browser last saw it. The live poll
+       compares against these, so it can tell "somebody changed something"
+       from "that was me" without pulling a document to find out. */
+    var seenStamp = {};
+
     function load(set) {
       return fetch(ENDPOINT + "?set=" + encodeURIComponent(set), { cache: "no-store" })
         .then(function (r) {
@@ -5685,6 +5690,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
         .then(function (j) {
           state = "shared";
           seenCount[set] = typeof j.count === "number" ? j.count : 0;
+          if (typeof j.stamp === "number") seenStamp[set] = j.stamp;
           return { base: j.base || null, overlay: j.overlay || null };
         })
         .catch(function () {
@@ -5701,7 +5707,15 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
         body: JSON.stringify({ overlay: overlay, by: who || "" })
       }).then(function (r) {
         if (!r.ok && r.status === 503) state = "local";
-        return r.ok;
+        if (!r.ok) return false;
+        /* The stamp this write produced, recorded before the next poll can
+           run. Without it a browser reads its own edit as somebody else's
+           change and pulls the whole set back down to learn it already had
+           it — once per save, for every save anybody makes. */
+        return r.json().then(function (j) {
+          if (j && typeof j.stamp === "number") seenStamp[set] = j.stamp;
+          return true;
+        }).catch(function () { return true; });
       }).catch(function () { return false; });
     }
 
@@ -5728,7 +5742,10 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
            part of the base — see adoptPublished() on each store. */
         if (r.ok) {
           return r.json()
-            .then(function (j) { return { ok: true, base: j && j.base }; })
+            .then(function (j) {
+              if (j && typeof j.stamp === "number") seenStamp[set] = j.stamp;
+              return { ok: true, base: j && j.base };
+            })
             .catch(function () { return { ok: true, base: null }; });
         }
         if (r.status === 403) {
@@ -5748,8 +5765,8 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
        source line on all three record tabs. */
     function note() {
       return state === "shared"
-        ? " <strong>Edits are shared.</strong> They save to the whole team, and other people's " +
-          "arrive when this page is reloaded."
+        ? " <strong>Edits are shared.</strong> They save to the whole team the moment they are " +
+          "made, and other people's arrive here within a few seconds."
         : " <strong>Edits stay in this browser.</strong> The shared store is not reachable, " +
           "so nobody else can see them — “Publish to team” will say the same until it is.";
     }
@@ -5778,7 +5795,8 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
       load: load, push: push, publish: publish,
       merge: merge, mergeInto: mergeInto, setKey: setKey,
       note: note, state: function () { return state; },
-      seen: function (set) { return seenCount[set] || 0; }
+      seen: function (set) { return seenCount[set] || 0; },
+      stamp: function (set) { return seenStamp[set] || 0; }
     };
   })();
 
@@ -5875,6 +5893,174 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
     }
 
     return { touch: touch, QUIET_MS: QUIET_MS };
+  })();
+
+
+  /* ============================================================
+     LIVE — other people's edits, without a reload
+
+     WHAT THIS CLOSES. Saving was already instant in one direction:
+     the delta goes into the shared overlay the moment an edit is
+     made, and it is the team's from that instant. The other
+     direction was not. Nothing on this page ever asked the store
+     whether anything had changed, so a colleague's work appeared
+     only when somebody happened to reload — and the source line
+     said as much, in those words. Two people working the same list
+     at the same time could not see each other, which is the state a
+     shared list exists to prevent.
+
+     WHY THIS IS NOT WHAT "PUBLISH" DOES. Publishing folds the
+     accumulated deltas into a fresh base. It is housekeeping and it
+     has never been what makes work visible — AutoPublish above says
+     so at length. Publishing on every edit would rewrite a whole
+     document per keystroke and make writes MORE likely to land on
+     each other, and it still would not have made anybody's screen
+     update. What was missing was somebody asking.
+
+     WHAT IT COSTS. One small request on a timer, not a document.
+     /api/records?op=stamps answers with an integer per set that
+     moves when that set moves — all six read out of a single Redis
+     hash, one command. The records themselves are fetched
+     only for a set whose stamp has actually changed, so a quiet
+     team costs one tiny poll every few seconds and nothing else.
+     A browser's own writes record their own stamp, so nobody ever
+     pulls a set back down to discover it was their own edit.
+
+     NEVER UNDER SOMEBODY'S HANDS. Incoming data is merged as soon
+     as it arrives — that is safe, the merge is a union and it
+     cannot lose what is being typed. The REPAINT is what waits: a
+     record open in its edit form, or a cursor sitting in any field,
+     defers the redraw until the field is released. Nothing is lost
+     by waiting, because the data is already in the store by then.
+     ============================================================ */
+  var Live = (function () {
+    var ENDPOINT = "/api/records";
+    var ACTIVE_MS = 2000;
+    var IDLE_MS = 20000;
+
+    var timer = null;
+    var busy = false;
+    var started = false;
+    var pending = {};          // sets whose repaint is waiting for a free field
+
+    var SETS = {
+      deals:       { store: function () { return Deals; },
+                     render: function () { renderDeals(); },
+                     held: function () { return false; } },
+      crm:         { store: function () { return Crm; },
+                     render: function () { renderCrm(); },
+                     held: function () { return !!crmState.editing; } },
+      operators:   { store: function () { return Operators; },
+                     render: function () { renderOperators(); },
+                     held: function () { return !!opState.editing; } },
+      tasks:       { store: function () { return Tasks; },
+                     render: function () { renderTasks(); },
+                     held: function () { return !!taskState.editing; } },
+      competitors: { store: function () { return Competitors; },
+                     render: function () { renderCompetitors(); },
+                     held: function () { return !!compState.editing; } }
+    };
+
+    /* A cursor in a field is somebody working, whatever tab it is on and
+       whether or not that tab keeps a flag for it. Coarser than reading
+       five flags and deliberately so — the tabs that edit a row in place
+       have no flag to read, and a redraw under a half-typed row is the
+       one outcome worth being clumsy to avoid. A search box is excluded:
+       it holds no unsaved work, and refusing to refresh while somebody
+       filters a list would defeat the point of refreshing at all. */
+    function typing() {
+      var el = document.activeElement;
+      if (!el || el === document.body) return false;
+      var tag = el.tagName;
+      if (tag === "INPUT") return el.type !== "search" && el.type !== "checkbox" &&
+                                  el.type !== "radio" && el.type !== "button";
+      return tag === "TEXTAREA" || tag === "SELECT" ||
+             el.getAttribute("contenteditable") === "true";
+    }
+
+    function paint(set) {
+      var entry = SETS[set];
+      if (!entry) return;
+      if (typing() || entry.held()) { pending[set] = true; return; }
+      delete pending[set];
+      try { entry.render(); } catch (e) { /* a bad repaint must not stop the poll */ }
+    }
+
+    // A repaint that was waiting on a field, taken the moment it is free.
+    function flush() {
+      Object.keys(pending).forEach(function (set) { paint(set); });
+    }
+
+    function refresh(sets) {
+      return Promise.all(sets.map(function (set) {
+        var entry = SETS[set];
+        if (!entry) return Promise.resolve();
+        // load() re-reads the shared overlay and merges it onto this
+        // browser's own, in place. It is the same call boot makes.
+        return entry.store().load()
+          .then(function () { paint(set); })
+          .catch(function () { /* next poll */ });
+      }));
+    }
+
+    function tick() {
+      if (busy || SharedOverlay.state() === "local") { schedule(); return; }
+      busy = true;
+      fetch(ENDPOINT + "?op=stamps", { cache: "no-store" })
+        .then(function (r) { return r.ok ? r.json() : null; })
+        .then(function (j) {
+          if (!j || !j.stamps) return null;
+          var moved = Object.keys(SETS).filter(function (set) {
+            return (j.stamps[set] || 0) !== SharedOverlay.stamp(set);
+          });
+          return moved.length ? refresh(moved) : null;
+        })
+        .catch(function () { /* a missed poll is the next poll's problem */ })
+        .then(function () {
+          busy = false;
+          flush();
+          schedule();
+        });
+    }
+
+    /* Self-rescheduling rather than setInterval, so the cadence can follow
+       whether anybody is looking. A hidden tab drops to one poll every
+       twenty seconds — less often, never nothing, because browsers throttle
+       and eventually freeze timers in a tab they believe is hidden, and some
+       embedded and pinned tabs believe that while sitting in front of a
+       reader. See wake() for the backstop that does not trust the flag. */
+    function schedule() {
+      clearTimeout(timer);
+      timer = setTimeout(tick, document.hidden ? IDLE_MS : ACTIVE_MS);
+    }
+
+    var lastWake = 0;
+    function wake() {
+      var t = Date.now();
+      if (t - lastWake < 1500) return;
+      lastWake = t;
+      clearTimeout(timer);
+      tick();
+    }
+
+    function start() {
+      if (started) return;
+      started = true;
+      schedule();
+      document.addEventListener("visibilitychange", function () {
+        if (!document.hidden) wake();
+      });
+      window.addEventListener("focus", wake);
+      window.addEventListener("online", wake);
+      /* Somebody clicking or typing on this page is looking at it, whatever
+         document.hidden says. Also the moment a field is released, which is
+         when a deferred repaint becomes safe. */
+      document.addEventListener("pointerdown", wake, true);
+      document.addEventListener("keyup", function () { flush(); }, true);
+      document.addEventListener("focusout", function () { setTimeout(flush, 0); }, true);
+    }
+
+    return { start: start, poll: wake, ACTIVE_MS: ACTIVE_MS };
   })();
 
   function publishRecords(set, label, toFile, btnId, store) {
@@ -18094,6 +18280,13 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
     // normal case; the switch just says "opens a draft" instead of "sends".
     renderNotifyNote();
     TaskNotify.probe().then(renderNotifyNote);
+
+    /* Start watching for everybody else's edits. After the gate on
+       purpose: this runs only for a page somebody is actually looking
+       at, and it is idempotent, so the Refresh paths can call it
+       without minding. */
+    Live.start();
+
     Agent.init();
   }
 
