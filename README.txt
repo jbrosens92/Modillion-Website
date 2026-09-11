@@ -1590,3 +1590,20 @@ MOVING A RAISE BETWEEN THE LISTS BY HAND, 2026-09-11:
 - The table went from ten columns to eleven: header, row, foot and the
   commitments detail colspan all had to move together, and all four were
   counted after the change rather than by eye.
+
+NO SOFT COLUMN ON THE RAISES ROLL-UP, 2026-09-11:
+- Asked as "No need to show Sqft. Remove that." There is no square footage
+  anywhere on this page — nothing in dashboard.html matches "sq" in any case —
+  and the only column on that screen it can mean is SOFT, which was printing an
+  em dash on every row.
+- Gone from the roll-up table only: header, row cell, foot total, and the now
+  unused soft accumulator in raiseFootTotals. Eleven columns down to ten, so
+  the commitments detail colspan moved with it.
+- SOFT IS NOT GONE AS A CONCEPT and was not meant to be. Still a state a
+  commitment can be in (How firm), still on the deal's own raise panel in the
+  figures grid, still the second bar in the meter, still a column in the Excel
+  export, still in the "$X soft" aside on an investor record. What went is one
+  column on one table.
+- Why it is the right column to lose there: that list is read to ask how much is
+  left to find, and an indication is not money towards that — see the note over
+  RAISE_STATES, which is the whole reason soft is excluded from Committed.

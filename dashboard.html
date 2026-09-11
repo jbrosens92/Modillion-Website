@@ -6305,8 +6305,13 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
       return '<td class="num' + (cls ? " " + cls : "") + '" data-raise-cell="' + key + '">' +
              (v ? esc(v) : '<span class="muted">\u2014</span>') + '</td>';
     }
+    /* Soft-circled is NOT a column here. It is still counted, still shown
+       on the deal's own raise panel and in its meter, still a state a
+       commitment can be in — this list is read to ask how much is left to
+       find, and an indication is not money towards that. It was a column
+       of em dashes on the way to the one figure that answers the
+       question. */
     return num("committed", t.committed ? raiseMoney(t.committed) : "") +
-      num("soft", t.soft ? raiseMoney(t.soft) : "") +
       /* The column the tab is for. Negative means oversubscribed, and it
          says so rather than printing a minus sign somebody has to work
          out the meaning of at a glance. */
@@ -6381,7 +6386,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
        commitments table in this file and not two that drift apart. */
     return row +
       '<tr class="raise-roll__detail" data-raise-for="' + esc(rec.id) + '">' +
-        '<td colspan="11">' +
+        '<td colspan="10">' +
           (n ? "" : '<p class="raise-empty">Nobody is in yet. Add the first one below.</p>') +
           raiseRows(rec) +
           raiseAddForm(rec, "rollNew_" + rec.id + "_") +
@@ -6395,14 +6400,13 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
       var t = raiseTotals(rec);
       acc.target += t.target || 0;
       acc.committed += t.committed;
-      acc.soft += t.soft;
       // A deal with no target contributes its commitments and no shortfall.
       // Adding zero for it would say the firm needs nothing more on that
       // deal, which is not the same as not knowing.
       if (t.remaining != null && t.remaining > 0) acc.remaining += t.remaining;
       if (t.target == null) acc.untargeted++;
       return acc;
-    }, { target: 0, committed: 0, soft: 0, remaining: 0, untargeted: 0 });
+    }, { target: 0, committed: 0, remaining: 0, untargeted: 0 });
   }
 
   function raiseFootHtml(list) {
@@ -6413,7 +6417,6 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
     return '<tr><td></td><td>' + esc(countOf(list.length, "raise")) + '</td><td></td><td></td>' +
       num(f.target ? raiseMoney(f.target) : "") +
       num(f.committed ? raiseMoney(f.committed) : "") +
-      num(f.soft ? raiseMoney(f.soft) : "") +
       num(f.remaining ? raiseMoney(f.remaining) : "") +
       num(f.target ? Math.round((f.committed / f.target) * 100) + "%" : "") +
       '<td>' + (f.untargeted
@@ -6424,7 +6427,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
   function raiseTable(list, key) {
     var head = '<tr><th class="raise-roll__toggle"><span class="visually-hidden">' +
       'Show commitments</span></th><th>Deal or fund</th><th>Sponsor</th><th>Status</th>' +
-      '<th class="num">Target</th><th class="num">Committed</th><th class="num">Soft</th>' +
+      '<th class="num">Target</th><th class="num">Committed</th>' +
       '<th class="num">Still to raise</th><th class="num">%</th><th>Close by</th>' +
       '<th class="raise-roll__move"><span class="visually-hidden">Move</span></th></tr>';
 
