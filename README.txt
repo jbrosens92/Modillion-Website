@@ -1389,7 +1389,7 @@ A RAISE THAT IS NOT A DEAL, 2026-09-11:
 - Asked for: track the raise for Modillion GP Fund I, which is not a deal and
   must not sit on the Deal Pipeline.
 - A THIRD AREA, AND IT HAS NO TAB. DEAL_AREAS gains "fund-raises", labelled
-  "Fund or programme". The two deal tabs filter by area, so a record filed
+  "Fund or program". The two deal tabs filter by area, so a record filed
   there appears on neither of them without a line being written to keep it out
   — see dealsInScope(). What puts it on Capital Raises is what puts anything
   there: it carries a raise.
@@ -1399,7 +1399,7 @@ A RAISE THAT IS NOT A DEAL, 2026-09-11:
   four and would have drifted from them. A fund raise needs everything a deal's
   raise has and nothing a deal's pipeline has, so it is a deal record filed
   somewhere the pipeline does not look.
-- New fund or programme, on the Capital Raises toolbar: name, target, close by,
+- New fund or program, on the Capital Raises toolbar: name, target, close by,
   sponsor, note. The same three name guards the Add deal form uses, for the same
   reason — two records sharing a name would both answer to it.
 - A FUND WITH NO TARGET IS NOT LOST. normaliseRaise() returns null for a raise
@@ -1419,7 +1419,7 @@ A RAISE THAT IS NOT A DEAL, 2026-09-11:
   Status, the footer counts raises rather than deals, and the same two names go
   into the Excel export.
 - "Where it sits" on Edit deal offers all three areas, so a fund can be moved
-  onto a deal list and a deal filed as a programme, both without special cases.
+  onto a deal list and a deal filed as a program, both without special cases.
 
 TAGGING SOMETHING ALREADY SENT, 2026-09-11:
 - Asked for: tag previously sent materials against a capital raise, easily.
@@ -1462,7 +1462,7 @@ WHAT IS RAISING COMES FIRST, 2026-09-11:
 - The list is still every deal. A memo can be tagged against something that is
   not raising yet, and refusing that would be worse than a long list.
 - The other half is not a bug: a fund only appears in the picker once the
-  record EXISTS. Capital Raises → New fund or programme creates it. Nothing can
+  record EXISTS. Capital Raises → New fund or program creates it. Nothing can
   be tagged against a raise nobody has set up.
 
 WON DEALS COME FIRST IN THE START-A-RAISE PICKER, 2026-09-11:
@@ -1482,3 +1482,22 @@ WON DEALS COME FIRST IN THE START-A-RAISE PICKER, 2026-09-11:
 - The suffix says which of the two a deal is: "(closed)" or "(in contract)".
 - The list is still every deal. A raise can be started before a deal closes,
   and refusing that would be worse than a long list.
+
+PROGRAMME → PROGRAM, 2026-09-11:
+- Asked after the button was misread: "why does this say Programme?" Two
+  answers. The spelling was British, consistently with the rest of this page
+  (normalise, cheque, colour, recognised, Data centres). The WORD means a raise
+  with no deal under it — a fund, or a programmatic line with a sponsor.
+- The spelling is now American everywhere the product says it: the button, the
+  form heading, the area label, the source line under the raises table, and the
+  four README entries that describe them. "Programmatic" is untouched — it is
+  spelled the same either way, and it is the firm's own word for those deals.
+- Safe to rename because nothing keys off the LABEL. Every branch reads the
+  area ID, "fund-raises" — see isFundRaise(), dealsInScope(), the start-a-raise
+  filter. The label is display only.
+- ONE WAY IT COMES BACK: load() does `if (base.areas) DEAL_AREAS = base.areas`,
+  so an areas array in the shared store or in deals-data.json overrides these
+  labels at runtime. If the button still reads "programme" after this ships,
+  that is where it is coming from, not from this file.
+- Left alone: api/_news.js says "programmes" twice inside model prompts, once
+  meaning a conference agenda. Nothing user-visible, different sense.

@@ -3738,12 +3738,12 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
           <label class="visually-hidden" for="raiseStartDeal">Start a raise on a deal</label>
           <select id="raiseStartDeal"></select>
           <button class="dash-refresh dash-refresh--primary" id="raiseStartBtn">Start a raise</button>
-          <!-- A raise with no deal under it: a fund, a programme. It gets a
+          <!-- A raise with no deal under it: a fund, a program. It gets a
                record of its own so that commitments, materials and tasks all
                join to it the way they join to anything else here — see
                DEAL_AREAS — but that record is filed where neither deal list
                will show it. -->
-          <button class="dash-refresh" id="raiseNewFundBtn">New fund or programme</button>
+          <button class="dash-refresh" id="raiseNewFundBtn">New fund or program</button>
           <button class="dash-refresh" id="raiseExportBtn">Export Excel</button>
           <span class="dash-crm__shown" id="raiseShown"></span>
         </div>
@@ -6336,7 +6336,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
           ? "Every raise on the books has reached its target. The finished ones are below."
           : "Nothing is being raised yet. Two ways in: pick a deal above and press Start " +
             "a raise, which takes you to that deal\u2019s Capital raise panel; or press New " +
-            "fund or programme for something that is not a deal at all \u2014 a fund, a " +
+            "fund or program for something that is not a deal at all \u2014 a fund, a " +
             "programmatic line \u2014 which gets a record of its own and appears only here.") +
         '</p></div>') +
       (done.length
@@ -6402,7 +6402,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
 
     $("raiseSourceNote").textContent = all.length
       ? "Every raise on the books: deals from the pipeline, deals that have closed — a deal " +
-        "keeps its raise after it closes — and funds and programmes, which are on no deal " +
+        "keeps its raise after it closes — and funds and programs, which are on no deal " +
         "list at all. Commitments are recorded against each one; this adds them up."
       : "";
   }
@@ -6416,7 +6416,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
      What it does not get is a place on either deal list.
      ---------------------------------------------------------------- */
   function raiseFundForm() {
-    return '<div class="crm-edit"><h3>New fund or programme</h3>' +
+    return '<div class="crm-edit"><h3>New fund or program</h3>' +
       '<p class="crm-edit__lede">A raise that is not a deal \u2014 a fund, a programmatic ' +
       'line, anything the firm is raising for that it is not buying. It appears here and ' +
       'on nothing else: not the Deal Pipeline, not Closed Deals. Everything a deal\u2019s ' +
@@ -12382,7 +12382,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
 
   /* THREE AREAS, AND THE THIRD ONE HAS NO TAB.
 
-     Active and Closed are the two deal lists. "Fund or programme" is a
+     Active and Closed are the two deal lists. "Fund or program" is a
      raise that is not a deal at all — Modillion GP Fund I, a programmatic
      line with a sponsor — and it exists because a fund raise needs every
      single thing a deal's raise has (a target, commitments joined to the
@@ -12402,7 +12402,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
   var DEAL_AREAS = [
     { id: "active-deals", label: "Active Deals" },
     { id: "closed-deals", label: "Closed Deals" },
-    { id: "fund-raises",  label: "Fund or programme" }
+    { id: "fund-raises",  label: "Fund or program" }
   ];
 
   // Empty. Real records arrive from the shared store, or from
@@ -12825,7 +12825,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
          tab exists rather than a column on the pipeline. */
       withRaise: function () {
         /* Carrying a raise, OR being a record that exists for no other
-           reason. A fund or programme is filed where neither deal list
+           reason. A fund or program is filed where neither deal list
            shows it, so if it dropped off this tab for want of a target
            it would be a record with nowhere at all — created, saved, and
            invisible. It appears, and its row says the target is unset. */
