@@ -1464,3 +1464,21 @@ WHAT IS RAISING COMES FIRST, 2026-09-11:
 - The other half is not a bug: a fund only appears in the picker once the
   record EXISTS. Capital Raises → New fund or programme creates it. Nothing can
   be tagged against a raise nobody has set up.
+
+WON DEALS COME FIRST IN THE START-A-RAISE PICKER, 2026-09-11:
+- Asked for directly: "Show closed and in contract deals first before other
+  deals." A raise is started for a deal the firm is committed to — it has
+  closed, or it is under contract and about to. Those are a minority of the
+  pipeline and they were sitting alphabetically among every live deal, so the
+  two or three names anybody opens this list for were scattered down it.
+- Grouped, not merely sorted: a list that has quietly reordered itself reads as
+  arbitrary, and the same <optgroup>s are what every other deal picker on the
+  page already uses. "Closed or in contract" first, "Everything else" under it,
+  alphabetical inside each as before.
+- Closed is read from BOTH signals — the closed-deals area and a "Closed"
+  status — because they can disagree. A deal still filed under Active Deals
+  that has been marked Closed used to show no suffix at all and sat in the
+  middle of the list; it is now labelled and lifted with the rest.
+- The suffix says which of the two a deal is: "(closed)" or "(in contract)".
+- The list is still every deal. A raise can be started before a deal closes,
+  and refusing that would be worse than a long list.

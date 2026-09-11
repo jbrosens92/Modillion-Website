@@ -6359,12 +6359,40 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
         return !r.raise && r.area !== "fund-raises";
       })
         .sort(function (a, b) { return a.name.localeCompare(b.name); });
+
+      /* WON DEALS COME FIRST.
+
+         A raise is started for a deal the firm is committed to — it has
+         closed, or it is under contract and about to. Those are a
+         minority of the pipeline and they were sitting alphabetically
+         among every live deal, so the two or three names anybody opens
+         this list for were scattered down it.
+
+         Grouped rather than merely sorted: a list that has quietly
+         reordered itself reads as arbitrary, and the same optgroups are
+         what every other deal picker on the page uses. Alphabetical
+         inside each group, as before. The list is still every deal —
+         a raise can be started before a deal closes, and refusing that
+         would be worse than a long list. */
+      function settled(r) {
+        return r.area === "closed-deals" || r.status === "Closed" || r.status === "In Contract";
+      }
+      function suffix(r) {
+        if (r.area === "closed-deals" || r.status === "Closed") return " (closed)";
+        if (r.status === "In Contract") return " (in contract)";
+        return "";
+      }
+      function pickGroup(label, rows) {
+        if (!rows.length) return "";
+        return '<optgroup label="' + esc(label) + '">' + rows.map(function (r) {
+          return '<option value="' + esc(r.id) + '">' + esc(r.name) + esc(suffix(r)) + '</option>';
+        }).join("") + '</optgroup>';
+      }
+
       var was = pick.value;
       pick.innerHTML = without.length
-        ? without.map(function (r) {
-            return '<option value="' + esc(r.id) + '">' + esc(r.name) +
-                   (r.area === "closed-deals" ? " (closed)" : "") + '</option>';
-          }).join("")
+        ? pickGroup("Closed or in contract", without.filter(settled)) +
+          pickGroup("Everything else", without.filter(function (r) { return !settled(r); }))
         : '<option value="">Every deal is already raising</option>';
       pick.value = was;
       if (!pick.value && without.length) pick.selectedIndex = 0;
