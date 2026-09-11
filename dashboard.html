@@ -2161,6 +2161,16 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
   padding: 4px 8px; margin-left: -8px; width: 100%; min-width: 0;
 }
 .raise-set__input::placeholder { font-size: .88rem; color: var(--muted); }
+/* The picker version of a raise box — same size and weight, with the
+   arrow a <select> needs and the frame it needs to read as one. */
+.raise-set__select {
+  appearance: none;
+  font-family: var(--sans); font-size: .96rem; color: var(--deep-space);
+  background: var(--paper) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 8'%3E%3Cpath d='M1 1.5L6 6.5L11 1.5' fill='none' stroke='%235A6477' stroke-width='1.4'/%3E%3C/svg%3E") no-repeat right 12px center/10px;
+  border: 1px solid var(--rule); border-radius: 2px;
+  padding: 9px 34px 9px 12px; width: 100%; cursor: pointer;
+}
+.raise-set__select:focus { outline: none; border-color: var(--steel); }
 .raise-set__input:hover { border-color: var(--rule); }
 .raise-set__input:focus {
   outline: none; border-color: var(--steel); background: var(--paper);
@@ -9933,8 +9943,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
             '</div>' +
             '<div class="crm-field">' +
               '<label for="sendDeal">For which deal</label>' +
-              '<input type="text" id="sendDeal" list="sendDealNames" autocomplete="off" ' +
-                'placeholder="Optional">' +
+              '<select id="sendDeal">' + dealOptionsHtml("") + '</select>' +
               '<span class="crm-field__note" id="sendDealNote"></span>' +
             '</div>' +
             '<div class="crm-field">' +
@@ -9972,7 +9981,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
 
     return '<div class="crm-section"><h3>Materials sent' +
       '<span class="crm-section__aside">' + esc(aside) + '</span></h3>' +
-      table + form + dealNameOptions("sendDealNames") + '</div>';
+      table + form + '</div>';
   }
 
   /* ============================================================
@@ -10584,7 +10593,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
       var want = mat ? (mat.deal || "") : "";
       var held = dealBox.value.trim();
       if (!held || held === dealBox.getAttribute("data-filled-from")) {
-        dealBox.value = want;
+        setDealSelect(dealBox, want);
       }
       dealBox.setAttribute("data-filled-from", want);
       var dnote = $("sendDealNote");
@@ -10631,15 +10640,68 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
     });
   }
 
-  /* Deal names for a box that files something against a deal. A datalist
-     rather than a select: a memo can be filed against a deal that has
-     been archived off the list, and refusing to let somebody type one is
-     worse than letting them. The join is by name either way. */
-  function dealNameOptions(id) {
-    return '<datalist id="' + esc(id) + '">' +
-      Deals.allIncludingArchived().map(function (r) {
-        return '<option value="' + esc(r.name) + '">';
-      }).join("") + '</datalist>';
+  /* WHICH DEAL SOMETHING IS FILED AGAINST — a picker, not a box.
+
+     This was a text box with a datalist beside it, on the reasoning that
+     a datalist suggests without refusing. That was wrong for this field
+     and it was reported within the hour: the whole job of the value is
+     to MATCH A DEAL'S NAME EXACTLY, and a deal here is called
+     "Switchback – Casa Hope (Williamsburg, NY)" — en dash, parenthetical
+     and all. Anybody typing "Casa Hope" gets a value that looks right,
+     saves cleanly, and matches nothing. A box that accepts an answer it
+     cannot use is worse than one that will not take it.
+
+     So: every deal, from both areas, archived ones included, because a
+     memo can outlive the deal's place on the list.
+
+     A STORED VALUE THAT MATCHES NOTHING IS KEPT AND LABELLED rather than
+     dropped. Records already carry hand-typed names, and a deal can be
+     renamed under one at any time — silently blanking it would destroy
+     the only clue to what somebody meant. It stays selected, and says
+     what is wrong with it. */
+  function dealOptionsHtml(current) {
+    var cur = String(current || "").trim();
+    var list = Deals.allIncludingArchived().slice().sort(function (a, b) {
+      return a.name.localeCompare(b.name);
+    });
+    var matched = list.some(function (r) { return sameName(r.name, cur); });
+
+    var out = '<option value=""' + (cur ? "" : " selected") + '>' +
+              '\u2014 no deal, general material \u2014</option>';
+    if (cur && !matched) {
+      out += '<option value="' + esc(cur) + '" selected>' + esc(cur) +
+             ' \u2014 not a deal on the list</option>';
+    }
+
+    function group(area, label) {
+      var rows = list.filter(function (r) { return r.area === area; });
+      if (!rows.length) return "";
+      return '<optgroup label="' + esc(label) + '">' + rows.map(function (r) {
+        return '<option value="' + esc(r.name) + '"' +
+               (sameName(r.name, cur) ? " selected" : "") + '>' + esc(r.name) +
+               (Deals.isArchived(r.id) ? " (archived)" : "") + '</option>';
+      }).join("") + '</optgroup>';
+    }
+    return out + group("active-deals", "Active Deals") + group("closed-deals", "Closed Deals");
+  }
+
+  /* Setting a picker to a value it may not have an option for — the
+     material's deal, when that deal has since been renamed away. Adding
+     it rather than failing silently, which is what assigning .value to a
+     <select> does when nothing matches: it leaves the old selection in
+     place, and the form would then record a deal nobody chose. */
+  function setDealSelect(sel, value) {
+    if (!sel) return;
+    var want = String(value || "").trim();
+    if (!want) { sel.value = ""; return; }
+    var has = Array.prototype.some.call(sel.options, function (o) { return o.value === want; });
+    if (!has) {
+      var opt = document.createElement("option");
+      opt.value = want;
+      opt.textContent = want + " \u2014 not a deal on the list";
+      sel.insertBefore(opt, sel.options[1] || null);
+    }
+    sel.value = want;
   }
 
   function materialKindList() {
@@ -10677,8 +10739,15 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
           (m.retired ? '<span class="crm-tag">Retired</span>' : "") +
           (m.note ? '<span class="crm-sub">' + esc(m.note) + '</span>' : "") + '</td>' +
         '<td>' + (m.kind ? esc(m.kind) : '<span class="muted">—</span>') + '</td>' +
+        /* A tag that matches no deal is the failure this column exists to
+           make visible: it looks filled in, it saves, and it joins to
+           nothing. Saying so here is how somebody finds it without
+           opening every material. */
         '<td>' + (m.deal
-          ? '<span class="crm-tag crm-tag--deal">' + esc(m.deal) + '</span>'
+          ? (Deals.byName(m.deal)
+              ? '<span class="crm-tag crm-tag--deal">' + esc(m.deal) + '</span>'
+              : '<span class="crm-tag mat-stale">' + esc(m.deal) + '</span>' +
+                '<span class="crm-sub">No deal by that name \u2014 it matches nothing</span>')
           : '<span class="muted">—</span>') + '</td>' +
         '<td>' + (current
           ? esc(current.label) +
@@ -10747,9 +10816,8 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
           '</div>' +
           '<div class="crm-field">' +
             '<label for="matNewDeal">Deal</label>' +
-            '<input type="text" id="matNewDeal" autocomplete="off" list="matDealNames" ' +
-              'placeholder="Optional — leave blank for anything general">' +
-            '<span class="crm-field__note">Fill this in for a deal memo and the deal\u2019s ' +
+            '<select id="matNewDeal">' + dealOptionsHtml("") + '</select>' +
+            '<span class="crm-field__note">Pick one for a deal memo and that deal\u2019s ' +
               'capital raise can show who has been sent it.</span>' +
           '</div>' +
           '<div class="crm-field crm-field--wide">' +
@@ -10763,8 +10831,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
           '<span class="crm-research__hint">A name is all it needs. Versions go on the ' +
             'record after that.</span>' +
         '</div>' +
-      '</div>' +
-      dealNameOptions("matDealNames");
+      '</div>';
 
     labelCells($("materialsBody"));
     $("crmMaterialsCount").textContent = list.length ? "(" + list.length + ")" : "";
@@ -10803,18 +10870,21 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
        the register existed before deals were a thing a material could be
        filed against, and going back to tag the memos is the whole point.
        A box, saved when it is left, like the raise boxes. */
+    var dealKnown = mat.deal ? !!Deals.byName(mat.deal) : true;
     parts.push('<div class="crm-section mat-deal"><h3>Filed against' +
-      '<span class="crm-section__aside">' +
-        (mat.deal ? esc(mat.deal) : "no deal \u2014 general material") + '</span></h3>' +
+      '<span class="crm-section__aside' + (dealKnown ? "" : " mat-stale") + '">' +
+        (mat.deal
+          ? esc(mat.deal) + (dealKnown ? "" : " \u2014 matches no deal")
+          : "no deal \u2014 general material") + '</span></h3>' +
       '<div class="raise-set">' +
         '<label class="raise-set__label" for="matDealBox">Deal</label>' +
-        '<input type="text" class="raise-set__input" id="matDealBox" list="matDealNames" ' +
-          'data-mat-deal="' + esc(mat.id) + '" value="' + esc(mat.deal || "") + '" ' +
-          'placeholder="Leave blank for anything general" autocomplete="off">' +
-        '<span class="raise-set__note">Fill this in for a deal memo and that deal\u2019s ' +
-          'capital raise shows who has been sent it. A send can still name a different ' +
-          'deal \u2014 this is the one it starts from.</span>' +
-      '</div>' + dealNameOptions("matDealNames") + '</div>');
+        '<select class="raise-set__select" id="matDealBox" data-mat-deal="' + esc(mat.id) + '">' +
+          dealOptionsHtml(mat.deal) +
+        '</select>' +
+        '<span class="raise-set__note">Pick a deal and that deal\u2019s capital raise shows ' +
+          'who has been sent this. A send can still name a different deal \u2014 this is the ' +
+          'one it starts from.</span>' +
+      '</div></div>');
 
     parts.push(factGrid([
       ["Kind", esc(mat.kind)],

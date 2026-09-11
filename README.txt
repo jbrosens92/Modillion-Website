@@ -1353,3 +1353,34 @@ WHO HAS BEEN SENT THE MEMO, 2026-09-11:
   is answerable there too.
 - WHAT IS NOT COVERED: nothing sends anything. This records what went out, as
   the whole materials feature always has.
+
+THE DEAL BOX IS A PICKER, 2026-09-11:
+- Reported within the hour of shipping: "how come I don't see any materials sent
+  in connection to the Casa Hope deal?"
+- Two causes, and the first is not a bug: the field was new, so nothing was
+  tagged yet and there was nothing to find. The second is a bug in the design.
+- IT WAS A TEXT BOX WITH A DATALIST, chosen so it would suggest without
+  refusing. Wrong for this field. The whole job of the value is to match a
+  deal's name EXACTLY, and a deal here is called "Switchback – Casa Hope
+  (Williamsburg, NY)" — en dash, parenthetical and all. Anybody typing
+  "Casa Hope" gets a value that looks right, saves cleanly and matches nothing.
+  A box that accepts an answer it cannot use is worse than one that will not
+  take it.
+- It is a <select> now, on the material, on the add-a-material form and on the
+  send form: every deal, grouped by area, archived ones marked, blank for
+  general material.
+- A STORED VALUE THAT MATCHES NOTHING IS KEPT AND LABELLED, never dropped.
+  Records already carry hand-typed names and a deal can be renamed under one at
+  any time; silently blanking it would destroy the only clue to what was meant.
+  It stays selected and reads "— not a deal on the list".
+- setDealSelect() exists because assigning .value to a <select> when no option
+  matches does nothing AND leaves the previous selection standing — so the send
+  form would have recorded a deal nobody chose. It inserts the option first.
+- Existing mismatches are now visible rather than silent: the register's Deal
+  column says "No deal by that name — it matches nothing", and the material's
+  own heading says "matches no deal". That is how somebody finds a bad tag
+  without opening every material.
+- Tested by seeding a memo tagged "Casa Hope" against a deal actually called
+  "Switchback – Casa Hope (Williamsburg, NY)": the register flagged it, the
+  picker kept and labelled it, and choosing the real deal lit up both sends that
+  were already on the register — neither of which carried a deal of its own.
