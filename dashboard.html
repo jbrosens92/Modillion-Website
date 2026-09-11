@@ -2376,6 +2376,17 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
 }
 .raise-roll__toggle button:hover { color: var(--deep-space); }
 .raise-roll__toggle button:focus-visible { outline: 2px solid var(--steel); outline-offset: 2px; }
+
+/* Moving a raise between the two lists. Quiet, like the other in-table
+   verbs here — it is a thing you do occasionally, not the point of the row. */
+.raise-roll .report-table th.raise-roll__move,
+.raise-roll .report-table td.raise-roll__move { width: 1%; white-space: nowrap; text-align: right; }
+.raise-move {
+  appearance: none; background: none; border: 0; padding: 0;
+  font-family: var(--sans); font-size: .72rem; color: var(--muted); cursor: pointer;
+}
+.raise-move:hover { color: var(--deep-space); text-decoration: underline; }
+.raise-move:focus-visible { outline: 2px solid var(--steel); outline-offset: 2px; }
 .raise-roll__chev {
   display: inline-block; font-size: .9rem; line-height: 1;
   transition: transform .18s ease;
@@ -5371,9 +5382,33 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
      means to come back to, and burying it is how it never comes back. */
   var RAISE_SHUT = { closed: 1, dead: 1 };
 
-  function raiseIsCompleted(rec) {
+  function raiseAutoCompleted(rec) {
     if (raiseIsDone(rec)) return true;
     return !!RAISE_SHUT[String((rec && rec.status) || "").trim().toLowerCase()];
+  }
+
+  /* A HAND OVER THE RULE.
+
+     The rule above is a good guess and only a guess: a fund can be
+     finished at 60% because the firm stopped taking money, and a closed
+     deal can still be actively raising against the next tranche. So
+     either list takes a raise by hand, and the hand wins.
+
+     Stored only when it DISAGREES. Marking a closed deal complete —
+     which the rule already says — writes nothing and leaves it governed
+     by the rule; marking it open writes the override. That way a record
+     carries a flag only where somebody has actually contradicted the
+     rule, and pressing the button twice puts it back where it was
+     rather than leaving a stale opinion behind on the file. */
+  function raiseIsCompleted(rec) {
+    var set = rec && rec.raise ? rec.raise.completed : null;
+    if (set === true || set === false) return set;
+    return raiseAutoCompleted(rec);
+  }
+
+  function raiseHeldByHand(rec) {
+    var set = rec && rec.raise ? rec.raise.completed : null;
+    return set === true || set === false;
   }
 
   /* WHAT THE RAISE IS AIMING AT, typed over in place.
@@ -5977,6 +6012,12 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
         target:  parts.target      != null ? parts.target      : (r.target || ""),
         closeBy: parts.closeBy     != null ? parts.closeBy     : (r.closeBy || ""),
         note:    parts.note        != null ? parts.note        : (r.note || ""),
+        /* The one field here where null is a VALUE — "no opinion, follow
+           the rule" — so absence has to be undefined instead. Every other
+           caller omits it and keeps what is stored. */
+        completed: (parts.completed === undefined ? r.completed : parts.completed) === true ? true
+                 : (parts.completed === undefined ? r.completed : parts.completed) === false ? false
+                 : null,
         commitments: parts.commitments != null ? parts.commitments : (r.commitments || [])
       }
     });
@@ -5988,6 +6029,21 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
     return ((rec.raise && rec.raise.commitments) || []).map(function (c) {
       return Object.assign({}, c);
     });
+  }
+
+  /* Moving one between the lists. What is stored is the WANTED state,
+     and only when the rule would have said otherwise — see the note over
+     raiseIsCompleted. So this is its own inverse: press it twice and the
+     record is back exactly where it started, carrying no opinion it did
+     not carry before. */
+  function moveRaise(id) {
+    var rec = Deals.get(id);
+    if (!rec) return;
+    var want = !raiseIsCompleted(rec);
+    raiseSave(rec, { completed: want === raiseAutoCompleted(rec) ? null : want });
+    renderRaises();
+    toast(rec.name + (want ? " is in the completed raises." : " is back in the open raises.") +
+      (want === raiseAutoCompleted(rec) ? "" : " That is a hand over the rule, and it stays."));
   }
 
   function raiseRecordOf(el) {
@@ -6264,6 +6320,24 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
       num("pct", t.pct == null ? "" : t.pct + "%");
   }
 
+  /* The button that moves a raise between the two lists. It says where
+     the row is going, not where it is — a button labelled with the state
+     you are already in is a button nobody presses. The title carries the
+     why, including the case worth explaining: the rule disagrees and is
+     being overruled. */
+  function raiseMoveButton(rec) {
+    var completed = raiseIsCompleted(rec);
+    var auto = raiseAutoCompleted(rec);
+    var against = raiseHeldByHand(rec) && completed !== auto;
+    return '<button type="button" class="raise-move" data-raise-move="' + esc(rec.id) + '"' +
+      ' title="' + esc(completed
+        ? "Move " + rec.name + " back up to the open raises" +
+          (against ? " \u2014 it is down here by hand" : "")
+        : "Move " + rec.name + " down to the completed raises" +
+          (against ? " \u2014 it is up here by hand" : "")) + '">' +
+      (completed ? "Reopen" : "Complete") + '</button>';
+  }
+
   function raiseRowHtml(rec) {
     var open = !!RAISE_EXPANDED[rec.id];
     // A fund filed here before anybody has set a target carries no raise
@@ -6297,6 +6371,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
       '<td><input type="text" class="raise-roll__input" data-raise-set="closeBy" ' +
         'value="' + esc(r.closeBy || "") + '" placeholder="\u2014" autocomplete="off" ' +
         'aria-label="Close by for ' + esc(rec.name) + '"></td>' +
+      '<td class="raise-roll__move">' + raiseMoveButton(rec) + '</td>' +
       '</tr>';
 
     if (!open) return row;
@@ -6306,7 +6381,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
        commitments table in this file and not two that drift apart. */
     return row +
       '<tr class="raise-roll__detail" data-raise-for="' + esc(rec.id) + '">' +
-        '<td colspan="10">' +
+        '<td colspan="11">' +
           (n ? "" : '<p class="raise-empty">Nobody is in yet. Add the first one below.</p>') +
           raiseRows(rec) +
           raiseAddForm(rec, "rollNew_" + rec.id + "_") +
@@ -6343,14 +6418,15 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
       num(f.target ? Math.round((f.committed / f.target) * 100) + "%" : "") +
       '<td>' + (f.untargeted
         ? '<span class="muted">' + esc(countOf(f.untargeted, "raise")) + " with no target</span>"
-        : "") + '</td></tr>';
+        : "") + '</td><td></td></tr>';
   }
 
   function raiseTable(list, key) {
     var head = '<tr><th class="raise-roll__toggle"><span class="visually-hidden">' +
       'Show commitments</span></th><th>Deal or fund</th><th>Sponsor</th><th>Status</th>' +
       '<th class="num">Target</th><th class="num">Committed</th><th class="num">Soft</th>' +
-      '<th class="num">Still to raise</th><th class="num">%</th><th>Close by</th></tr>';
+      '<th class="num">Still to raise</th><th class="num">%</th><th>Close by</th>' +
+      '<th class="raise-roll__move"><span class="visually-hidden">Move</span></th></tr>';
 
     /* .numcols so a right-aligned figure gets air on its left — a .num
        cell has no right padding, because on every other report it is the
@@ -12624,6 +12700,8 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
         target:  String(r.target  == null ? "" : r.target).trim(),
         closeBy: String(r.closeBy == null ? "" : r.closeBy).trim(),
         note:    String(r.note    == null ? "" : r.note).trim(),
+        // true completed, false open, null governed by the rule.
+        completed: r.completed === true ? true : (r.completed === false ? false : null),
         commitments: (r.commitments || []).map(function (c, i) {
           /* An id that survives a rebuild, because the panel edits and
              removes by id. Records written before ids existed, or by a
@@ -12647,7 +12725,12 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
           };
         }).filter(function (c) { return c.investor || c.amount; })
       };
-      return (out.target || out.closeBy || out.note || out.commitments.length)
+      /* A raise somebody has only moved by hand is still a raise. Without
+         completed in this test, marking an empty fund complete would drop
+         the whole object on the next rebuild and read as a button that
+         does nothing. */
+      return (out.target || out.closeBy || out.note || out.commitments.length ||
+              out.completed !== null)
         ? out : null;
     }
 
@@ -17710,6 +17793,9 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
       renderRaises();
       return;
     }
+
+    var raiseMove = e.target.closest("[data-raise-move]");
+    if (raiseMove) { moveRaise(raiseMove.getAttribute("data-raise-move")); return; }
 
     var raiseAdd = e.target.closest("[data-raise-add]");
     if (raiseAdd) { addRaiseCommitment(raiseAdd); return; }

@@ -1562,3 +1562,31 @@ COMPLETED RAISES, BELOW THE OPEN ONES, 2026-09-11:
 - The empty state no longer says "Everything is raised". With this rule the
   last open raise can leave by its deal closing at nothing raised at all, so it
   says "Nothing open", and that they are finished — raised, or closed.
+
+MOVING A RAISE BETWEEN THE LISTS BY HAND, 2026-09-11:
+- Asked for straight after the completed section shipped: "We should be able to
+  determine if a deal is completed or not and move them back and forth
+  manually."
+- The rule — filled, or the deal is Closed/Dead — is a good guess and only a
+  guess. A fund can be finished at 60% because the firm stopped taking money,
+  and a closed deal can still be raising against the next tranche. So a
+  Complete / Reopen button sits at the end of every row on the tab, in both
+  lists, and the hand wins over the rule.
+- STORED ONLY WHEN IT DISAGREES. raise.completed is true, false, or null
+  meaning "no opinion, follow the rule". Marking a closed deal complete —
+  which the rule already says — writes null, not true. So pressing the button
+  twice returns the record to exactly what it was and leaves no stale opinion
+  on the file, and a flag in the data always means somebody actually
+  contradicted the rule. Verified: three raises, two presses each, all three
+  back to stored=null.
+- null is a VALUE here, so raiseSave had to take undefined as "not supplied"
+  for this one field. Every other caller omits it and keeps what is stored.
+- completed is in normaliseRaise's literal AND in the test that decides whether
+  a raise object is worth keeping. Without the second, marking an empty fund
+  complete would drop the raise on the next rebuild and read as a button that
+  does nothing.
+- The button says where the row is GOING, not where it is. Its title carries
+  the case worth explaining — that the rule disagrees and is being overruled.
+- The table went from ten columns to eleven: header, row, foot and the
+  commitments detail colspan all had to move together, and all four were
+  counted after the change rather than by eye.
