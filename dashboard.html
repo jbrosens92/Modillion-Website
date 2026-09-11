@@ -1853,7 +1853,16 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
 
    Below 1100px the table keeps these proportions and the wrap scrolls,
    with the actions column pinned to the right edge as it already was.
-   Below 760px the rows become cards and all of this is undone. */
+   Below 760px the rows become cards and all of this is undone.
+
+   A TWELFTH COLUMN — the LP, beside the operator — was added after all
+   of the above was settled, and the shares below were re-cut rather
+   than let the table grow: it is still exactly 100% of the same
+   workspace, and the floor is still 1100px. Widening the floor to give
+   the new column room was tried and undone — it buys the LP nine pixels
+   and costs sideways scroll to everyone working in a 1128px workspace,
+   which is the common case. Two name columns are narrower instead, and
+   they clip and hover like every other column here. */
 .crmtable[data-reorder="deal"] { table-layout: fixed; width: 100%; min-width: 1100px; }
 .crmtable[data-reorder="deal"] tbody td { vertical-align: middle; padding-top: 13px; padding-bottom: 13px; }
 /* A heading may wrap to two lines; a row may not. The button is the
@@ -1863,17 +1872,21 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
 .crmtable[data-reorder="deal"] thead th { white-space: normal; }
 .crmtable[data-reorder="deal"] thead th button { display: block; }
 
-.crmtable[data-reorder="deal"] thead th:nth-child(1)  { width: 16.8%; }  /* Deal        */
-.crmtable[data-reorder="deal"] thead th:nth-child(2)  { width: 9%; }     /* Operator    */
-.crmtable[data-reorder="deal"] thead th:nth-child(3)  { width: 10.4%; }  /* Status      */
-.crmtable[data-reorder="deal"] thead th:nth-child(4)  { width: 9%; }     /* Market      */
-.crmtable[data-reorder="deal"] thead th:nth-child(5)  { width: 8.9%; }   /* Asset class */
-.crmtable[data-reorder="deal"] thead th:nth-child(6)  { width: 6.3%; }   /* Deal size   */
-.crmtable[data-reorder="deal"] thead th:nth-child(7)  { width: 6.3%; }   /* GP check    */
-.crmtable[data-reorder="deal"] thead th:nth-child(8)  { width: 6.3%; }   /* MP GP check */
-.crmtable[data-reorder="deal"] thead th:nth-child(9)  { width: 6.3%; }   /* LP check    */
-.crmtable[data-reorder="deal"] thead th:nth-child(10) { width: 7.7%; }   /* Added       */
-.crmtable[data-reorder="deal"] thead th:nth-child(11) { width: 13%; }    /* Actions     */
+.crmtable[data-reorder="deal"] thead th:nth-child(1)  { width: 14.2%; }  /* Deal        */
+.crmtable[data-reorder="deal"] thead th:nth-child(2)  { width: 8.2%; }   /* Operator    */
+/* A shade wider than the operator beside it, and the width was chosen
+   by a name rather than by symmetry: an LP is a fund manager and its
+   name runs long. */
+.crmtable[data-reorder="deal"] thead th:nth-child(3)  { width: 9.2%; }   /* LP          */
+.crmtable[data-reorder="deal"] thead th:nth-child(4)  { width: 9.1%; }   /* Status      */
+.crmtable[data-reorder="deal"] thead th:nth-child(5)  { width: 8%; }     /* Market      */
+.crmtable[data-reorder="deal"] thead th:nth-child(6)  { width: 7.9%; }   /* Asset class */
+.crmtable[data-reorder="deal"] thead th:nth-child(7)  { width: 5.9%; }   /* Deal size   */
+.crmtable[data-reorder="deal"] thead th:nth-child(8)  { width: 5.9%; }   /* GP check    */
+.crmtable[data-reorder="deal"] thead th:nth-child(9)  { width: 5.9%; }   /* MP GP check */
+.crmtable[data-reorder="deal"] thead th:nth-child(10) { width: 5.9%; }   /* LP check    */
+.crmtable[data-reorder="deal"] thead th:nth-child(11) { width: 7.2%; }   /* Added       */
+.crmtable[data-reorder="deal"] thead th:nth-child(12) { width: 12.6%; }  /* Actions     */
 
 /* One line, clipped at the column's edge. The flex is so that a mark
    keeps its place at the end rather than being eaten by the ellipsis:
@@ -3538,7 +3551,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
           <div class="dash-search">
             <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
             <label class="visually-hidden" for="dealSearch">Search deals</label>
-            <input type="search" id="dealSearch" placeholder="Search deals, operators and markets" autocomplete="off">
+            <input type="search" id="dealSearch" placeholder="Search deals, operators, LPs and markets" autocomplete="off">
           </div>
           <button class="dash-refresh dash-refresh--primary" id="dealAddBtn">Add deal</button>
           <button class="dash-refresh" id="dealExportBtn">Export Excel</button>
@@ -3562,6 +3575,9 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
             <label class="visually-hidden" for="dealFilterOperator">Filter by operator</label>
             <select id="dealFilterOperator"><option value="">All operators</option></select>
 
+            <label class="visually-hidden" for="dealFilterLp">Filter by LP</label>
+            <select id="dealFilterLp"><option value="">All LPs</option></select>
+
             <button type="button" class="dash-crm__clear" id="dealClearFilters">Clear</button>
             <span class="dash-crm__shown" id="dealShown"></span>
           </div>
@@ -3579,11 +3595,13 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
         </div>
 
         <datalist id="dealOperatorNames"></datalist>
-        <!-- Investor names for the capital-raise panel. One list for the
-             whole page: a datalist is addressed by id from anywhere in the
-             document, and the panel is drawn on this tab and on Closed
-             Deals, which is the same arrangement dealOperatorNames above
-             already has. -->
+        <!-- Investor names for the capital-raise panel, and for the LP box
+             on a deal — the same names answer both questions, so they share
+             one list rather than keeping two copies of the investor CRM in
+             the document. One list for the whole page: a datalist is
+             addressed by id from anywhere in it, and both the panel and the
+             deal forms are drawn on this tab and on Closed Deals, which is
+             the same arrangement dealOperatorNames above already has. -->
         <datalist id="raiseInvestorNames"></datalist>
 
       </div><!-- /#wsDocs -->
@@ -3607,7 +3625,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
           <div class="dash-search">
             <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
             <label class="visually-hidden" for="closedSearch">Search closed deals</label>
-            <input type="search" id="closedSearch" placeholder="Search closed deals, operators and markets" autocomplete="off">
+            <input type="search" id="closedSearch" placeholder="Search closed deals, operators, LPs and markets" autocomplete="off">
           </div>
           <button class="dash-refresh dash-refresh--primary" id="closedDebtBtn" hidden>Debt report</button>
           <button class="dash-refresh" id="closedExportBtn">Export Excel</button>
@@ -3622,6 +3640,9 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
 
             <label class="visually-hidden" for="closedFilterOperator">Filter by operator</label>
             <select id="closedFilterOperator"><option value="">All operators</option></select>
+
+            <label class="visually-hidden" for="closedFilterLp">Filter by LP</label>
+            <select id="closedFilterLp"><option value="">All LPs</option></select>
 
             <button type="button" class="dash-crm__clear" id="closedClearFilters">Clear</button>
             <span class="dash-crm__shown" id="closedShown"></span>
@@ -4486,7 +4507,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
       view: "list",              // list | deal | report
       dealId: null,
       query: "",
-      filters: { status: "", operator: "" },
+      filters: { status: "", operator: "", lp: "" },
       sortKey: "name",
       sortDir: "asc",
       // Whether a column heading has been clicked on this tab since it was
@@ -4534,6 +4555,18 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
   var DEAL_COLUMNS = [
     { key: "name",       label: "Deal" },
     { key: "operator",   label: "Operator" },
+    /* WHO THE LP IS, which is not the same question as how big their
+       cheque was. "LP check" has been on this table all along and it
+       answers neither "who is beside us on this one" nor "what else
+       are they in" — a column of amounts with no names in it. This is
+       the name, next to the operator, because the two together are who
+       the deal is being done with. The cheque stays where the money is.
+
+       Matched to the investor CRM by name where it matches, exactly as
+       the operator is matched to the operator CRM: typed freely, linked
+       when it lands on a record, and kept as typed when it does not.
+       Nobody is invented on either side. */
+    { key: "lp",         label: "LP" },
     { key: "area",       label: "Where" },
     { key: "status",     label: "Status" },
     { key: "market",     label: "Market" },
@@ -4544,6 +4577,36 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
     { key: "lpCheck",    label: "LP check" },
     { key: "addedAt",    label: "Added" }
   ];
+
+  /* ---- who the LP is -------------------------------------------
+     ONE FIELD, READ AS A LIST. Most deals have one LP and the box is
+     one name — but a deal with two of them is a real deal, and a box
+     that can only hold one would be answered by typing both into it
+     anyway. So it is stored exactly as typed, like every other field
+     on a deal, and split on commas where it is READ: the filter, the
+     links on the deal's own page and the investor's LP section all
+     ask this function rather than the raw string.
+
+     Nothing is split on "and" or "&". "Smith and Sons Capital" is one
+     firm, and a separator that guesses is worse than one that does
+     not. Commas are what people already type. */
+  function lpNames(rec) {
+    return String((rec && rec.lp) || "").split(",")
+      .map(function (n) { return n.trim(); })
+      .filter(function (n) { return !!n; });
+  }
+
+  /* A name that IS on the investor CRM opens the record; one that is
+     not is printed and nothing pretends otherwise — the same bargain
+     the operator box makes, and the same one the materials table makes
+     with data-crm-open-name, which this reuses. */
+  function lpNameHtml(name) {
+    var found = Crm.all().filter(function (i) { return sameName(i.name, name); })[0];
+    return found
+      ? '<button type="button" class="debt-link" data-crm-open-name="' + esc(name) +
+        '" title="Open ' + esc(name) + ' on the investor CRM">' + esc(name) + '</button>'
+      : '<span title="Not on the investor CRM \u2014 kept as typed">' + esc(name) + '</span>';
+  }
 
   /* ---- the three money columns ---------------------------------
      Typed as prose and KEPT as prose. "$42m", "$42,000,000" and
@@ -4657,11 +4720,12 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
     var list = dealsInScope(scope).filter(function (r) {
       if (f.status && r.status !== f.status) return false;
       if (f.operator && r.operator !== f.operator) return false;
+      if (f.lp && lpNames(r).indexOf(f.lp) === -1) return false;
       if (!q) return true;
       /* The money fields are searched AS TYPED, not as printed. Somebody
          looking for the deal they entered as "$42,000,000" types some of
          that, not the "$42m" the column shows them. */
-      return [r.name, r.operator, r.market, r.assetClass, r.note, r.status,
+      return [r.name, r.operator, r.lp, r.market, r.assetClass, r.note, r.status,
               r.dealSize, r.gpCheck, r.mpGpCheck, r.lpCheck]
         .join(" ").toLowerCase().indexOf(q) !== -1;
     });
@@ -4819,6 +4883,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
         return RowEdit.form("deal", rec.id, cols.length + 1, [
           ["Deal", RowEdit.text("name", rec.name)],
           ["Operator", RowEdit.text("operator", rec.operator, ' list="dealOperatorNames"')],
+          ["LP", RowEdit.text("lp", rec.lp, ' list="raiseInvestorNames" placeholder="Who is beside us"')],
           ["Status", RowEdit.select("status", Deals.statuses(), rec.status)],
           ["Market", RowEdit.text("market", rec.market)],
           ["Asset class", RowEdit.text("assetClass", rec.assetClass)],
@@ -4844,6 +4909,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
             // there is one, and the row opens the deal that holds it.
             (rec.note ? dealMark("note", rec.note) : "") + '</span></td>' +
         dealCell(rec.operator, "operator") +
+        dealCell(rec.lp, "lp") +
         /* "Why" was a second line under the pill and it is on the pill's
            own title now, with no mark of its own beside the note's: a
            mark and a pill sharing this column left the pill about 36px
@@ -4881,7 +4947,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
   function dealPile(scope, key, label, hint, list) {
     if (!list.length) return "";
     var forced = !!scope.state.query || !!scope.state.filters.status ||
-                 !!scope.state.filters.operator;
+                 !!scope.state.filters.operator || !!scope.state.filters.lp;
     var open = scope.state.open[key] || forced;
     return '<details class="deal-pile"' + (open ? " open" : "") + '>' +
       '<summary data-deal-pile="' + key + '">' +
@@ -4919,6 +4985,18 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
     fill(scope.prefix + "FilterOperator", ops.map(function (o) {
       return { value: o, label: o };
     }), "All operators");
+
+    // Same rule for the LPs: only the ones actually beside a deal on
+    // this tab. A deal naming two of them puts both in the picker, and
+    // picking either finds it — see lpNames().
+    var lps = [];
+    Deals.inArea(scope.area).forEach(function (r) {
+      lpNames(r).forEach(function (n) { if (lps.indexOf(n) === -1) lps.push(n); });
+    });
+    lps.sort();
+    fill(scope.prefix + "FilterLp", lps.map(function (n) {
+      return { value: n, label: n };
+    }), "All LPs");
 
     var dl = $("dealOperatorNames");
     if (dl) {
@@ -5058,6 +5136,19 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
            '</div>';
   }
 
+  /* The LP on the deal's own page. dealField() escapes its value, which
+     is right for every other box on that grid and wrong for this one —
+     these names are buttons onto the investor CRM. Same shape, markup
+     allowed through. */
+  function dealLpField(rec) {
+    var names = lpNames(rec);
+    return '<div class="crm-field"><label>LP</label><p class="crm-read">' +
+      (names.length
+        ? names.map(lpNameHtml).join(", ")
+        : '<span class="muted">\u2014</span>') +
+      '</p></div>';
+  }
+
   var DEBT_LABELS = [
     ["lender", "Lender"], ["loanCommitted", "Loan committed"], ["loanBalance", "Loan balance"],
     ["rateType", "Rate type"], ["index", "Index"], ["indexSpread", "Index + spread"],
@@ -5078,6 +5169,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
 
     var fields = '<div class="crm-edit__grid">' +
       dealField("Operator", rec.operator) +
+      dealLpField(rec) +
       dealField("Where", dealAreaLabel(rec.area)) +
       dealField("Status", rec.status + (rec.statusWhy ? " — " + rec.statusWhy : "")) +
       dealField("Market", rec.market) +
@@ -5582,6 +5674,9 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
         field("dealEditOperator", "Operator",
           '<input type="text" id="dealEditOperator" list="dealOperatorNames" value="' +
           esc(rec.operator) + '" autocomplete="off">') +
+        field("dealEditLp", "LP",
+          '<input type="text" id="dealEditLp" list="raiseInvestorNames" value="' +
+          esc(rec.lp) + '" autocomplete="off" placeholder="Who is beside us on it">') +
         field("dealEditArea", "Where it sits",
           '<select id="dealEditArea">' + options(Deals.areas().map(function (a) {
             return { value: a.id, label: a.label };
@@ -5642,6 +5737,9 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
     Deals.patch(id, {
       name: name,
       operator: v("dealEditOperator"),
+      // Who the LP is, as against how big their cheque was — that is
+      // lpCheck, four fields down. Two LPs go in separated by a comma.
+      lp: v("dealEditLp"),
       area: area,
       status: status,
       statusWhy: v("dealEditStatusWhy"),
@@ -6418,14 +6516,14 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
     var list = Deals.inArea(scope.area);
     var sheets = [{
       name: isClosed ? "Closed deals" : "Deals",
-      rows: [["Deal", "Operator", "Where", "Status", "Why", "Market", "Asset class",
+      rows: [["Deal", "Operator", "LP", "Where", "Status", "Why", "Market", "Asset class",
               "Deal size", "GP equity check", "MP GP check", "LP equity check",
               "Note", "Added"]]
         .concat(list.map(function (r) {
           /* As typed, not as printed. This sheet is somebody's working
              copy — "$42,000,000" is what they can put in a formula, and
              "$42m" is what they would have to undo first. */
-          return [r.name, r.operator, dealAreaLabel(r.area), r.status, r.statusWhy,
+          return [r.name, r.operator, r.lp, dealAreaLabel(r.area), r.status, r.statusWhy,
                   r.market, r.assetClass, r.dealSize, r.gpCheck, r.mpGpCheck,
                   r.lpCheck, r.note, r.addedAt];
         }))
@@ -6533,6 +6631,12 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
             'placeholder="Who runs it">' +
           note("Optional. A name already on the Operator CRM picks the deal up on their record; " +
                "anything else is kept on the deal and no operator is invented.")) +
+        field("dealNewLp", "LP",
+          '<input type="text" id="dealNewLp" autocomplete="off" list="raiseInvestorNames" ' +
+            'placeholder="Who is beside us">' +
+          note("Optional. A name already on the investor CRM links the deal to their record " +
+               "and picks up their spelling; anything else is kept as typed and no investor " +
+               "is invented. Two of them go in as one list, separated by a comma.")) +
         field("dealNewSize", "Deal size",
           '<input type="text" id="dealNewSize" autocomplete="off" placeholder="$42m">' +
           note("Optional, and all three of these are. Written how you would say it — " +
@@ -6606,6 +6710,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
     var area     = $("dealNewArea").value || "active-deals";
     var status   = $("dealNewStatus").value || "Live";
     var operator = $("dealNewOperator").value.trim();
+    var lp       = $("dealNewLp").value.trim();
     var note     = $("dealNewNote").value.trim();
     var dealSize = $("dealNewSize").value.trim();
     var gpCheck  = $("dealNewGpCheck").value.trim();
@@ -6620,7 +6725,16 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
     })[0] : null;
     if (matched) operator = matched.name;
 
-    var saved = Deals.addDeal(name, { area: area, operator: operator, note: note,
+    // And the same for each LP named: a firm already on the investor CRM
+    // is spelled the way that record spells it, so the link holds. One
+    // that is not on the CRM is left exactly as typed — nothing here
+    // creates an investor.
+    lp = lpNames({ lp: lp }).map(function (n) {
+      var inv = Crm.all().filter(function (i) { return sameName(i.name, n); })[0];
+      return inv ? inv.name : n;
+    }).join(", ");
+
+    var saved = Deals.addDeal(name, { area: area, operator: operator, lp: lp, note: note,
                                       dealSize: dealSize, gpCheck: gpCheck,
                                       mpGpCheck: mpGpCheck, lpCheck: lpCheck });
     if (status !== "Live") Deals.setDealStatus(saved, status, "set when the deal was added");
@@ -8567,6 +8681,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
         name: already ? already.name : clean,
         area: fields.area || (already && already.area) || "active-deals",
         operator: fields.operator || (already && already.operator) || "",
+        lp: fields.lp || (already && already.lp) || "",
         note: fields.note || (already && already.note) || "",
         dealSize: fields.dealSize || (already && already.dealSize) || "",
         gpCheck: fields.gpCheck || (already && already.gpCheck) || "",
@@ -10238,6 +10353,63 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
     return out;
   }
 
+  /* ============================================================
+     THE DEALS THIS INVESTOR IS THE LP ON
+
+     The other side of the LP box on a deal. It is recorded on the
+     deal, because that is where somebody is sitting when the capital
+     partner is settled, and it is read here, because "what are they
+     actually in" is a question asked of the investor. Joined by NAME,
+     which is the join every reference to a record on this page uses —
+     see the note over Deals.byName().
+
+     NOT the same list as Commitments below it, and the two are next to
+     each other so the difference is visible: a commitment is money
+     pledged into a raise we are running, and this is who is beside us
+     on the deal itself. A firm can be in one, the other or both, and
+     conflating them would overstate what either says.
+
+     Drawn only when there is something in it. Commitments directly
+     underneath already carries the empty state for this investor —
+     "nothing recorded against them yet, and here is where it would be
+     recorded" — and saying it twice on one record turns an invitation
+     into noise.
+     ============================================================ */
+  function dealsWhereLp(name) {
+    var want = String(name || "").trim().toLowerCase();
+    if (!want) return [];
+    return Deals.all().filter(function (rec) {
+      return lpNames(rec).some(function (n) { return n.toLowerCase() === want; });
+    });
+  }
+
+  function investorLpDeals(inv) {
+    var rows = dealsWhereLp(inv.name);
+    if (!rows.length) return "";
+
+    var body = rows.map(function (rec) {
+      return [
+        // Opens the deal on whichever tab it lives on, the same button
+        // the commitments table below uses.
+        '<button type="button" class="debt-link" data-raise-open="' + esc(rec.id) + '">' +
+          esc(rec.name) + '</button>',
+        { v: dealMoneyText(rec.lpCheck) || '<span class="muted">\u2014</span>', cls: "num" },
+        rec.operator ? esc(rec.operator) : '<span class="muted">\u2014</span>',
+        rec.market ? esc(rec.market) : '<span class="muted">\u2014</span>',
+        '<span class="crm-pill" data-stage="' + esc(rec.status) + '">' + esc(rec.status) + '</span>'
+      ];
+    });
+
+    return '<div class="crm-section"><h3>LP on' +
+      '<span class="crm-section__aside">' + esc(countOf(rows.length, "deal")) + '</span></h3>' +
+      '<div class="numcols">' +
+        table(["Deal", { label: "LP check", num: true }, "Operator", "Market", "Status"], body) +
+      '</div>' +
+      '<p class="crm-research__note">Recorded on the deal, not here \u2014 the deal name ' +
+      'opens it. The cheque is what that deal says it was; nothing is added up across them.</p>' +
+      '</div>';
+  }
+
   function investorCommitments(inv) {
     var rows = commitmentsForInvestor(inv.name);
 
@@ -10408,6 +10580,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
       '</div>' +
       '</div>');
 
+    parts.push(investorLpDeals(inv));
     parts.push(investorCommitments(inv));
 
     parts.push(investorMaterials(inv));
@@ -12309,6 +12482,10 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
         name: rec.name || "",
         area: area,
         operator: rec.operator || "",
+        // WHO the LP is. Kept as typed and read as a comma-separated
+        // list where it is used — see lpNames(). lpCheck below is what
+        // they put in; this is who they are.
+        lp: rec.lp || "",
         status: rec.status || (area === "closed-deals" ? "Closed" : "Live"),
         // Why a deal stopped being live, and when it was recorded. Kept
         // beside the status because "Dead" without a reason is a fact
@@ -17429,16 +17606,17 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
       }
     });
 
-    ["FilterStatus", "FilterOperator"].forEach(function (role) {
+    ["FilterStatus", "FilterOperator", "FilterLp"].forEach(function (role) {
       scopeEl(scope, role).addEventListener("change", function () {
         scope.state.filters.status   = scopeEl(scope, "FilterStatus").value;
         scope.state.filters.operator = scopeEl(scope, "FilterOperator").value;
+        scope.state.filters.lp       = scopeEl(scope, "FilterLp").value;
         renderDeals(scope);
       });
     });
 
     scopeEl(scope, "ClearFilters").addEventListener("click", function () {
-      scope.state.filters = { status: "", operator: "" };
+      scope.state.filters = { status: "", operator: "", lp: "" };
       scope.state.query = "";
       scopeEl(scope, "Search").value = "";
       renderDeals(scope);
@@ -20176,6 +20354,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
           Deals.patch(id, {
             name: String(v.name || "").trim() || rec.name,
             operator: String(v.operator || "").trim(),
+            lp: String(v.lp || "").trim(),
             status: status,
             // Same rule the full form follows: the date moves only when
             // the status itself does, so an unrelated edit does not
