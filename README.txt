@@ -1420,3 +1420,30 @@ A RAISE THAT IS NOT A DEAL, 2026-09-11:
   into the Excel export.
 - "Where it sits" on Edit deal offers all three areas, so a fund can be moved
   onto a deal list and a deal filed as a programme, both without special cases.
+
+TAGGING SOMETHING ALREADY SENT, 2026-09-11:
+- Asked for: tag previously sent materials against a capital raise, easily.
+- The deal picker on "Log something sent" only ever reached NEW sends.
+  Everything already on the register — which is most of it, and all of it the
+  week this shipped — could be tagged only by tagging its MATERIAL, and that
+  tags every send of that material at once. Right for a memo. Wrong for a deck
+  that went out for one particular co-invest.
+- A Deal column on the sends tables, as a picker, saved when it is left. It is
+  on all three: the investor's Materials sent, the material's Who has it, and
+  the Every send pile under it — one sendRows() draws them all.
+- THE CELL SHOWS WHAT THE SEND COUNTS FOR, not what is typed in it. A send with
+  no deal of its own still counts for its material's deal — that is what
+  sendsForDeal() matches on — so the picker reads "— from the material —" with
+  the inherited name greyed underneath. Choosing a deal pins the send; choosing
+  the inherit option again releases it.
+- The row editor gained the same field, so the deal can also be corrected
+  alongside the version, date and channel rather than only on its own.
+- A BUG THIS FOUND, and it was mine from the change before: dealOptionsHtml()
+  grouped by two hard-coded areas, so fund raises were in no deal picker
+  anywhere. The one thing anybody would want to tag a quarterly update against
+  — Modillion GP Fund I — was the one thing that could not be picked. It is
+  built from DEAL_AREAS now, so a fourth area cannot be forgotten the same way.
+- The picker is capped at 190px. A <select> with appearance:none sizes itself
+  to its WIDEST option, and the widest option is a deal name like "Switchback –
+  Casa Hope (Williamsburg, NY)" — uncapped it took 304px out of a table that
+  already had six columns and pushed it over the workspace.

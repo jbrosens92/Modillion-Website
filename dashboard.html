@@ -2279,6 +2279,35 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
    it borrows the raise boxes' look rather than growing a form. */
 .mat-deal .raise-set { max-width: 420px; }
 
+/* The Deal picker on a send row. Quiet until touched, like every other
+   box on a list here, and narrow enough that adding a column to the
+   sends tables does not push the actions off the end. */
+.send-deal { min-width: 150px; }
+/* Capped, because a <select> with appearance:none sizes itself to its
+   WIDEST option, and the widest option here is a deal name like
+   "Switchback – Casa Hope (Williamsburg, NY)". Uncapped it took 304px of
+   a table that already had six columns. The chosen value is cut rather
+   than wrapped; the full text is one click away in the open list. */
+.send-deal__select {
+  max-width: 190px;
+  appearance: none;
+  font-family: var(--sans); font-size: .82rem; color: var(--deep-space);
+  background: none url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 8'%3E%3Cpath d='M1 1.5L6 6.5L11 1.5' fill='none' stroke='%235A6477' stroke-width='1.4'/%3E%3C/svg%3E") no-repeat right 6px center/9px;
+  border: 1px solid transparent; border-radius: 2px;
+  padding: 5px 22px 5px 7px; margin-left: -7px;
+  cursor: pointer;
+}
+.send-deal__select:hover { border-color: var(--rule); }
+.send-deal__select:focus { outline: none; border-color: var(--steel); background-color: var(--paper); }
+/* Following the material rather than pinned to a deal of its own: the
+   picker reads as unset and the inherited name sits under it, so the row
+   says what it counts for either way. */
+.send-deal__select.is-inherited { color: var(--muted); }
+
+@media (max-width: 760px) {
+  .send-deal__select { border-color: var(--rule); margin-left: 0; }
+}
+
 /* THE ROLL-UP, WORKING.
 
    Target and Close by are boxes in their own columns, quiet until
@@ -9971,6 +10000,8 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
      to land on the one the person is actually looking at. */
   function renderSendViews(invId) {
     renderCrm();
+    // A send carries the deal it was for, so the raise roll-up reads it too.
+    renderRaises();
     if (crmState.view === "material" && Crm.material(crmState.materialId)) {
       renderMaterial(crmState.materialId);
     } else if (crmState.view === "materials") {
@@ -9980,6 +10011,36 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
     } else if (invId && Crm.get(invId)) {
       renderInvestor(invId);
     }
+  }
+
+  /* WHAT A SEND COUNTS FOR, as a picker.
+
+     Its own deal when it has one, and otherwise the material's — which
+     is exactly the rule sendsForDeal() matches on, so the cell can be
+     read as "this is the raise this send shows up on" rather than as
+     "this is the text in the deal field".
+
+     The inherited case is the ordinary one and it is shown greyed, with
+     the picker sitting on "— from the material —". Choosing a real deal
+     pins this send to it and stops it following the material; choosing
+     the inherit option again clears it back. */
+  function sendDealCell(sd) {
+    var mat = Crm.material(sd.materialId);
+    var inherited = mat ? (mat.deal || "") : "";
+    var own = sd.deal || "";
+    var effective = own || inherited;
+
+    var opts = '<option value=""' + (own ? "" : " selected") + '>' +
+      (inherited
+        ? "\u2014 from the material \u2014"
+        : "\u2014 no deal \u2014") + '</option>' +
+      dealOptionsHtml(own).replace(/^<option value=""[^>]*>[\s\S]*?<\/option>/, "");
+
+    return '<select class="send-deal__select' + (own ? "" : " is-inherited") + '" ' +
+      'data-send-deal="' + esc(sd.id) + '" aria-label="Which deal this send was for">' +
+      opts + '</select>' +
+      (own || !effective ? "" :
+        '<span class="crm-sub">' + esc(effective) + '</span>');
   }
 
   function sendRows(list, showInvestor) {
@@ -9994,13 +10055,15 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
          send rather than a typo. Remove it and log it again — which is
          what the hint says. */
       if (RowEdit.on("send", sd.id)) {
-        return RowEdit.form("send", sd.id, 6, [
+        return RowEdit.form("send", sd.id, 7, [
           [showInvestor ? "Investor" : "Material",
            RowEdit.stat(showInvestor ? (row.investorName || "") : sendMaterialName(sd))],
           ["Version", sendVersionPicker(sd)],
           ["Sent", '<input type="date" class="rowedit__input" data-rowedit-field="date" value="' +
             esc(sd.date || "") + '">'],
           ["How", RowEdit.select("channel", sendChannelOptions(sd.channel), sd.channel)],
+          ["For which deal", '<select class="rowedit__input" data-rowedit-field="deal">' +
+            dealOptionsHtml(sd.deal) + '</select>'],
           ["Who it went to", RowEdit.text("to", sd.to)],
           ["Note", RowEdit.text("note", sd.note)]
         ], "Enter saves · Esc cancels. Filed against the wrong material? Remove it and log it again.");
@@ -10018,6 +10081,21 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
         '<td class="crm-date">' + (sd.date ? esc(sd.date) : '<span class="muted">Undated</span>') + '</td>' +
         '<td>' + (sd.channel ? esc(sd.channel) : '<span class="muted">—</span>') +
           (sd.to ? '<span class="crm-sub">' + esc(sd.to) + '</span>' : "") + '</td>' +
+        /* TAGGING SOMETHING ALREADY SENT, where it is read.
+
+           The deal picker on the log-something-sent form only ever
+           reached NEW sends. Everything already on the register — which
+           is most of it, and all of it the week this shipped — could be
+           tagged only by tagging its MATERIAL, and that tags every send
+           of that material at once. Right for a memo. Wrong for a deck
+           that went out for one particular co-invest.
+
+           So the column is a picker, saved when it is left, like every
+           other box put on this page in the last day. A send with none
+           of its own still counts for its material's deal, and the cell
+           says so in grey rather than sitting empty — the row should
+           read as what it counts for, not as what was typed into it. */
+        '<td class="send-deal">' + sendDealCell(sd) + '</td>' +
         '<td>' + sendPill(sd) + '</td>' +
         '<td class="crm-actions">' +
           RowEdit.trigger("send", sd.id, sendMaterialName(sd)) +
@@ -10038,7 +10116,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
 
     var table = inv.sends.length
       ? '<div class="crmtable-wrap"><table class="crmtable"><thead><tr>' +
-          '<th>Material</th><th>Version</th><th>Sent</th><th>How</th><th>Status</th>' +
+          '<th>Material</th><th>Version</th><th>Sent</th><th>How</th><th>Deal</th><th>Status</th>' +
           '<th class="crm-actions"><span class="visually-hidden">Actions</span></th>' +
         '</tr></thead><tbody>' +
         sendRows(inv.sends.map(function (sd) {
@@ -10833,7 +10911,14 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
                (Deals.isArchived(r.id) ? " (archived)" : "") + '</option>';
       }).join("") + '</optgroup>';
     }
-    return out + group("active-deals", "Active Deals") + group("closed-deals", "Closed Deals");
+    /* All THREE areas. Funds and programmes were missing from this list
+       when the third area was added, which made the one thing anybody
+       would want to tag a quarterly update against — Modillion GP Fund I —
+       the one thing that could not be picked. Built from DEAL_AREAS so a
+       fourth area cannot be forgotten the same way. */
+    return out + DEAL_AREAS.map(function (a) {
+      return group(a.id, a.label);
+    }).join("");
   }
 
   /* Setting a picker to a value it may not have an option for — the
@@ -11124,7 +11209,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
       '</span></h3>' +
       (holders.length
         ? '<div class="crmtable-wrap"><table class="crmtable"><thead><tr>' +
-            '<th>Investor</th><th>Version</th><th>Sent</th><th>How</th><th>Status</th>' +
+            '<th>Investor</th><th>Version</th><th>Sent</th><th>How</th><th>Deal</th><th>Status</th>' +
             '<th class="crm-actions"><span class="visually-hidden">Actions</span></th>' +
           '</tr></thead><tbody>' + sendRows(holders, true) + '</tbody></table></div>'
         : '<p class="mat-empty">This has not gone to anybody yet.</p>') +
@@ -11135,7 +11220,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
             '<p class="deal-pile__hint">Including the earlier versions each investor was ' +
               'sent before the one they hold now.</p>' +
             '<div class="crmtable-wrap"><table class="crmtable"><thead><tr>' +
-              '<th>Investor</th><th>Version</th><th>Sent</th><th>How</th><th>Status</th>' +
+              '<th>Investor</th><th>Version</th><th>Sent</th><th>How</th><th>Deal</th><th>Status</th>' +
               '<th class="crm-actions"><span class="visually-hidden">Actions</span></th>' +
             '</tr></thead><tbody>' + sendRows(everySend, true) + '</tbody></table></div>' +
           '</details>'
@@ -16840,7 +16925,17 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
      "Record it" is pressed. */
   /* The deal a material is filed against, saved when the box is left.
      Redraws the record, because the heading beside it reads the value. */
+  /* The Deal picker on a send row. Saved when it is left, and the panel
+     around it redrawn, because the material list, the raise roll-up and
+     the investor's own table all read this value. */
   document.addEventListener("change", function (e) {
+    var sendDeal = e.target.closest("[data-send-deal]");
+    if (sendDeal) {
+      Crm.patchSend(sendDeal.getAttribute("data-send-deal"), { deal: sendDeal.value });
+      renderSendViews();
+      return;
+    }
+
     var matDeal = e.target.closest("[data-mat-deal]");
     if (matDeal) {
       var mid = matDeal.getAttribute("data-mat-deal");
@@ -20095,6 +20190,9 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
             date: String(v.date || "").trim(),
             channel: String(v.channel || "").trim(),
             to: String(v.to || "").trim(),
+            // Blank means "follow the material", which is what an
+            // untagged send has always meant — see sendsForDeal().
+            deal: String(v.deal || "").trim(),
             note: String(v.note || "").trim()
           };
           /* versionId and the label stored beside it move together, or
