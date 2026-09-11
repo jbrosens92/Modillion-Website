@@ -1312,3 +1312,44 @@ THE ROLL-UP WORKS NOW, 2026-09-11:
   as it always has, and an opened row's add form is as wide as the table, so it
   scrolls with it. The page itself does not move. The deal's own panel is the
   better surface on a phone and is unaffected.
+
+WHO HAS BEEN SENT THE MEMO, 2026-09-11:
+- Asked for as: when we send a deal memo and it is the same deal as a capital
+  raise, click the raise and see who has received materials.
+- IT WAS UNANSWERABLE, and worth saying why precisely. A send knew its investor,
+  its material and its version. A material knew its name, kind and versions.
+  "Investment memo" was a material KIND. Which deal any of it was about lived in
+  the document's title and in somebody's head, and nothing joined the two.
+- One field on each, and the chain is one hop: raise → deal name → sends filed
+  against it → investors. By name, like every other cross-reference here.
+- WHY BOTH AND NOT ONE. Tagging the material is right for a deal memo, which
+  belongs to one deal and always will. It is wrong for the fund deck, which
+  belongs to no deal and goes out in support of a particular co-invest all the
+  time. So the material carries the deal it is a document FOR, the send carries
+  the deal it was FOR, and the send's box is filled from the material when you
+  pick one. Typing nothing is the common case.
+- The prefill never writes over a hand-typed value: it fills only when the box
+  is empty or still holds the last material's deal, which it remembers in
+  data-filled-from. Tested by typing a deal, switching material, and checking it
+  survived.
+- THE FALLBACK IS WHAT MAKES IT USEFUL ON DAY ONE. Every send already on the
+  register predates the field and carries no deal — and that is not "a send for
+  no deal", it is a send nobody was asked about. So a send counts for a deal
+  when it says so itself, OR when it says nothing and the MATERIAL says so.
+  Filing one memo against one deal lights up every send of it ever recorded.
+- What the raise shows: the newest thing each investor was sent for this deal,
+  which cut, whether it is current, and where they are on the raise. Then the
+  two lines that are actually actionable — SENT, NOT IN YET (the follow-up list)
+  and IN, NEVER SENT ANYTHING FOR THIS DEAL (the gap nobody notices, because the
+  money arrived and so nobody went looking).
+- It is on the deal's own page and inside an opened row on the Capital Raises
+  tab, from one function, because "click the raise" means either of them.
+- The deal on a material is editable on the material's record — the register is
+  full of documents added before the field existed and tagging them is the point.
+  The batch send from a material's record takes the material's deal and offers no
+  override: it files one cut against many investors at once, and a batch that was
+  for two different deals is two batches.
+- The agent context carries both fields now, so "who has the memo for Casa Hope"
+  is answerable there too.
+- WHAT IS NOT COVERED: nothing sends anything. This records what went out, as
+  the whole materials feature always has.

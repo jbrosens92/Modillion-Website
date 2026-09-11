@@ -2249,6 +2249,26 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
   padding-left: 22px;
 }
 
+/* The two follow-up lines under Materials out. They are the actionable
+   half of that table — who has it and has not come in, and who came in
+   without ever being sent the memo — so they read as sentences rather
+   than as another table. */
+.raise-followup {
+  margin: 18px 0 0; font-size: .85rem; line-height: 1.6; color: var(--deep-space);
+  padding-left: 14px; border-left: 2px solid var(--steel);
+}
+.raise-followup strong {
+  display: block; font-family: var(--sans); font-size: .62rem; font-weight: 500;
+  letter-spacing: .14em; text-transform: uppercase; color: var(--muted);
+  margin-bottom: 4px;
+}
+/* The one that is a gap rather than a queue. */
+.raise-followup--gap { border-left-color: #8A5A3B; }
+
+/* The deal a material is filed against, on its own record. One box, so
+   it borrows the raise boxes' look rather than growing a form. */
+.mat-deal .raise-set { max-width: 420px; }
+
 /* THE ROLL-UP, WORKING.
 
    Target and Close by are boxes in their own columns, quiet until
@@ -2298,8 +2318,12 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
   box-shadow: inset 3px 0 0 var(--steel);
 }
 .raise-roll__detail .raise-table-wrap,
-.raise-roll__detail .rec-form { margin-left: 22px; margin-right: 22px; }
+.raise-roll__detail .rec-form,
+.raise-roll__detail .crm-section { margin-left: 22px; margin-right: 22px; }
 .raise-roll__detail .raise-empty { margin: 18px 22px 0; }
+/* A section inside a table cell does not need the 48px that separates
+   sections down a record page — the cell's own padding is the gap. */
+.raise-roll__detail .crm-section { margin-bottom: 8px; }
 .raise-roll__detail .raise-table { min-width: 640px; }
 
 @media (max-width: 760px) {
@@ -5292,6 +5316,140 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
       '</div></div>';
   }
 
+  /* ============================================================
+     WHO HAS BEEN SENT ANYTHING FOR THIS DEAL
+
+     The question this was built to answer: we mailed the memo, the deal
+     is raising, who has it?
+
+     It was unanswerable until materials and sends learned which deal
+     they were about. A send knew its investor, its material and its
+     version; a material knew its name and its versions; and the deal
+     the memo was FOR lived in the document's title and in somebody's
+     head. One field on each, and the chain is one hop:
+
+       raise -> deal name -> sends filed against it -> investors
+
+     THE FALLBACK MATTERS. A send written down before the field existed
+     carries no deal, and it is not a send for no deal — it is a send
+     nobody was asked about. So a send counts for this deal when it says
+     so itself, or when it says nothing and the MATERIAL says so. That is
+     what makes every memo already on the register show up here without
+     anybody going back over it.
+     ============================================================ */
+
+  function sameName(a, b) {
+    return String(a || "").trim().toLowerCase() === String(b || "").trim().toLowerCase() &&
+           String(a || "").trim() !== "";
+  }
+
+  function sendsForDeal(dealName) {
+    if (!String(dealName || "").trim()) return [];
+    return Crm.sends().filter(function (row) {
+      if (row.entry.deal) return sameName(row.entry.deal, dealName);
+      var mat = Crm.material(row.entry.materialId);
+      return mat ? sameName(mat.deal, dealName) : false;
+    });
+  }
+
+  /* One line per investor: the newest thing they were sent for this
+     deal. Rows arrive newest first, so the first one seen wins — the
+     same rule materialHolders() uses, for the same reason. What is
+     wanted is what they HAVE, not everything they have ever had. */
+  function dealMaterialHolders(dealName) {
+    var seen = {}, out = [];
+    sendsForDeal(dealName).forEach(function (row) {
+      if (seen[row.investorId]) return;
+      seen[row.investorId] = true;
+      out.push(row);
+    });
+    return out;
+  }
+
+  function raiseMaterialsPanel(rec) {
+    var holders = dealMaterialHolders(rec.name);
+    var commitments = (rec.raise && rec.raise.commitments) || [];
+
+    function committedFor(name) {
+      for (var i = 0; i < commitments.length; i++) {
+        if (sameName(commitments[i].investor, name)) return commitments[i];
+      }
+      return null;
+    }
+
+    var stale = holders.filter(function (row) {
+      return sendState(row.entry).state === "Superseded";
+    });
+
+    /* THE TWO LISTS THAT ARE ACTUALLY ACTIONABLE, and the only reason to
+       put this beside the commitments rather than on the materials
+       register. Sent and not in yet is the follow-up list. In but never
+       sent the memo is the gap nobody notices, because the money arrived
+       and so nobody went looking. */
+    var notIn = holders.filter(function (row) { return !committedFor(row.investorName); });
+    var sentTo = {};
+    holders.forEach(function (row) { sentTo[row.investorName.toLowerCase()] = true; });
+    var inNotSent = commitments.filter(function (c) {
+      return c.investor && c.status !== "Passed" &&
+             !sentTo[c.investor.trim().toLowerCase()];
+    });
+
+    var aside = holders.length
+      ? countOf(holders.length, "investor") +
+        (stale.length ? " \u00B7 " + stale.length + " on an old cut" : "")
+      : "Nothing sent yet";
+
+    if (!holders.length && !inNotSent.length) {
+      return '<div class="crm-section"><h3>Materials out' +
+        '<span class="crm-section__aside">' + esc(aside) + '</span></h3>' +
+        '<p class="crm-research__empty">Nothing has been recorded as sent for ' +
+        esc(rec.name) + '. A send lands here when it names this deal, or when the ' +
+        'material it is a cut of is filed against this deal \u2014 that is the Deal box ' +
+        'on the material\u2019s record.</p></div>';
+    }
+
+    var rows = holders.map(function (row) {
+      var c = committedFor(row.investorName);
+      var st = sendState(row.entry);
+      return [
+        '<button type="button" class="debt-link" data-crm-open-name="' +
+          esc(row.investorName) + '">' + esc(row.investorName) + '</button>',
+        esc(row.entry.material || "\u2014"),
+        esc(row.entry.version || "\u2014"),
+        row.entry.date ? esc(row.entry.date) : '<span class="muted">undated</span>',
+        '<span class="crm-pill" data-sent="' + esc(st.state) + '">' + esc(st.state) + '</span>',
+        c
+          ? '<span class="raise-pill" data-firm="' + esc(c.status) + '">' + esc(c.status) +
+            '</span>' + (c.amount ? ' <span class="muted">' + esc(c.amount) + '</span>' : "")
+          : '<span class="muted">not in yet</span>'
+      ];
+    });
+
+    var followUp = "";
+    if (notIn.length) {
+      followUp += '<p class="raise-followup"><strong>Sent, not in yet</strong>' +
+        esc(notIn.map(function (r) { return r.investorName; }).join(", ")) + '</p>';
+    }
+    if (inNotSent.length) {
+      followUp += '<p class="raise-followup raise-followup--gap"><strong>In, never sent ' +
+        'anything for this deal</strong>' +
+        esc(inNotSent.map(function (c) { return c.investor; }).join(", ")) + '</p>';
+    }
+
+    return '<div class="crm-section"><h3>Materials out' +
+      '<span class="crm-section__aside">' + esc(aside) + '</span></h3>' +
+      (holders.length
+        ? '<div class="numcols">' + table(
+            ["Investor", "Material", "Version", "Sent", "Holding", "On the raise"], rows) +
+          '</div>'
+        : '<p class="crm-research__empty">Nothing has been recorded as sent for ' +
+          esc(rec.name) + ' yet.</p>') +
+      followUp +
+      '<p class="crm-research__note">The newest thing each investor was sent for this deal. ' +
+      'Sends are recorded on the investor, or in a batch from the material \u2014 nothing is ' +
+      'sent from here, and nothing on this page can reach a mailbox.</p></div>';
+  }
+
   function dealRaisePanel(rec) {
     var r = rec.raise;
 
@@ -5312,7 +5470,12 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
       '<h3>Capital raise<span class="crm-section__aside">' + esc(raiseAside(rec)) + '</span></h3>' +
       raiseHeadHtml(rec) +
       '<div class="raise-summary">' + (r ? raiseSummaryHtml(rec) : "") + '</div>' +
-      empty + raiseRows(rec) + form + '</div>';
+      empty + raiseRows(rec) + form + '</div>' +
+      /* Outside the raise section rather than inside it: what has gone
+         out is its own question, asked of the same deal, and burying it
+         under the add-a-commitment form would put it below the fold on
+         every raise that has any. */
+      raiseMaterialsPanel(rec);
   }
 
   /* The edit form. Deliberately the same fields the add form
@@ -5866,6 +6029,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
           (n ? "" : '<p class="raise-empty">Nobody is in yet. Add the first one below.</p>') +
           raiseRows(rec) +
           raiseAddForm(rec, "rollNew_" + rec.id + "_") +
+          raiseMaterialsPanel(rec) +
         '</td>' +
       '</tr>';
   }
@@ -7520,6 +7684,16 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
         versionId: sd.versionId || "",
         material: sd.material || "",
         version: sd.version || "",
+        /* The deal this send was FOR, which is not always the deal the
+           material belongs to: the fund deck goes out in support of a
+           particular co-invest all the time, and the deck still belongs
+           to no deal. Filled from the material when there is one and
+           overridable on the form.
+
+           Blank is not "no deal" on an old record — it is a send written
+           down before this field existed. sendsForDeal() falls back to
+           the material's own deal for exactly that reason. */
+        deal: sd.deal || "",
         date: sd.date || "",
         channel: sd.channel || "",
         to: sd.to || "",
@@ -7933,6 +8107,17 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
         id: id,
         name: String(m.name || "").trim(),
         kind: m.kind || "",
+        /* WHICH DEAL THIS DOCUMENT BELONGS TO, if it belongs to one.
+           A deal memo does; the fund deck does not, and leaving it blank
+           is the right answer for everything the firm sends generally.
+
+           By NAME, like every other reference to a deal on this page —
+           see the note over Deals.byName(). It is what lets a capital
+           raise ask who has been sent the memo for its deal, which was
+           unanswerable before this field existed: a send knew its
+           investor, its material and its version, and nothing anywhere
+           knew which deal any of it was about. */
+        deal: m.deal || "",
         note: m.note || "",
         owner: m.owner || "",
         // Retired, not archived, and not deleted: a deck the firm has
@@ -8015,6 +8200,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
         id: materialId(name),
         name: name,
         kind: fields.kind || "",
+        deal: fields.deal || "",
         note: fields.note || "",
         owner: fields.owner || "",
         addedAt: new Date().toISOString().slice(0, 10),
@@ -9746,6 +9932,12 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
               '<span class="crm-field__note">Dated, so the register knows which cut is current.</span>' +
             '</div>' +
             '<div class="crm-field">' +
+              '<label for="sendDeal">For which deal</label>' +
+              '<input type="text" id="sendDeal" list="sendDealNames" autocomplete="off" ' +
+                'placeholder="Optional">' +
+              '<span class="crm-field__note" id="sendDealNote"></span>' +
+            '</div>' +
+            '<div class="crm-field">' +
               '<label for="sendDate">When</label>' +
               '<input type="date" id="sendDate" value="' + new Date().toISOString().slice(0, 10) + '">' +
             '</div>' +
@@ -9780,7 +9972,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
 
     return '<div class="crm-section"><h3>Materials sent' +
       '<span class="crm-section__aside">' + esc(aside) + '</span></h3>' +
-      table + form + '</div>';
+      table + form + dealNameOptions("sendDealNames") + '</div>';
   }
 
   /* ============================================================
@@ -10378,6 +10570,32 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
     var versionField = $("sendNewVersionField");
     if (versionField) versionField.hidden = out.value !== "__new";
 
+    /* THE DEAL FOLLOWS THE MATERIAL, until somebody says otherwise.
+       A deal memo carries its deal, so picking it fills the box and the
+       common case is typing nothing. It is not locked: the fund deck
+       goes out in support of one particular co-invest all the time, and
+       that send belongs to that deal even though the deck does not.
+
+       Only ever filled when the box is EMPTY or still holds the last
+       material's deal — never over something typed by hand, which is
+       the one thing an auto-filled box must not do. */
+    var dealBox = $("sendDeal");
+    if (dealBox) {
+      var want = mat ? (mat.deal || "") : "";
+      var held = dealBox.value.trim();
+      if (!held || held === dealBox.getAttribute("data-filled-from")) {
+        dealBox.value = want;
+      }
+      dealBox.setAttribute("data-filled-from", want);
+      var dnote = $("sendDealNote");
+      if (dnote) {
+        dnote.textContent = want
+          ? "From the material. Change it if this send was for another deal."
+          : (mat ? "This material is not filed against a deal. Name one if this send was for one."
+                 : "Name a deal if this send was for one.");
+      }
+    }
+
     /* "Defaults to the current one" is a lie when there is no current
        one — which is the state anybody meeting this form for the first
        time is in. */
@@ -10411,6 +10629,17 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
     return materialHolders(mat).filter(function (row) {
       return sendState(row.entry).state === "Superseded";
     });
+  }
+
+  /* Deal names for a box that files something against a deal. A datalist
+     rather than a select: a memo can be filed against a deal that has
+     been archived off the list, and refusing to let somebody type one is
+     worse than letting them. The join is by name either way. */
+  function dealNameOptions(id) {
+    return '<datalist id="' + esc(id) + '">' +
+      Deals.allIncludingArchived().map(function (r) {
+        return '<option value="' + esc(r.name) + '">';
+      }).join("") + '</datalist>';
   }
 
   function materialKindList() {
@@ -10448,6 +10677,9 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
           (m.retired ? '<span class="crm-tag">Retired</span>' : "") +
           (m.note ? '<span class="crm-sub">' + esc(m.note) + '</span>' : "") + '</td>' +
         '<td>' + (m.kind ? esc(m.kind) : '<span class="muted">—</span>') + '</td>' +
+        '<td>' + (m.deal
+          ? '<span class="crm-tag crm-tag--deal">' + esc(m.deal) + '</span>'
+          : '<span class="muted">—</span>') + '</td>' +
         '<td>' + (current
           ? esc(current.label) +
             '<span class="crm-sub">' + (current.date ? esc(current.date) : "undated") + '</span>'
@@ -10464,7 +10696,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
 
     var table = list.length
       ? '<div class="crmtable-wrap"><table class="crmtable"><thead><tr>' +
-          '<th>Material</th><th>Kind</th><th>Current version</th><th>Sent to</th>' +
+          '<th>Material</th><th>Kind</th><th>Deal</th><th>Current version</th><th>Sent to</th>' +
           '<th>On an old version</th><th>Last sent</th>' +
         '</tr></thead><tbody>' + rows + '</tbody></table></div>'
       : '<div class="dash-state"><h3>Nothing on the register yet</h3>' +
@@ -10513,6 +10745,13 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
               }).join("") +
             '</datalist>' +
           '</div>' +
+          '<div class="crm-field">' +
+            '<label for="matNewDeal">Deal</label>' +
+            '<input type="text" id="matNewDeal" autocomplete="off" list="matDealNames" ' +
+              'placeholder="Optional — leave blank for anything general">' +
+            '<span class="crm-field__note">Fill this in for a deal memo and the deal\u2019s ' +
+              'capital raise can show who has been sent it.</span>' +
+          '</div>' +
           '<div class="crm-field crm-field--wide">' +
             '<label for="matNewNote">What it is</label>' +
             '<input type="text" id="matNewNote" autocomplete="off" ' +
@@ -10524,7 +10763,8 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
           '<span class="crm-research__hint">A name is all it needs. Versions go on the ' +
             'record after that.</span>' +
         '</div>' +
-      '</div>';
+      '</div>' +
+      dealNameOptions("matDealNames");
 
     labelCells($("materialsBody"));
     $("crmMaterialsCount").textContent = list.length ? "(" + list.length + ")" : "";
@@ -10557,6 +10797,24 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
           (mat.retired ? "Put it back in use" : "Retire it") + '</button>' +
         '<button class="dash-refresh" data-mat-delete="' + esc(mat.id) + '">Delete</button>' +
       '</div></div>');
+
+    /* THE ONE EDITABLE THING ON THIS RECORD. Everything else about a
+       material is set when it is added; the deal is not, because most of
+       the register existed before deals were a thing a material could be
+       filed against, and going back to tag the memos is the whole point.
+       A box, saved when it is left, like the raise boxes. */
+    parts.push('<div class="crm-section mat-deal"><h3>Filed against' +
+      '<span class="crm-section__aside">' +
+        (mat.deal ? esc(mat.deal) : "no deal \u2014 general material") + '</span></h3>' +
+      '<div class="raise-set">' +
+        '<label class="raise-set__label" for="matDealBox">Deal</label>' +
+        '<input type="text" class="raise-set__input" id="matDealBox" list="matDealNames" ' +
+          'data-mat-deal="' + esc(mat.id) + '" value="' + esc(mat.deal || "") + '" ' +
+          'placeholder="Leave blank for anything general" autocomplete="off">' +
+        '<span class="raise-set__note">Fill this in for a deal memo and that deal\u2019s ' +
+          'capital raise shows who has been sent it. A send can still name a different ' +
+          'deal \u2014 this is the one it starts from.</span>' +
+      '</div>' + dealNameOptions("matDealNames") + '</div>');
 
     parts.push(factGrid([
       ["Kind", esc(mat.kind)],
@@ -10776,6 +11034,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
       return;
     }
     var res = Crm.createMaterial({ name: name, kind: formValue("matNewKind"),
+                                   deal: formValue("matNewDeal"),
                                    note: formValue("matNewNote") });
     if (res === "duplicate") {
       toast("“" + name + "” is already on the register.");
@@ -10952,6 +11211,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
     Crm.addSend(invId, {
       materialId: mat.id, versionId: versionId,
       material: mat.name, version: version ? version.label : "",
+      deal: formValue("sendDeal"),
       date: formValue("sendDate"), channel: formValue("sendChannel"),
       to: formValue("sendTo"), note: formValue("sendNote")
     });
@@ -10987,6 +11247,11 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
         investorId: box.value,
         materialId: mat.id, versionId: version.id,
         material: mat.name, version: version.label,
+        // From the material's record, so the material's deal is the deal.
+        // There is no per-send override on this path: it files one cut
+        // against a batch of investors in one go, and a batch that was
+        // for different deals is two batches.
+        deal: mat.deal || "",
         date: date, channel: channel,
         to: (inv && primaryContact(inv) || {}).name || "", note: note
       };
@@ -16317,6 +16582,20 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
      carries the same data-raise-field attributes and is deliberately NOT
      caught here: it has no row, and nothing it holds is saved until
      "Record it" is pressed. */
+  /* The deal a material is filed against, saved when the box is left.
+     Redraws the record, because the heading beside it reads the value. */
+  document.addEventListener("change", function (e) {
+    var matDeal = e.target.closest("[data-mat-deal]");
+    if (matDeal) {
+      var mid = matDeal.getAttribute("data-mat-deal");
+      Crm.patchMaterial(mid, { deal: matDeal.value.trim() });
+      renderCrm();
+      renderMaterial(mid);
+      renderRaises();
+      return;
+    }
+  });
+
   document.addEventListener("change", function (e) {
     var targetField = e.target.closest("[data-raise-set]");
     if (targetField) { saveRaiseTarget(targetField); return; }
@@ -16728,6 +17007,21 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
       return;
     }
 
+    /* From a name on the materials table to that investor's record. The
+       table is drawn on the deal and on the roll-up, neither of which is
+       the CRM tab, so this switches as well as opens — the same shape as
+       data-raise-open going the other way. */
+    var crmOpenName = e.target.closest("[data-crm-open-name]");
+    if (crmOpenName) {
+      var wanted = crmOpenName.getAttribute("data-crm-open-name");
+      var found = Crm.all().filter(function (i) {
+        return sameName(i.name, wanted);
+      })[0];
+      if (found) { switchTab("crm"); openInvestor(found.id); }
+      else toast("\u201C" + wanted + "\u201D is not on the investor CRM.");
+      return;
+    }
+
     var dealTask = e.target.closest("[data-deal-task]");
     if (dealTask) { addTaskFor(dealTask.getAttribute("data-deal-task")); return; }
 
@@ -17103,6 +17397,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
              from dates in a prompt. */
           sends: inv.sends.map(function (sd) {
             return { material: sendMaterialName(sd), version: sendVersionName(sd),
+                     deal: sd.deal || "",
                      date: sd.date || "", channel: sd.channel || "",
                      to: sd.to || "", note: sd.note || "",
                      status: sendState(sd).state };
@@ -17185,6 +17480,9 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
         var current = Crm.currentVersion(m);
         return {
           id: m.id, name: m.name, kind: m.kind, retired: m.retired,
+          // Which deal it is a document FOR, so "who has the memo for
+          // Casa Hope" is a question the agent can answer too.
+          deal: m.deal || "",
           currentVersion: current ? current.label : "",
           currentDated: current ? current.date : "",
           versions: Crm.orderedVersions(m).map(function (v) {
