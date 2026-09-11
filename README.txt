@@ -1633,3 +1633,34 @@ THE TWO RAISE TABLES LINE UP, 2026-09-11:
   all the raise CSS is in the second, so the rule under test was not loaded at
   all and the measurement showed a 10px drift that had nothing to do with the
   change. Any future harness like this must take both blocks.
+
+LOGGING A SEND FROM THE RAISE, 2026-09-11:
+- Asked for from the deal's Capital raise panel: "I'd like to be able to log
+  sending a deck or document out to a potential investor from this page."
+- A send could already be logged two ways — from the investor record, and in a
+  batch from the material — but not from the deal, which is where somebody is
+  sitting when they have just mailed the deck, with the list of who is in and
+  who has been sent what directly above them.
+- ONE FORM, TWO SURFACES. sendFormHtml() builds both. Whichever side the panel
+  already knows simply has no box: on an investor record the investor is fixed
+  and the deal is asked for; on a raise the deal is fixed and the investor is
+  asked for. One write path underneath (logSend), so all three routes create the
+  same record and register a new material or version the same way.
+- HOW TWO COPIES COEXIST: ids are built from a prefix, the same trick
+  raiseAddForm already used, and the prefix is carried on the form root as
+  data-send-form so a change handler can find it from whatever was clicked.
+  The investor form's prefix is "send", which is why every id there is byte for
+  byte what it was — verified, all fourteen.
+- The investor side is a PICKER, not the free-text box the commitments form
+  above it uses. A send is filed ON an investor record, so a name that is not
+  one has nowhere to go; a commitment can take an unknown name because it is
+  stored on the deal.
+- The form with a picker has no "Who it went to" box, so logSend fills that from
+  the investor's primary contact — the same value the other form prefills.
+- fillSendForms() fills every version picker in the DOM after any repaint. There
+  can be three at once: an investor record, a deal's raise panel, and that
+  deal's row on the roll-up.
+- Verified in a browser with both forms on one page: independent cascades
+  (driving one leaves the other alone), a new material and version registered
+  from the raise side, the fixed deal written without being asked, the contact
+  auto-filled, and the investor-side path unchanged.

@@ -5157,6 +5157,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
        should not claim it is. */
     if (fund) markTabCurrent("raises");
     scopeEl(scope, "DetailBody").innerHTML = dealDetail(rec);
+    fillSendForms();   // the raise panel carries one
     showDealView("deal", scope);
   }
 
@@ -5682,6 +5683,32 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
     return out;
   }
 
+  /* Logging a send from here rather than from the investor record.
+
+     The panel already knows the deal, which is the field most easily got
+     wrong from the other side, and this is where somebody is sitting
+     when they have just mailed the deck: the list of who is in and who
+     has been sent what is directly above it. Same form, same register,
+     same records — see sendFormHtml. */
+  function raiseSendForm(rec) {
+    var live = Crm.materials().filter(function (m) { return !m.retired; });
+    return sendFormHtml({
+      prefix: raiseSendPrefix(rec),
+      live: live,
+      deal: rec.name,
+      investors: Crm.all().slice().sort(function (a, b) { return a.name.localeCompare(b.name); }),
+      empty: live.length ? "" :
+        '<p class="mat-empty">Nothing is on the materials register yet \u2014 name what ' +
+        'you sent below and it is added to the register as you record it.</p>',
+      button: '<button type="button" class="dash-refresh dash-refresh--primary" ' +
+        'data-send-add-raise="' + esc(rec.id) + '">Record it</button>'
+    });
+  }
+
+  // One per deal, because two raise panels can be open at once — a deal's
+  // own panel and its row on the roll-up.
+  function raiseSendPrefix(rec) { return "raiseSend_" + rec.id + "_"; }
+
   function raiseMaterialsPanel(rec) {
     var holders = dealMaterialHolders(rec.name);
     var commitments = (rec.raise && rec.raise.commitments) || [];
@@ -5721,7 +5748,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
         '<p class="crm-research__empty">Nothing has been recorded as sent for ' +
         esc(rec.name) + '. A send lands here when it names this deal, or when the ' +
         'material it is a cut of is filed against this deal \u2014 that is the Deal box ' +
-        'on the material\u2019s record.</p></div>';
+        'on the material\u2019s record.</p>' + raiseSendForm(rec) + '</div>';
     }
 
     var rows = holders.map(function (row) {
@@ -5762,8 +5789,9 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
           esc(rec.name) + ' yet.</p>') +
       followUp +
       '<p class="crm-research__note">The newest thing each investor was sent for this deal. ' +
-      'Sends are recorded on the investor, or in a batch from the material \u2014 nothing is ' +
-      'sent from here, and nothing on this page can reach a mailbox.</p></div>';
+      'A send can also be recorded on the investor, or in a batch from the material \u2014 ' +
+      'all three write the same record, and none of them reaches a mailbox.</p>' +
+      raiseSendForm(rec) + '</div>';
   }
 
   function dealRaisePanel(rec) {
@@ -6570,6 +6598,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
       (done.length ? completedRaises(done) : "");
 
     raiseShownLine();
+    fillSendForms();   // the send form inside any expanded row
 
     /* Every deal NOT already raising, from both areas. A deal that is
        already on the list above is left out: the way to its raise is the
@@ -10524,76 +10553,18 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
        What gets created is the SAME record the register would create,
        through the same two methods. This is a shortcut into the
        register, not a second, quieter way to keep materials. */
-    var form = '<div class="rec-form">' +
-          '<h4>Log something sent</h4>' +
-          (live.length ? "" :
-            '<p class="mat-empty">Nothing is on the materials register yet — name what ' +
-            'you sent below and it is added to the register as you record it.</p>') +
-          '<div class="rec-form__grid">' +
-            '<div class="crm-field">' +
-              '<label for="sendMaterial">Material</label>' +
-              '<select id="sendMaterial" data-send-material>' +
-                live.map(function (m) {
-                  return '<option value="' + esc(m.id) + '">' + esc(m.name) + '</option>';
-                }).join("") +
-                '<option value="__new">＋ New material…</option>' +
-              '</select>' +
-            '</div>' +
-            '<div class="crm-field" id="sendNewMaterialField" hidden>' +
-              '<label for="sendNewMaterial">Name it</label>' +
-              '<input type="text" id="sendNewMaterial" autocomplete="off" ' +
-                'placeholder="GP Fund I deck">' +
-              '<span class="crm-field__note">Added to the register when you record this.</span>' +
-            '</div>' +
-            '<div class="crm-field">' +
-              '<label for="sendVersion">Version</label>' +
-              '<select id="sendVersion" data-send-version></select>' +
-              '<span class="crm-field__note" id="sendVersionNote"></span>' +
-            '</div>' +
-            '<div class="crm-field" id="sendNewVersionField" hidden>' +
-              '<label for="sendNewVersion">Call it</label>' +
-              '<input type="text" id="sendNewVersion" autocomplete="off" placeholder="v3, or Q3 2026">' +
-              '<input type="date" id="sendNewVersionDate" value="' +
-                new Date().toISOString().slice(0, 10) + '">' +
-              '<span class="crm-field__note">Dated, so the register knows which cut is current.</span>' +
-            '</div>' +
-            '<div class="crm-field">' +
-              '<label for="sendDeal">For which deal</label>' +
-              '<select id="sendDeal">' + dealOptionsHtml("") + '</select>' +
-              '<span class="crm-field__note" id="sendDealNote"></span>' +
-            '</div>' +
-            '<div class="crm-field">' +
-              '<label for="sendDate">When</label>' +
-              '<input type="date" id="sendDate" value="' + new Date().toISOString().slice(0, 10) + '">' +
-            '</div>' +
-            '<div class="crm-field">' +
-              '<label for="sendChannel">How</label>' +
-              '<select id="sendChannel">' +
-                SEND_CHANNELS.map(function (c) {
-                  return '<option value="' + esc(c) + '">' + esc(c) + '</option>';
-                }).join("") +
-              '</select>' +
-            '</div>' +
-            '<div class="crm-field">' +
-              '<label for="sendTo">Who it went to</label>' +
-              '<input type="text" id="sendTo" autocomplete="off" value="' +
-                esc((primaryContact(inv) || {}).name || "") + '">' +
-            '</div>' +
-            '<div class="crm-field crm-field--wide">' +
-              '<label for="sendNote">Note</label>' +
-              '<input type="text" id="sendNote" autocomplete="off" ' +
-                'placeholder="Optional — what it was for, what was redacted, what they asked for next">' +
-            '</div>' +
-          '</div>' +
-          '<div class="crm-research__actions">' +
-            '<button type="button" class="dash-refresh dash-refresh--primary" ' +
-              'data-send-add="' + esc(inv.id) + '">Record it</button>' +
-            '<button type="button" class="dash-refresh" data-action="crm-materials">' +
-              'The register</button>' +
-            '<span class="crm-research__hint">Records what went out. It does not send ' +
-              'anything — nothing on this page can reach a mailbox.</span>' +
-          '</div>' +
-        '</div>';
+    var form = sendFormHtml({
+      prefix: "send",
+      live: live,
+      empty: live.length ? "" :
+        '<p class="mat-empty">Nothing is on the materials register yet \u2014 name what ' +
+        'you sent below and it is added to the register as you record it.</p>',
+      to: (primaryContact(inv) || {}).name || "",
+      button: '<button type="button" class="dash-refresh dash-refresh--primary" ' +
+        'data-send-add="' + esc(inv.id) + '">Record it</button>' +
+        '<button type="button" class="dash-refresh" data-action="crm-materials">' +
+        'The register</button>'
+    });
 
     return '<div class="crm-section"><h3>Materials sent' +
       '<span class="crm-section__aside">' + esc(aside) + '</span></h3>' +
@@ -10894,7 +10865,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
     // labels the list gets — without them it loses its headings on a
     // phone and becomes six unlabelled values in a column.
     labelCells($("investorBody"));
-    fillSendVersions();
+    fillSendForms();
   }
 
   /* ------------------------------------------------------------
@@ -11238,8 +11209,117 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
      A NEW MATERIAL HAS NO VERSIONS, so it forces the new-version box
      open: the register cannot say what anybody holds without one, and
      the two things are created together or not at all. */
-  function fillSendVersions() {
-    var sel = $("sendMaterial"), out = $("sendVersion");
+  /* WHICH SEND FORM. There are two on the page now — one on an investor
+     record, where the investor is fixed and the deal is picked, and one
+     on a deal's raise, where the deal is fixed and the investor is
+     picked — and both can be in the DOM at once. Same trick the
+     commitments form uses: one set of markup, ids built from a prefix,
+     and the prefix carried on the form itself so a handler can find it
+     from whatever was clicked. "send" is the investor form's prefix,
+     which is why every id there is unchanged. */
+  function sendPrefixOf(el) {
+    var form = el && el.closest ? el.closest("[data-send-form]") : null;
+    return (form && form.getAttribute("data-send-form")) || "send";
+  }
+
+  /* THE FORM IS ALWAYS DRAWN, and it can register what it needs as it
+     goes: "\uFF0B New material" and "\uFF0B New version" are options on the
+     two pickers, and choosing either opens a box beside it. This started
+     as a dead end — an empty register meant a panel with no boxes at all
+     and a button that sent you to another view — and the version half is
+     the commoner case anyway: you have just mailed a cut that nobody has
+     written down yet, and crossing to the register, adding it and coming
+     back is how it ends up not being logged.
+
+     What gets created is the SAME record the register would create,
+     through the same two methods. This is a shortcut into the register,
+     not a second, quieter way to keep materials.
+
+     Drawn on two surfaces. On an investor record the investor is fixed
+     and the deal is asked for; on a deal's raise the deal is fixed and
+     the investor is asked for. Whichever is fixed simply has no box —
+     the panel it is sitting on already said it. */
+  function sendFormHtml(o) {
+    var p = o.prefix;
+    var today = new Date().toISOString().slice(0, 10);
+    function field(id, label, control, note, hidden, wide) {
+      return '<div class="crm-field' + (wide ? " crm-field--wide" : "") + '"' +
+        (id ? ' id="' + esc(id) + 'Field"' : "") + (hidden ? " hidden" : "") + '>' +
+        '<label for="' + esc(id) + '">' + esc(label) + '</label>' + control +
+        (note ? '<span class="crm-field__note"' +
+          (note === true ? ' id="' + esc(id) + 'Note"' : "") + '>' +
+          (note === true ? "" : esc(note)) + '</span>' : "") + '</div>';
+    }
+
+    return '<div class="rec-form" data-send-form="' + esc(p) + '">' +
+      '<h4>Log something sent</h4>' + (o.empty || "") +
+      '<div class="rec-form__grid">' +
+        (o.investors
+          ? field(p + "Investor", "Who it went to",
+              '<select id="' + p + 'Investor">' +
+                '<option value="">\u2014 pick an investor</option>' +
+                o.investors.map(function (i) {
+                  return '<option value="' + esc(i.id) + '">' + esc(i.name) + '</option>';
+                }).join("") + '</select>',
+              "Filed on their Investor CRM record. Somebody not on it has to be added " +
+              "there first.")
+          : "") +
+        field(p + "Material", "Material",
+          '<select id="' + p + 'Material" data-send-material>' +
+            o.live.map(function (m) {
+              return '<option value="' + esc(m.id) + '">' + esc(m.name) + '</option>';
+            }).join("") +
+            '<option value="__new">\uFF0B New material\u2026</option></select>') +
+        field(p + "NewMaterial", "Name it",
+          '<input type="text" id="' + p + 'NewMaterial" autocomplete="off" ' +
+            'placeholder="GP Fund I deck">',
+          "Added to the register when you record this.", true) +
+        field(p + "Version", "Version",
+          '<select id="' + p + 'Version" data-send-version></select>', true) +
+        field(p + "NewVersion", "Call it",
+          '<input type="text" id="' + p + 'NewVersion" autocomplete="off" ' +
+            'placeholder="v3, or Q3 2026">' +
+          '<input type="date" id="' + p + 'NewVersionDate" value="' + today + '">',
+          "Dated, so the register knows which cut is current.", true) +
+        (o.deal
+          ? ""
+          : field(p + "Deal", "For which deal",
+              '<select id="' + p + 'Deal">' + dealOptionsHtml("") + '</select>', true)) +
+        field(p + "Date", "When",
+          '<input type="date" id="' + p + 'Date" value="' + today + '">') +
+        field(p + "Channel", "How",
+          '<select id="' + p + 'Channel">' + SEND_CHANNELS.map(function (c) {
+            return '<option value="' + esc(c) + '">' + esc(c) + '</option>';
+          }).join("") + '</select>') +
+        (o.investors
+          ? ""
+          : field(p + "To", "Who it went to",
+              '<input type="text" id="' + p + 'To" autocomplete="off" value="' +
+                esc(o.to || "") + '">')) +
+        field(p + "Note", "Note",
+          '<input type="text" id="' + p + 'Note" autocomplete="off" ' +
+            'placeholder="Optional \u2014 what it was for, what was redacted, what they ' +
+            'asked for next">', "", false, true) +
+      '</div>' +
+      '<div class="crm-research__actions">' + o.button +
+        '<span class="crm-research__hint">Records what went out. It does not send ' +
+          'anything \u2014 nothing on this page can reach a mailbox.</span>' +
+      '</div></div>';
+  }
+
+  /* Every send form currently in the DOM. There can be three: an
+     investor record, a deal's own raise panel, and that deal's row on
+     the roll-up. Each one's version picker is empty until this runs, so
+     it runs after anything that repaints any of them rather than being
+     remembered at four call sites. */
+  function fillSendForms() {
+    Array.prototype.forEach.call(document.querySelectorAll("[data-send-form]"),
+      function (form) { fillSendVersions(form.getAttribute("data-send-form")); });
+  }
+
+  function fillSendVersions(prefix) {
+    var p = prefix || "send";
+    var sel = $(p + "Material"), out = $(p + "Version");
     if (!sel || !out) return;
 
     var isNewMaterial = sel.value === "__new";
@@ -11254,9 +11334,9 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
              (i === 0 ? " — current" : "") + '</option>';
     }).join("") + newVersion;
 
-    var nameField = $("sendNewMaterialField");
+    var nameField = $(p + "NewMaterialField");
     if (nameField) nameField.hidden = !isNewMaterial;
-    var versionField = $("sendNewVersionField");
+    var versionField = $(p + "NewVersionField");
     if (versionField) versionField.hidden = out.value !== "__new";
 
     /* THE DEAL FOLLOWS THE MATERIAL, until somebody says otherwise.
@@ -11268,7 +11348,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
        Only ever filled when the box is EMPTY or still holds the last
        material's deal — never over something typed by hand, which is
        the one thing an auto-filled box must not do. */
-    var dealBox = $("sendDeal");
+    var dealBox = $(p + "Deal");
     if (dealBox) {
       var want = mat ? (mat.deal || "") : "";
       var held = dealBox.value.trim();
@@ -11276,7 +11356,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
         setDealSelect(dealBox, want);
       }
       dealBox.setAttribute("data-filled-from", want);
-      var dnote = $("sendDealNote");
+      var dnote = $(p + "DealNote");
       if (dnote) {
         dnote.textContent = want
           ? "From the material. Change it if this send was for another deal."
@@ -11288,7 +11368,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
     /* "Defaults to the current one" is a lie when there is no current
        one — which is the state anybody meeting this form for the first
        time is in. */
-    var note = $("sendVersionNote");
+    var note = $(p + "VersionNote");
     if (note) {
       note.textContent = versions.length
         ? "Defaults to the current one."
@@ -11297,8 +11377,9 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
   }
 
   // The version picker's own change: only the second box to toggle.
-  function syncNewVersionField() {
-    var out = $("sendVersion"), field = $("sendNewVersionField");
+  function syncNewVersionField(prefix) {
+    var p = prefix || "send";
+    var out = $(p + "Version"), field = $(p + "NewVersionField");
     if (out && field) field.hidden = out.value !== "__new";
   }
 
@@ -11916,18 +11997,27 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
      a save that never happened, and pushed it to everyone else. A form
      that is refused must leave nothing behind.
      -------------------------------------------------------------- */
-  function logSendFromInvestor(invId) {
+  /* ONE WRITE PATH FOR BOTH FORMS.
+
+     prefix says which form's boxes to read; invId who it went to; deal,
+     when given, is a deal the form already knows and does not ask about
+     — the raise panel is looking at exactly one. Everything else,
+     including registering a material or a version that does not exist
+     yet, is the behaviour the investor form has always had. */
+  function logSend(prefix, invId, deal) {
+    var p = prefix || "send";
+    function fv(name) { return formValue(p + name); }
     var inv = Crm.get(invId);
     if (!inv) return;
 
     // ---- read and check, creating nothing ----
-    var materialId = formValue("sendMaterial");
+    var materialId = fv("Material");
     var wantsNewMaterial = materialId === "__new";
-    var newName = formValue("sendNewMaterial");
+    var newName = fv("NewMaterial");
 
     if (wantsNewMaterial && !newName) {
       toast("Name the material, or pick one from the list.");
-      if ($("sendNewMaterial")) $("sendNewMaterial").focus();
+      if ($(p + "NewMaterial")) $(p + "NewMaterial").focus();
       return;
     }
 
@@ -11943,16 +12033,16 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
 
     if (!wantsNewMaterial && !mat) { toast("Pick a material first."); return; }
 
-    var versionId = formValue("sendVersion");
+    var versionId = fv("Version");
     // A material about to be created carries no versions, so one has to
     // be named whatever the picker says.
     var wantsNewVersion = wantsNewMaterial || versionId === "__new" || !versionId;
-    var newLabel = formValue("sendNewVersion");
+    var newLabel = fv("NewVersion");
 
     if (wantsNewVersion && !newLabel) {
       toast("Call the version something — v3, or Q3 2026 — so the register knows which " +
             "cut " + inv.name + " is holding.");
-      if ($("sendNewVersion")) $("sendNewVersion").focus();
+      if ($(p + "NewVersion")) $(p + "NewVersion").focus();
       return;
     }
 
@@ -11968,7 +12058,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
     if (wantsNewVersion) {
       var added = Crm.addVersion(mat.id, {
         label: newLabel,
-        date: formValue("sendNewVersionDate") || formValue("sendDate")
+        date: fv("NewVersionDate") || fv("Date")
       });
       if (added === "duplicate") {
         // Already registered under that label: use it rather than refusing.
@@ -11985,14 +12075,52 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
     Crm.addSend(invId, {
       materialId: mat.id, versionId: versionId,
       material: mat.name, version: version ? version.label : "",
-      deal: formValue("sendDeal"),
-      date: formValue("sendDate"), channel: formValue("sendChannel"),
-      to: formValue("sendTo"), note: formValue("sendNote")
+      // The deal the form already knows beats the box, and there is no
+      // box at all on the raise panel.
+      deal: deal != null ? deal : fv("Deal"),
+      date: fv("Date"), channel: fv("Channel"),
+      // The form with an investor picker has no To box: the name of the
+      // person it went to is the one that form would have prefilled.
+      to: $(p + "To") ? fv("To") : ((primaryContact(inv) || {}).name || ""),
+      note: fv("Note")
     });
+    return { material: mat, version: version, registered: registered, investor: inv };
+  }
+
+  function logSendFromInvestor(invId) {
+    var done = logSend("send", invId, null);
+    if (!done) return;
     renderCrm();
     renderInvestor(invId);
-    toast("Recorded — " + mat.name + (version ? " " + version.label : "") + " to " + inv.name +
-          (registered ? ". " + mat.name + " is on the register now." : "."));
+    toast("Recorded — " + done.material.name + (done.version ? " " + done.version.label : "") +
+          " to " + done.investor.name +
+          (done.registered ? ". " + done.material.name + " is on the register now." : "."));
+  }
+
+  /* From the raise, where the deal is not in question. The investor is a
+     picker rather than the commitments form's free-text box, and
+     deliberately: a send is filed ON an investor record, so a name that
+     is not one has nowhere to go. The commitments box above can take a
+     name nobody has recorded yet because a commitment is stored on the
+     deal. */
+  function logSendFromRaise(btn) {
+    var rec = Deals.get(btn.getAttribute("data-send-add-raise"));
+    if (!rec) return;
+    var prefix = sendPrefixOf(btn);
+    var invId = formValue(prefix + "Investor");
+    if (!invId) {
+      toast("Pick who it went to. Somebody not on the Investor CRM has to be added there " +
+            "first \u2014 a send is filed on their record.");
+      if ($(prefix + "Investor")) $(prefix + "Investor").focus();
+      return;
+    }
+    var done = logSend(prefix, invId, rec.name);
+    if (!done) return;
+    renderCrm();
+    repaintRaise(btn, rec);
+    toast("Recorded — " + done.material.name + (done.version ? " " + done.version.label : "") +
+          " to " + done.investor.name + " for " + rec.name +
+          (done.registered ? ". " + done.material.name + " is on the register now." : "."));
   }
 
   // From the material record: one version, as many investors as are ticked.
@@ -17399,8 +17527,8 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
      so the listener sits on the document rather than on a select that
      stops existing. Same arrangement as the Type box below. */
   document.addEventListener("change", function (e) {
-    if (e.target.closest("[data-send-material]")) { fillSendVersions(); return; }
-    if (e.target.closest("[data-send-version]")) { syncNewVersionField(); return; }
+    if (e.target.closest("[data-send-material]")) { fillSendVersions(sendPrefixOf(e.target)); return; }
+    if (e.target.closest("[data-send-version]")) { syncNewVersionField(sendPrefixOf(e.target)); return; }
   });
 
   /* A box in the commitments table saves when it is left. The add form
@@ -17479,6 +17607,9 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
 
     var matSend = e.target.closest("[data-mat-send]");
     if (matSend) { recordSendsFromMaterial(matSend.getAttribute("data-mat-send")); return; }
+
+    var sendAddRaise = e.target.closest("[data-send-add-raise]");
+    if (sendAddRaise) { logSendFromRaise(sendAddRaise); return; }
 
     var sendAdd = e.target.closest("[data-send-add]");
     if (sendAdd) { logSendFromInvestor(sendAdd.getAttribute("data-send-add")); return; }
