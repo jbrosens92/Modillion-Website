@@ -2556,6 +2556,15 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
 .crm-fact__value.is-empty { color: var(--muted); font-style: italic; font-size: .9rem; }
 .crm-fact__value a { color: var(--steel); text-decoration: none; word-break: break-all; }
 .crm-fact__value a:hover { text-decoration: underline; }
+/* Where a fact needs to say where it came from — a last contact read off
+   the log rather than typed. A block, as .crm-sub is inside a table, so
+   the provenance sits under the value instead of running into it. The
+   inline uses of .crm-sub in this grid carry their own " · " separator
+   and are unaffected by a rule that only applies to this one. */
+.crm-fact__value .crm-sub--under {
+  display: block; margin-top: 4px;
+  font-size: .76rem; color: var(--muted); line-height: 1.45;
+}
 
 /* Editing a record by hand. The panel stands where the facts grid stood,
    so the page does not jump, and it writes nothing until Save — same rule
@@ -3967,7 +3976,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
           <div class="dash-search">
             <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
             <label class="visually-hidden" for="opSearch">Search operators</label>
-            <input type="search" id="opSearch" placeholder="Search operators, strategies, markets and deals" autocomplete="off">
+            <input type="search" id="opSearch" placeholder="Search operators, strategies, markets, deals and conversations" autocomplete="off">
           </div>
           <button class="dash-refresh dash-refresh--primary" id="opAddBtn">Add operator</button>
           <button class="dash-refresh" id="opExportBtn">Export Excel</button>
@@ -4494,7 +4503,8 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
       } },
     { tab: "operators", label: "Operator CRM", icon: "shield",
       blurb: "The sponsors running the deals — track record, GP co-invest, vertical " +
-             "integration, and which pipeline deals each one is behind.",
+             "integration, which pipeline deals each one is behind, and a dated log of " +
+             "every conversation.",
       count: function () {
         var n = Operators.all().length;
         return n ? n + " operator" + (n === 1 ? "" : "s") : null;
@@ -7271,8 +7281,16 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
   function deleteOperatorRow(button) {
     var rec = Operators.get(button.getAttribute("data-op-delete"));
     if (!rec) return;
+
+    // Said out loud, as it is on an investor: the log is usually the only
+    // account of what was said, and "delete" should name what it takes.
+    var goes = [];
+    if (rec.conversations.length) goes.push(countOf(rec.conversations.length, "logged conversation"));
+    if (rec.contacts.length) goes.push(countOf(rec.contacts.length, "contact"));
+
     if (!armed(button, "Delete?",
         "Click Delete again to remove " + rec.name +
+        (goes.length ? ", and with it " + goes.join(", ") : "") +
         ". Archiving keeps the record and hides it; this does not keep it.")) return;
 
     var name = rec.name;
@@ -12707,6 +12725,13 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
   // can fill this one in without guessing at anything.
   var OPERATOR_STAGES = ["Prospect", "Contacted", "In diligence", "Active partner",
                          "Passed", "Dormant"];
+  /* How a conversation happened. The Investor CRM's list, plus SITE VISIT —
+     the one that only means anything on this side of the table. Standing on
+     an operator's asset with them is the commonest thing that is neither a
+     call nor a meeting, and filing it as either loses the part worth
+     remembering a year later. */
+  var OPERATOR_CHANNELS = ["Call", "Email", "Meeting", "Video call", "Site visit",
+                           "Conference", "Note"];
 
   // Empty. Real records arrive from the shared store, or from operator-data.json behind it.
   var OPERATOR_FALLBACK = {
@@ -13336,6 +13361,36 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
                 .filter(function (s, i, a) { return s.length > 0 && a.indexOf(s) === i; });
     }
 
+    /* A conversation's id is what lets two people log two calls against the
+       same operator without either of them being lost: the shared merge
+       matches array entries by id and appends the rest. An entry that
+       arrived in a hand-written file without one is given a stable id from
+       its date and its opening words rather than a random one, so re-reading
+       the same file does not produce a second copy of the same call. The
+       same rule the Competitor Tracker's articles follow, and the one
+       conversations have followed on the Investor CRM from the beginning. */
+    function convId(c, i) {
+      var stem = slug(String((c.date || "") + " " + (c.summary || c.channel || "")))
+                   .slice(0, 40);
+      return c.id ? String(c.id) : "opc-" + (stem || "x") + "-" + i;
+    }
+
+    function normaliseConversation(c, i) {
+      return {
+        id: convId(c, i),
+        date: c.date || "",
+        channel: c.channel || "",
+        who: c.who || "",
+        summary: c.summary || "",
+        next: c.next || "",
+        // Semicolons, not commas — deal folder names carry commas. Same
+        // reason the deals box on the record takes them.
+        deals: valueList(c.deals),
+        loggedAt: c.loggedAt || "",
+        loggedBy: c.loggedBy || ""
+      };
+    }
+
     function normalise(rec) {
       var c = rec.checkSize || {};
       return {
@@ -13365,6 +13420,13 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
         contacts: (rec.contacts || []).map(function (c) {
           return { name: c.name || "", title: c.title || "", email: c.email || "" };
         }),
+        /* Newest first, and sorted HERE rather than at the point of display,
+           so everything that reads [0] — the last contact on the list, the
+           note under it, the agent's snapshot — is reading the same entry. */
+        conversations: (rec.conversations || []).map(normaliseConversation)
+          .sort(function (a, b) {
+            return String(b.date || "").localeCompare(String(a.date || ""));
+          }),
         notes: rec.notes || "",
         // See the same field on an investor: blank where it was never kept.
         addedAt: rec.addedAt || "",
@@ -13451,6 +13513,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
           if (base.markets && base.markets.length) OPERATOR_MARKETS = base.markets;
           if (base.priorities && base.priorities.length) OPERATOR_PRIORITIES = base.priorities;
           if (base.stages && base.stages.length) OPERATOR_STAGES = base.stages;
+          if (base.channels && base.channels.length) OPERATOR_CHANNELS = base.channels;
           rebuild();
         });
     }
@@ -13496,6 +13559,42 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
       });
       writeOverlay();
       rebuild();
+    }
+
+    /* LOGGING A CONVERSATION IS ITS OWN METHOD rather than a patch carrying
+       the whole list, for the reason the Investor CRM's addConversation()
+       and the Competitor Tracker's addArticle() exist: two people ringing
+       the same sponsor on the same morning is the expected case, not the
+       awkward one. The write is the list with one more entry on it, and the
+       shared merge unions the two by conversation id — so the second
+       person's call does not replace the first person's.
+
+       The honest limit, the same one an article carries: a union cannot
+       express a removal, so an entry withdrawn here comes back when a
+       browser that still holds it pushes its overlay, until somebody
+       publishes. Nothing is lost that way, which is the side to err on for
+       a log — a mistyped entry showing twice is recoverable and a call
+       nobody can find is not. */
+    function addConversation(id, entry) {
+      var rec = byId(id);
+      if (!rec) return null;
+      var who = typeof signedInUser === "function" ? signedInUser() : null;
+      var stamped = normaliseConversation(Object.assign({
+        id: "opc-" + Date.now().toString(36) + "-" + Math.random().toString(36).slice(2, 7),
+        loggedAt: new Date().toISOString().slice(0, 10),
+        loggedBy: who ? (who.name || who.username || "") : ""
+      }, entry), rec.conversations.length);
+      patch(id, { conversations: rec.conversations.concat([stamped]) });
+      return stamped;
+    }
+
+    function removeConversation(id, entryId) {
+      var rec = byId(id);
+      if (!rec) return false;
+      var kept = rec.conversations.filter(function (c) { return c.id !== entryId; });
+      if (kept.length === rec.conversations.length) return false;
+      patch(id, { conversations: kept });
+      return true;
     }
 
     // Delete, on the same terms as the Investor CRM: made here, it is
@@ -13571,6 +13670,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
         markets: OPERATOR_MARKETS,
         priorities: OPERATOR_PRIORITIES,
         stages: OPERATOR_STAGES,
+        channels: OPERATOR_CHANNELS,
         operators: merged.map(function (r) {
           var out = Object.assign({}, r);
           out.archived = archivedNow(r);
@@ -13588,6 +13688,8 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
       create: create,
       patch: patch,
       patchMany: patchMany,
+      addConversation: addConversation,
+      removeConversation: removeConversation,
       archive: archive,
       remove: remove,
       isArchived: function (id) { return archivedNow(byId(id)); },
@@ -13596,6 +13698,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
       markets: function () { return vocabulary("markets", OPERATOR_MARKETS); },
       priorities: function () { return OPERATOR_PRIORITIES.slice(); },
       stages: function () { return OPERATOR_STAGES.slice(); },
+      channels: function () { return OPERATOR_CHANNELS.slice(); },
       hasLocalEdits: hasOverlay,
       toFile: toFile,
       adoptPublished: adoptPublished,
@@ -13634,6 +13737,10 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
     { key: "deals",      label: "Deals" },
     { key: "priority",   label: "Priority" },
     { key: "aum",        label: "AUM" },
+    // Added the day conversations arrived on this tab. The list already
+    // answered what an operator does and which deals are theirs; the
+    // question it could not answer was when anybody last spoke to them.
+    { key: "lastContact", label: "Last contact" },
     { key: "addedAt",    label: "Added" }
   ];
 
@@ -13697,6 +13804,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
       case "priority":   return OPERATOR_PRIORITIES.indexOf(rec.priority) === -1
                                 ? OPERATOR_PRIORITIES.length : OPERATOR_PRIORITIES.indexOf(rec.priority);
       case "aum":        return aumValue(rec.aum);
+      case "lastContact": return opLastContact(rec);
       case "addedAt":    return rec.addedAt || "";
       default:           return "";
     }
@@ -13730,6 +13838,14 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
                     rec.markets.join(" "), rec.deals.join(" "),
                     rec.contacts.map(function (c) {
                       return [c.name, c.title, c.email].join(" ");
+                    }).join(" "),
+                    // What was said is searched with everything else, the
+                    // way the Investor CRM searches its own log: "who
+                    // mentioned the Houston site" is a question about a
+                    // conversation, not about a field.
+                    rec.conversations.map(function (c) {
+                      return [c.date, c.channel, c.who, c.summary, c.next,
+                              c.deals.join(" ")].join(" ");
                     }).join(" ")].join(" ").toLowerCase();
     return haystack.indexOf(q) !== -1;
   }
@@ -13745,6 +13861,10 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
   // The deal list's two helpers, for operators. Same rules, same reasons.
   function opComparator(key, dirName) {
     if (key === "addedAt") return blanksLastBy(function (r) { return r.addedAt; }, dirName);
+    /* An operator nobody has spoken to is not the oldest contact on the
+       list, it is one with no contact at all — so it sorts to the end
+       whichever way the arrow points, exactly as a missing Added date does. */
+    if (key === "lastContact") return blanksLastBy(opLastContact, dirName);
     if (key === "manual") {
       return function (a, b) {
         var ao = a.order == null ? Infinity : a.order;
@@ -13799,6 +13919,12 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
     '<th class="crm-actions"><span class="visually-hidden">Actions</span></th>';
 
     var rows = list.map(function (rec) {
+      var last = opLastContact(rec);
+      // A date says the relationship is warm; it does not say what about.
+      var summary = opLastNote(rec);
+      var lastNoteCell = summary
+        ? '<span class="crm-lastnote" title="' + esc(summary) + '">' + esc(summary) + '</span>'
+        : "";
       var deals = rec.deals.length
         ? rec.deals.slice(0, 2).map(opDealChip).join("") +
           (rec.deals.length > 2 ? '<span class="crm-tag">+' + (rec.deals.length - 2) + '</span>' : "")
@@ -13818,6 +13944,12 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
                     ' list="crmDealNames" placeholder="Comma separated"')],
           ["Priority", RowEdit.select("priority", [""].concat(Operators.priorities()), rec.priority)],
           ["AUM", RowEdit.text("aum", rec.aum, ' placeholder="$1.4B"')],
+          /* Read off the newest conversation where there is one, so it is
+             shown in its slot rather than offered as a box that would
+             quietly overwrite what the log already says. Where nothing is
+             logged it is a typed date, and the record's own Edit form is
+             where it is typed. */
+          ["Last contact", RowEdit.stat(opLastContact(rec) || "Never")],
           // Stamped when the record was written down, and not editable:
           // a date somebody could change is not a record of anything.
           ["Added", RowEdit.stat(rec.addedAt || "Not recorded")]
@@ -13840,6 +13972,15 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
           ? '<span class="task-pill" data-p="' + esc(rec.priority) + '">' + esc(rec.priority) + '</span>'
           : '<span class="muted">—</span>') + '</td>' +
         '<td>' + (rec.aum ? esc(rec.aum) : '<span class="muted">—</span>') + '</td>' +
+        /* The count under the date is what separates a date somebody
+           derived from a date somebody typed. Both are true; only one of
+           them has an entry behind it you can go and read. */
+        '<td>' + (last
+          ? esc(last) + lastNoteCell +
+            '<span class="crm-sub">' + (rec.conversations.length
+              ? rec.conversations.length + " logged"
+              : "typed in, nothing logged") + '</span>'
+          : '<span class="muted">Never</span>') + '</td>' +
         '<td class="crm-date">' + (rec.addedAt ? esc(rec.addedAt) : '<span class="muted">—</span>') + '</td>' +
         '<td class="crm-actions">' +
           (archived ? "" : RowEdit.trigger("operator", rec.id, rec.name)) +
@@ -13950,6 +14091,28 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
     return "";
   }
 
+  /* LAST CONTACT IS DERIVED NOW, falling back to the typed field.
+
+     It used to be typed in and nothing else, and the note on the form said
+     why: conversations were logged against investors, not operators, so a
+     derived-looking field with nothing behind it would have been a lie.
+     They are logged here too now, so the newest one is the answer whenever
+     there is one. The box stays, because a relationship that predates this
+     tab has a last contact and no log of it — but the log wins where both
+     exist, so the date on a row and the entry under it cannot disagree. */
+  function opLastContact(rec) {
+    var logged = rec.conversations.length ? rec.conversations[0].date : "";
+    return logged || rec.lastContact || "";
+  }
+
+  // The most recent conversation, and what it said. The same [0] the date
+  // comes from, so the note on a row always belongs to the date above it.
+  function opLastNote(rec) {
+    var c = rec.conversations[0];
+    if (!c) return "";
+    return c.summary || c.channel || "";
+  }
+
   function operatorFacts(rec) {
     var contact = rec.contacts[0] || null;
     return [
@@ -13973,7 +14136,16 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
         ((contact || {}).title ? '<span class="crm-sub"> · ' + esc(contact.title) + '</span>' : "")],
       ["Contact email", (contact || {}).email
         ? '<a href="mailto:' + esc(contact.email) + '">' + esc(contact.email) + '</a>' : ""],
-      ["Last contact", esc(rec.lastContact)]
+      // The line under it is the difference between a date read off an entry
+      // somebody can go and open and a date somebody typed. Both are true.
+      ["Last contact", opLastContact(rec)
+        ? esc(opLastContact(rec)) +
+          (rec.conversations.length
+            ? '<span class="crm-sub crm-sub--under">read off ' + rec.conversations.length +
+              ' logged conversation' + (rec.conversations.length === 1 ? "" : "s") + '</span>'
+            : '<span class="crm-sub crm-sub--under">typed in — nothing logged against this ' +
+              'record</span>')
+        : ""]
     ].map(function (pair) {
       var empty = !pair[1];
       var note = pair[0] === "Equity per deal" && rec.checkSize.note ? rec.checkSize.note : "not recorded";
@@ -14036,7 +14208,8 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
           text("opEditVertical", rec.verticalIntegration, ' placeholder="In-house property management"')) +
         field("opEditLastContact", "Last contact",
           '<input type="date" id="opEditLastContact" value="' + esc(rec.lastContact) + '">' +
-          note("Typed in, not derived: conversations are logged against investors, not operators.")) +
+          note("The fallback, not the answer. A logged conversation is the last contact " +
+               "wherever there is one; this is for a relationship that predates the log.")) +
         field("opEditWebsite", "Website",
           '<input type="url" id="opEditWebsite" value="' + esc(rec.website) +
           '" autocomplete="off" placeholder="https://">') +
@@ -14068,6 +14241,37 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
         field("opEditNotes", "Notes",
           '<textarea id="opEditNotes">' + esc(rec.notes) + '</textarea>', true) +
       '</div>' +
+
+      /* The opening conversation, on the add form only, and word for word
+         the arrangement the Investor CRM's add form has: a sponsor almost
+         never arrives out of nowhere — somebody met them, and that meeting
+         was the reason to write them down. Making that one event into two
+         jobs is how it ends up being neither. Leave it empty and nothing is
+         logged; the record is created either way. */
+      (isNew
+        ? '<div class="crm-newconv">' +
+            '<h3>First conversation<span class="crm-newconv__aside">optional</span></h3>' +
+            '<p class="crm-newconv__lede">What prompted the record. Say nothing here and none ' +
+              'is logged — the rest of the log is written on the record afterwards.</p>' +
+            '<div class="crm-edit__grid">' +
+              field("opNewConvSummary", "What was said",
+                '<textarea id="opNewConvSummary" placeholder="Intro from Fairwind — they run ' +
+                'four multifamily assets in Houston"></textarea>', true) +
+              field("opNewConvDate", "Date",
+                '<input type="date" id="opNewConvDate" value="' +
+                esc(new Date().toISOString().slice(0, 10)) + '">') +
+              field("opNewConvChannel", "Channel",
+                '<select id="opNewConvChannel">' + Operators.channels().map(function (c) {
+                  return '<option value="' + esc(c) + '">' + esc(c) + '</option>';
+                }).join("") + '</select>') +
+              field("opNewConvWho", "Who was on it",
+                '<input type="text" id="opNewConvWho" autocomplete="off" ' +
+                'placeholder="Names, comma separated">') +
+              field("opNewConvNext", "Next step",
+                '<input type="text" id="opNewConvNext" autocomplete="off">') +
+            '</div>' +
+          '</div>'
+        : "") +
       '<div class="crm-edit__actions">' +
         (isNew
           ? '<button class="dash-refresh dash-refresh--primary" data-op-new-save="1">Add operator</button>' +
@@ -14134,6 +14338,110 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
     };
   }
 
+  /* ---- THE LOG ON AN OPERATOR ----------------------------------
+     Conversations were logged against investors and nowhere else
+     until this went in, and the Operator CRM said so out loud on its
+     own Last contact box. That was the whole gap: the tab knew what a
+     sponsor builds and which deals are theirs, and nothing about the
+     last four calls with them.
+
+     It is a FORM, not the agent. The agent on the Investor CRM drafts
+     an entry out of a paragraph and is what teaches the aliases, and
+     giving it an action vocabulary for a fourth dataset is still the
+     separate job it always was — see its own note. What is not a
+     separate job is writing down what was said, so the form takes it
+     directly, the way the Competitor Tracker takes an article.
+
+     And the form sits OPEN, for the reason that one does: logging a
+     call is the commonest thing anybody will do on a record they have
+     opened, and a form you have to reveal first is a form that gets
+     skipped in favour of not recording it at all.
+     -------------------------------------------------------------- */
+  function operatorConversationItem(rec, c) {
+    return '<li>' +
+      '<div class="crm-log__head">' +
+        '<span class="crm-log__date">' + esc(c.date || "Undated") + '</span>' +
+        '<span class="crm-log__channel">' + esc(c.channel || "Note") + '</span>' +
+        (c.who ? '<span class="crm-log__who">' + esc(c.who) + '</span>' : "") +
+        '<button type="button" class="mat-drop" data-op-conv-drop="' +
+          esc(rec.id + ":" + c.id) + '" title="Withdraw this entry">Remove</button>' +
+      '</div>' +
+      '<p class="crm-log__body">' + esc(c.summary || "") + '</p>' +
+      (c.deals.length ? '<p class="crm-log__next"><strong>Deals</strong>' +
+         esc(c.deals.join(", ")) + '</p>' : "") +
+      (c.next ? '<p class="crm-log__next"><strong>Next</strong>' + esc(c.next) + '</p>' : "") +
+      '<span class="crm-log__source">Logged' +
+        (c.loggedAt ? " " + esc(String(c.loggedAt).slice(0, 10)) : "") +
+        (c.loggedBy ? " by " + esc(c.loggedBy) : "") + '</span>' +
+      '</li>';
+  }
+
+  function operatorConversations(rec) {
+    function field(id, label, control, wide) {
+      return '<div class="crm-field' + (wide ? " crm-field--wide" : "") + '">' +
+             '<label for="' + id + '">' + esc(label) + '</label>' + control + '</div>';
+    }
+    // A channel a record already carries that is not in the vocabulary stays
+    // on the list, so an imported file can never lose one silently.
+    var channels = Operators.channels();
+    rec.conversations.forEach(function (c) {
+      if (c.channel && channels.indexOf(c.channel) === -1) channels.push(c.channel);
+    });
+
+    return '<div class="crm-section"><h3>Conversations' +
+      '<span class="crm-section__aside">' +
+        (rec.conversations.length
+          ? rec.conversations.length + " logged · newest first"
+          : "Nothing logged yet") +
+      '</span></h3>' +
+      (rec.conversations.length
+        ? '<ul class="crm-log">' + rec.conversations.map(function (c) {
+            return operatorConversationItem(rec, c);
+          }).join("") + '</ul>'
+        : '<p class="comp-articles__empty">No calls, meetings or site visits logged against ' +
+          esc(rec.name) + ' yet. The first one goes in below, and it is what Last contact ' +
+          'reads from once it is there.</p>') +
+
+      '<div class="rec-form">' +
+        '<h4>Log a conversation</h4>' +
+        '<div class="rec-form__grid">' +
+          field("opConvSummary", "What was said",
+            '<textarea id="opConvSummary" placeholder="Walked the Houston site — they want to ' +
+            'bring the next two deals to us together"></textarea>', true) +
+          field("opConvDate", "Date",
+            '<input type="date" id="opConvDate" value="' +
+            esc(new Date().toISOString().slice(0, 10)) + '">') +
+          field("opConvChannel", "Channel",
+            '<select id="opConvChannel">' + channels.map(function (c) {
+              return '<option value="' + esc(c) + '">' + esc(c) + '</option>';
+            }).join("") + '</select>') +
+          field("opConvWho", "Who was on it",
+            '<input type="text" id="opConvWho" autocomplete="off" ' +
+            'placeholder="Names, comma separated">') +
+          field("opConvNext", "Next step",
+            '<input type="text" id="opConvNext" autocomplete="off" ' +
+            'placeholder="Send the Co-GP terms by Friday">') +
+          // Semicolons, as everywhere on this tab: a deal folder name
+          // carries commas and splitting on those would tear it in half.
+          field("opConvDeals", "Deals discussed",
+            '<input type="text" id="opConvDeals" autocomplete="off" list="opConvDealNames" ' +
+            'placeholder="Separated by semicolons">', true) +
+        '</div>' +
+        '<datalist id="opConvDealNames">' +
+          rec.deals.concat(activeDealNames()).filter(function (v, i, a) {
+            return v && a.indexOf(v) === i;
+          }).map(function (v) { return '<option value="' + esc(v) + '">'; }).join("") +
+        '</datalist>' +
+        '<div class="crm-research__actions">' +
+          '<button type="button" class="dash-refresh dash-refresh--primary" ' +
+            'data-op-conv-add="' + esc(rec.id) + '">Log it</button>' +
+          '<span class="crm-research__hint">Saved against this operator and shared with the ' +
+            'team on the next push. What was said is the only box that has to be filled in.</span>' +
+        '</div>' +
+      '</div>' +
+    '</div>';
+  }
+
   function renderOperator(id) {
     var rec = Operators.get(id);
     if (!rec) { showOperatorView("list"); renderOperators(); return; }
@@ -14164,6 +14472,8 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
         ? rec.deals.map(opDealChip).join("")
         : '<span class="crm-tag">No deals recorded against this operator yet</span>') +
       '</div></div>');
+
+    parts.push(operatorConversations(rec));
 
     parts.push(recordTaskPanel(rec.name));
 
@@ -14205,7 +14515,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
                   checkSize: { min: null, max: null, note: "" }, aum: "",
                   founded: "", trackRecord: "", coInvest: "", verticalIntegration: "",
                   tags: [], lastContact: "", location: "", website: "",
-                  contacts: [], notes: "" };
+                  contacts: [], conversations: [], notes: "" };
     $("operatorCrumb").textContent = "New operator";
     $("operatorBody").innerHTML =
       '<div class="dash-investor__head"><div><h2>Add an operator</h2>' +
@@ -14214,6 +14524,63 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
     showOperatorView("new");
     scrollToOperator();
     $("opEditName").focus();
+  }
+
+  /* Read off the form and written to the record. "What was said" is the
+     only required box, for the same reason a link is the only required box
+     on an article: an entry saying a call happened on Tuesday and nothing
+     else is worth more than the call nobody wrote down, and the rest can
+     be filled in later. A date is never required — the box carries today's
+     already, and that IS an answer here, unlike on the add form where it
+     is only the default. */
+  function logOperatorConversation(id) {
+    var rec = Operators.get(id);
+    if (!rec) return;
+    function val(elId) { var el = $(elId); return el ? el.value.trim() : ""; }
+
+    var summary = val("opConvSummary");
+    if (!summary) {
+      toast("An entry needs to say what was said.");
+      if ($("opConvSummary")) $("opConvSummary").focus();
+      return;
+    }
+
+    Operators.addConversation(id, {
+      date: val("opConvDate") || new Date().toISOString().slice(0, 10),
+      channel: $("opConvChannel") ? $("opConvChannel").value : "",
+      who: val("opConvWho"),
+      summary: summary,
+      next: val("opConvNext"),
+      deals: val("opConvDeals")
+    });
+
+    // The list carries the last contact off this, so it is redrawn too.
+    renderOperators();
+    renderOperator(id);
+    toast("Logged against " + rec.name + ". “Publish to team” makes it everyone's copy.");
+  }
+
+  /* WITHDRAWING ONE IS A REAL REMOVAL, unlike archiving a record — and it
+     is armed the way every other removal on this page is, because a log
+     entry is often the only account of what somebody said. The limit the
+     store's comment spells out applies: until somebody publishes, a
+     colleague's browser still holding the entry can push it back. */
+  function dropOperatorConversation(button) {
+    var bits = String(button.getAttribute("data-op-conv-drop")).split(":");
+    var id = bits[0], entryId = bits.slice(1).join(":");
+    var rec = Operators.get(id);
+    if (!rec) return;
+    var entry = rec.conversations.filter(function (c) { return c.id === entryId; })[0];
+    if (!armed(button, "Remove?",
+        "Click again to withdraw this entry from " + rec.name +
+        ". The log is often the only account of what was said, and there is no undo " +
+        "short of clearing every local edit in this browser.")) return;
+
+    if (!Operators.removeConversation(id, entryId)) return;
+    renderOperators();
+    renderOperator(id);
+    toast("Withdrawn — " + ((entry && entry.date) || "that entry") +
+          " is off " + rec.name + ".");
   }
 
   function saveOperatorEdits(id) {
@@ -14231,10 +14598,32 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
     var fields = readOperatorForm();
     if (!fields.name) { toast("A record needs a company name."); $("opEditName").focus(); return; }
     var rec = Operators.create(fields);
+
+    /* "What was said" is what decides whether there was a conversation, and
+       the date cannot be: it sits at today's as the box's default rather
+       than as anybody's answer, so testing on it would log an empty entry
+       against every record ever added. Same test the Investor CRM makes. */
+    var summary = $("opNewConvSummary") ? $("opNewConvSummary").value.trim() : "";
+    if (summary) {
+      Operators.addConversation(rec.id, {
+        date: $("opNewConvDate").value || new Date().toISOString().slice(0, 10),
+        channel: $("opNewConvChannel").value,
+        who: $("opNewConvWho").value.trim(),
+        summary: summary,
+        next: $("opNewConvNext").value.trim(),
+        /* What the record itself says it is working on. At the moment an
+           operator is written down, "which deals are theirs" and "what was
+           discussed" are the same answer typed once. */
+        deals: fields.deals.slice()
+      });
+    }
+
     renderOperatorFilters();
     renderOperators();
     openOperator(rec.id);
-    toast("Added " + rec.name + ". Download operator-data.json to keep it.");
+    toast(summary
+      ? "Added " + rec.name + ", with the first conversation logged against it."
+      : "Added " + rec.name + ". Log the first conversation on the record below.");
   }
 
   /* ============================================================
@@ -14252,19 +14641,39 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
 
     sheets.push({
       name: "Operators",
-      widths: [30, 15, 24, 26, 34, 16, 14, 16, 18, 10, 30, 22, 26, 24, 14, 30, 60],
+      widths: [30, 15, 24, 26, 34, 16, 14, 16, 18, 10, 30, 22, 26, 24, 14, 10, 30, 60],
+      // Last contact is the derived one, so the sheet and the list cannot
+      // disagree, and "Logged" beside it says how many entries are behind it.
       rows: [["Company", "Stage", "Investment type", "Asset strategy", "Market focus",
               "Equity per deal", "Priority", "AUM", "Owner", "Founded", "Track record",
-              "GP co-invest", "Vertical integration", "Location", "Last contact",
+              "GP co-invest", "Vertical integration", "Location", "Last contact", "Logged",
               "Contact", "Deals"]].concat(
         list.map(function (r) {
           var c = r.contacts[0] || {};
           return [r.name, r.stage, r.investmentTypes.join(", "), r.assetStrategies.join(", "),
                   r.markets.join(", "), opCheckText(r) || r.checkSize.note, r.priority, r.aum,
                   r.owner, r.founded, r.trackRecord, r.coInvest, r.verticalIntegration,
-                  r.location, r.lastContact,
+                  r.location, opLastContact(r), r.conversations.length,
                   [c.name, c.title, c.email].filter(Boolean).join(" — "), r.deals.join("; ")];
         }))
+    });
+
+    // The log, one row per entry, newest first — the same sheet the Investor
+    // CRM exports, so the two workbooks read alike side by side.
+    var log = [];
+    list.forEach(function (r) {
+      r.conversations.forEach(function (c) {
+        log.push([c.date || "", r.name, c.channel || "", c.who || "", c.summary || "",
+                  c.deals.join("; "), c.next || "", c.loggedAt || "", c.loggedBy || ""]);
+      });
+    });
+    log.sort(function (a, b) { return String(b[0]).localeCompare(String(a[0])); });
+
+    sheets.push({
+      name: "Conversations",
+      widths: [12, 30, 14, 24, 70, 44, 44, 12, 20],
+      rows: [["Date", "Operator", "Channel", "Who", "What was said", "Deals",
+              "Next step", "Logged", "Logged by"]].concat(log)
     });
 
     // One row per operator-deal pair, which is the shape a pivot wants.
@@ -14288,7 +14697,8 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
 
     download(Xlsx.build(sheets),
              "modillion-operator-crm-" + new Date().toISOString().slice(0, 10) + ".xlsx");
-    toast("Excel workbook downloaded — " + list.length + " operators, " + byDeal.length + " deal rows.");
+    toast("Excel workbook downloaded — " + list.length + " operators, " + log.length +
+          " conversations, " + byDeal.length + " deal rows.");
   }
 
   /* ============================================================
@@ -14360,7 +14770,12 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
         opState.sortDir = opState.sortDir === "asc" ? "desc" : "asc";
       } else {
         opState.sortKey = key;
-        opState.sortDir = key === "aum" || key === "deals" ? "desc" : "asc";
+        // Biggest first for a figure, and NEWEST first for last contact —
+        // the same first click the Investor CRM's own Last contact column
+        // answers to, so the two lists do not disagree about what one
+        // means. The second click is "who has gone quiet".
+        opState.sortDir = key === "aum" || key === "deals" || key === "lastContact"
+          ? "desc" : "asc";
       }
       // A heading was chosen, so it wins over the hand-set order until
       // this tab is reloaded. The order itself is untouched.
@@ -14380,6 +14795,16 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
       opState.openArchived = !opPile.parentNode.hasAttribute("open");
       return;
     }
+
+    /* Both sit inside the record view rather than on a row, so they are
+       unaffected by the ordering rule below — but they are read before
+       [data-operator] anyway, so a log entry can never be moved onto a row
+       later and start opening the record instead of answering the click. */
+    var opConvAdd = e.target.closest("[data-op-conv-add]");
+    if (opConvAdd) { logOperatorConversation(opConvAdd.getAttribute("data-op-conv-add")); return; }
+
+    var opConvDrop = e.target.closest("[data-op-conv-drop]");
+    if (opConvDrop) { dropOperatorConversation(opConvDrop); return; }
 
     var opDelete = e.target.closest("[data-op-delete]");
     if (opDelete) { deleteOperatorRow(opDelete); return; }
@@ -14422,6 +14847,20 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
       return;
     }
 
+  });
+
+  /* Enter logs the entry from any of the single-line boxes, the way it
+     files an article on the Competitor Tracker. "What was said" is a
+     textarea and keeps its own Enter — it is the box most likely to run to
+     two paragraphs. */
+  document.addEventListener("keydown", function (e) {
+    if (e.key !== "Enter") return;
+    var box = e.target.closest("#opConvDate, #opConvChannel, #opConvWho, #opConvNext, #opConvDeals");
+    if (!box) return;
+    var btn = document.querySelector("[data-op-conv-add]");
+    if (!btn) return;
+    e.preventDefault();
+    logOperatorConversation(btn.getAttribute("data-op-conv-add"));
   });
 
   /* ============================================================
@@ -18406,10 +18845,18 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
       });
     }
 
-    // Read-only: the agent can answer "who operates in Texas" and "which
-    // operators are on East Blocks" without being able to change a record.
-    // Operator edits go through the tab, where every field is in front of
-    // you — an action vocabulary for a fourth dataset is a separate job.
+    /* Read-only: the agent can answer "who operates in Texas", "which
+       operators are on East Blocks" and now "when did we last speak to
+       them and what was said" without being able to change a record.
+       Operator edits go through the tab, where every field is in front of
+       you — an action vocabulary for a fourth dataset is a separate job,
+       and logging a conversation here is a form for the same reason.
+
+       The log is carried in full rather than summarised, the way an
+       investor's is: the summary line IS the answer to most questions
+       anybody asks about a sponsor, and a count would only say that one
+       exists. lastContact is the derived one, so the agent cannot quote a
+       date the tab does not show. */
     function operators() {
       return Operators.all().map(function (r) {
         return { id: r.id, name: r.name,
@@ -18419,7 +18866,13 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
                  deals: r.deals.slice(),
                  stage: r.stage, owner: r.owner, priority: r.priority,
                  aum: r.aum, location: r.location, founded: r.founded,
-                 trackRecord: r.trackRecord, lastContact: r.lastContact };
+                 trackRecord: r.trackRecord,
+                 lastContact: opLastContact(r),
+                 conversations: r.conversations.map(function (c) {
+                   return { date: c.date || "", channel: c.channel || "",
+                            who: c.who || "", summary: c.summary || "",
+                            next: c.next || "", deals: c.deals.slice() };
+                 }) };
       });
     }
 

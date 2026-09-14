@@ -484,8 +484,12 @@ Operator CRM (dashboard.html, "Operator CRM" tab) — added 2026-08-18:
   Dormant, shown as the same pill), EQUITY PER DEAL (the operator's answer to check size — a
   range becomes numbers the list can sort on, anything else is kept as written), OWNER (from the
   task list roster, the same single copy the Investor CRM reads), CONTACT with title and email,
-  and LAST CONTACT. Last contact is TYPED IN here rather than derived: conversations are logged
-  against investors, not operators, and a derived-looking field with nothing behind it would lie.
+  and LAST CONTACT — which is DERIVED now, and see the conversations section below. It used to be
+  typed in, because conversations were logged against investors and nothing else, and a
+  derived-looking field with nothing behind it would have lied. The box is still on the edit form
+  and is still what an operator with no log shows, so a relationship that predates this tab keeps
+  its date; where both exist the log wins, so the date on the row and the entry under it cannot
+  disagree.
 - And the fields that only matter for an operator: FOUNDED, TRACK RECORD, GP CO-INVEST and
   VERTICAL INTEGRATION — the four things asked on every sponsor call — plus free TAGS.
 - Sort on any column — AUM sorts on the figure behind the text, so $1.4B ranks above $640M, and
@@ -509,8 +513,53 @@ Operator CRM (dashboard.html, "Operator CRM" tab) — added 2026-08-18:
   Deals by operator, one row per operator-deal pair with the operator's stage and the deal's
   status, the shape a pivot wants.
 - The chat agent can READ this tab (ask it which operators are in Texas, who is on East Blocks,
-  or who the owner is) but cannot change a record. Operator edits go through the form, where every field is
+  who the owner is, when the firm last spoke to a sponsor or what was said) but cannot change a
+  record. Operator edits go through the form, where every field is
   in front of you; giving the agent an action vocabulary for a fourth dataset is a separate job.
+  The log is carried to it in full rather than as a count, because the summary line is what
+  answers most questions anybody asks about a sponsor.
+
+Conversations on an operator (dashboard.html, "Operator CRM" tab) — added 2026-09-14:
+- WHAT WAS MISSING, and it was the obvious thing: the tab knew what a sponsor builds, where, and
+  which pipeline deals are theirs, and nothing about the last four calls with them. Every one of
+  those calls lived in somebody's inbox. The Investor CRM has had a dated log since the day it
+  was written; this is the same log on the other side of the table.
+- Each entry is a DATE, a CHANNEL, WHO WAS ON IT, WHAT WAS SAID, a NEXT STEP and the DEALS
+  DISCUSSED, plus who logged it and when. Newest first, on the record.
+- Channels are the Investor CRM's list plus SITE VISIT, which is the one that only means
+  something here. Standing on an operator's asset with them is the commonest thing that is
+  neither a call nor a meeting, and filing it as either loses the part worth remembering.
+- IT IS A FORM, NOT THE AGENT, and that is the decision worth writing down. The agent on the
+  Investor CRM drafts an entry out of a paragraph and is what teaches the aliases; giving it an
+  action vocabulary for a fourth dataset is still the separate job it always was. Writing down
+  what was said is not that job. So the form takes it directly, exactly as the Competitor
+  Tracker takes an article — and it sits OPEN on the record for the same reason that one does:
+  logging a call is the commonest thing anybody will do on a record they have opened, and a form
+  you have to reveal first is a form that gets skipped in favour of not recording it at all.
+- Only "what was said" is required. An entry saying a call happened and nothing else is worth
+  more than the call nobody wrote down; the rest can follow. Enter files it from any of the
+  single-line boxes, and the textarea keeps its own Enter.
+- THE ADD FORM CARRIES THE FIRST ONE, optional, word for word the arrangement the Investor CRM's
+  add form has. A sponsor almost never arrives out of nowhere — somebody met them, and that
+  meeting was the reason to write them down. Leave it empty and nothing is logged.
+- Entries carry IDS, so the shared overlay unions two people's additions instead of doubling
+  them — the same rule articles and investor conversations follow. The honest limit is the same
+  one articles carry: a union cannot express a removal, so an entry withdrawn here can come back
+  when a colleague's browser pushes an overlay that still holds it, until somebody publishes.
+  Nothing is lost that way, which is the side to err on for a log.
+- Withdrawing an entry is armed — click, then click again — because the log is often the only
+  account of what somebody said. Deleting a whole operator now names the conversations that go
+  with it on the first click, as deleting an investor already did.
+- ON THE LIST: a LAST CONTACT column, between AUM and Added, carrying the date, the newest
+  entry's own words under it, and a count. The count is doing real work there: it says whether
+  the date is one somebody derived from an entry you can go and read, or one somebody typed.
+  An operator nobody has spoken to sorts to the END whichever way the arrow points — it is not
+  the oldest contact on the list, it has no contact at all.
+- Search runs across the log with everything else, because "who mentioned the Houston site" is a
+  question about a conversation and not about a field.
+- Export Excel gains a third sheet, Conversations — one row per entry, newest first, the same
+  shape the Investor CRM's workbook uses, so the two read alike side by side. The Operators
+  sheet carries the derived last contact and the count beside it.
 
 Competitor Tracker (dashboard.html, "Competitor Tracker" tab) — added 2026-08-25:
 - The Operator CRM turned around. That one records the firms this one invests ALONGSIDE; this
