@@ -4781,6 +4781,40 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
       .filter(function (n) { return !!n; });
   }
 
+  /* ---- an LP name, pointed at the right place --------------------
+     WHICH TAB AN LP NAME OPENS DEPENDS ON WHETHER THE DEAL CLOSED, and
+     that is the whole rule.
+
+     On a CLOSED deal the LP is, by the definition the LP Partners tab
+     runs on, an LP partner — so the name opens THEM: what else was done
+     together, what they put in, how the relationship works, every
+     conversation. Sending that name to the investor CRM instead answers
+     a question nobody asked of a closed deal, and for the several LPs
+     who have no investor record at all it answered nothing: the link was
+     a button that said "not on the investor CRM" and stopped.
+
+     On a LIVE deal the LP is not a partner yet — there is no partner
+     record to open, because nothing has closed — so the name keeps
+     pointing at the investor CRM, which is where a relationship that has
+     not happened is kept.
+
+     Both are given the index rather than looking a name up themselves:
+     these are called once per LP per ROW, and each lookup rebuilds a
+     join over every deal and every investor.
+     ----------------------------------------------------------------- */
+  function partnerLinkHtml(name, index) {
+    var found = index ? index[Partners.key(name)] : Partners.get(name);
+    /* Printed plain when there is no partner behind the name, which is
+       not a case a live closed deal can produce — every LP on one is a
+       partner — but an ARCHIVED deal can: it is out of Deals.all(), so
+       the tracker never saw it. A link that toasts an apology is worse
+       than text that never offered. */
+    return found
+      ? '<button type="button" class="debt-link" data-partner-open="' + esc(found.key) +
+        '" title="Open ' + esc(found.name) + ' on LP Partners">' + esc(name) + '</button>'
+      : esc(name);
+  }
+
   /* A name that IS on the investor CRM opens the record; one that is
      not is printed and nothing pretends otherwise — the same bargain
      the operator box makes, and the same one the materials table makes
@@ -4845,6 +4879,22 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
            (value ? '<span class="crm-clip">' + esc(value) + '</span>'
                   : '<span class="muted">—</span>') +
            (mark || "") + '</span></td>';
+  }
+
+  /* The LP column. dealCell() escapes its value, which is right for every
+     other column on this table and wrong for this one on a closed deal —
+     those names are buttons onto LP Partners. Same markup, same clipping,
+     same full value on the title; the names inside are links.
+
+     `index` is only passed by the closed list, so the pipeline's copy of
+     this column falls through to the plain cell it has always been. */
+  function dealLpCell(rec, index) {
+    var names = index ? lpNames(rec) : [];
+    if (!names.length) return dealCell(rec.lp, "lp");
+    return '<td><span class="crm-cell crm-cell--lp" title="' + esc(rec.lp) + '">' +
+           '<span class="crm-clip">' +
+             names.map(function (n) { return partnerLinkHtml(n, index); }).join(", ") +
+           '</span></span></td>';
   }
 
   /* A word saying something else is recorded here, where the thing itself
@@ -5042,6 +5092,18 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
   function dealTable(list, scope, pile) {
     var st = scope.state;
 
+    /* ONE JOIN FOR THE WHOLE TABLE, and only on the closed list — the
+       pipeline's LPs are not partners and its column is unchanged.
+
+       Built here rather than per row because Partners.all() walks every
+       deal and every investor to answer, and a table of twenty closed
+       deals would otherwise ask it thirty times to draw one screen. */
+    var partnerIndex = null;
+    if (scope.tab === "closed") {
+      partnerIndex = {};
+      Partners.allIncludingArchived().forEach(function (e) { partnerIndex[e.key] = e; });
+    }
+
     /* Each tab is one area now, so every row of either list would carry
        the same "Where" — it is on the deal itself, where it can be read
        and changed, rather than repeated down the page. */
@@ -5094,7 +5156,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
             // there is one, and the row opens the deal that holds it.
             (rec.note ? dealMark("note", rec.note) : "") + '</span></td>' +
         dealCell(rec.operator, "operator") +
-        dealCell(rec.lp, "lp") +
+        dealLpCell(rec, partnerIndex) +
         /* "Why" was a second line under the pill and it is on the pill's
            own title now, with no mark of its own beside the note's: a
            mark and a pill sharing this column left the pill about 36px
@@ -5324,14 +5386,22 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
 
   /* The LP on the deal's own page. dealField() escapes its value, which
      is right for every other box on that grid and wrong for this one —
-     these names are buttons onto the investor CRM. Same shape, markup
-     allowed through. */
+     these names are buttons. Same shape, markup allowed through.
+
+     WHERE THEY POINT follows the same rule the column does: a closed
+     deal's LP opens them on LP Partners, a live deal's on the investor
+     CRM. See partnerLinkHtml(). */
   function dealLpField(rec) {
     var names = lpNames(rec);
+    if (!names.length) {
+      return '<div class="crm-field"><label>LP</label><p class="crm-read">' +
+        '<span class="muted">\u2014</span></p></div>';
+    }
+    var closed = rec.area === "closed-deals";
     return '<div class="crm-field"><label>LP</label><p class="crm-read">' +
-      (names.length
-        ? names.map(lpNameHtml).join(", ")
-        : '<span class="muted">\u2014</span>') +
+      names.map(function (n) {
+        return closed ? partnerLinkHtml(n) : lpNameHtml(n);
+      }).join(", ") +
       '</p></div>';
   }
 
@@ -19590,6 +19660,22 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
       var pileScope = scopeFromEl(pileToggle);
       pileScope.state.open[pileToggle.getAttribute("data-deal-pile")] =
         !pileToggle.parentNode.hasAttribute("open");
+      return;
+    }
+
+    /* From an LP name on a closed deal to that partner. MATCHED HERE,
+       ABOVE [data-deal], and it has to be: the name sits inside the deal's
+       own row, so the deal would open underneath it otherwise — the same
+       ordering the row's Archive and Dead buttons rely on.
+
+       It switches tab as well as opening, the way data-raise-open does
+       going the other way: LP Partners is not a deal tab, so there is no
+       scope to read off the element. */
+    var partnerOpen = e.target.closest("[data-partner-open]");
+    if (partnerOpen) {
+      var pk = partnerOpen.getAttribute("data-partner-open");
+      if (Partners.get(pk)) { switchTab("partners"); openPartner(pk); }
+      else toast("\u201C" + pk + "\u201D is not on LP Partners \u2014 no closed deal names them.");
       return;
     }
 

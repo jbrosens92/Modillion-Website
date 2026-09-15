@@ -1823,3 +1823,44 @@ LP PARTNERS — archive, and saying which CRM, 2026-09-15:
   both the row and the record, the pile opening and staying open under a search,
   the count and the home tile agreeing, the tombstone surviving as an explicit
   false, the workbook excluding archived partners, no console errors on any tab.
+
+THE LP COLUMN ON CLOSED DEALS OPENS THE PARTNER, 2026-09-15:
+- Asked for against the closed list: "this should link to the LPs in this section
+  of Closed Deals only. Not the Investor CRM."
+- WHAT IT WAS. The LP column on both deal tables was dealCell() — plain clipped
+  text with the value on a title, and no link at all. The only LP link anywhere
+  was on a deal's own page, via lpNameHtml(), and it went to the investor CRM.
+- THE RULE, and it is the whole change: WHICH TAB AN LP NAME OPENS DEPENDS ON
+  WHETHER THE DEAL CLOSED.
+    CLOSED  the LP is, by the definition the LP Partners tab runs on, an LP
+            partner — so the name opens THEM. What else was done together, what
+            they put in, how the relationship works, every conversation.
+    LIVE    the LP is not a partner yet, because nothing has closed. The name
+            still points at the investor CRM, which is where a relationship that
+            has not happened is kept. The pipeline's column is untouched.
+- WHY IT MATTERED MORE THAN A TIDY-UP: four of the six LPs on the closed list
+  have no investor record. Sending those names to the investor CRM was a link
+  that said "not on the investor CRM" and stopped — a button whose only outcome
+  was an apology. They all have a partner record, because closing the deal is
+  what creates one.
+- Applied in both places a closed deal shows its LP: the column, and the LP box
+  on the deal's own page.
+- AN ARCHIVED DEAL'S LP IS PRINTED PLAIN, no link. An archived deal is out of
+  Deals.all(), so the tracker never saw it and there is no partner behind the
+  name. A link that toasts an apology is worse than text that never offered —
+  which is the same defect this change removed, so it must not reintroduce it
+  one pile lower. An archived PARTNER is still linked: the record exists, and
+  opening it offers Restore.
+- TWO ORDERING FACTS worth keeping:
+    1. The handler is matched ABOVE [data-deal] in the same listener, because
+       the name sits inside the deal's row and the deal would otherwise open
+       underneath it. Same ordering the row's Archive and Dead buttons rely on.
+       It could not go in the LP Partners listener: that one is registered
+       first and returns, but the deal listener still runs after it.
+    2. The name→partner index is built ONCE per table, not per row.
+       Partners.all() walks every deal and every investor to answer, and twenty
+       closed deals would otherwise ask it thirty times to draw one screen.
+- Verified in a browser: single and double LP cells, both names opening their
+  own partner, the deal staying shut underneath, the closed deal's own page,
+  the pipeline and an active deal's page unchanged, the archived deal's LP
+  plain, an archived partner still reachable, 375px and 1500px, no errors.
