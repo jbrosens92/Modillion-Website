@@ -22,11 +22,34 @@ you pass --yes. Everything sent is marked sent and will not go again.
 
 ENVIRONMENT
     MODILLION_SITE         default https://www.modillionpartners.com
-    DASHBOARD_WRITE_KEY    required for sweep and send
+    MODILLION_TOKEN        required — a dashboard session token, see below
 
 The endpoint refuses to sweep or send unless the deployment sets
-CRON_SECRET or DASHBOARD_WRITE_KEY — see the header of api/blast.js
+CRON_SECRET (the scheduler) or a signed-in person — see the header of api/blast.js
 for why this one is not allowed to run open.
+
+MODILLION_TOKEN — HOW THESE TOOLS AUTHENTICATE NOW (changed 2026-09-15)
+
+The endpoints used to be open, or locked by DASHBOARD_WRITE_KEY, which was one
+shared string. Both are gone: /api/records and /api/blast now require a real
+signed-in person, so these scripts need a session token too.
+
+Getting one takes about ten seconds and it is deliberately manual. Automating it
+would mean putting a colleague's password in a script or a CI secret, which is
+exactly the kind of standing credential this work removed:
+
+    1. Sign in to the dashboard in a browser, as you normally would.
+    2. Open dev tools -> Application -> Local Storage -> the site.
+    3. Copy the access_token out of the "modillion-session" entry.
+    4. export MODILLION_TOKEN='eyJ...'
+
+IT EXPIRES IN ABOUT AN HOUR. That is not a defect to work around: these are
+seeding and repair tools run by hand a few times a year, and a credential on
+this machine that expires on its own is the right trade. If it has gone stale
+mid-run the script says 401 and you repeat the four steps above.
+
+DO NOT paste a Supabase service-role key here instead. It would work, and it
+would be a key that bypasses every check, sitting in a shell history.
 """
 
 import argparse
@@ -42,7 +65,7 @@ DEFAULT_SITE = "https://www.modillionpartners.com"
 def call(url, key, method="GET"):
     req = urllib.request.Request(url, method=method)
     if key:
-        req.add_header("x-dashboard-key", key)
+        req.add_header("Authorization", "Bearer " + key)
     try:
         with urllib.request.urlopen(req, timeout=300) as r:
             return True, json.loads(r.read().decode("utf-8") or "{}")
@@ -121,10 +144,10 @@ def main():
     args = ap.parse_args()
 
     site = args.site.rstrip("/")
-    key = os.environ.get("DASHBOARD_WRITE_KEY", "")
+    key = os.environ.get("MODILLION_TOKEN", "")
 
     if args.op in ("sweep", "send") and not key:
-        print("No DASHBOARD_WRITE_KEY set — sweep and send will be refused.", file=sys.stderr)
+        print("No MODILLION_TOKEN set — sweep and send will be refused.", file=sys.stderr)
         return 2
 
     if args.op == "status":

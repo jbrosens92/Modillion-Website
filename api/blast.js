@@ -47,14 +47,28 @@
    stranger cares to ask — and a sweep is billable model calls, so
    an open endpoint is also a way to spend somebody else's money.
 
-   Either CRON_SECRET (what Vercel Cron sends) or
-   DASHBOARD_WRITE_KEY (x-dashboard-key, as everywhere else) must
-   be set. With neither, sweep and send return 503 saying so.
-   PREVIEW stays open, matching the posture of reads elsewhere in
-   this dashboard — a decision, not an oversight.
+   TWO CALLERS, TWO CHECKS — CHANGED 2026-09-15.
+
+     THE SCHEDULER has no person behind it and never will. Vercel
+     Cron sends `Authorization: Bearer $CRON_SECRET`, so that is
+     matched FIRST and exactly. This is the reason the check here
+     could not simply become requireUser(): the two callers share a
+     header, and a cron run carrying a shared secret is not a
+     signed-in colleague and cannot be made into one.
+
+     A PERSON pressing Sweep or Send in the dashboard now needs a
+     real Supabase session, the same as everywhere else.
+     DASHBOARD_WRITE_KEY is gone from this file with the rest.
+
+   PREVIEW AND THE PROBE ARE NO LONGER OPEN. They used to be, matching
+   the ungated reads elsewhere in the dashboard — but those reads are
+   gated now, and preview renders the digest, which is the mentions
+   data. Leaving it open would have left the whole point of this
+   change reachable by another door.
    ============================================================ */
 
 import { createHash } from "node:crypto";
+import { requireUser } from "./_auth.js";
 import { redisConfigured, readBase, readOverlay, appendOverlay, deepMerge } from "./_store.js";
 import { sweepEntry, today, clip } from "./_news.js";
 import { sendDigest, canSend } from "./notify.js";
@@ -74,13 +88,12 @@ function mentionId(watchId, url) {
   return "m-" + createHash("sha1").update(watchId + "|" + url).digest("hex").slice(0, 12);
 }
 
-function authorized(req) {
+/* The scheduler's own credential, checked before anything else and
+   compared exactly. Returns true only for a genuine cron call; a person's
+   request falls through to requireUser() at the call site. */
+function isCron(req) {
   const cron = process.env.CRON_SECRET;
-  const key = process.env.DASHBOARD_WRITE_KEY;
-  if (!cron && !key) return null;                       // unlocked — refused above
-  if (cron && req.headers.authorization === "Bearer " + cron) return true;
-  if (key && req.headers["x-dashboard-key"] === key) return true;
-  return false;
+  return !!cron && req.headers.authorization === "Bearer " + cron;
 }
 
 async function readDoc() {
@@ -304,7 +317,7 @@ export default async function handler(req, res) {
 
   if (req.method === "OPTIONS") {
     res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
-    res.setHeader("Access-Control-Allow-Headers", "Content-Type, x-dashboard-key, Authorization");
+    res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
     res.status(204).end();
     return;
   }
@@ -313,6 +326,18 @@ export default async function handler(req, res) {
   const op = String(q.op || "").trim();
 
   res.setHeader("Cache-Control", "no-store");
+
+  /* THE SCHEDULER FIRST, THEN A PERSON. Order matters: a cron call
+     carries Authorization: Bearer $CRON_SECRET, which is the same header
+     a signed-in colleague uses for a completely different kind of
+     credential. Matching the cron secret first means the Monday run never
+     reaches the JWT verifier, which would reject it — correctly, since it
+     is not a JWT and there is nobody behind it. */
+  const cron = isCron(req);
+  if (!cron) {
+    const user = await requireUser(req, res);
+    if (!user) return;
+  }
 
   if (!op) {
     let counts = null;
@@ -337,7 +362,7 @@ export default async function handler(req, res) {
       seeded: !!counts,
       research: !!process.env.ANTHROPIC_API_KEY,
       mail: canSend(),
-      locked: !!(process.env.CRON_SECRET || process.env.DASHBOARD_WRITE_KEY),
+      locked: true,          // always, now: cron secret or a signed-in person
       counts: counts
     });
     return;
@@ -348,19 +373,12 @@ export default async function handler(req, res) {
     return;
   }
 
-  if (op !== "preview") {
-    const ok = authorized(req);
-    if (ok === null) {
-      res.status(503).json({
-        error: "Set CRON_SECRET or DASHBOARD_WRITE_KEY before this endpoint will sweep or send."
-      });
-      return;
-    }
-    if (!ok) {
-      res.status(403).json({ error: "Not allowed." });
-      return;
-    }
-  }
+  /* No second check here, deliberately. Getting past the guard above
+     means either the cron secret matched or a real person is signed in,
+     and both may sweep, send and preview. The old three-way answer —
+     unlocked / refused / allowed — went with the shared key it was built
+     around: there is no "unlocked" state left to report, because
+     requireUser() fails closed when nothing is configured. */
 
   if (!redisConfigured()) {
     res.status(503).json({ error: "No records store configured." });

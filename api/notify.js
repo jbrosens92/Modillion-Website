@@ -55,6 +55,8 @@
    every address still goes through allowedRecipient().
    ============================================================ */
 
+import { requireUser } from "./_auth.js";
+
 export const maxDuration = 15;
 
 const RESEND_ENDPOINT = "https://api.resend.com/emails";
@@ -291,10 +293,29 @@ export default async function handler(req, res) {
 
   if (req.method === "OPTIONS") {
     res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
-    res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+    res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
     res.status(204).end();
     return;
   }
+
+  /* SIGNED-IN COLLEAGUES ONLY — added 2026-09-15, and of the endpoints
+     that needed this, this is the sharpest. It sends mail FROM the
+     firm's own address. Open, it let anyone with the URL put a message
+     into a modillionpartners.com inbox over the firm's return path — a
+     phishing lure with genuine headers, which is a different category of
+     problem from a record leaking.
+
+     NOTE FOR THE CRON PATH: sendDigest() below is exported and called
+     DIRECTLY by api/blast.js, in-process. It does not come through this
+     handler and is deliberately not gated here — blast.js does its own
+     check. Gating a function that the scheduler calls by import would
+     break the Monday send and nothing would say why.
+
+     The probe is covered too. It answers a question about the deployment
+     rather than about the firm, but it is cheap to gate and an ungated
+     diagnostic is how an endpoint quietly stays open. */
+  const user = await requireUser(req, res);
+  if (!user) return;
 
   // The dashboard's probe. No key is a normal state — the page falls
   // back to opening a draft in the sender's own mail client.

@@ -77,6 +77,7 @@
    ============================================================ */
 
 import Anthropic from "@anthropic-ai/sdk";
+import { requireUser } from "./_auth.js";
 
 export const maxDuration = 120;
 
@@ -316,10 +317,19 @@ export default async function handler(req, res) {
 
   if (req.method === "OPTIONS") {
     res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
-    res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+    res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
     res.status(204).end();
     return;
   }
+
+  /* SIGNED-IN COLLEAGUES ONLY — added 2026-09-15, and this endpoint
+     needed it at least as much as /api/records did. Same two costs as the agent: billable model calls behind an open URL, and a stranger able to run the firm's research budget down at will.
+
+     The probe below is covered too. It answers a question about the
+     deployment rather than about the firm, but it is cheap to gate and
+     an ungated diagnostic is how an endpoint quietly stays open. */
+  const user = await requireUser(req, res);
+  if (!user) return;
 
   // No key is a normal state: the button hides itself rather than failing.
   if (req.method === "GET") {
