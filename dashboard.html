@@ -14453,6 +14453,10 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
        do, so it pre-selects the same answer ensureLpRecord() gives. */
     var stageNow = inv.stage || (e.closed.length ? "Committed" : "Prospect");
 
+    // The team, plus whatever this record already says if it is not on it.
+    var lpTeam = [""].concat(Tasks.team().map(function (p) { return p.name; }));
+    if (inv.owner && lpTeam.indexOf(inv.owner) === -1) lpTeam.push(inv.owner);
+
     return '<div class="crm-draft is-inline">' +
       '<div class="crm-draft__grid">' +
         field("lpEditType", "Type",
@@ -14467,7 +14471,23 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
           "Read the same way the CRM reads it. Anything it cannot parse is kept as typed.") +
         field("lpEditAum", "Assets", text("lpEditAum", inv.aum)) +
         field("lpEditLocation", "Location", text("lpEditLocation", inv.location)) +
-        field("lpEditOwner", "Owner", text("lpEditOwner", inv.owner)) +
+        /* THE ROSTER, not a box to type a name into. Owner is a person on
+           this team, and it is a dropdown on the investor, operator and
+           competitor forms for the same reason: a typed name is a name
+           that can be spelled two ways, and then "whose is this" stops
+           being answerable by filtering. This form was the only one left
+           taking free text.
+
+           A name the record already carries that is NOT on the roster
+           stays selectable, so an import — or somebody who has since left
+           — can never be silently blanked by opening the form. Same rule
+           the other three follow. */
+        field("lpEditOwner", "Owner",
+          '<select id="lpEditOwner">' + lpTeam.map(function (v) {
+            return '<option value="' + esc(v) + '"' +
+              (v === inv.owner ? " selected" : "") + '>' +
+              esc(v || "not recorded") + '</option>';
+          }).join("") + '</select>') +
         field("lpEditContact", "Main contact", text("lpEditContact", contact.name)) +
         field("lpEditEmail", "Contact email",
           '<input type="email" id="lpEditEmail" autocomplete="off" value="' +
@@ -14499,7 +14519,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
       stage: $("lpEditStage") ? $("lpEditStage").value : inv.stage,
       aum: val("lpEditAum"),
       location: val("lpEditLocation"),
-      owner: val("lpEditOwner"),
+      owner: $("lpEditOwner") ? $("lpEditOwner").value : inv.owner,
       website: val("lpEditWebsite"),
       mandate: val("lpEditMandate"),
       why: val("lpEditWhy")

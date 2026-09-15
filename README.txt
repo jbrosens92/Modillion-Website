@@ -2079,3 +2079,20 @@ THE LP CRM GETS ITS OWN RECORD SET, 2026-09-15:
   one, Edit details, archive and restore round-tripping with the log intact, the
   workbook, Download lp-data.json, the agent still building its snapshot, 375px,
   and no console errors on any tab.
+
+OWNER IS A DROPDOWN ON THE LP CRM TOO, 2026-09-15:
+- Reported from the LP record's Edit details form: Owner was a free-text box
+  there, and it is a roster dropdown on the investor, operator and competitor
+  forms. It was the only one left taking typed text — an oversight in the form
+  written earlier today, not a decision.
+- WHY IT MATTERS AND NOT JUST FOR TIDINESS: a typed name is a name that can be
+  spelled two ways, and then "whose is this" stops being answerable by
+  filtering. It also meant the browser's password manager offered to autofill
+  it, which is what made it obvious in the screenshot.
+- The roster is Tasks.team(), the same list the other three read and the same
+  one the sign-in gate names, so there is no second place to keep who works here.
+- A NAME THE RECORD ALREADY CARRIES THAT IS NOT ON THE ROSTER STAYS SELECTABLE
+  and stays selected — an import, or somebody who has since left, must not be
+  silently blanked by opening the form. Verified with a fixture whose owner is
+  not on the team: the name is offered, preselected, and survives a save that
+  never touched the field.
