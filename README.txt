@@ -410,6 +410,39 @@ Connecting OneDrive — BUILT, NEVER DEPLOYED, DELETED 2026-08-20:
 - Deleted rather than kept dormant, because a 750-line file nothing calls is a file somebody
   eventually believes. It is in git history if it is ever wanted.
 
+Editing a value where it is written (every record table) — added 2026-09-15:
+- CLICK THE VALUE AND CHANGE IT. No Edit button, no Save button: a select commits the moment
+  you choose, a text box commits when you leave it. Escape puts it back. Enter saves. The cell
+  is focusable, so Enter or Space opens it without a mouse.
+- WHERE: Check size and Type on the Investor CRM and the Prospective LPs table; Priority on
+  Prospective LPs, the Operator CRM and the Competitor Tracker; Market focus on the Operator
+  CRM and Competitor Tracker. Nine cells across four tables.
+- WHY BOTH THIS AND RowEdit. They answer different questions. Setting up a new record means
+  six fields at once, and six boxes with one Save is right for that. Fixing a priority
+  somebody got wrong is ONE value, and making that cost a button, a form and a second button
+  is what made people leave it wrong. The row form stays; this sits on the handful of fields
+  that get corrected most.
+- ONLY STORED FIELDS ARE EDITABLE, and that is the rule to keep. Nothing derived is in the
+  list and nothing derived should be: Last contact comes from the conversation log, Also live
+  and Sent from the deals, and an LP's Markets column from the closed deals it is on. A
+  typeable cell over a derived value lets the table disagree with what it is a view of.
+- STAGE IS NOT EDITABLE HERE either, though it is stored. It is the one field that moves BY
+  ITSELF when a deal closes, and a value you can both type and have rewritten under you is a
+  value nobody trusts. It stays in the row form, where the act is deliberate.
+- COMMITTING ON BLUR is the whole point and also the risk: there is no Save to press, so
+  leaving the box IS the save and a mis-typed value is kept rather than abandoned. Tolerable
+  only because every edit is a patch on a shared overlay that can be edited again, and because
+  Escape reverts before a blur ever happens.
+- THE BUG WORTH REMEMBERING: committing repaints the table, which destroys every node in it
+  including the one just clicked. Taking the cell from the click event and using it after the
+  commit gives a detached element — the control is built, inserted into nothing, and never
+  seen. Clicking straight from one cell to the next did exactly that: it saved the first and
+  silently opened nothing. start() now looks the cell up again AFTER the close. Anything else
+  added here must do the same.
+- The live poll defers a repaint while a cell is open (CellEdit.held(), beside the existing
+  typing() check). A repaint under an open cell would throw away a part-finished choice, and
+  the cell is the one place with no Save button to get it back.
+
 Editing an LP on the row (LP CRM) — added 2026-09-15:
 - The Prospective LPs table now carries the same "Edit" button the Investor CRM, Operator CRM,
   Competitor Tracker and Deal Pipeline have had: the row becomes a small form in place, with
