@@ -1864,3 +1864,61 @@ THE LP COLUMN ON CLOSED DEALS OPENS THE PARTNER, 2026-09-15:
   own partner, the deal staying shut underneath, the closed deal's own page,
   the pipeline and an active deal's page unchanged, the archived deal's LP
   plain, an archived partner still reachable, 375px and 1500px, no errors.
+
+PROSPECTIVE LPs, AND THE TAB BECOMES TWO LISTS, 2026-09-15:
+- Asked for: "there should be Prospective LPs that we can add and record
+  conversations and meetings like we do in the Investor CRM tab. And then we can
+  have Current LP Partners which will include Makarora and Prospect Ridge etc."
+- THIS REVERSES PART OF THE ORIGINAL DECISION and the reversal is deliberate, so
+  say it plainly: this tab said it had no Add button because a partner is not a
+  thing anybody creates. That is still true OF A PARTNER. It was never true of a
+  prospect — a firm we are talking to about being an LP exists because somebody
+  decided to talk to them, and nothing derives that. So the tab is two lists:
+    CURRENT LP PARTNERS   derived from the closed deals, exactly as before. No
+                          Add button, and there still should not be one.
+    PROSPECTIVE LPs       added by hand. The Add button belongs to this half.
+- THE DEALS STILL DECIDE WHICH LIST A FIRM IS ON, which is what keeps the two
+  from ever disagreeing. A prospect is a flagged record WITH NOTHING CLOSED YET.
+  Close a deal with one and they leave the prospective list and appear under
+  Current on the next render, with every conversation intact, because it was
+  never their group that held it. NOBODY CONVERTS ANYTHING — there is no promote
+  button and there must not be one, because it could be pressed when no deal had
+  closed and then the tab would be lying about what closed.
+- STILL NO SECOND STORE. A prospective LP is an INVESTOR CRM RECORD carrying
+  lpProspect — the same record, not a copy. Adding a name already on the
+  Investor CRM FLAGS that record rather than duplicating it, and overwrites
+  nothing: somebody putting a firm they already track on the LP list is saying
+  one thing about them, not restating the record. A name that is not on it gets
+  a record there at stage Prospect. So this button never creates a firm the
+  Investor CRM does not then hold, and never holds one twice.
+- THE FLAG IS NOT CLEARED ON PROMOTION. It records what we set out to do with
+  them; clearing it would make a firm that closed look like one nobody pursued.
+  It simply stops deciding anything once a deal closes.
+- CONVERSATIONS AND MEETINGS ARE LOGGED ON THE TAB NOW, with the Operator CRM's
+  form rather than the Investor CRM's agent box: the box is the right tool for
+  pasting an email thread and the wrong one when you have just come off a call
+  and are already looking at the record. Both are offered — the form at the foot
+  of the record, "Read a thread into the log" in the header. Both write through
+  Crm.addConversation, so there is one log and the Investor CRM shows it.
+  Its ids carry an "lpConv" prefix for the reason the send form carries one.
+- THE FILTERS ARE THE PARTNER LIST'S, and a prospect is only ever excluded by
+  one it can answer. Operator, market, asset class and deal all describe a
+  CLOSED deal, so any of them being set hides the prospective list with a line
+  saying why rather than pretending to filter it. Search and the CRM filter
+  apply to both.
+- A BUG CAUGHT IN TESTING, and worth recording because it was invisible by
+  reading: the prospective table has an "Also live" column and prospects() was
+  returning live: [] for everybody. build() had been dropping every name with no
+  closed deal on the floor, so the live deals were computed and thrown away.
+  Split into gather() — every name the deals mention — and build(), which is
+  gather() filtered to the ones with something closed. prospects() now reads
+  the live deals off the same pass.
+- Verified in a browser: both add paths (new record created at stage Prospect
+  with the typed fields; existing record flagged only, CRM count up by one, no
+  field overwritten), a meeting logged on the tab appearing on the Investor CRM
+  record, THE PROMOTION — a prospect on a live deal staying prospective, then
+  moving to Current with its log when the deal was closed — search across both
+  groups, a deal-only filter hiding the prospective list with its reason,
+  archive and restore of a prospect into the shared pile, the workbook's new
+  sheet, the CRM edit form not clearing the flag, 375px, and no console errors
+  on any tab.
