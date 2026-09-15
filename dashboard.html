@@ -846,6 +846,43 @@ body[data-state="ready"]  .dash-gate { display: none; }
 }
 .dash-gate__error[hidden] { display: none; }
 
+/* A value you can click and change. The affordance is deliberately almost
+   invisible until the pointer is on it: these tables are read far more
+   often than they are edited, and a dotted underline on every second cell
+   would make a dense table harder to read for the sake of a rarer act. */
+.celledit {
+  display: inline-block;
+  cursor: text;
+  border-radius: 3px;
+  padding: 1px 4px;
+  margin: -1px -4px;
+  transition: background .12s ease, box-shadow .12s ease;
+}
+.celledit:hover {
+  background: rgba(93, 124, 145, .1);
+  box-shadow: inset 0 -1px 0 rgba(93, 124, 145, .45);
+}
+.celledit:focus-visible {
+  outline: 2px solid var(--oak);
+  outline-offset: 1px;
+}
+/* The control that replaces it. Sized to the cell rather than to its
+   content, so opening one does not shove the columns sideways. */
+.celledit__control {
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  font: inherit;
+  font-size: .86rem;
+  padding: 3px 6px;
+  border: 1px solid var(--oak);
+  border-radius: 3px;
+  background: #fff;
+  color: inherit;
+}
+.celledit__control:focus { outline: none; box-shadow: 0 0 0 2px rgba(93, 124, 145, .25); }
+
+
 
 @media (max-width: 560px) {
   .dash-gate__row { flex-direction: column; }
@@ -8607,7 +8644,14 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
     function paint(set) {
       var entry = SETS[set];
       if (!entry) return;
-      if (typing() || entry.held()) { pending[set] = true; return; }
+      /* CellEdit.held() as well as typing(): the cell control is focused,
+         so typing() normally catches it, but a native select dropdown can
+         hold focus somewhere the document cannot see. A repaint under an
+         open cell would throw away what somebody is part-way through
+         choosing, and the cell is the one place with no Save button to
+         get it back. */
+      var cellOpen = typeof CellEdit !== "undefined" && CellEdit.held();
+      if (typing() || cellOpen || entry.held()) { pending[set] = true; return; }
       delete pending[set];
       try { entry.render(); } catch (e) { /* a bad repaint must not stop the poll */ }
     }
@@ -10883,7 +10927,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
         '<td>' + (archived ? "" : rowGrip(inv.id, inv.name)) +
           '<span class="crm-name">' + esc(inv.name) + '</span>' +
           (inv.location ? '<span class="crm-sub">' + esc(inv.location) + '</span>' : "") + '</td>' +
-        '<td>' + esc(inv.type) +
+        '<td>' + CellEdit.cell("investor", inv.id, "type", esc(inv.type)) +
           (inv.aum ? '<span class="crm-sub">' + esc(inv.aum) + '</span>' : "") + '</td>' +
         '<td>' + (inv.assetClasses.length
           ? inv.assetClasses.slice(0, 2).map(function (a) {
@@ -10893,7 +10937,8 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
               ? '<span class="crm-tag">+' + (inv.assetClasses.length - 2) + '</span>' : "")
           : '<span class="muted">—</span>') + '</td>' +
         '<td><span class="crm-pill" data-stage="' + esc(inv.stage) + '">' + esc(inv.stage) + '</span></td>' +
-        '<td>' + (checkText(inv) ? esc(checkText(inv)) : '<span class="muted">—</span>') + '</td>' +
+        '<td>' + CellEdit.cell("investor", inv.id, "check",
+          checkText(inv) ? esc(checkText(inv)) : '<span class="muted">—</span>') + '</td>' +
         '<td>' + deals + '</td>' +
         '<td>' + sentTags(inv) + '</td>' +
         '<td>' + (last
@@ -14515,14 +14560,21 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
           (inv.location ? '<span class="crm-sub">' + esc(inv.location) + '</span>' : "") + '</td>' +
         '<td><span class="crm-pill" data-stage="' + esc(inv.stage) + '">' +
           esc(inv.stage) + '</span></td>' +
-        '<td>' + (inv.priority
+        /* The three that get corrected most often, editable where they
+           are written — see CellEdit. Stage is not among them on purpose:
+           it is the one field on this row that moves BY ITSELF when a deal
+           closes, and a value you can both type and have rewritten under
+           you is a value nobody trusts. */
+        '<td>' + CellEdit.cell("lp", inv.id, "priority", inv.priority
           ? '<span class="task-pill" data-p="' + esc(inv.priority) + '">' +
             esc(inv.priority) + '</span>'
-          : '<span class="muted">—</span>') + '</td>' +
-        '<td>' + (checkText(inv) ? esc(checkText(inv))
-                                 : '<span class="muted">\u2014</span>') + '</td>' +
-        '<td>' + (inv.type && inv.type !== "Unclassified" ? esc(inv.type)
-                                 : '<span class="muted">\u2014</span>') + '</td>' +
+          : '<span class="muted">\u2014</span>') + '</td>' +
+        '<td>' + CellEdit.cell("lp", inv.id, "check",
+          checkText(inv) ? esc(checkText(inv))
+                         : '<span class="muted">\u2014</span>') + '</td>' +
+        '<td>' + CellEdit.cell("lp", inv.id, "type",
+          inv.type && inv.type !== "Unclassified" ? esc(inv.type)
+                         : '<span class="muted">\u2014</span>') + '</td>' +
         /* A prospect CAN be beside us on a live deal — that is often
            exactly why they are a prospect — and it is the one deal fact
            worth a column here. A closed one would move them off this
@@ -17077,11 +17129,12 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
           : '<span class="muted">—</span>') + '</td>' +
         '<td>' + opTagStack(rec.investmentTypes, "type") + '</td>' +
         '<td>' + opTagStack(rec.assetStrategies, "strategy") + '</td>' +
-        '<td>' + opTagStack(rec.markets, "market", 3) + '</td>' +
+        '<td>' + CellEdit.cell("operator", rec.id, "markets",
+          opTagStack(rec.markets, "market", 3)) + '</td>' +
         '<td>' + deals +
           (rec.deals.length ? '<span class="crm-sub">' + rec.deals.length + ' active deal' +
             (rec.deals.length === 1 ? "" : "s") + '</span>' : "") + '</td>' +
-        '<td>' + (rec.priority
+        '<td>' + CellEdit.cell("operator", rec.id, "priority", rec.priority
           ? '<span class="task-pill" data-p="' + esc(rec.priority) + '">' + esc(rec.priority) + '</span>'
           : '<span class="muted">—</span>') + '</td>' +
         '<td>' + (rec.aum ? esc(rec.aum) : '<span class="muted">—</span>') + '</td>' +
@@ -18610,12 +18663,13 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
           : '<span class="muted">—</span>') + '</td>' +
         '<td>' + compTagStack(rec.capitalTypes, "capital") + '</td>' +
         '<td>' + compTagStack(rec.assetStrategies, "strategy") + '</td>' +
-        '<td>' + compTagStack(rec.markets, "market", 3) + '</td>' +
+        '<td>' + CellEdit.cell("competitor", rec.id, "markets",
+          compTagStack(rec.markets, "market", 3)) + '</td>' +
         '<td>' + (rec.articles.length
           ? '<span class="comp-count">' + rec.articles.length + '</span>' +
             (last ? '<span class="crm-sub">latest ' + esc(last) + '</span>' : "")
           : '<span class="muted">—</span>') + '</td>' +
-        '<td>' + (rec.priority
+        '<td>' + CellEdit.cell("competitor", rec.id, "priority", rec.priority
           ? '<span class="task-pill" data-p="' + esc(rec.priority) + '">' + esc(rec.priority) + '</span>'
           : '<span class="muted">—</span>') + '</td>' +
         '<td>' + (rec.aum ? esc(rec.aum) : '<span class="muted">—</span>') + '</td>' +
@@ -24308,6 +24362,257 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
      row; what is shared is the state, the inputs, reading them back,
      and the rules about what a click inside an open row means.
      ============================================================ */
+  /* ============================================================
+     EDITING A VALUE WHERE IT IS WRITTEN
+
+     RowEdit above turns a whole row into a form. This is the smaller
+     thing beside it: click the value itself and change that one value.
+     No Edit button, no Save button — leave the box and it is saved.
+
+     WHY BOTH EXIST. They answer different questions. Setting up a new
+     record means filling in six fields at once, and six boxes with one
+     Save is the right shape for that. Fixing a priority somebody got
+     wrong is ONE value, and making that cost a button, a form and a
+     second button is what made people avoid doing it. The row form
+     stays; this sits on top of the three or four fields that get
+     corrected most often.
+
+     WHAT IS EDITABLE HERE IS DELIBERATELY NARROW — a fixed list of
+     fields that are STORED ON THE RECORD and are cheap to get right in
+     one control. Nothing derived is in it and nothing derived should
+     be: a cell worked out from the deals or the conversation log must
+     not be typeable, or the table starts disagreeing with what it is
+     a view of.
+
+     COMMITTING ON BLUR IS THE WHOLE POINT and also the one risk. There
+     is no Save to press, so leaving the box IS the save, and a click
+     anywhere else commits. That is what makes it fast. It also means
+     a mis-typed value is saved rather than abandoned — which is
+     tolerable here only because every edit is a patch on a shared
+     overlay that can be edited again, and because Escape reverts
+     before blur ever happens.
+     ============================================================ */
+  var CellEdit = (function () {
+    var open = null;          // { kind, id, field, td, html }
+
+    /* One entry per record type: how to read it, how to write it, and
+       what to repaint afterwards. Mirrors RowEdit's KINDS on purpose —
+       if a fifth record type ever wants this, it is one more entry. */
+    var KINDS = {
+      lp: {
+        get: function (id) { return Lps.get(id); },
+        patch: function (id, p) { Lps.patch(id, p); },
+        render: function () { renderPartnerFilters(); renderPartners(); refreshOpenPartner(); },
+        priorities: function () { return ["", "High", "Medium", "Low"]; },
+        typeList: "lpTypeSuggestions"
+      },
+      investor: {
+        get: function (id) { return Crm.get(id); },
+        patch: function (id, p) { Crm.patch(id, p); },
+        render: function () { renderCrmFilters(); renderCrm(); },
+        priorities: function () { return ["", "High", "Medium", "Low"]; },
+        typeList: "crmRowTypes"
+      },
+      operator: {
+        get: function (id) { return Operators.get(id); },
+        patch: function (id, p) { Operators.patch(id, p); },
+        render: function () { renderOperatorFilters(); renderOperators(); },
+        priorities: function () { return [""].concat(Operators.priorities()); },
+        marketList: "opMarkets"
+      },
+      competitor: {
+        get: function (id) { return Competitors.get(id); },
+        patch: function (id, p) { Competitors.patch(id, p); },
+        render: function () { renderCompetitorFilters(); renderCompetitors(); },
+        priorities: function () { return [""].concat(Competitors.priorities()); },
+        marketList: "compMarkets"
+      }
+    };
+
+    /* One entry per editable field: the control it becomes, the value it
+       starts from, and the patch it produces. Adding a field is an entry
+       here plus a cell() call at the place it is drawn. */
+    var FIELDS = {
+      priority: {
+        control: "select",
+        options: function (k) { return k.priorities(); },
+        value: function (rec) { return rec.priority || ""; },
+        patch: function (v) { return { priority: v }; }
+      },
+      type: {
+        control: "text",
+        list: function (k) { return k.typeList; },
+        value: function (rec) { return rec.type === "Unclassified" ? "" : (rec.type || ""); },
+        /* Blank means "not classified", which is a real answer and the
+           one the rest of the page already expects to see. */
+        patch: function (v) { return { type: v.trim() || "Unclassified" }; }
+      },
+      check: {
+        control: "text",
+        placeholder: "$3m–$6m",
+        value: function (rec) {
+          var cs = rec.checkSize || {};
+          return checkText(rec) || cs.note || "";
+        },
+        /* The same parse the record form and the row form use, so a range
+           typed here is still a range the column can sort on and anything
+           it cannot read is kept exactly as typed. */
+        patch: function (v) { return { checkSize: parseCheckInput(v) }; }
+      },
+      markets: {
+        control: "text",
+        list: function (k) { return k.marketList; },
+        placeholder: "Comma separated",
+        value: function (rec) { return (rec.markets || []).join(", "); },
+        patch: function (v) { return { markets: RowEdit.list(v) }; }
+      }
+    };
+
+    /* Wrap a cell's normal contents so it can be clicked into. The
+       display stays exactly what it was — this adds the hook and the
+       affordance, it does not restyle the value. */
+    function cell(kind, id, field, displayHtml) {
+      if (!KINDS[kind] || !FIELDS[field]) return displayHtml;
+      return '<span class="celledit" tabindex="0" role="button"' +
+        ' data-celledit="' + esc(kind + ":" + id + ":" + field) + '"' +
+        ' title="Click to edit">' + displayHtml + '</span>';
+    }
+
+    function close(save) {
+      if (!open) return;
+      var o = open;
+      var box = o.td.querySelector("[data-celledit-input]");
+      open = null;                       // before any repaint, so nothing re-enters
+
+      if (!save || !box) { o.td.innerHTML = o.html; return; }
+
+      var k = KINDS[o.kind], f = FIELDS[o.field];
+      var rec = k.get(o.id);
+      if (!rec) { o.td.innerHTML = o.html; return; }
+
+      var typed = box.value;
+      if (typed === f.value(rec)) { o.td.innerHTML = o.html; return; }   // nothing changed
+
+      k.patch(o.id, f.patch(typed));
+      k.render();                        // redraws the table, cell included
+      toast("Saved.");
+    }
+
+    /* Find a cell by its token in the CURRENT document. Deliberately a
+       scan rather than a selector: the token carries a record id, and an
+       id is not guaranteed to be safe to paste into a CSS attribute
+       selector. Four tables of a few dozen rows makes this free. */
+    function find(token) {
+      var all = document.querySelectorAll("[data-celledit]");
+      for (var i = 0; i < all.length; i++) {
+        if (all[i].getAttribute("data-celledit") === token) return all[i];
+      }
+      return null;
+    }
+
+    /* THE td IS LOOKED UP AFTER THE CLOSE, NEVER BEFORE IT.
+
+       Closing commits, and committing repaints the table — which throws
+       away every node in it, including the one that was just clicked.
+       Taking the cell from the click event and using it after that gives
+       you a detached element: the control is built, inserted into nothing
+       and never seen. Clicking straight from one cell to the next did
+       exactly that, saving the first and silently opening nothing. */
+    function start(token) {
+      if (open) close(true);             // one at a time; leaving the last one saves it
+      var hook = find(token);
+      var td = hook && hook.closest("td");
+      if (!td) return;
+      var bits = String(token).split(":");
+      var kind = bits[0], field = bits[bits.length - 1];
+      var id = bits.slice(1, -1).join(":");        // ids may contain colons
+      var k = KINDS[kind], f = FIELDS[field];
+      if (!k || !f) return;
+      var rec = k.get(id);
+      if (!rec) return;
+
+      var current = f.value(rec);
+      var html;
+      if (f.control === "select") {
+        var opts = f.options(k).slice();
+        if (current && opts.indexOf(current) === -1) opts.push(current);
+        html = '<select class="celledit__control" data-celledit-input>' +
+          opts.map(function (v) {
+            return '<option value="' + esc(v) + '"' + (v === current ? " selected" : "") + '>' +
+              esc(v || "—") + '</option>';
+          }).join("") + '</select>';
+      } else {
+        var list = f.list ? f.list(k) : "";
+        html = '<input type="text" class="celledit__control" data-celledit-input' +
+          ' value="' + esc(current) + '"' +
+          (list ? ' list="' + esc(list) + '"' : "") +
+          (f.placeholder ? ' placeholder="' + esc(f.placeholder) + '"' : "") +
+          ' autocomplete="off">';
+      }
+
+      open = { kind: kind, id: id, field: field, td: td, html: td.innerHTML };
+      td.innerHTML = html;
+      var box = td.querySelector("[data-celledit-input]");
+      if (box) { box.focus(); if (box.select) box.select(); }
+    }
+
+    /* Capture, ahead of the row handler that opens the record — a click
+       meant for a cell must not also navigate away from the table. */
+    document.addEventListener("click", function (e) {
+      if (!e.target.closest) return;
+
+      if (open && e.target.closest("[data-celledit-input]")) { e.stopPropagation(); return; }
+
+      var hook = e.target.closest("[data-celledit]");
+      if (hook) {
+        e.stopPropagation(); e.preventDefault();
+        start(hook.getAttribute("data-celledit"));
+        return;
+      }
+      /* A click anywhere else is the save. Doing it here rather than on
+         blur alone means a click that lands on another cell still commits
+         this one first, in the right order. */
+      if (open) close(true);
+    }, true);
+
+    document.addEventListener("keydown", function (e) {
+      if (!open || !e.target.closest || !e.target.closest("[data-celledit-input]")) return;
+      if (e.key === "Enter")      { e.preventDefault(); close(true); }
+      else if (e.key === "Escape"){ e.preventDefault(); e.stopPropagation(); close(false); }
+      else if (e.key === "Tab")   { close(true); }     // let the browser move on
+    }, true);
+
+    /* Keyboard: the cell is focusable, so Enter or Space opens it without
+       a mouse. Without this the whole thing is mouse-only. */
+    document.addEventListener("keydown", function (e) {
+      if (open || !e.target.closest) return;
+      var hook = e.target.closest("[data-celledit]");
+      if (!hook) return;
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault(); e.stopPropagation();
+        start(hook.getAttribute("data-celledit"));
+      }
+    }, true);
+
+    /* A select commits the moment it changes — there is nothing more to
+       type, and asking for a second action would be the click this whole
+       thing exists to remove. */
+    document.addEventListener("change", function (e) {
+      if (!open || !e.target.closest) return;
+      if (e.target.closest("select[data-celledit-input]")) close(true);
+    }, true);
+
+    // Leaving the box by any route that is not a click or a key.
+    document.addEventListener("focusout", function (e) {
+      if (!open || !e.target.closest || !e.target.closest("[data-celledit-input]")) return;
+      setTimeout(function () {
+        if (open && !document.querySelector("[data-celledit-input]:focus")) close(true);
+      }, 0);
+    }, true);
+
+    return { cell: cell, held: function () { return !!open; } };
+  })();
+
   var RowEdit = (function () {
     var open = null;   // { kind: "deal" | "investor" | "operator" | "competitor", id: "..." }
 
