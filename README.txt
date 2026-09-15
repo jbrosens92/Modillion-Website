@@ -1866,9 +1866,12 @@ THE LP COLUMN ON CLOSED DEALS OPENS THE PARTNER, 2026-09-15:
   plain, an archived partner still reachable, 375px and 1500px, no errors.
 
 PROSPECTIVE LPs, AND THE TAB BECOMES TWO LISTS, 2026-09-15:
-- Asked for: "there should be Prospective LPs that we can add and record
-  conversations and meetings like we do in the Investor CRM tab. And then we can
-  have Current LP Partners which will include Makarora and Prospect Ridge etc."
+- Asked for: prospective LPs that can be added by hand and have conversations and
+  meetings recorded against them the way the Investor CRM does, sitting beside a
+  Current LP Partners list holding the firms already closed alongside.
+  (Paraphrased on purpose. The request named two real LPs and this file is in a
+  PUBLIC repository — see "Everything lives in Vercel now". No record name
+  belongs in here.)
 - THIS REVERSES PART OF THE ORIGINAL DECISION and the reversal is deliberate, so
   say it plainly: this tab said it had no Add button because a partner is not a
   thing anybody creates. That is still true OF A PARTNER. It was never true of a
