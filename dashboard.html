@@ -13125,57 +13125,47 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
   /* ============================================================
      LP CRM — DATA
 
-     WHO IS ON THIS TAB, AND WHY IT IS NOT A RECORD SET
+     WHO IS ON THIS TAB, AND WHO IS EMPHATICALLY NOT
 
-     Every other tab here is a list of records somebody typed. This
-     one is not, and that is the design rather than a shortcut. An LP
-     partner is not a thing anybody decides to create — it is what a
-     firm BECOMES the moment a deal closes with them beside us, and
-     the two places that fact is already written down are the deal's
-     LP box and the commitments on its raise. So membership is
-     DERIVED from those, every render, and there is no Add button:
-     close a deal with somebody and they are here; take their name
-     off the deal and they are not. A list you can add to by hand is
-     a list that can disagree with the deals, and the disagreement
-     would always be this tab's fault.
+     TWO DIFFERENT KINDS OF LP, and the dashboard keeps one tab for
+     each. Getting them the wrong way round is the mistake this note
+     exists to prevent:
 
-     THE OTHER HALF — contacts, conversations, what they have been
-     sent, notes — is the INVESTOR RECORD, read and written exactly
-     where it already lives. Logging a conversation here logs it on
-     the investor CRM, because it is the same conversation with the
-     same firm, and a partner log kept separately would be a second
-     answer to "when did we last speak to them".
+       INVESTOR CRM   LPs FOR MODILLION. The firm raises money from
+                      them into its own deals and vehicles, and every
+                      commitment on a Capital Raise is one of them.
 
-     So this module joins and nothing else. It stores no records, has
-     no overlay, no publish button and no Download — there is nothing
-     of its own to lose. Everything it shows is saved by the tab that
-     owns it.
+       LP CRM (here)  LPs FOR OUR PARTNERS AND DEALS. The capital
+                      partner sitting beside us ON the deal — the
+                      name in the deal's LP box.
 
-     ------------------------------------------------------------
-     THE TWO WAYS SOMEBODY GETS HERE, and both are "we closed with
-     them" said by different parts of the same deal:
+     They are not the same population and they are not the same
+     relationship. One deal has both: a deal LP is beside us on it,
+     AND we raise co-invest for that same deal from our own
+     investors. A firm can appear in both roles, but that is two
+     relationships with one firm, not one fact filed twice.
 
-       NAMED LP   their name is in the deal's LP box (lpNames()) and
-                  the deal is in Closed Deals. This is the capital
-                  partner beside us on the deal itself.
+     THIS TAB IS THE DEAL-LP SIDE ONLY. Membership is the deal's LP
+     box and nothing else. Commitments on a raise used to put people
+     here too, and that was WRONG: money committed to a raise is
+     money raised from a Modillion investor, which is the other tab's
+     subject entirely.
 
-       COMMITTED  they hold a Hard or Funded commitment on a closed
-                  deal's raise. Money in, deal done.
-
-     A SOFT CIRCLE IS NOT A PARTNERSHIP and neither is a Passed —
-     the raise panel exists to keep that distinction and this must
-     not quietly drop it, so RAISE_COUNTED is the same gate here that
-     it is there. A commitment marked GP-side is a co-GP rather than
-     an LP and is left out; one with no side recorded is kept,
-     because a commitment written before that question existed has no
-     answer to it and inventing "GP" would remove a real partner.
+     WHY IT IS NOT A RECORD SET. A deal LP is not a thing anybody
+     decides to create — it is what a firm IS the moment a deal
+     closes with them beside us, and that fact is already written
+     down in the deal. So membership is DERIVED, every render, and
+     there is no Add button on the Current list: close a deal with
+     somebody and they are here; take their name off the deal and
+     they are not. A list you can add to by hand is a list that can
+     disagree with the deals, and the disagreement would always be
+     this tab's fault.
 
      JOINED BY NAME, case-insensitively, which is the join every
      reference to a record on this page uses — see the note over
      Deals.byName(). Rename a firm on the deal and it becomes a
      different partner here, exactly as true as it is everywhere
-     else. The SPELLING SHOWN is the investor CRM's when a record
-     matches, because that is the one somebody maintains.
+     else.
 
      ARCHIVED DEALS ARE OUT, because Deals.all() leaves them out and
      the Closed Deals tab counts the same way. A partner list that
@@ -13186,26 +13176,13 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
 
     function key(name) { return String(name || "").trim().toLowerCase(); }
 
-    /* An LP-side commitment that actually landed. Blank side is kept —
-       see the note above; only an explicit GP is a co-GP. */
-    function lpCommitment(c) {
-      return !!RAISE_COUNTED[c.status] && c.side !== "GP";
-    }
-
     function entry(k, name) {
       return { key: k, name: name, investor: null, archived: false,
-               /* One row per deal, each saying HOW they are in it. The
-                  two routes are collected separately and merged onto one
-                  row, because a firm can be the named LP and hold a
-                  commitment on the same deal and that is one partnership,
-                  not two. */
                deals: {}, closed: [], live: [] };
     }
 
     function row(e, rec) {
-      if (!e.deals[rec.id]) {
-        e.deals[rec.id] = { deal: rec, named: false, commitments: [] };
-      }
+      if (!e.deals[rec.id]) e.deals[rec.id] = { deal: rec };
       return e.deals[rec.id];
     }
 
@@ -13219,16 +13196,12 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
         return row(by[k], rec);
       }
 
+      /* THE DEAL'S LP BOX, AND NOTHING ELSE. The raise's commitments are
+         deliberately not read here — see the note at the top of this
+         module. Somebody committing to a Capital Raise is a Modillion
+         investor, and the Investor CRM is where they belong. */
       Deals.all().forEach(function (rec) {
-        lpNames(rec).forEach(function (n) {
-          var r = reach(n, rec);
-          if (r) r.named = true;
-        });
-        ((rec.raise && rec.raise.commitments) || []).forEach(function (c) {
-          if (!lpCommitment(c)) return;
-          var r = reach(c.investor, rec);
-          if (r) r.commitments.push(c);
-        });
+        lpNames(rec).forEach(function (n) { reach(n, rec); });
       });
 
       /* The investor record behind each name, looked up once rather
@@ -13368,46 +13341,25 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
 
     /* WHAT THEIR CHEQUE WAS ON ONE DEAL, and the honest caveat on it.
 
-       A commitment is theirs and says so. The deal's `lpCheck` is the
-       DEAL's LP equity, which is the same thing only when they are the
-       only LP named on it — so when the deal names more than one, the
-       figure is still shown (it is the only figure there is) and it is
-       labelled as the deal's rather than as theirs.
+       The deal's `lpCheck` is the DEAL's LP equity, which is this
+       partner's cheque only when they are the only LP named on it — so
+       when the deal names more than one, the figure is still shown (it
+       is the only figure there is) and it is labelled as the deal's
+       rather than as theirs.
 
-       NOTHING IS ADDED UP ACROSS DEALS. The investor record's LP
-       section already declines to, for the reason that a column of
-       prose amounts read at different moments of different deals is
-       not a portfolio total, and a number people would quote is worse
-       than no number. */
+       NOTHING IS ADDED UP ACROSS DEALS. A column of prose amounts read
+       at different moments of different deals is not a portfolio total,
+       and a number people would quote is worse than no number.
+       ----------------------------------------------------------------- */
     function cheque(r) {
-      var committed = r.commitments.filter(function (c) { return c.amount; });
-      if (committed.length) {
-        return { text: committed.map(function (c) { return c.amount; }).join(" + "),
-                 whose: "theirs" };
-      }
       var text = dealMoneyText(r.deal.lpCheck);
       if (!text) return { text: "", whose: "" };
-      return { text: text,
-               whose: lpNames(r.deal).length > 1 ? "deal" : "theirs" };
-    }
-
-    // How they are in one deal, in words, for the row and the export.
-    function role(r) {
-      var parts = [];
-      if (r.named) parts.push("Named LP");
-      if (r.commitments.length) {
-        var states = [];
-        r.commitments.forEach(function (c) {
-          if (states.indexOf(c.status) === -1) states.push(c.status);
-        });
-        parts.push(states.join(" + "));
-      }
-      return parts.join(" · ");
+      return { text: text, whose: lpNames(r.deal).length > 1 ? "deal" : "theirs" };
     }
 
     return { all: all, allIncludingArchived: allIncludingArchived, archived: archived,
              prospects: liveProspects, archivedProspects: archivedProspects,
-             get: get, key: key, facet: facet, cheque: cheque, role: role };
+             get: get, key: key, facet: facet, cheque: cheque };
   })();
 
   /* ============================================================
@@ -13771,7 +13723,6 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
       return [
         '<button type="button" class="debt-link" data-raise-open="' + esc(r.deal.id) + '">' +
           esc(r.deal.name) + '</button>',
-        esc(Partners.role(r)) || '<span class="muted">—</span>',
         { v: q.text
             ? (q.whose === "deal"
                 ? '<span title="The deal’s LP equity. It names more than one LP, so this ' +
@@ -13790,7 +13741,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
     return '<div class="crm-section"><h3>' + esc(heading) +
       '<span class="crm-section__aside">' + esc(aside) + '</span></h3>' +
       '<div class="numcols">' +
-        table(["Deal", "How they are in it", { label: "Cheque", num: true },
+        table(["Deal", { label: "LP check", num: true },
                "Operator", "Market", "Asset class", "Status"], body) +
       '</div>' +
       '<p class="crm-research__note">' + note + '</p></div>';
@@ -14160,7 +14111,15 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
                          contacts: [], type: "", stage: "", location: "",
                          aum: "", why: "", partnerNote: "", checkSize: {} };
 
-    parts.push(investorCommitments(blank));
+    /* COMMITMENTS ARE THE OTHER TAB'S SUBJECT — money this firm put into
+       a Modillion raise, which makes them a Modillion investor rather
+       than a deal LP. Shown when there is something to show, because a
+       deal LP who has also backed one of our raises is worth knowing
+       about; NOT drawn empty, which would invite somebody to record an
+       Investor CRM fact on an LP CRM record. */
+    if (blank.name && commitmentsForInvestor(blank.name).length) {
+      parts.push(investorCommitments(blank));
+    }
     /* Its own prefix: the investor record may be drawn at the same time
        on the CRM tab, and two copies of this form sharing one set of ids
        is two panes' boxes answering to one name. */
@@ -14490,7 +14449,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
         var q = Partners.cheque(r);
         byDeal.push([e.name, r.deal.name,
                      r.deal.area === "closed-deals" ? "Closed" : "Live",
-                     Partners.role(r), q.text,
+                     q.text,
                      q.whose === "deal" ? "Deal total — more than one LP named" : "",
                      r.deal.operator || "", r.deal.market || "", r.deal.assetClass || "",
                      r.deal.status || ""]);
@@ -14498,9 +14457,9 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
     });
     sheets.push({
       name: "By deal",
-      widths: [34, 34, 10, 24, 16, 38, 26, 22, 20, 14],
-      rows: [["LP partner", "Deal", "Where", "How they are in it", "Cheque",
-              "Caveat on the cheque", "Operator", "Market", "Asset class", "Status"]]
+      widths: [34, 34, 10, 16, 38, 26, 22, 20, 14],
+      rows: [["LP partner", "Deal", "Where", "LP check",
+              "Caveat on the LP check", "Operator", "Market", "Asset class", "Status"]]
         .concat(byDeal)
     });
 
@@ -20960,8 +20919,8 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
       return Partners.all().map(function (e) {
         function rows(list) {
           return list.map(function (r) {
-            return { deal: r.deal.name, how: Partners.role(r),
-                     cheque: Partners.cheque(r).text,
+            return { deal: r.deal.name,
+                     lpCheck: Partners.cheque(r).text,
                      operator: r.deal.operator || "", market: r.deal.market || "",
                      status: r.deal.status || "" };
           });

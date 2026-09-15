@@ -1986,3 +1986,40 @@ THE TAB BECOMES THE LP CRM, 2026-09-15:
   the stage fix on a partner and on a prospect, Edit details round-tripping,
   archive and restore, the workbook, the LP links from Closed Deals still
   landing here, and no console errors on any tab.
+
+TWO DIFFERENT KINDS OF LP, 2026-09-15:
+- Stated plainly and it is the most important sentence about these two tabs:
+    INVESTOR CRM   LPs FOR MODILLION. The firm raises money from them into its
+                   own deals and vehicles. Every commitment on a Capital Raise
+                   is one of them.
+    LP CRM         LPs FOR OUR PARTNERS AND DEALS. The capital partner sitting
+                   beside us ON the deal — the name in the deal's LP box.
+- ONE DEAL HAS BOTH, and that is the example that makes it concrete: a deal LP
+  is beside us on the deal, AND we raise co-invest for that same deal from our
+  own investors. Two relationships, one deal. A firm can be in both roles, but
+  that is two relationships with one firm rather than one fact filed twice.
+- WHAT WAS WRONG. The LP CRM had TWO ways in: the deal's LP box, and a Hard or
+  Funded commitment on the deal's raise. The second was the other tab's
+  population arriving on this one — somebody who commits to a raise is money
+  raised BY Modillion, which is the definition of an Investor CRM record. It has
+  been removed. Membership is the deal's LP box and nothing else.
+- This was written into this file as a feature when the tab was built, which is
+  worth recording: the mistake was not a bug in the code, it was the code
+  correctly implementing a wrong idea about what an LP is here.
+- WHAT WENT WITH IT. "How they are in it" was a column on every deal table
+  saying "Named LP" on every row once the other route was gone, so it is gone
+  too and the cheque column is named "LP check" — which is what it always was.
+  Partners.role() is deleted; Partners.cheque() reads the deal's lpCheck only.
+- COMMITMENTS ARE STILL SHOWN on an LP CRM record when there are any, because a
+  deal LP who has also backed one of our raises is worth knowing about — but the
+  panel is no longer drawn empty, which would invite somebody to record an
+  Investor CRM fact on an LP CRM record.
+- Verified against a fixture where one closed deal has both: the deal LP appears
+  on the LP CRM, the three raise commitments do not, the Capital Raises roll-up
+  is untouched, and the committed investors keep their Investor CRM records and
+  their commitment panels.
+- STILL OPEN, and it is the storage half of the same question: an LP CRM record
+  is still an INVESTOR record underneath, so logging the first conversation
+  against a deal LP creates one and that firm then appears on the Investor CRM
+  list as well. Under the split above that is wrong. Left as it is pending a
+  decision on whether the LP CRM gets its own record set.
