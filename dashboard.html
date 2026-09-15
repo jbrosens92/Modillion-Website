@@ -14453,6 +14453,37 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
     { key: "contact",  label: "Last contact" }
   ];
 
+  /* The LP row form. Both LP tables use it, so the field list is written
+     once — the Current partners table and the Prospective one are the
+     same record with a different heading above it.
+
+     Deliberately NOT here: name (the two CRMs are joined by it — see the
+     `lp` kind in RowEdit) and markets (derived from closed deals). */
+  function lpRowFields(inv) {
+    var cs = inv.checkSize || {};
+    var stages = CRM_STAGES;
+    if (inv.stage && stages.indexOf(inv.stage) === -1) stages = stages.concat([inv.stage]);
+    var priorities = ["", "High", "Medium", "Low"];
+    if (inv.priority && priorities.indexOf(inv.priority) === -1) priorities.push(inv.priority);
+    /* The roster, not a box to type a name into — the same reason the
+       record form uses a dropdown. A typed name can be spelled two ways,
+       and then "whose is this" stops being answerable by filtering. A
+       value already on the record stays selectable even if that person
+       has left the roster, so a save never silently rewrites it. */
+    var team = [""].concat(Tasks.team().map(function (pn) { return pn.name; }));
+    if (inv.owner && team.indexOf(inv.owner) === -1) team.push(inv.owner);
+    return [
+      ["Type", RowEdit.text("type", inv.type === "Unclassified" ? "" : inv.type,
+        ' list="lpTypeSuggestions"')],
+      ["Stage", RowEdit.select("stage", stages, inv.stage || "Prospect")],
+      ["Priority", RowEdit.select("priority", priorities, inv.priority || "")],
+      ["Check size", RowEdit.text("check", checkText(inv) || cs.note || "",
+        ' placeholder="$3m\u2013$6m"')],
+      ["Location", RowEdit.text("location", inv.location || "")],
+      ["Owner", RowEdit.select("owner", team, inv.owner || "")]
+    ];
+  }
+
   function prospectTable(list, pile, twins) {
     var archived = pile === "archived";
     twins = twins || {};
@@ -14472,6 +14503,13 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
       var inv = e.investor;
       var last = lastContact(inv);
       var note = lastNote(inv);
+      /* Being edited: the row is replaced by the form, exactly as the
+         investor, operator, competitor and deal tables do it. */
+      if (RowEdit.on("lp", inv.id)) {
+        return RowEdit.form("lp", inv.id, PROSPECT_COLUMNS.length + 1, lpRowFields(inv),
+                            "Markets and Last contact are worked out from the deals and the " +
+                            "conversation log, so they are not here.");
+      }
       return '<tr data-partner="' + esc(e.key) + '">' +
         '<td><span class="crm-name">' + esc(e.name) + '</span>' +
           (inv.location ? '<span class="crm-sub">' + esc(inv.location) + '</span>' : "") + '</td>' +
@@ -14503,6 +14541,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
             ? '<button type="button" class="deal-rowaction" data-crm-open-name="' + esc(e.name) +
               '" title="Also an LP for Modillion — open that record">Investor CRM</button>'
             : "") +
+          (archived ? "" : RowEdit.trigger("lp", inv.id, e.name)) +
           (archived
             ? '<button type="button" class="deal-rowaction" data-partner-restore="' + esc(e.key) +
               '" title="Put ' + esc(e.name) + ' back on the list">Restore</button>'
@@ -14511,7 +14550,20 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
         '</td></tr>';
     }).join("");
 
-    return '<div class="crmtable-wrap"><table class="crmtable crmtable--partners">' +
+    /* The types already in use, offered to the row's Type box. Read off
+       BOTH CRMs on purpose: an LP for a deal is very often a firm the
+       Investor CRM already holds, and offering the spelling that one uses
+       is what keeps the two joinable. Same reasoning as the name
+       suggestions above the Add form. */
+    var typeList = '<datalist id="lpTypeSuggestions">' +
+      Lps.allIncludingArchived().map(function (i) { return i.type; })
+        .concat(Crm.allIncludingArchived().map(function (i) { return i.type; }))
+        .filter(function (t, i, a) { return t && t !== "Unclassified" && a.indexOf(t) === i; })
+        .sort().map(function (t) { return '<option value="' + esc(t) + '">'; }).join("") +
+      '</datalist>';
+
+    return typeList +
+           '<div class="crmtable-wrap"><table class="crmtable crmtable--partners">' +
            '<thead><tr>' + head + '</tr></thead><tbody>' + rows + '</tbody></table></div>';
   }
 
@@ -24404,6 +24456,38 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
             stage: v.stage,
             checkSize: parseCheckInput(v.check),
             deals: list(v.deals)
+          });
+        }
+      },
+
+      /* THE LP CRM WAS THE ONE TABLE WITHOUT THIS, added 2026-09-15.
+         Every other tab could fix a type or a priority on the row; this
+         one made you open the record, use the full form and come back,
+         which for changing one word is four clicks too many.
+
+         IT DELIBERATELY DOES NOT OFFER `name`. The LP CRM and the
+         Investor CRM are joined BY NAME — that is what puts the
+         "Investor CRM" button on a row and what stops the same firm
+         being entered twice. A rename typed into a table would break
+         that join silently, which is why the record form has never
+         offered one either. Renaming an LP stays a deliberate act
+         somewhere else, or it becomes a bug nobody can see.
+
+         No markets field: an LP's Markets column is DERIVED from the
+         closed deals it is on, not stored. Editing it here would let
+         the cell disagree with the deals underneath it. */
+      lp: {
+        render: function () { renderPartners(); refreshOpenPartner(); },
+        save: function (id, v) {
+          var inv = Lps.get(id);
+          if (!inv) return;
+          Lps.patch(id, {
+            type: String(v.type || "").trim() || "Unclassified",
+            stage: v.stage,
+            priority: v.priority,
+            checkSize: parseCheckInput(v.check),
+            location: String(v.location || "").trim(),
+            owner: String(v.owner || "").trim()
           });
         }
       },
