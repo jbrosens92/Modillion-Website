@@ -4149,6 +4149,9 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
             <label class="visually-hidden" for="partnerFilterDeal">Filter by deal</label>
             <select id="partnerFilterDeal"><option value="">All closed deals</option></select>
 
+            <label class="visually-hidden" for="partnerFilterPriority">Filter by priority</label>
+            <select id="partnerFilterPriority"><option value="">Any priority</option></select>
+
             <button type="button" class="dash-crm__clear" id="partnerClearFilters">Clear</button>
             <span class="dash-crm__shown" id="partnerShown"></span>
           </div>
@@ -13319,6 +13322,11 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
                      max: c.max == null ? null : c.max, note: c.note || "" },
         mandate: rec.mandate || "",
         why: rec.why || "",
+        /* How hard we are working this one. The same three words the
+           operator, competitor and investor tabs use, and the same rule:
+           a value a record already carries that is not one of the three
+           is kept and stays selectable rather than being rewritten. */
+        priority: rec.priority || "",
         /* How we work together — what the relationship turned out to be,
            as against `why`, which is what was hoped beforehand. */
         partnerNote: rec.partnerNote || "",
@@ -13910,7 +13918,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
     view: "list",          // list | partner
     key: null,
     query: "",
-    filters: { operator: "", market: "", asset: "", deal: "" },
+    filters: { operator: "", market: "", asset: "", deal: "", priority: "" },
     sortKey: "name",
     sortDir: "asc",
     // The prospective list sorts on its own columns and keeps its own
@@ -14021,10 +14029,25 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
     }
   }
 
+  /* RANKED, NOT ALPHABETICAL. Sorting priority by its first letter puts
+     High between Low and Medium, which is nobody's intent.
+
+     A value that is SET but not one of the three ranks between Low and
+     nothing: we cannot know where somebody's "Urgent" belongs and will
+     not guess, but it is still an answer and should not tie with the
+     records nobody has answered for. */
+  var LP_PRIORITY_RANK = { High: 3, Medium: 2, Low: 1 };
+
+  function lpPriorityRank(v) {
+    if (!v) return 0;
+    return LP_PRIORITY_RANK[v] || 0.5;
+  }
+
   function prospectSortValue(e, k) {
     var inv = e.investor;
     switch (k) {
-      case "stage":   return CRM_STAGES.indexOf(inv.stage);
+      case "stage":    return CRM_STAGES.indexOf(inv.stage);
+      case "priority": return lpPriorityRank(inv.priority);
       case "check":   return (inv.checkSize && inv.checkSize.min) || -1;
       case "type":    return inv.type || "";
       case "live":    return e.live.length;
@@ -14048,6 +14071,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
                }).join(" ")];
     if (e.investor) {
       hay.push(e.investor.type, e.investor.location, e.investor.mandate,
+               e.investor.priority, e.investor.owner,
                e.investor.partnerNote, e.investor.why,
                e.investor.contacts.map(function (c) {
                  return [c.name, c.title, c.email].join(" ");
@@ -14074,6 +14098,11 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
       if (f.market && Partners.facet(e, "market").indexOf(f.market) === -1) return false;
       if (f.asset && Partners.facet(e, "assetClass").indexOf(f.asset) === -1) return false;
       if (f.deal && !e.closed.some(function (r) { return r.deal.name === f.deal; })) return false;
+      /* Unlike the four above it, priority is a fact about the RECORD
+         rather than about a closed deal, so it applies to both lists.
+         A firm with nothing recorded against them has no priority and is
+         correctly hidden when one is asked for. */
+      if (f.priority && !(e.investor && e.investor.priority === f.priority)) return false;
       return partnerMatches(e);
     });
 
@@ -14098,7 +14127,10 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
   function prospectFiltered(list) {
     var f = partnerState.filters;
     if (partnerDealFilterOn()) return [];
-    var out = list.filter(function (e) { return partnerMatches(e); });
+    var out = list.filter(function (e) {
+      if (f.priority && e.investor.priority !== f.priority) return false;
+      return partnerMatches(e);
+    });
 
     var dir = partnerState.prospectSortDir === "asc" ? 1 : -1;
     var k = partnerState.prospectSortKey;
@@ -14119,9 +14151,17 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
      where the conversation has got to, what they would write, and when
      anybody last spoke to them.
      ------------------------------------------------------------------ */
+  /* PRIORITY IS A COLUMN HERE AND NOT ON THE CURRENT LIST, on purpose.
+     A prospective LP is work in front of you and "which of these first"
+     is the question this table gets opened to answer. A firm a deal has
+     already closed with is a relationship rather than a queue; its
+     priority is still on the record, where it reads as how hard we are
+     working them, but a column of it would be sorting a list nobody
+     sorts that way. */
   var PROSPECT_COLUMNS = [
     { key: "name",     label: "Prospective LP" },
     { key: "stage",    label: "Stage" },
+    { key: "priority", label: "Priority" },
     { key: "check",    label: "Check size" },
     { key: "type",     label: "Type" },
     { key: "live",     label: "Also live", num: true },
@@ -14153,6 +14193,10 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
           (inv.location ? '<span class="crm-sub">' + esc(inv.location) + '</span>' : "") + '</td>' +
         '<td><span class="crm-pill" data-stage="' + esc(inv.stage) + '">' +
           esc(inv.stage) + '</span></td>' +
+        '<td>' + (inv.priority
+          ? '<span class="task-pill" data-p="' + esc(inv.priority) + '">' +
+            esc(inv.priority) + '</span>'
+          : '<span class="muted">—</span>') + '</td>' +
         '<td>' + (checkText(inv) ? esc(checkText(inv))
                                  : '<span class="muted">\u2014</span>') + '</td>' +
         '<td>' + (inv.type && inv.type !== "Unclassified" ? esc(inv.type)
@@ -14480,6 +14524,13 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
     var lpTeam = [""].concat(Tasks.team().map(function (p) { return p.name; }));
     if (inv.owner && lpTeam.indexOf(inv.owner) === -1) lpTeam.push(inv.owner);
 
+    // Same shape: a priority nobody uses any more stays selectable rather
+    // than being silently rewritten on the first save.
+    var lpPriorities = ["", "High", "Medium", "Low"];
+    if (inv.priority && lpPriorities.indexOf(inv.priority) === -1) {
+      lpPriorities.push(inv.priority);
+    }
+
     return '<div class="crm-draft is-inline">' +
       '<div class="crm-draft__grid">' +
         field("lpEditType", "Type",
@@ -14509,6 +14560,12 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
           '<select id="lpEditOwner">' + lpTeam.map(function (v) {
             return '<option value="' + esc(v) + '"' +
               (v === inv.owner ? " selected" : "") + '>' +
+              esc(v || "not recorded") + '</option>';
+          }).join("") + '</select>') +
+        field("lpEditPriority", "Priority",
+          '<select id="lpEditPriority">' + lpPriorities.map(function (v) {
+            return '<option value="' + esc(v) + '"' +
+              (v === inv.priority ? " selected" : "") + '>' +
               esc(v || "not recorded") + '</option>';
           }).join("") + '</select>') +
         field("lpEditContact", "Main contact", text("lpEditContact", contact.name)) +
@@ -14543,6 +14600,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
       aum: val("lpEditAum"),
       location: val("lpEditLocation"),
       owner: $("lpEditOwner") ? $("lpEditOwner").value : inv.owner,
+      priority: $("lpEditPriority") ? $("lpEditPriority").value : inv.priority,
       website: val("lpEditWebsite"),
       mandate: val("lpEditMandate"),
       why: val("lpEditWhy")
@@ -14636,6 +14694,9 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
         ["Assets", inv ? esc(inv.aum) : ""],
         ["Location", inv ? esc(inv.location) : ""],
         ["Owner", inv ? esc(inv.owner) : ""],
+        ["Priority", inv && inv.priority
+          ? '<span class="task-pill" data-p="' + esc(inv.priority) + '">' +
+            esc(inv.priority) + '</span>' : ""],
         ["Contact", inv ? esc((primaryContact(inv) || {}).name || "") : ""],
         ["Contact email", inv && (primaryContact(inv) || {}).email
           ? '<a href="mailto:' + esc(primaryContact(inv).email) + '">' +
@@ -14804,6 +14865,14 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
     fill("partnerFilterDeal", uniq([].concat.apply([], list.map(function (e) {
       return e.closed.map(function (r) { return r.deal.name; });
     }))), partnerState.filters.deal);
+    /* The three standing words plus anything in use that is not one of
+       them, so a value carried in from a file stays filterable. Read off
+       BOTH lists, because the filter applies to both. */
+    fill("partnerFilterPriority",
+      ["High", "Medium", "Low"].concat(
+        Lps.allIncludingArchived().map(function (r) { return r.priority; }))
+        .filter(function (v, i, a) { return v && a.indexOf(v) === i; }),
+      partnerState.filters.priority);
   }
 
   function renderPartners() {
@@ -15093,15 +15162,16 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
      ============================================================ */
   function exportPartnersXlsx() {
     var list = Partners.all();
+    var twins = investorTwins();
 
     var sheets = [];
 
     sheets.push({
       name: "LP partners",
-      widths: [34, 10, 10, 40, 30, 26, 22, 14, 12, 10, 50],
+      widths: [34, 10, 10, 40, 30, 26, 22, 12, 14, 14, 12, 10, 50],
       rows: [["LP partner", "Closed", "Also live", "Deals closed", "Operators", "Markets",
-              "Location", "Last contact", "Conversations", "On the Investor CRM",
-              "How we work together"]].concat(
+              "Location", "Priority", "Owner", "Last contact", "Conversations",
+              "On the Investor CRM", "How we work together"]].concat(
         list.map(function (e) {
           var inv = e.investor;
           return [e.name, e.closed.length, e.live.length,
@@ -15109,9 +15179,11 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
                   Partners.facet(e, "operator").join("; "),
                   Partners.facet(e, "market").join("; "),
                   inv ? inv.location : "",
+                  inv ? inv.priority : "",
+                  inv ? inv.owner : "",
                   (inv && lastContact(inv)) || "",
                   inv ? inv.conversations.length : 0,
-                  inv ? "Yes" : "No",
+                  twins[e.key] ? "Yes" : "No",
                   inv ? inv.partnerNote : ""];
         }))
     });
@@ -15143,13 +15215,15 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
     var props = Partners.prospects();
     sheets.push({
       name: "Prospective LPs",
-      widths: [34, 16, 18, 26, 22, 14, 12, 10, 50],
-      rows: [["Prospective LP", "Stage", "Check size", "Type", "Location", "Last contact",
-              "Conversations", "Also live", "Why they are a fit"]].concat(
+      widths: [34, 16, 12, 18, 26, 22, 14, 14, 12, 10, 50],
+      rows: [["Prospective LP", "Stage", "Priority", "Check size", "Type", "Location",
+              "Owner", "Last contact", "Conversations", "Also live",
+              "Why they are a fit"]].concat(
         props.map(function (e) {
           var inv = e.investor;
-          return [e.name, inv.stage, checkText(inv), inv.type, inv.location,
-                  lastContact(inv) || "", inv.conversations.length, e.live.length, inv.why];
+          return [e.name, inv.stage, inv.priority, checkText(inv), inv.type, inv.location,
+                  inv.owner, lastContact(inv) || "", inv.conversations.length,
+                  e.live.length, inv.why];
         }))
     });
 
@@ -15196,7 +15270,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
 
   [["partnerFilterOperator", "operator"], ["partnerFilterMarket", "market"],
    ["partnerFilterAsset", "asset"], ["partnerFilterDeal", "deal"],
-  ].forEach(function (pair) {
+   ["partnerFilterPriority", "priority"]].forEach(function (pair) {
     $(pair[0]).addEventListener("change", function (e) {
       partnerState.filters[pair[1]] = e.target.value;
       if (partnerState.view !== "list") showPartnerView("list");
@@ -15205,7 +15279,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
   });
 
   $("partnerClearFilters").addEventListener("click", function () {
-    partnerState.filters = { operator: "", market: "", asset: "", deal: "" };
+    partnerState.filters = { operator: "", market: "", asset: "", deal: "", priority: "" };
     partnerState.query = "";
     $("partnerSearch").value = "";
     renderPartnerFilters();
@@ -21610,6 +21684,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
         var inv = e.investor;
         return { name: e.name, stage: inv.stage, check: checkText(inv),
                  type: inv.type, location: inv.location, owner: inv.owner,
+                 priority: inv.priority,
                  why: inv.why, lpId: inv.id,
                  lastContact: lastContact(inv) || "",
                  conversations: inv.conversations.map(function (c) {
@@ -21634,6 +21709,8 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
         return { name: e.name,
                  hasRecord: !!e.investor,
                  lpId: e.investor ? e.investor.id : "",
+                 priority: e.investor ? e.investor.priority : "",
+                 owner: e.investor ? e.investor.owner : "",
                  note: e.investor ? e.investor.partnerNote : "",
                  lastContact: (e.investor && lastContact(e.investor)) || "",
                  conversations: e.investor

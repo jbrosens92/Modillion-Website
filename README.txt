@@ -2124,3 +2124,32 @@ THE INVESTOR CRM LINK WAS SHOWING ON FIRMS THAT ARE NOT ON IT, 2026-09-15:
 - Verified against a fixture where one firm is on both lists and two are deal
   LPs only: the link appears on the first and on nothing else, on the row, in
   the archived pile and on the record page, and it lands on the right investor.
+
+PRIORITY ON THE LP CRM, 2026-09-15:
+- The LP record was the only one of the four without it. Same three words the
+  investor, operator and competitor tabs use, and the same rule about a value
+  that is not one of them.
+- A COLUMN ON THE PROSPECTIVE LIST AND NOT ON THE CURRENT ONE, on purpose. A
+  prospective LP is work in front of you and "which of these first" is what that
+  table gets opened to answer. A firm a deal has already closed with is a
+  relationship rather than a queue; its priority is still on the record, where
+  it reads as how hard we are working them, but a column of it would be sorting
+  a list nobody sorts that way.
+- THE FILTER APPLIES TO BOTH LISTS, unlike the four beside it. Operator, market,
+  asset class and deal all describe a CLOSED deal and a prospect has none, so
+  setting one hides the prospective list; priority is a fact about the RECORD,
+  which both lists have. A firm with nothing recorded against them has no
+  priority and is correctly hidden when one is asked for.
+- SORTED BY RANK, NOT ALPHABET, because sorting priority by its first letter
+  puts High between Low and Medium. A value that is SET but is not one of the
+  three ranks between Low and nothing: we cannot know where somebody's "Urgent"
+  belongs and will not guess, but it is an answer and should not tie with the
+  records nobody has answered for. Verified with exactly that fixture — High,
+  Low, Urgent, then blank.
+- Owner joined the workbook at the same time, on both sheets; it was on the
+  record and in no export.
+- Verified: the column, the pill, the filter across both groups, rank order in
+  both directions, an off-vocabulary value staying selectable and preselected on
+  its own record while the standard three are offered everywhere else, setting a
+  priority on a partner with no record creating one, the workbook, 375px, and no
+  console errors on any tab.
