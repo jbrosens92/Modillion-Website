@@ -182,8 +182,8 @@ export async function writeBase(set, doc) {
 export async function appendOverlay(set, delta) {
   /* RPUSH and the stamp together. The append is still the atomic thing
      that matters; INCR rides along so no edit can sit in the list
-     unannounced. Returns the list length exactly as before — blast.js
-     appends through here too. */
+     unannounced. Returns the list length, which is what decides when a
+     fold is due. */
   const [len] = await redisPipeline([
     ["RPUSH", KEY("overlay", set), JSON.stringify(delta)],
     ["HINCRBY", STAMP_HASH, set, 1]

@@ -41,6 +41,7 @@
 export const maxDuration = 60;
 
 import Anthropic from "@anthropic-ai/sdk";
+import { requireUser } from "./_auth.js";
 
 const MODEL = "claude-opus-5";
 
@@ -342,10 +343,19 @@ export default async function handler(req, res) {
 
   if (req.method === "OPTIONS") {
     res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
-    res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+    res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
     res.status(204).end();
     return;
   }
+
+  /* SIGNED-IN COLLEAGUES ONLY — added 2026-09-15, and this endpoint
+     needed it at least as much as /api/records did. It puts a paid model behind an open URL: an anonymous POST was a stranger spending the firm's Anthropic budget, and the request body carries a snapshot of the CRM, so it was also a way to hand the records to whoever asked.
+
+     The probe below is covered too. It answers a question about the
+     deployment rather than about the firm, but it is cheap to gate and
+     an ungated diagnostic is how an endpoint quietly stays open. */
+  const user = await requireUser(req, res);
+  if (!user) return;
 
   // The dashboard's probe. No key configured is a normal state — the
   // page falls back to its in-page engine without complaining.

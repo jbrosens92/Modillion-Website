@@ -15,12 +15,13 @@
      POST /api/records?set=deals&op=publish  make edits the new base
      GET  /api/records?probe=1            configured or not
 
-   Seven sets: deals, crm, lps, operators, tasks, competitors, mentions.
+   Six sets: deals, crm, lps, operators, tasks, competitors.
    `deals` arrived on 2026-08-20 when the document mirror was retired
    and the pipeline stopped being a folder listing; `competitors` on
-   2026-08-25 with the Competitor Tracker, and `mentions` the same day
-   with the news blast — see README.txt. Adding a set is this one
-   line, because nothing here understands a record.
+   2026-08-25 with the Competitor Tracker. `mentions` arrived the same
+   day with the news blast and went with it on 2026-09-15 — see
+   README.txt. Adding or removing a set is this one line, because
+   nothing here understands a record.
 
    `lps` arrived on 2026-09-15 with the LP CRM. It is deliberately NOT
    part of `crm`: the two hold different populations. `crm` is LPs FOR
@@ -29,12 +30,6 @@
    PARTNERS AND DEALS — the capital partner sitting beside us on a deal.
    A firm can be both, and when it is, that is two relationships with one
    firm rather than one record filed twice.
-
-   `mentions` is the first set NOT edited through the dashboard: the
-   watchlist is its base and /api/blast appends what the sweep finds.
-   That works without a change here for the reason the split exists —
-   an overlay is a bag of deltas unioned by id, and it does not care
-   whether a person or a cron pushed one.
 
    ------------------------------------------------------------
    WHY BASE AND OVERLAY ARE STILL SEPARATE
@@ -59,26 +54,46 @@
    understand a record.
 
    ------------------------------------------------------------
-   WHO CAN WRITE
+   WHO CAN READ, AND WHO CAN WRITE — CHANGED 2026-09-15
 
-   DASHBOARD_WRITE_KEY, sent as x-dashboard-key, is checked before
-   anything is stored. It is a LOCK ON THE ENDPOINT, not
-   authentication. The key is typed into each browser once and kept
-   in localStorage, so it is not baked into the published page and
-   does not appear in view-source. It is still one shared string,
-   readable from the dev tools of any browser holding it, and it says
-   nothing about WHO is writing.
+   BOTH, NOW, REQUIRE A SIGNED-IN PERSON. Every method below goes
+   through requireUser() in _auth.js, which verifies a Supabase
+   magic-link token and checks the address is on the firm's domain.
+   No token, no records.
 
-   What it buys: a URL turning up in a log does not let a stranger
-   rewrite the firm's investor records anonymously. That is worth ten
-   lines and it is all it is worth.
+   That is a change in kind, not degree, and it is worth being
+   precise about what it replaced:
 
-   READS ARE NOT GATED AT ALL. Anyone with the URL gets the records,
-   conversation notes included. Same posture as the rest of the
-   dashboard — a decision, not an oversight — and the first thing to
-   fix if this ever needs to be private.
+     WAS: reads were not gated at all. Anyone with the URL got the
+          records, conversation notes included. Writes were gated by
+          DASHBOARD_WRITE_KEY — one shared string in every
+          colleague's localStorage, readable from the dev tools of
+          any browser holding it, saying nothing about WHO wrote.
+
+     NOW: both are gated by a per-person token that this server
+          verifies by signature. DASHBOARD_WRITE_KEY IS GONE from
+          this endpoint — it was a weaker check sitting behind a
+          stronger one, and leaving it in place would have meant
+          every browser still needing a string typed into it for no
+          remaining benefit.
+
+   `publishedBy` IS NOW SERVER-STAMPED from the verified token
+   rather than read from the request body. It used to be whatever
+   the browser said it was, which made it a label rather than a
+   fact.
+
+   THE HONEST LIMIT: the deltas inside an overlay still carry
+   whatever authorship the PAGE wrote into them — the `by` on a
+   logged conversation, say. Those are record content, not envelope,
+   and this file does not understand record content by design. A
+   signed-in colleague can still write a note attributed to a
+   different colleague. Everyone who gets past requireUser() has the
+   same access to all seven sets; there is no per-record permission
+   here and nowhere to put one while the store holds documents
+   rather than rows. See README.txt.
    ============================================================ */
 
+import { requireUser, authConfigured } from "./_auth.js";
 import {
   redisConfigured,
   readBase,
@@ -93,7 +108,7 @@ import {
 
 /* A whitelist, not a sanitiser: `set` becomes part of a Redis key,
    so anything not on this list must not reach it. */
-const SETS = new Set(["deals", "crm", "lps", "operators", "tasks", "competitors", "mentions"]);
+const SETS = new Set(["deals", "crm", "lps", "operators", "tasks", "competitors"]);
 
 function allow(req, res) {
   const allowed = process.env.DASHBOARD_ALLOWED_ORIGIN;
@@ -115,36 +130,40 @@ function body(req) {
   return req.body;
 }
 
-function writable(req, res) {
-  const key = process.env.DASHBOARD_WRITE_KEY;
-  if (key && req.headers["x-dashboard-key"] !== key) {
-    res.status(403).json({ error: "Not allowed to write." });
-    return false;
-  }
-  return true;
-}
-
 export default async function handler(req, res) {
   if (!allow(req, res)) return;
 
   if (req.method === "OPTIONS") {
     res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
-    res.setHeader("Access-Control-Allow-Headers", "Content-Type, x-dashboard-key");
+    res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
     res.status(204).end();
     return;
   }
 
   const q = req.query || {};
 
+  /* THE ONE THING LEFT OPEN, and deliberately: two booleans saying
+     whether this deployment has a store and an authenticator wired up.
+     It names no set, reports no count and touches no record, so it
+     answers "is the deployment configured" without answering anything
+     about the firm. That is worth keeping reachable — it is what you
+     curl at three in the afternoon when the dashboard says it cannot
+     reach anything and you need to know which half is missing. */
   if (q.probe) {
     res.status(200).json({
       ok: true,
       configured: redisConfigured(),
-      writeLocked: !!process.env.DASHBOARD_WRITE_KEY,
-      sets: [...SETS]
+      authConfigured: authConfigured()
     });
     return;
   }
+
+  /* EVERYTHING BELOW THIS LINE REQUIRES A SIGNED-IN PERSON. It is
+     placed here, above the `set` check and above the stamps poll,
+     precisely so that no branch added later can accidentally sit in
+     front of it. */
+  const user = await requireUser(req, res);
+  if (!user) return;
 
   /* THE LIVE POLL. Every set's change stamp in one small answer, so a
      page can find out whether anything moved without reading a single
@@ -192,11 +211,12 @@ export default async function handler(req, res) {
     }
 
     if (req.method === "POST") {
-      if (!writable(req, res)) return;
-
       const payload = body(req);
       if (payload === null) { res.status(400).json({ error: "Body is not JSON." }); return; }
-      const by = String(payload.by || "").slice(0, 80) || null;
+      /* FROM THE TOKEN, NOT FROM THE BODY. payload.by is ignored — it was
+         self-declared, which is what made "who published this" a question
+         nobody could actually answer. */
+      const by = user.email;
 
       /* PUBLISH — the old download-commit-push loop, as one call.
          The page sends its fully merged document; it becomes the new

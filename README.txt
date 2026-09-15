@@ -7,6 +7,8 @@ Files:
 - contact.html
 
 Latest changes:
+- 2026-09-15: the dashboard and every /api endpoint are behind a real sign-in (Supabase, one
+  password per person). Reads are no longer open to anyone with the URL. See "Authentication".
 - Compact footer across all pages
 - Homepage opening paragraph now specifies real estate operators
 - Partnerships page simplified to emphasize the Fairwind partnership visually
@@ -215,8 +217,18 @@ Why concurrent editing needs no locking, which is luck rather than design:
 Server environment (Vercel project settings, not files):
     KV_REST_API_URL           from the Upstash integration
     KV_REST_API_TOKEN         from the Upstash integration          <- credential
-    DASHBOARD_WRITE_KEY       optional, and see below                <- shared secret
+    SUPABASE_URL              required — https://ebztcfjvgffawpjvtxje.supabase.co
+    SUPABASE_JWT_SECRET       NOT NEEDED on this project — see below
+    SUPABASE_ANON_KEY         optional, public; the JWKS is served without it
+    DASHBOARD_ALLOWED_DOMAIN  optional, defaults to modillionpartners.com
+    DASHBOARD_ALLOWED_EMAILS  optional, narrows to named addresses
     DASHBOARD_ALLOWED_ORIGIN  optional, same meaning as in notify.js
+- DASHBOARD_WRITE_KEY IS GONE. See "Authentication" below.
+- WITHOUT SUPABASE_URL EVERY ENDPOINT RETURNS 503 AND SERVES NOTHING. That is deliberate and
+  it is the one place in this codebase where "not configured" does not degrade gracefully:
+  everywhere else an absent service falls back to local files, because the cost of being
+  wrong is an inconvenience. Here the cost of being wrong is the investor records, so it
+  fails closed.
 - UPSTASH_REDIS_REST_URL / _TOKEN are accepted as alternatives, because which pair you get
   depends on whether the store was created through Vercel's integration or directly at Upstash,
   and that is not worth a support conversation later.
@@ -228,29 +240,135 @@ Server environment (Vercel project settings, not files):
 Setting it up, in order:
   1. Vercel dashboard -> Storage -> Upstash Redis (Marketplace) -> connect to this project.
      KV_REST_API_URL and KV_REST_API_TOKEN are injected; nothing to copy.
-  2. Optionally set DASHBOARD_WRITE_KEY, then have each person run modillionWriteKey("...") once
-     in their browser console.
+  2. Set up Supabase authentication — see "Authentication" below. Nothing will answer
+     until SUPABASE_URL is set and dashboard.html carries the project URL and anon key.
   3. Redeploy, then seed the store from this folder:
-         export DASHBOARD_WRITE_KEY=...        # only if you set one
+         export MODILLION_TOKEN=...            # see the tools' header for where to get one
          python3 tools/publish.py --dry-run    # says what it would send, sends nothing
          python3 tools/publish.py
-- tools/publish.py TALKS TO THE SITE, NOT TO THE STORE. This machine holds only the write key;
-  the one place that speaks to Redis is the server, where the credentials already live.
+- tools/publish.py TALKS TO THE SITE, NOT TO THE STORE. This machine holds only a session
+  token; the one place that speaks to Redis is the server, where the credentials already live.
 - PUBLISHING REPLACES THE BASE AND CLEARS THE SHARED EDITS, because the file being sent already
   contains them. Send a STALE export and you roll the team back to it. Prefer the dashboard's
   "Publish to team" button — it sends what is on screen and cannot be out of date. publish.py is
   for the initial seed.
 
-DASHBOARD_WRITE_KEY IS A LOCK, NOT AUTHENTICATION:
-- One shared string, typed into each browser once and kept in localStorage, so it is NOT baked
-  into the published page and does not appear in view-source. It is still readable from the dev
-  tools of any browser holding it, and it says nothing about WHO is writing.
-- What it buys: a URL turning up in a log does not let a stranger rewrite the firm's investor
-  records anonymously. That is worth ten lines and it is all it is worth.
-- READS ARE NOT GATED AT ALL. Anyone with the URL gets the records, conversation notes included.
-  Same posture as the rest of the dashboard — a decision, deferred deliberately, not an oversight
-  — and the first thing to fix if this ever needs to be private. Moving to Redis makes that
-  easier later, because the store itself is no longer reachable from outside the functions.
+AUTHENTICATION — ADDED 2026-09-15, AND IT REPLACES EVERY SIGN-IN THIS FILE USED TO DESCRIBE:
+- WHAT CHANGED, IN ONE LINE: /api/records, /api/agent, /api/research and /api/notify
+  now refuse anybody who is not a signed-in member of the firm. Reads included. (/api/blast
+  was gated too, and then removed outright later the same day — see "News blast".)
+- WHAT WAS WRONG BEFORE, stated plainly because two separate things looked like access
+  control and neither was:
+    a) The sign-in in dashboard.html checked a shared password IN THE BROWSER, on a page
+       served publicly. Anyone could set the session flag from dev tools and skip it — or
+       ignore the page entirely and curl /api/records, which never asked whether the form
+       had been passed. It protected nothing. It was honest about this; it is still gone.
+    b) DASHBOARD_WRITE_KEY was one shared string in every colleague's localStorage. It kept
+       anonymous strangers from WRITING and said nothing about who was writing. Reads were
+       not gated at all.
+  The records were reachable by anyone with the URL for as long as both of those existed.
+- HOW IT WORKS NOW: Supabase Auth, email and password, ONE PASSWORD PER PERSON. The page
+  exchanges the pair for a signed JWT; the browser sends it on every request; api/_auth.js
+  verifies the SIGNATURE, the issuer, the expiry, the role and the email domain before the
+  handler runs. The check is on the server, which is the whole difference from what it
+  replaced.
+- IT WAS BUILT AS MAGIC LINKS FIRST, and that is worth recording because the reason it
+  changed will otherwise look like carelessness. Magic links need reliable transactional
+  email. This firm had none: no Resend account existed, /api/notify had never sent a message
+  (see its own section — "what has NOT been exercised"), and sending from
+  @modillionpartners.com needs a verified domain and three DNS records nobody had added.
+  Supabase's built-in mailer allows about two messages an hour, which was enough to invite
+  people slowly and not enough for four colleagues signing in on a Monday. Making the
+  ability to sign in depend on DNS that was not set up was the worse risk, so the passwords
+  came back — deliberately.
+- THE RESEMBLANCE TO THE OLD GATE IS SUPERFICIAL AND THE DIFFERENCE IS THE POINT:
+    WAS   ONE password, SHARED by four people, compared against a PBKDF2 hash sitting in
+          this public repository, in the reader's own browser. Getting past it needed no
+          password at all — dev tools were enough — and it protected nothing, because
+          /api/records answered everybody regardless.
+- AND IT WAS WORSE THAN THAT, discovered 2026-09-15 while deploying the fix. DASHBOARD_WRITE_KEY
+  WAS NEVER SET IN PRODUCTION. The live probe said so plainly:
+      curl -s https://www.modillionpartners.com/api/records?probe=1
+      -> {"ok":true,"configured":true,"writeLocked":false,...}
+  writable() read `if (key && header !== key) refuse` — with no key configured that check passes
+  for everyone. So WRITES WERE OPEN TOO, not just reads: anyone with the URL could have rewritten
+  the investor records anonymously, which is the exact thing this file claimed the key prevented.
+  It was documented as a lock and was never fitted.
+- THE LESSON IS ABOUT THE PATTERN, NOT THE VARIABLE. A check that silently does nothing when
+  unconfigured reads as protection in the source and is absent in production, and nothing
+  anywhere says so. That is why requireUser() in _auth.js FAILS CLOSED and returns 503 when
+  SUPABASE_URL is missing. An unconfigured authenticator must be an outage, never an open door.
+    NOW   FOUR passwords, one per person, never in this repository and never checked in the
+          browser. Supabase checks them; what comes back is a token the SERVER verifies on
+          every request. Forging the page's state gets you an empty dashboard.
+- A PASSWORD IS A WEAKER CREDENTIAL THAN A ONE-TIME LINK. Say so plainly rather than
+  pretending otherwise. What makes the records safe is the server-side check, not the form,
+  and that half is identical either way. If a mail provider is ever set up, switching back to
+  magic links is a change to ONE FUNCTION in dashboard.html (Auth.signIn) and nothing else —
+  api/_auth.js does not know or care how a token was obtained.
+- EVERY PASSWORD IS GENERATED IN 1PASSWORD AND HANDED OVER ONCE. Not chosen by hand, not
+  shared between people, not written down in this project. If one is ever reused for anything
+  else — above all for the real Microsoft 365 account — that defeats the point.
+- THERE IS NO PASSWORD RESET EMAIL, because there is no mail provider. Somebody locked out
+  gets a new password set for them in Supabase → Authentication → Users → ... → Reset
+  password. With four people that is a two-minute job. It is the cost of not depending on
+  email, and it is a deliberate trade.
+- THE ANON KEY IN dashboard.html IS PUBLIC AND IS MEANT TO BE. It is the newer
+  "sb_publishable_..." format, which is not a JWT. The role-must-be-"authenticated" check in
+  _auth.js is therefore belt-and-braces TODAY and must still be kept: the old "anon" key it
+  replaced was a real JWT signed by the project, and on a project of that vintage that check
+  is the only thing stopping the page's own public key being a skeleton key to the records.
+  What must NEVER appear in that file is the SECRET key ("sb_secret_...", formerly service
+  role), which bypasses everything.
+- publishedBy IS NOW SERVER-STAMPED from the verified token. It used to be whatever the
+  browser said, which made "who published this" a label rather than a fact.
+
+SETTING UP SUPABASE, in order:
+  1. supabase.com -> new project. Nothing else in it is used: no tables, no storage, no
+     row-level security, NO EMAIL. The records stay in Upstash. This is an authenticator only.
+     Created 2026-09-15 as "modillion-auth", free plan, us-east-2.
+  2. Authentication -> Sign In / Providers: Email enabled; "Allow new users to sign up" OFF;
+     "Allow anonymous sign-ins" OFF; "Allow manual linking" OFF; "Confirm email" ON.
+     Signups off is what stops a stranger minting an account and retrying against it forever.
+  3. Authentication -> Attack Protection: turn ON leaked-password protection if offered, and
+     set a minimum password length of at least 12. The passwords are generated, so a long
+     minimum costs nobody anything.
+  4. Authentication -> Users -> Add user -> "Create new user", four times. Tick AUTO CONFIRM
+     (there is no mail provider to confirm through). Generate each password in 1Password, one
+     vault item per person, and hand it over directly. Do NOT use "Send invitation" — that
+     needs email.
+  5. Project Settings -> API Keys: the Project URL and the publishable key go in the two
+     constants at the top of the Auth module in dashboard.html. DONE — both are in.
+  6. Vercel project settings: set SUPABASE_URL only. This project signs ES256, so there is no
+     JWT secret to set; see above before adding one.
+  7. NO SMTP, NO REDIRECT URLS, NO SITE URL. None of them are used by password sign-in. The
+     Site URL and Redirect URL configured on 2026-09-15 are harmless leftovers from the
+     magic-link build and can be left or cleared.
+
+WHAT THIS DOES AND DOES NOT BUY:
+- IT DOES: stop the records being readable by anyone with the URL; give every edit a
+  verifiable author; end the shared password; and close /api/notify, which could previously
+  be used by a stranger to send mail FROM the firm's own address into a colleague's inbox.
+- IT DOES NOT: give per-record permissions. Everyone who signs in sees all seven sets. There
+  is nowhere to put a per-record rule while the store holds seven JSON documents rather than
+  rows, and building that is the large change described at the end of this section, not this
+  one.
+- IT DOES NOT: revoke instantly. An access token stays valid at Supabase until it expires,
+  about an hour. Sign out clears the browser; to end a session sooner, remove the user in the
+  Supabase dashboard.
+- THE DELTAS THEMSELVES still carry whatever authorship the page wrote into them — the `by`
+  on a logged conversation. Those are record CONTENT, and the server does not understand
+  record content by design. A signed-in colleague can still write a note attributed to
+  another colleague. That is a smaller problem than the one this fixes, and it is not fixed.
+
+IF PER-RECORD PERMISSIONS ARE EVER WANTED:
+- That is the Postgres change, not this one: real rows, real deletes, row-level security
+  policies attached to the user this file now establishes. It means rewriting the several
+  hundred lines in dashboard.html that know how a patch applies to a record, and retiring
+  the tombstone format described under "How it merges" — where a deletion is an ADDITION,
+  because "absent" is not a statement the format can make. Read that section first. The
+  page-side and server-side merges are duplicated and must agree; replaying history through
+  one of them is where records get silently lost.
 
 Verified 2026-08-20, with no deployment and no store:
 - /api/records driven through 45 cases with REDIS FAKED BEHIND A STUBBED fetch — so the actual
@@ -292,51 +410,24 @@ Connecting OneDrive — BUILT, NEVER DEPLOYED, DELETED 2026-08-20:
 - Deleted rather than kept dormant, because a 750-line file nothing calls is a file somebody
   eventually believes. It is in git history if it is ever wanted.
 
-The interim sign-in (dashboard.html) — username and password, added 2026-08-18:
-- Four accounts, one per person on the team, with a SHARED password. Usernames are the
-  modillionpartners.com addresses; the password is handed out in person, not written here.
-- IT IS A SPEED BUMP, NOT ACCESS CONTROL, and the gap is bigger than "the password is weak".
-  The check runs in the browser on a page that is publicly served, so getting past it does not
-  mean breaking anything — anyone who opens dev tools can set the session flag directly and
-  skip the form. The page ships no records of its own, which is the only reason that is
-  tolerable. Nothing real is behind it because nothing real is in it.
-- So what is it FOR? Identity, not secrecy. The page never knew who was looking at it: "Mine"
-  on the task list and the name in the corner had to be chosen from a dropdown, per browser.
-  Now they follow whoever signed in. That is a genuine improvement and it is the whole benefit.
-- Stored as PBKDF2-HMAC-SHA256, 310,000 iterations, a random 16-byte salt per account. That is
-  about the FILE, not the gate: it keeps the plaintext out of this public repository and stops
-  the hashes being a rainbow-table lookup. It does not make the gate harder to walk around.
-- TREAT THE PASSWORD AS PUBLIC. It is weak, it is shared, and a hash of it sits in a public
-  repo next to four valid usernames — which is a ready-made list for anyone spraying the real
-  Microsoft 365 tenant. It must never be the password to anything else, and above all not the
-  real M365 password for these accounts. If it ever was, change that one now.
-- To change the password or the roster, regenerate the salts and hashes rather than editing
-  them by hand:
-      python3 - <<'EOF'
-      import hashlib, os
-      pw = "NEW PASSWORD HERE"
-      for u in ["dwolfson", "cernst", "eemrich", "jbrosens"]:
-          salt = os.urandom(16)
-          print(u, salt.hex(),
-                hashlib.pbkdf2_hmac("sha256", pw.encode(), salt, 310000, 32).hex())
-      EOF
-  then paste the salt/hash pair into GATE_USERS in dashboard.html. The `id` on each account
-  matches the task-list roster (dw / ce / ee / jb), which is what lets signing in also answer
-  "who is Mine" without a second list of people to keep in step.
-- An unknown username is still hashed against a throwaway salt before it is rejected, so the
-  box cannot be used to work out who has an account, and the error never says which of the two
-  fields was wrong.
-- Sign out clears the session and the signed-in name, and empties both fields.
-- THAT SIGN-IN IS NOT COMING, and this section has to be read differently now. The OneDrive
-  connection built on 2026-08-19 does not sign the READER in to anything: the server holds one
-  delegated token for the account owner and answers everybody with it. So getUser() still has
-  no real account to carry, and the gate is still the only thing naming who is looking.
-- Which means: keep it for identity, and stop thinking of it as a door. Real documents are now
-  behind it, and it cannot hold them — /api/onedrive answers the browser directly and never
-  asks whether the form was passed. Anyone who fetches the endpoint has the whole tree.
-- If the dashboard should be private again, put Vercel edge Basic Auth or Vercel Authentication
-  in front of BOTH dashboard.html and /api/onedrive. Covering only the page does nothing; the
-  endpoint is where the documents come from.
+The interim sign-in — REMOVED 2026-09-15, replaced by Supabase per-person passwords (above):
+- It was four accounts sharing one password, PBKDF2-hashed into dashboard.html, checked in
+  the browser. Both the hashes and the four valid usernames sat in a public repository,
+  which made them a ready-made list for anyone spraying the real Microsoft 365 tenant.
+- IF THAT PASSWORD WAS EVER REUSED ANYWHERE — and above all if it was ever the real M365
+  password for any of these accounts — CHANGE THAT PASSWORD NOW. Removing the gate does not
+  un-publish what was in git history for a month.
+- What it was actually for, and what survives: identity. The page never knew who was looking,
+  so "Mine" on the task list and the name in the corner had to be picked from a dropdown.
+  Signing in answered that. It still does, except the answer now comes from a verified token
+  instead of a form anybody could walk past.
+- GATE_USERS still exists in dashboard.html, reduced to names and addresses — the lookup from
+  a signed-in address to the short task-list id (dw / ce / ee / jb). IT IS NOT A PERMISSION
+  CHECK and must not be made into one: who may use the dashboard is decided by the email
+  domain on a verified token, in api/_auth.js. Somebody signed in but absent from that list
+  gets in and simply shows as their email address.
+- The Microsoft 365 sign-in this section used to promise is not coming and is no longer
+  needed. It was wanted for the OneDrive document mirror, which was retired on 2026-08-20.
 
 Local preview:
 - MSAL redirects will not work from file://, so serve the folder over http:
@@ -766,6 +857,14 @@ Tested 2026-08-19:
   unassigned, and the switch off. No email was sent to anybody but John.
 - What has NOT been exercised: api/notify.js itself against the live Resend API. That needs
   the key and the verified domain above. The test above proves the page's half of it.
+- CONFIRMED 2026-09-15: THERE IS NO RESEND ACCOUNT AT ALL, so this endpoint has never sent a
+  single message and the page has been falling back to opening a draft the whole time — the
+  supported state described above, working as designed, but worth knowing it is the ONLY
+  state this has ever been in. DNS confirms it: no resend._domainkey record, no send.
+  subdomain, and the root SPF is Microsoft 365 alone
+  (v=spf1 include:spf.protection.outlook.com -all).
+- This is also why the sign-in uses passwords rather than magic links. If email is ever set
+  up, it fixes both at once — task notifications AND the option of going back to links.
 
 
 "Related to" now reaches operators too — 2026-08-19:
@@ -939,107 +1038,27 @@ The document snapshot — REMOVED 2026-08-20:
   deals-data.json before the deletion; that is where the 22 deals came from.
 
 
-News blast (api/blast.js) — internal, added 2026-08-25:
-- Answers one question every Monday: did anybody write about us? Usually the
-  answer is no, and the blast says so by not arriving.
-- Watchlist lives in mentions-data.json. Eight entries in two kinds:
-    ENTITY  Modillion Partners, Fairwind, and the four principals by name
-    TOPIC   GP stakes in real estate; Co-GP equity & sponsor seeding
-- Operators are deliberately NOT on it. Aker, Arboretum, Green Light,
-  Switchback and OTH collide with unrelated companies and common words, and a
-  blast that is two thirds noise stops being opened by week three. Add one
-  later if it earns its place, with an anchor that pins down which firm it is.
-
-How a hit has to prove itself:
-- An ENTITY hit must arrive with the sentence from the page in which the name
-  appears, quoted verbatim, and api/_news.js checks mechanically that one of
-  the entry's aliases is really in it, on a word boundary. A model can talk
-  itself into "close enough"; it cannot quote a name that was never on the
-  page. This is why person entries list the FULL NAME only — a bare "Ernst"
-  would wave through Ernst & Young on a technicality.
-- A TOPIC hit has no name to anchor on, so the date is the anchor: undated, or
-  older than the entry's lookback, and it is dropped rather than flagged.
-- The two rules catch different failures and neither is sufficient alone. The
-  quote check stops a different David Wolfson; it does NOT stop a piece about
-  a modillion cornice or the Fairwind Marina, which pass the letter of it. The
-  anchor text on each entry is what handles those, so keep the anchors sharp.
-- Both are stricter than the Competitor Tracker, which merely flags an undated
-  article. That tracker is read by somebody who went looking. This is read by
-  somebody who did not.
-
-Running:
-    GET  /api/blast                 probe — what is configured, what is queued
-    GET  /api/blast?op=preview      the digest as it stands, unsent
-    GET  /api/blast?op=sweep        sweep the stalest entries
-    GET  /api/blast?op=send         send it, mark it sent
-  GET carries the verbs because Vercel Cron only issues GET. POST works too,
-  with x-dashboard-key, which is what tools/blast.py uses.
-
-    python3 tools/blast.py status | preview | sweep | send
-  send asks before mailing four people unless you pass --yes, and --dry-run
-  composes without sending. Seed the set once with:
-    python3 tools/publish.py --only mentions
-
-Schedule (vercel.json): three sweeps Monday 09:00, 09:30 and 10:00 UTC, then
-one send at 11:00 UTC — 07:00 Eastern in summer. Three sweeps for eight
-entries because a sweep is INCREMENTAL: it takes entries stalest first, files
-each as it finishes, and stops starting new ones near the invocation ceiling.
-A run killed mid-entry loses that entry and nothing else, and the next run
-takes it first because its lastSwept is still the oldest.
-
-Sweep and send are deliberately separate crons. A sweep is eight web-search
-passes; a send is one HTTP call. Together, a slow Tuesday would mean no blast
-at all rather than a blast of whatever the earlier passes did find.
-
-Environment:
-    ANTHROPIC_API_KEY      the same key /api/agent and /api/research use
-    RESEND_API_KEY         the blast sends through /api/notify, not its own key
-    CRON_SECRET            what Vercel Cron sends; set it, see below
-    DASHBOARD_WRITE_KEY    lets a person sweep or send by hand
-    BLAST_RECIPIENTS       optional, overrides recipients in mentions-data.json
-    BLAST_MAX_ITEMS        optional, default 6 per entry per sweep
-
-Unlike /api/records, THIS ENDPOINT REFUSES TO RUN UNLOCKED. With neither
-CRON_SECRET nor DASHBOARD_WRITE_KEY set, sweep and send return 503. An open
-write to the records store costs a bad record somebody can fix; an open blast
-costs the firm's return address in four inboxes as often as a stranger asks,
-and a sweep is billable model calls, so it is also a way to spend somebody
-else's money. Preview stays open, matching reads elsewhere here.
-
-An empty week sends nothing. A weekly "no mentions this week" is how people
-learn to filter the sender. Use the probe or tools/blast.py status to confirm
-it ran.
-
-Caveat worth knowing before the first send: publishing REPLACES the base and
-drops the deltas it accounts for, and every mention the sweep has filed lives
-in those deltas. Re-seeding mentions-data.json from this folder after the
-blast has been running will discard what it found. publish.py prints the
-mention count in the local file for exactly this reason — a zero there is the
-thing to notice before you send it, not after.
-
-
-Materials and versions — what has been sent to whom (dashboard.html, Investor CRM
-tab) — added 2026-09-10:
-- ONE QUESTION, asked constantly and until now answered by searching somebody's
-  sent items: which document did this investor get, WHICH VERSION of it, and are
-  they still holding the current cut. Three pieces answer it — a register of
-  materials, each with its versions; a SEND, which is one version going to one
-  investor on one date; and a status pill on every send that says Current or
-  Superseded.
-- IT IS NOT A SIXTH RECORD SET and it is not a documents tab coming back. It
-  lives inside the crm set, alongside the investors, and the register sits behind
-  a "Materials" button on the Investor CRM toolbar as a third view of that tab.
-  Two reasons, and the first is the one that decided it: a material is here
-  BECAUSE it goes to investors — a tab of its own would invite a register of
-  documents nobody has sent anybody, which is exactly what "No documents at all"
-  above threw out. The second is mechanical: a send names a version, so the send
-  and the version must be published together or a publish can land half of one.
-- NOTHING HERE HOLDS A FILE. A version is a label, a date, a note and — if you
-  have one — a link to wherever the file actually lives. The page does not read
-  OneDrive, does not upload anything and cannot open a document. Same bargain
-  every other record on this dashboard makes.
-- NOTHING HERE SENDS ANYTHING either, and both forms say so out loud. Recording a
-  send is a note that something went out; the page has no route to a mailbox.
+News blast — REMOVED 2026-09-15, and it had never once run:
+- api/blast.js, api/_news.js and tools/blast.py are deleted, the four Monday cron entries are
+  gone from vercel.json, and the `mentions` record set is gone from /api/records.
+- WHY: its own probe said it had never worked.
+      curl -s https://www.modillionpartners.com/api/blast
+      -> {"locked":false,"mail":false,"counts":{"watching":8,"filed":0,"lastSend":null}}
+  Neither CRON_SECRET nor DASHBOARD_WRITE_KEY was ever set in production, so authorized()
+  returned null and sweep and send answered 503 every Monday since 2026-08-25. Eight watchlist
+  entries were configured. Nothing was ever swept, filed or sent.
+- Keeping it would have meant either 1,001 lines of code that has never executed, or switching
+  on a weekly pass of BILLABLE model calls that would still have failed to deliver for want of
+  a Resend account. Deleted for the same reason the OneDrive connector was: a large file
+  nothing calls is a file somebody eventually believes.
+- WHAT WENT WITH IT: api/notify.js loses sendDigest(), canSend() and composeDigest(), plus the
+  handler's kind:"digest" branch. Its task-notification half is untouched. api/_store.js keeps
+  every line — the overlay never cared who was appending.
+- THE REDIS KEYS ARE STILL THERE. modillion:base:mentions and modillion:overlay:mentions are
+  now unreachable through the API, because `mentions` is off the SETS whitelist. They are a few
+  KB of orphan and can be deleted from the Upstash console whenever somebody feels like it.
+- IT IS ALL IN GIT HISTORY if it is ever wanted back. The pieces that would need rebuilding
+  first are the mail provider and CRON_SECRET, which is what it was missing all along.
 
 Which version is current, decided mechanically:
 - THE NEWEST DATE WINS, ties broken by the order the versions were added, so the

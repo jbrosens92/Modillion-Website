@@ -18,10 +18,9 @@ WHAT IT SENDS, AND TO WHERE
     operator-data.json   -> POST /api/records?set=operators&op=publish
     tasks-data.json      -> POST /api/records?set=tasks&op=publish
     competitor-data.json -> POST /api/records?set=competitors&op=publish
-    mentions-data.json   -> POST /api/records?set=mentions&op=publish
 
 IT TALKS TO THE SITE, NOT TO THE STORE. This machine never holds the
-Redis credentials — only DASHBOARD_WRITE_KEY, and only if the
+Redis credentials — only MODILLION_TOKEN, and only if the
 endpoints are locked. The one place that speaks to the store is the
 server, where the credentials already live.
 
@@ -41,7 +40,30 @@ USAGE
 
 ENVIRONMENT
     MODILLION_SITE         default https://www.modillionpartners.com
-    DASHBOARD_WRITE_KEY    only needed if the endpoints are locked
+    MODILLION_TOKEN        required — a dashboard session token, see below
+
+MODILLION_TOKEN — HOW THESE TOOLS AUTHENTICATE NOW (changed 2026-09-15)
+
+The endpoints used to be open, or locked by DASHBOARD_WRITE_KEY, which was one
+shared string. Both are gone: /api/records now requires a real
+signed-in person, so these scripts need a session token too.
+
+Getting one takes about ten seconds and it is deliberately manual. Automating it
+would mean putting a colleague's password in a script or a CI secret, which is
+exactly the kind of standing credential this work removed:
+
+    1. Sign in to the dashboard in a browser, as you normally would.
+    2. Open dev tools -> Application -> Local Storage -> the site.
+    3. Copy the access_token out of the "modillion-session" entry.
+    4. export MODILLION_TOKEN='eyJ...'
+
+IT EXPIRES IN ABOUT AN HOUR. That is not a defect to work around: these are
+seeding and repair tools run by hand a few times a year, and a credential on
+this machine that expires on its own is the right trade. If it has gone stale
+mid-run the script says 401 and you repeat the four steps above.
+
+DO NOT paste a Supabase service-role key here instead. It would work, and it
+would be a key that bypasses every check, sitting in a shell history.
 """
 
 import argparse
@@ -64,8 +86,6 @@ TARGETS = {
     "tasks":     ("tasks-data.json",     "/api/records?set=tasks&op=publish",     "task list"),
     "competitors": ("competitor-data.json", "/api/records?set=competitors&op=publish",
                     "competitor tracker"),
-    "mentions":  ("mentions-data.json",  "/api/records?set=mentions&op=publish",
-                    "news blast watchlist"),
 }
 
 HERE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -75,7 +95,7 @@ def post(url, payload, key):
     data = json.dumps(payload).encode("utf-8")
     headers = {"Content-Type": "application/json"}
     if key:
-        headers["x-dashboard-key"] = key
+        headers["Authorization"] = "Bearer " + key
     req = urllib.request.Request(url, data=data, headers=headers, method="POST")
     try:
         with urllib.request.urlopen(req, timeout=60) as r:
@@ -102,15 +122,6 @@ def describe(name, doc):
         rows = doc.get("competitors") or []
         articles = sum(len(c.get("articles") or []) for c in rows)
         return "%d competitors, %d articles" % (len(rows), articles)
-    if name == "mentions":
-        watch = doc.get("watchlist") or []
-        found = doc.get("mentions") or []
-        # Publishing REPLACES the base and drops the deltas it accounts
-        # for, and every mention the sweep has filed lives in those
-        # deltas. Re-seeding from the local file after the blast has run
-        # therefore discards what it found. Say the count out loud so a
-        # zero here is read before it is sent, not after.
-        return "%d watch entries, %d mentions in this file" % (len(watch), len(found))
     for field in ("investors", "operators", "tasks"):
         if isinstance(doc.get(field), list):
             return "%d %s" % (len(doc[field]), field)
@@ -128,12 +139,12 @@ def main():
     args = ap.parse_args()
 
     site = args.site.rstrip("/")
-    key = os.environ.get("DASHBOARD_WRITE_KEY", "")
+    key = os.environ.get("MODILLION_TOKEN", "")
     names = args.only or list(TARGETS)
 
     print("Publishing to %s" % site)
     if not key:
-        print("No DASHBOARD_WRITE_KEY set — fine if the endpoints are unlocked, "
+        print("No MODILLION_TOKEN set — every request will be refused. "
               "a 403 below if they are not.")
     print()
 

@@ -817,7 +817,7 @@ body[data-state="ready"]  .dash-gate { display: none; }
   margin-bottom: 12px;
 }
 .dash-gate__row { display: flex; gap: 14px; align-items: stretch; }
-/* The username sits on its own row, so the second label needs the gap the
+/* The email sits on its own row, so the second label needs the gap the
    submit button gives the password row. */
 .dash-gate__row--single { margin-bottom: 22px; }
 .dash-gate__row input {
@@ -845,6 +845,7 @@ body[data-state="ready"]  .dash-gate { display: none; }
   margin: 14px 0 0;
 }
 .dash-gate__error[hidden] { display: none; }
+
 
 @media (max-width: 560px) {
   .dash-gate__row { flex-direction: column; }
@@ -3595,14 +3596,15 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
     <div class="dash-gate__inner">
       <p class="eyebrow">Internal</p>
       <h1>Company Dashboard</h1>
-      <form class="dash-gate__form" id="gateForm" autocomplete="off">
-        <label class="dash-gate__label" for="gateUsername">Username</label>
+      <form class="dash-gate__form" id="gateForm" autocomplete="on">
+        <label class="dash-gate__label" for="gateEmail">Work email</label>
         <div class="dash-gate__row dash-gate__row--single">
-          <input type="email" id="gateUsername" name="username"
+          <input type="email" id="gateEmail" name="email"
                  autocomplete="username" spellcheck="false" autocapitalize="none"
                  placeholder="name@modillionpartners.com"
                  aria-describedby="gateError" required>
         </div>
+
         <label class="dash-gate__label" for="gatePassword">Password</label>
         <div class="dash-gate__row">
           <input type="password" id="gatePassword" name="password"
@@ -3614,12 +3616,11 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
       </form>
 
       <p class="dash-gate__note">
-        This sign-in is a speed bump, not security — it is checked in the browser, so anyone
-        who views the page source can work around it, and the same password is shared by
-        everyone. It names who you are so the page can say so; it does not keep anybody out.
-        The page ships with no records of its own — the real ones are gitignored and never
-        deployed. Real access control arrives with the Microsoft 365 sign-in, which is what
-        must be in place before any live document is connected here.
+        Your own password, not a shared one — it is checked by Supabase, not by this page,
+        and the records are held behind it. Every request this page makes carries a signed
+        token that the server verifies before it answers. That is the change from the old
+        sign-in, which was checked in the browser and protected nothing. Locked out? Ask for
+        a new password to be set; there is no reset email.
       </p>
 
       <a class="dash-gate__back" href="index.html">← modillionpartners.com</a>
@@ -4478,6 +4479,306 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
 <script>
 (function () {
   "use strict";
+
+  /* ============================================================
+     AUTH — who is looking, and the only reason the records are safe
+
+     READ THIS BEFORE CHANGING ANYTHING BELOW.
+
+     WHAT THIS REPLACED, ON 2026-09-15
+
+     There used to be a username and password checked IN THIS FILE,
+     against PBKDF2 hashes sitting in a public repository. It is gone,
+     and it is worth being exact about why, because the replacement
+     looks superficially similar — still a form, still in the page.
+
+     The old gate could not work, in principle, whatever it was built
+     out of. It ran in the reader's own browser, on a publicly served
+     page, and the records did not come from the page: they came from
+     /api/records, which never asked whether the form had been passed.
+     Anyone could open dev tools, set the session flag, and be "in" —
+     or skip the page entirely and curl the endpoint.
+
+     THIS IS DIFFERENT IN ONE SPECIFIC WAY, and the difference is not
+     in this file. The form below obtains a TOKEN SIGNED BY SUPABASE.
+     Every request to /api/* carries it, and the SERVER verifies the
+     signature before it answers — see api/_auth.js. The sign-in
+     screen is now just the way to get a token; it is no longer
+     pretending to be a door. Setting a flag in dev tools gets you a
+     dashboard with no data in it, because every endpoint will refuse
+     you.
+
+     So: the check that matters is on the server. Nothing in this
+     module is a security boundary, and nothing here needs to be.
+
+     HOW IT WORKS
+
+     Email and password, against Supabase. You type your Modillion
+     address and YOUR OWN password; the page exchanges them for a
+     signed token and every request carries it.
+
+     WHY NOT MAGIC LINKS, which is what this was first built as:
+     they need reliable transactional email, which this firm did not
+     have. Sending from @modillionpartners.com requires a verified
+     domain at a mail provider, and Supabase's built-in mailer allows
+     about two messages an hour — enough to invite people slowly, not
+     enough for four colleagues signing in on a Monday. Rather than
+     make the ability to sign in depend on DNS records nobody had set
+     up, the passwords came back. Deliberately, and with eyes open.
+
+     WHAT IS DIFFERENT FROM THE PASSWORD GATE THIS REPLACED, because
+     the resemblance is superficial and the distinction is the whole
+     point:
+
+       WAS   one password, SHARED by four people, compared against a
+             hash IN THIS FILE, in the reader's own browser, on a
+             publicly served page. Getting past it required no
+             password at all — just dev tools. It protected nothing,
+             because /api/records answered everybody anyway.
+
+       NOW   four passwords, ONE PER PERSON, never in this file and
+             never in this repository. They are checked by Supabase,
+             not here, and what comes back is a signed token that the
+             SERVER verifies on every request. Faking it in the
+             browser gets you an empty dashboard.
+
+     So the honest summary: a password is a weaker credential than a
+     one-time link, and this is still an enormous improvement on what
+     it replaced. The thing that makes the records safe is the server
+     check, not the form.
+
+     EACH PASSWORD IS GENERATED IN 1PASSWORD AND HANDED OVER ONCE.
+     They are not chosen by hand, not shared, and not written down
+     anywhere in this project. See README.txt.
+
+     NO PASSWORD RESET EMAIL, because there is no mail provider. If
+     somebody is locked out, an administrator sets a new password for
+     them in the Supabase dashboard. With four people that is a
+     two-minute job; it is the cost of not depending on email.
+
+     NO SUPABASE CLIENT LIBRARY, deliberately. The whole flow is four
+     fetches against Supabase's REST API, which is the same reasoning
+     _store.js applies to Upstash: nothing to install, nothing to keep
+     in step with a lockfile, and no third-party script on the one
+     page that displays the firm's investor records.
+
+     THE PUBLISHABLE KEY BELOW IS PUBLIC AND IS MEANT TO BE.
+     It will look alarming in a public repository. It is not a secret:
+     it names the project to Supabase and grants nothing on its own.
+     Presenting it to OUR endpoints achieves nothing either — they
+     want a signed session token and this is not one.
+
+     It is an "sb_publishable_..." key, Supabase's current format.
+     That is worth noticing, because the older "anon" key it replaced
+     WAS itself a JWT, signed by the project, carrying role "anon" —
+     which is why api/_auth.js still explicitly refuses any token
+     whose role is not "authenticated". Keep that check. It costs a
+     line and it is what stopped the public key being a skeleton key
+     on projects of that vintage.
+
+     WHAT MUST NEVER APPEAR IN THIS FILE is the SECRET key
+     ("sb_secret_...", formerly the service role key). It bypasses
+     every check there is. If you are ever pasting a Supabase key in
+     here, read its prefix first.
+     ============================================================ */
+  var Auth = (function () {
+    /* Set these once, from Supabase → Project Settings → API. Both are
+       public values; see the warning above about which key. */
+    var SUPABASE_URL = "https://ebztcfjvgffawpjvtxje.supabase.co";
+    var SUPABASE_ANON_KEY = "sb_publishable_4hoeuH_Fpb86H37rMoeoFA_UqATuQHY";
+
+    /* Where the session lives between visits. localStorage rather than
+       sessionStorage on purpose: this is a dashboard people leave open
+       and come back to, and signing in again on every browser restart
+       is friction with no security benefit. The trade is that a shared
+       or unattended machine stays signed in until Sign out — which is
+       the same trade every webmail client makes, and Sign out is in
+       the corner of every page. */
+    var SESSION_KEY = "modillion-session";
+
+    var session = null;
+    var refreshing = null;         // dedupes concurrent refreshes
+    var onExpired = function () {};
+
+    function configured() { return !!(SUPABASE_URL && SUPABASE_ANON_KEY); }
+    function nowSec() { return Math.floor(Date.now() / 1000); }
+    function base() { return SUPABASE_URL.replace(/\/+$/, ""); }
+
+    /* Reading our own token, FOR DISPLAY ONLY. The page shows a name in
+       the corner and decides whose tasks are "Mine"; for that, an
+       unverified read of the email claim is fine. It is NOT fine for
+       anything else, and there is nothing else. Every question that
+       actually matters — can this person read the CRM — is answered by
+       the server, which checks the signature first. */
+    function claims(tok) {
+      try {
+        var p = String(tok).split(".")[1];
+        var pad = p.replace(/-/g, "+").replace(/_/g, "/");
+        while (pad.length % 4) pad += "=";
+        return JSON.parse(decodeURIComponent(escape(atob(pad))));
+      } catch (e) { return {}; }
+    }
+
+    function store(s) {
+      session = s;
+      try {
+        if (s) localStorage.setItem(SESSION_KEY, JSON.stringify(s));
+        else localStorage.removeItem(SESSION_KEY);
+      } catch (e) { /* private mode: the session lives for this page only */ }
+    }
+
+    function restore() {
+      try {
+        var raw = localStorage.getItem(SESSION_KEY);
+        if (raw) session = JSON.parse(raw);
+      } catch (e) { session = null; }
+      return session;
+    }
+
+    function adopt(tok) {
+      if (!tok || !tok.access_token) return null;
+      var c = claims(tok.access_token);
+      store({
+        access_token: tok.access_token,
+        refresh_token: tok.refresh_token || (session && session.refresh_token) || "",
+        /* Prefer the token's own exp over expires_in: it is what the
+           server will actually check, so the page and the server agree
+           about when this stops working. */
+        expires_at: c.exp || (nowSec() + Number(tok.expires_in || 3600)),
+        email: String(c.email || "").toLowerCase()
+      });
+      return session;
+    }
+
+    /* ---- the two Supabase calls ---------------------------------- */
+
+    /* Exchange an address and password for a session. This is the only
+       place in the page that ever touches a password, and it does not
+       keep it: the value goes straight into this request and what comes
+       back is a token. Nothing stores it, nothing logs it, and it never
+       reaches our own server — Supabase does the checking. */
+    function signIn(email, password) {
+      if (!configured()) {
+        return Promise.resolve({ ok: false, reason: "This dashboard has no Supabase project configured yet." });
+      }
+      return fetch(base() + "/auth/v1/token?grant_type=password", {
+        method: "POST",
+        headers: { apikey: SUPABASE_ANON_KEY, "Content-Type": "application/json" },
+        body: JSON.stringify({ email: email, password: password })
+      }).then(function (r) {
+        return r.json().catch(function () { return {}; }).then(function (j) {
+          if (r.ok && j.access_token) {
+            adopt(j);
+            return { ok: true };
+          }
+          if (r.status === 429) {
+            return { ok: false, reason: "Too many attempts. Wait a minute and try again." };
+          }
+          /* Supabase answers "invalid_credentials" for a wrong password AND
+             for an address with no account, which is the behaviour we want
+             and the reason this does not try to be more helpful. Saying
+             which of the two was wrong would turn this box into a way to
+             work out who has an account here — the same property the old
+             gate was careful to keep. */
+          if (j.error_code === "email_not_confirmed") {
+            return { ok: false, reason: "This account has not been confirmed yet. Ask for it to be activated." };
+          }
+          return { ok: false, reason: "That email or password is not recognised." };
+        });
+      }).catch(function () {
+        return { ok: false, reason: "Could not reach the sign-in service." };
+      });
+    }
+
+    function refresh() {
+      if (refreshing) return refreshing;
+      if (!session || !session.refresh_token || !configured()) return Promise.resolve(null);
+      refreshing = fetch(base() + "/auth/v1/token?grant_type=refresh_token", {
+        method: "POST",
+        headers: { apikey: SUPABASE_ANON_KEY, "Content-Type": "application/json" },
+        body: JSON.stringify({ refresh_token: session.refresh_token })
+      }).then(function (r) {
+        if (!r.ok) throw new Error("refresh refused");
+        return r.json();
+      }).then(function (j) {
+        adopt(j);
+        return session ? session.access_token : null;
+      }).catch(function () {
+        /* The refresh token is spent or revoked. There is no quiet way
+           back from this — clear it and send the reader to the sign-in
+           screen rather than leaving a dead session that fails every
+           request without saying why. */
+        store(null);
+        onExpired();
+        return null;
+      }).then(function (v) { refreshing = null; return v; });
+      return refreshing;
+    }
+
+    /* ---- what the rest of the page uses --------------------------- */
+
+    /* A valid access token, refreshed if it is close to expiring.
+       SIXTY SECONDS OF HEADROOM because a request that leaves here
+       valid can still arrive expired, and the live poll runs often
+       enough to hit that window regularly. */
+    function token() {
+      if (!session) return Promise.resolve(null);
+      if (session.expires_at - 60 > nowSec()) return Promise.resolve(session.access_token);
+      return refresh();
+    }
+
+    /* EVERY CALL TO /api/* GOES THROUGH HERE. That is the point of it:
+       one place that attaches the token, and one place that knows what
+       a 401 means.
+
+       THE BUG THIS EXISTS TO PREVENT. Before authentication, push()
+       treated every failure except a 503 as "give up quietly", because
+       the localStorage overlay held the edit and a dropped save was
+       recoverable. Add authentication and that becomes a trap: an
+       expired session answers 401, the save fails, and the page
+       carries on telling the reader "Edits are shared" while their
+       afternoon accumulates in one browser nobody else can see.
+       Nothing is lost, but they are not told, which is worse.
+
+       So a 401 is handled HERE, loudly, by ending the session and
+       showing the sign-in screen. A 403 is not: that is a valid token
+       for somebody who is not allowed in, and signing in again would
+       only loop them. */
+    function apiFetch(url, opts) {
+      return token().then(function (t) {
+        var o = {};
+        Object.keys(opts || {}).forEach(function (k) { o[k] = opts[k]; });
+        o.headers = Object.assign({}, (opts && opts.headers) || {});
+        if (t) o.headers["Authorization"] = "Bearer " + t;
+        return fetch(url, o);
+      }).then(function (r) {
+        if (r.status === 401) {
+          /* Read the body before acting: `signIn` distinguishes "your
+             session has gone" from every other 401 the platform might
+             produce. Absent, assume the session — it is the common case
+             and the recovery is the same. */
+          return r.clone().json().catch(function () { return {}; }).then(function (j) {
+            if (j.signIn !== false) { store(null); onExpired(); }
+            return r;
+          });
+        }
+        return r;
+      });
+    }
+
+    return {
+      configured: configured,
+      restore: restore,
+      signIn: signIn,
+      token: token,
+      fetch: apiFetch,
+      email: function () { return session ? session.email : ""; },
+      signedIn: function () { return !!session; },
+      signOut: function () { store(null); },
+      onExpired: function (fn) { onExpired = fn; }
+    };
+  })();
+
 
   /* ============================================================
      CONFIG
@@ -7423,7 +7724,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
     var stop = new AbortController();
     var giveUp = setTimeout(function () { stop.abort(); }, 150000);
 
-    fetch(RESEARCH_ENDPOINT, {
+    Auth.fetch(RESEARCH_ENDPOINT, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       signal: stop.signal,
@@ -7916,21 +8217,19 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
      ============================================================ */
   var SharedOverlay = (function () {
     var ENDPOINT = "/api/records";
-    var KEY_STORE = "modillion-write-key";
 
     // unknown until something answers; "local" after a refusal, which
     // is what stops every keystroke POSTing into a 503.
     var state = "unknown";
 
-    function writeKey() {
-      try { return localStorage.getItem(KEY_STORE) || ""; } catch (e) { return ""; }
-    }
-
+    /* Just the content type now. THE WRITE KEY IS GONE — it was one
+       shared string, typed into each browser and kept in localStorage,
+       that said nothing about who was writing. Auth.fetch attaches a
+       per-person token instead, and the server verifies it, so a second
+       and weaker check sitting behind the first was only ever one more
+       thing for a colleague to have not set up yet. */
     function headers() {
-      var h = { "Content-Type": "application/json" };
-      var k = writeKey();
-      if (k) h["x-dashboard-key"] = k;
-      return h;
+      return { "Content-Type": "application/json" };
     }
 
     function isPlainObject(v) {
@@ -8020,7 +8319,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
     var seenStamp = {};
 
     function load(set) {
-      return fetch(ENDPOINT + "?set=" + encodeURIComponent(set), { cache: "no-store" })
+      return Auth.fetch(ENDPOINT + "?set=" + encodeURIComponent(set), { cache: "no-store" })
         .then(function (r) {
           if (!r.ok) throw new Error("no shared records");
           return r.json();
@@ -8039,11 +8338,16 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
 
     function push(set, overlay, who) {
       if (state === "local") return Promise.resolve(false);
-      return fetch(ENDPOINT + "?set=" + encodeURIComponent(set), {
+      return Auth.fetch(ENDPOINT + "?set=" + encodeURIComponent(set), {
         method: "POST",
         headers: headers(),
         body: JSON.stringify({ overlay: overlay, by: who || "" })
       }).then(function (r) {
+        /* ONLY a 503 means "there is no store, work locally". A 401 means
+           the SESSION went, not the store — Auth.fetch has already ended it
+           and put the sign-in screen up, and flipping to local mode here
+           would additionally leave the page claiming edits were shared
+           after the reader signs back in. */
         if (!r.ok && r.status === 503) state = "local";
         if (!r.ok) return false;
         /* The stamp this write produced, recorded before the next poll can
@@ -8070,7 +8374,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
       if (state === "local") {
         return Promise.resolve({ ok: false, reason: "The shared store is not reachable." });
       }
-      return fetch(ENDPOINT + "?set=" + encodeURIComponent(set) + "&op=publish", {
+      return Auth.fetch(ENDPOINT + "?set=" + encodeURIComponent(set) + "&op=publish", {
         method: "POST",
         headers: headers(),
         body: JSON.stringify({ doc: doc, by: who || "", seen: seenCount[set] || 0 })
@@ -8086,10 +8390,12 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
             })
             .catch(function () { return { ok: true, base: null }; });
         }
+        /* A 401 has already been dealt with by Auth.fetch, which ended the
+           session and put the sign-in screen up. Saying anything here would
+           be talking to a page the reader is no longer looking at. */
+        if (r.status === 401) return { ok: false, reason: "Your session expired — sign in again." };
         if (r.status === 403) {
-          return { ok: false, reason: writeKey()
-            ? "This browser's write key was refused."
-            : "No write key set in this browser — run modillionWriteKey(\"...\") in the console." };
+          return { ok: false, reason: "This account is not allowed to publish. Ask for it to be added." };
         }
         if (r.status === 503) { state = "local"; return { ok: false, reason: "No records store configured." }; }
         return { ok: false, reason: "The store answered " + r.status + "." };
@@ -8109,36 +8415,14 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
           "so nobody else can see them — “Publish to team” will say the same until it is.";
     }
 
-    /* The write key is TYPED IN ONCE PER BROWSER and kept in
-       localStorage — it is deliberately not baked into this page,
-       which is served publicly. That keeps it out of view-source; it
-       does not make it a password. It is one shared string with no
-       identity attached, readable from the dev tools of any browser
-       that has it, and it says nothing about WHO is writing. It stops
-       anonymous strangers, not colleagues and not anyone determined.
-
-           modillionWriteKey("the-string")     to set it
-           modillionWriteKey()                 to see whether one is set
-    */
-    function setKey(v) {
-      try {
-        if (v === undefined) return writeKey() ? "A write key is set in this browser." : "No write key set.";
-        if (v) localStorage.setItem(KEY_STORE, String(v));
-        else localStorage.removeItem(KEY_STORE);
-        return v ? "Write key saved in this browser." : "Write key cleared.";
-      } catch (e) { return "This browser will not store it (private mode)."; }
-    }
-
     return {
       load: load, push: push, publish: publish,
-      merge: merge, mergeInto: mergeInto, setKey: setKey,
+      merge: merge, mergeInto: mergeInto,
       note: note, state: function () { return state; },
       seen: function (set) { return seenCount[set] || 0; },
       stamp: function (set) { return seenStamp[set] || 0; }
     };
   })();
-
-  window.modillionWriteKey = SharedOverlay.setKey;
 
   /* PUBLISH — what "Download, drop it in the folder, commit, push,
      redeploy" used to be. The page already computes the fully merged
@@ -8348,7 +8632,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
     function tick() {
       if (busy || SharedOverlay.state() === "local") { schedule(); return; }
       busy = true;
-      fetch(ENDPOINT + "?op=stamps", { cache: "no-store" })
+      Auth.fetch(ENDPOINT + "?op=stamps", { cache: "no-store" })
         .then(function (r) { return r.ok ? r.json() : null; })
         .then(function (j) {
           if (!j || !j.stamps) return null;
@@ -18902,7 +19186,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
     var stop = new AbortController();
     var giveUp = setTimeout(function () { stop.abort(); }, 150000);
 
-    fetch(RESEARCH_ENDPOINT, {
+    Auth.fetch(RESEARCH_ENDPOINT, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       signal: stop.signal,
@@ -19553,7 +19837,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
         }
       } catch (e) { /* private mode — probe every load instead */ }
 
-      return fetch(NOTIFY_ENDPOINT, { method: "GET", cache: "no-store" })
+      return Auth.fetch(NOTIFY_ENDPOINT, { method: "GET", cache: "no-store" })
         .then(function (r) { return r.ok ? r.json() : null; })
         .then(function (j) { available = !!(j && j.ok); return available; })
         .catch(function () { available = false; return false; })
@@ -19617,7 +19901,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
     }
 
     function send(to, task, toName, from) {
-      return fetch(NOTIFY_ENDPOINT, {
+      return Auth.fetch(NOTIFY_ENDPOINT, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -21367,191 +21651,129 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
   });
 
   $("signOutBtn").addEventListener("click", function () {
-    try {
-      sessionStorage.removeItem(GATE_KEY);
-      sessionStorage.removeItem(GATE_USER_KEY);
-    } catch (e) { /* private mode */ }
-    // The gate form is reused, so clear what the last person typed.
-    $("gateUsername").value = "";
-    $("gatePassword").value = "";
-    $("gateError").hidden = true;
-    document.body.setAttribute("data-state", "locked");
-    window.scrollTo({ top: 0 });
+    /* Drops the tokens, which is what actually ends access — every
+       endpoint refuses the moment there is nothing to send. The access
+       token already issued stays technically valid at Supabase until it
+       expires (an hour at most); it is gone from this browser, which is
+       what Sign out can honestly promise. To cut a session short elsewhere,
+       revoke it in the Supabase dashboard. */
+    Auth.signOut();
+    lock("");
   });
 
   /* ============================================================
-     GATE
+     THE SIGN-IN SCREEN
 
-     A client-side username and password check. READ THIS BEFORE
-     RELYING ON IT: it is a speed bump, not access control. The
-     credential table below sits in public page source and the
-     comparison runs in the browser, so anyone who opens dev tools
-     is past it — not by cracking anything, just by skipping the
-     check. It stops casual visitors and nothing more.
+     Everything that used to be described here — a client-side
+     password check, why it was a speed bump, how to regenerate the
+     hashes — is gone with the gate itself. See the AUTH module at the
+     top of this file for what replaced it, and README.txt for the
+     reasoning.
 
-     THE CONDITION THIS USED TO REST ON IS GONE, and moving the data
-     to Vercel did not bring it back. It said the gate was "only
-     acceptable while this page ships no records of its own", which
-     was true while the data files were gitignored and undeployed.
-     The files are gitignored again — but the records are now LIVE,
-     served to this page by /api/records and /api/documents, which
-     answer anyone who asks. No document is stored, and that decision
-     is recorded in README.txt. Deal names, sponsor names, investor
-     firms and conversation notes are all behind this form, and it can
-     be stepped over from dev tools.
-
-     Where the data lives changed twice. Who can read it has not
-     changed once.
-
-     That is a deliberate decision, not an oversight: the endpoint was
-     asked for as readable by anyone with the URL, and it is. But it
-     means the gate is no longer protecting anything, because there is
-     nothing left for it to protect — /api/onedrive answers the browser
-     directly, with no reference to whether this form was passed. Anyone
-     who fetches the endpoint gets the whole tree, gate or no gate.
-
-     So keep it for what it still does — identity, below — and do not
-     read it as a control on the documents. If the documents should stop
-     being public, the fix is in api/onedrive.js, not here.
-
-     What the sign-in is actually FOR here is identity: the page has
-     never known who is looking at it, so "Mine" on the task list and
-     the name in the corner had to be picked from a dropdown. Now
-     they follow whoever signed in.
-
-     Stored as PBKDF2-HMAC-SHA256, 310k iterations, a random 16-byte
-     salt per account, so the shared password is not sitting in this
-     public repository in plaintext and the hashes are not a
-     rainbow-table lookup. That raises the cost of recovering the
-     password from the file; it does NOT make the gate itself
-     stronger, because the gate can be walked around rather than
-     broken. The password is also weak and shared, so treat it as
-     public: it must never be a password that opens anything else,
-     and in particular must not be the real Microsoft 365 password
-     for these accounts.
-
-     If this page should become private again, the two ways that
-     actually work are Vercel edge Basic Auth or Vercel Authentication
-     with the secret in an environment variable, in FRONT of both the
-     page and /api/onedrive — the endpoint is the thing that has to be
-     covered. A sign-in inside this file cannot do it, whatever it is
-     built out of, because it runs in the reader's own browser. See
-     README.txt.
+     The one thing worth repeating at this distance: THE CHECK THAT
+     MATTERS IS NOT IN THIS FILE. What follows renders a form, asks
+     Supabase for a link, and decides which of two screens to show.
+     Skipping all of it from dev tools gets you an empty dashboard,
+     because every endpoint verifies a token before it answers.
      ============================================================ */
-  var GATE_ITERATIONS = 310000;
-  var GATE_KEY = "modillion-dashboard-unlocked";
-  var GATE_USER_KEY = "modillion-dashboard-user";
 
-  // id matches the task-list roster, so signing in also answers "who is
-  // Mine" without a second list of people to keep in step.
+  /* The roster. Names and addresses only now — THE SALTS AND HASHES ARE
+     GONE, with the shared password they protected. What is left is a
+     lookup from the address Supabase signed in to the short id the task
+     list uses, which is what lets signing in also answer "who is Mine"
+     without a second list of people to keep in step.
+
+     THIS LIST IS NOT A PERMISSION CHECK and must not be mistaken for
+     one. Who may use the dashboard is decided by api/_auth.js, from the
+     email domain on a verified token. Someone signed in whose address is
+     not below gets in and simply has no short id — the corner shows their
+     address and "Mine" matches nothing. Adding a colleague means inviting
+     them in Supabase; adding them here is only so the page can say their
+     name. */
   var GATE_USERS = [
-    { id: "dw", name: "David Wolfson",
-      username: "dwolfson@modillionpartners.com",
-      salt: "ca7123d8cd1a13018f42b05965d1ede2",
-      hash: "45a68a3b92fae840a1a7583cba8437bd47c68b34d8b7c862d9c58b893e43e900" },
-    { id: "ce", name: "Corey Ernst",
-      username: "cernst@modillionpartners.com",
-      salt: "04a67e463d1cf87eed7d8ebfa01521e4",
-      hash: "508e0ce21d946e9dd117b384d44967ed5d189ef830c401e1ee53ddd5e589deae" },
-    { id: "ee", name: "Eric Emrich",
-      username: "eemrich@modillionpartners.com",
-      salt: "723a339fbf1f72a7db189f2c88f8490d",
-      hash: "dcb186939453769743e5a216fab3295fbe705c5660ccc29bbc44ce8a51e6f376" },
-    { id: "jb", name: "John Brosens",
-      username: "jbrosens@modillionpartners.com",
-      salt: "8730b5cc6ef90a0364049290d09b1571",
-      hash: "039931db6b65863c0a5dd840c3de236214667400e959ea98c9a0af78c3e1d9d6" }
+    { id: "dw", name: "David Wolfson", username: "dwolfson@modillionpartners.com" },
+    { id: "ce", name: "Corey Ernst",   username: "cernst@modillionpartners.com" },
+    { id: "ee", name: "Eric Emrich",   username: "eemrich@modillionpartners.com" },
+    { id: "jb", name: "John Brosens",  username: "jbrosens@modillionpartners.com" }
   ];
 
-  function hexToBytes(hex) {
-    var out = new Uint8Array(hex.length / 2);
-    for (var i = 0; i < out.length; i++) out[i] = parseInt(hex.substr(i * 2, 2), 16);
-    return out;
-  }
-
-  function bytesToHex(buf) {
-    return Array.prototype.map.call(new Uint8Array(buf), function (b) {
-      return b.toString(16).padStart(2, "0");
-    }).join("");
-  }
-
-  function pbkdf2Hex(password, saltHex) {
-    var enc = new TextEncoder().encode(password);
-    return crypto.subtle.importKey("raw", enc, "PBKDF2", false, ["deriveBits"])
-      .then(function (key) {
-        return crypto.subtle.deriveBits({
-          name: "PBKDF2", salt: hexToBytes(saltHex),
-          iterations: GATE_ITERATIONS, hash: "SHA-256"
-        }, key, 256);
-      })
-      .then(bytesToHex);
-  }
-
-  function gateUserByName(username) {
-    var v = String(username || "").trim().toLowerCase();
-    if (!v) return null;
-    for (var i = 0; i < GATE_USERS.length; i++) {
-      if (GATE_USERS[i].username === v) return GATE_USERS[i];
-    }
-    return null;
-  }
-
+  /* Whoever the verified session says is here. Every "Mine", every name
+     in a corner and every `by` the page writes comes through this, and
+     it now follows a token rather than a form somebody walked past. */
   function signedInUser() {
-    var id;
-    try { id = sessionStorage.getItem(GATE_USER_KEY); } catch (e) { return null; }
-    if (!id) return null;
+    var email = Auth.email();
+    if (!email) return null;
     for (var i = 0; i < GATE_USERS.length; i++) {
-      if (GATE_USERS[i].id === id) return GATE_USERS[i];
+      if (GATE_USERS[i].username === email) return GATE_USERS[i];
     }
-    return null;
+    /* Signed in, allowed by the server, not on the roster above. Show the
+       address rather than nothing — being told you are nobody is worse
+       than being told you are an email address. */
+    return { id: "", name: email, username: email };
   }
 
   function unlock(user) {
-    try {
-      sessionStorage.setItem(GATE_KEY, "1");
-      if (user) sessionStorage.setItem(GATE_USER_KEY, user.id);
-    } catch (e) { /* private mode */ }
     // Signing in answers the question the task list used to ask in a
     // dropdown. Set it rather than leave a stale pick from last time —
     // signing in as one person and being told you are another is worse
     // than not being told at all.
-    if (user) Tasks.setWhoAmI(user.id);
+    if (user && user.id) Tasks.setWhoAmI(user.id);
     document.body.setAttribute("data-state", "ready");
     window.scrollTo({ top: 0 });
     load();
   }
 
+  /* Back to the sign-in screen, session gone. Called on Sign out, and by
+     Auth when a session expires under a request. */
+  function lock(message) {
+    var err = $("gateError");
+    $("gateEmail").value = "";
+    $("gatePassword").value = "";
+    if (message) { err.textContent = message; err.hidden = false; }
+    else { err.hidden = true; }
+    document.body.setAttribute("data-state", "locked");
+    window.scrollTo({ top: 0 });
+  }
+
+  Auth.onExpired(function () {
+    lock("Your session expired. Sign in again to carry on — nothing you saved has been lost.");
+  });
+
+  /* ---- signing in ---------------------------------------------------- */
   $("gateForm").addEventListener("submit", function (e) {
     e.preventDefault();
-    var nameInput = $("gateUsername");
-    var input = $("gatePassword");
+    var emailInput = $("gateEmail");
+    var pwInput = $("gatePassword");
     var err = $("gateError");
     var btn = e.target.querySelector("button[type=submit]");
-    var user = gateUserByName(nameInput.value);
-
-    // The password is still hashed for an unknown username, against a
-    // throwaway salt. Answering instantly for a name that is not on the
-    // list would turn this box into a way to enumerate who works here.
-    var salt = user ? user.salt : GATE_USERS[0].salt;
+    var email = String(emailInput.value || "").trim().toLowerCase();
+    var password = pwInput.value || "";
+    if (!email || !password) return;
 
     btn.disabled = true;
-    pbkdf2Hex(input.value, salt).then(function (hex) {
+    err.hidden = true;
+
+    Auth.signIn(email, password).then(function (r) {
       btn.disabled = false;
-      if (user && hex === user.hash) {
-        err.hidden = true;
-        input.value = "";
-        unlock(user);
-      } else {
-        // Deliberately does not say which of the two was wrong.
-        err.textContent = "That username or password is not recognised.";
+      /* CLEAR THE FIELD EITHER WAY. On success it has done its job; on
+         failure it must not sit in the DOM for the next person at this
+         machine to reveal with a dev-tools click. */
+      pwInput.value = "";
+      if (!r.ok) {
+        err.textContent = r.reason;
         err.hidden = false;
-        input.select();
+        pwInput.focus();
+        return;
       }
-    }).catch(function () {
-      btn.disabled = false;
-      // crypto.subtle needs a secure context (https or localhost).
-      err.textContent = "This page must be served over https to check the password.";
-      err.hidden = false;
+      var who = signedInUser();
+      /* The datasets were never loaded — boot stops at the gate when
+         there is no session, precisely so no request goes out
+         unauthenticated. Load them now, then show the dashboard. */
+      Promise.all([Deals.load(), Crm.load(), Lps.load(), Operators.load(), Tasks.load(),
+                   Competitors.load()]).then(function () {
+        describeSource();
+        unlock(who);
+      });
     });
   });
 
@@ -23006,7 +23228,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
         }
       } catch (e) { /* private mode — probe every load instead */ }
 
-      return fetch(AGENT_ENDPOINT, { method: "GET", cache: "no-store" })
+      return Auth.fetch(AGENT_ENDPOINT, { method: "GET", cache: "no-store" })
         .then(function (r) { return r.ok ? r.json() : null; })
         .then(function (j) {
           available = !!(j && j.ok);
@@ -23022,7 +23244,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
     }
 
     function think(text, ctx, history) {
-      return fetch(AGENT_ENDPOINT, {
+      return Auth.fetch(AGENT_ENDPOINT, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ message: text, context: ctx, history: history })
@@ -24393,24 +24615,52 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
 
   /* ============================================================
      BOOT
-     Resolve the dataset once, then honour an existing unlocked
-     session. There is deliberately no query-string bypass — that
-     would make the gate pointless.
+
+     THE ORDER CHANGED WITH AUTHENTICATION, and it had to.
+
+     This used to load all six datasets first and check the gate
+     afterwards, which was harmless while /api/records answered
+     anybody. It is not harmless now: those loads ARE the authenticated
+     requests, and running them before a session exists means six
+     guaranteed 401s on every cold visit — each one telling Auth the
+     session had expired, which would put up an error about expiry to a
+     reader who had simply never signed in.
+
+     So: establish who is here FIRST, and only then load anything. The
+     loading therefore happens in TWO places and that is not an
+     oversight — here for somebody whose stored session is still good,
+     and in the sign-in handler for somebody who has just typed a
+     password. Neither runs without a token.
+
+     There is deliberately no query-string bypass. There never was, and
+     it would now be pointless anyway — a bypass would show an empty
+     dashboard, because the refusals are on the server.
      ============================================================ */
-  Promise.all([Deals.load(), Crm.load(), Lps.load(), Operators.load(), Tasks.load(),
-               Competitors.load()]).then(function () {
-    describeSource();
-    var unlocked = false;
-    try { unlocked = sessionStorage.getItem(GATE_KEY) === "1"; } catch (e) { /* private mode */ }
-    if (unlocked) {
-      // A reload inside an open session keeps who you are, so "Mine" and
-      // the chip do not quietly revert to whatever was picked before.
+  (function boot() {
+    Auth.restore();
+
+    if (!Auth.signedIn()) {
+      /* Nothing to load and nothing to say. The sign-in screen is the
+         page's resting state, exactly as before. */
+      if (!Auth.configured()) {
+        lock("This dashboard has no Supabase project configured yet — see README.txt.");
+      }
+      return;
+    }
+
+    /* Signed in already. NOW load, with a token available for every
+       request. The same load runs in the sign-in handler for somebody
+       arriving at the gate; this branch is the returning visitor whose
+       session is still good. */
+    Promise.all([Deals.load(), Crm.load(), Lps.load(), Operators.load(), Tasks.load(),
+                 Competitors.load()]).then(function () {
+      describeSource();
       var who = signedInUser();
-      if (who) Tasks.setWhoAmI(who.id);
+      if (who && who.id) Tasks.setWhoAmI(who.id);
       document.body.setAttribute("data-state", "ready");
       load();
-    }
-  });
+    });
+  })();
 })();
 </script>
 
