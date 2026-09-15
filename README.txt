@@ -1782,3 +1782,44 @@ LP PARTNER TRACKER — a tab, 2026-09-15:
   appearing on it, a send logged from the partner page landing on the right
   investor while a different one sat open on the CRM tab, the workbook, and no
   duplicate ids with both panes populated. No console errors on any tab.
+
+LP PARTNERS — archive, and saying which CRM, 2026-09-15:
+- Three things asked for after the first look: "I'd like to be able to remove or
+  archive", "it should look cleaner", and "which CRM is this adding to".
+- WHICH CRM: the Investor CRM. There are two on this dashboard and the button
+  said "Add to CRM", which named neither — a button that does not say where a
+  record is about to appear. Every mention of it on this tab now says Investor
+  CRM by name: both row buttons, both detail-page buttons, the filter, the
+  source line, the empty states and the workbook's column heading.
+- ARCHIVE, NOT DELETE, and that is not a half-measure. There is no record behind
+  a partner row to delete — the deal is what puts the firm there — so a
+  permanent removal and an archive would be the same tombstone under two names,
+  and only one of them can be undone. One action, with a Restore beside it and
+  an Archived pile at the foot of the list, the same shape the investor,
+  operator and competitor lists already have.
+- WHERE THE TOMBSTONE LIVES: overlay.partnersArchived on the CRM set, KEYED BY
+  THE PARTNER'S NAME lowercased, not by an investor id — a partner is derived
+  from the deals and need not have an investor record at all, and the name is
+  the join the whole tab already uses. Explicit false rather than a delete on
+  restore, the same rule archive() follows, so a publish that bakes the map into
+  the base cannot resurrect it. It is carried through toFile() for the reason
+  dealsHidden is: a publish that dropped it would put every archived partner
+  back the moment somebody pressed the button.
+- This does not make the tab a record set. Archiving records the ONE thing a
+  person can say about a derived list — "not this one" — and it changes nothing
+  about the deal. The toast says so, because somebody archiving a firm they
+  closed with deserves to be told the deal is untouched.
+- CLEANER, and the whole of it was one idea: a row where everything is
+  emphasised is a row where nothing is. The deals, the operators and the markets
+  were three bordered-tag columns running together. Operators and markets are
+  now plain stacked text; the deal keeps its box because it is the subject of
+  the row and the thing you click. The Materials column printed material NAMES —
+  the widest thing on the row, for the one question nobody asks of a list — and
+  is now a count, "2 sent", with the out-of-date count under it. The last-note
+  clamp went from two lines to one, which is what was setting the height of
+  every row on the list. Rows went from ~120px to ~78px with nothing removed
+  that a click does not bring back.
+- Verified in a browser at 1600px, 800px and 375px: archive and restore from
+  both the row and the record, the pile opening and staying open under a search,
+  the count and the home tile agreeing, the tombstone surviving as an explicit
+  false, the workbook excluding archived partners, no console errors on any tab.

@@ -2722,6 +2722,34 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
    one unreadable string. */
 .report-table .crm-sub { display: block; font-size: .72rem; color: var(--muted); margin-top: 3px; }
 
+/* ---- the partner list, made quieter ------------------------------
+   Operators and markets as plain stacked text rather than bordered
+   tags. The deal keeps its box because it is the subject of the row and
+   the thing you click; everything beside it is context, and context in
+   a box competes with the thing it is context for. */
+.crmtable--partners .partner-plain {
+  display: block;
+  font-size: .82rem;
+  line-height: 1.45;
+  color: var(--deep-space);
+}
+.crmtable--partners .partner-plain + .partner-plain { margin-top: 2px; }
+
+/* One line, not two. The note is the tallest thing on the row and it
+   was setting the height of every row on the list; a line of it is
+   enough to recognise the conversation, and the whole of it is on the
+   record and on the cell's own title. */
+.crmtable--partners .crm-lastnote { -webkit-line-clamp: 1; margin-top: 2px; }
+
+/* The deal tags stack rather than run on, so a firm with two closed
+   deals is two readable lines instead of one wrapped smear. */
+.crmtable--partners td:nth-child(3) .crm-tag { display: block; width: fit-content; }
+.crmtable--partners td:nth-child(3) .crm-tag + .crm-tag { margin-top: 4px; }
+
+/* Both row actions on one line, and quiet until the row is hovered —
+   the same bargain the deal lists make. */
+.crmtable--partners .crm-actions { white-space: nowrap; }
+
 .partner-note textarea {
   font-family: var(--sans);
   font-size: .92rem;
@@ -4040,9 +4068,9 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
 
             <label class="visually-hidden" for="partnerFilterRecord">Filter by investor record</label>
             <select id="partnerFilterRecord">
-              <option value="">On the CRM or not</option>
-              <option value="on">On the investor CRM</option>
-              <option value="off">Not on the investor CRM</option>
+              <option value="">Investor CRM: any</option>
+              <option value="on">On the Investor CRM</option>
+              <option value="off">Not on the Investor CRM</option>
             </select>
 
             <button type="button" class="dash-crm__clear" id="partnerClearFilters">Clear</button>
@@ -8295,7 +8323,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
                     sends: {}, sendPatches: {}, sendRemoved: {},
                     materialsAdded: [], materialPatches: {}, materialsRemoved: {},
                     dealStatus: {}, dealsAdded: [], dealsDropped: {}, dealsHidden: {},
-                    archived: {}, removed: {},
+                    archived: {}, removed: {}, partnersArchived: {},
                     learned: { aliases: {} } };
 
     function readOverlay() {
@@ -8320,6 +8348,11 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
         overlay.dealsHidden   = o.dealsHidden || {};
         overlay.archived      = o.archived || {};
         overlay.removed       = o.removed || {};
+        /* LP partners taken off that tab's list. Keyed by the partner's
+           NAME, lowercased, because a partner has no id — the tab derives
+           them from the deals and some of them have no investor record at
+           all. Same join the whole tab uses. */
+        overlay.partnersArchived = o.partnersArchived || {};
         overlay.learned       = o.learned || { aliases: {} };
         overlay.learned.aliases = overlay.learned.aliases || {};
       } catch (e) { /* private mode, or corrupt — start clean */ }
@@ -8350,7 +8383,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
                  sends: {}, sendPatches: {}, sendRemoved: {},
                  materialsAdded: [], materialPatches: {}, materialsRemoved: {},
                  dealStatus: {}, dealsAdded: [], dealsDropped: {}, dealsHidden: {},
-                 archived: {}, removed: {},
+                 archived: {}, removed: {}, partnersArchived: {},
                  learned: { aliases: {} } };
       try { localStorage.setItem(OVERLAY_KEY, JSON.stringify(overlay)); }
       catch (e) { /* private mode — the copy in memory is what matters */ }
@@ -8375,6 +8408,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
              Object.keys(overlay.dealsHidden).length > 0 ||
              Object.keys(overlay.archived).length > 0 ||
              Object.keys(overlay.removed).length > 0 ||
+             Object.keys(overlay.partnersArchived).length > 0 ||
              Object.keys(overlay.learned.aliases || {}).length > 0 ||
              overlay.created.length > 0;
     }
@@ -9168,6 +9202,46 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
       rebuild();
     }
 
+    /* ---- taking an LP partner off that tab's list ------------------
+       KEYED BY NAME, lowercased, and not by an investor id — because a
+       partner is derived from the deals and need not have an investor
+       record at all. The LP Partners tab joins on exactly this key, so
+       a tombstone written here finds the same firm the row came from.
+
+       It lives on the CRM overlay rather than in a set of its own for
+       the reason the tab has no set: a partner is not a record, and
+       adding `partners` to /api/records would say it was. This is one
+       more tombstone map in a store that is already almost entirely
+       tombstone maps, and it is the ONLY thing a person can say about a
+       derived list — "not this one".
+
+       An explicit false rather than a delete, the same as archive()
+       above and for the same reason: once a publish bakes the map into
+       the base, a missing key means "nothing was said", and only a
+       false can overrule what the base already holds.
+       ---------------------------------------------------------------- */
+    function archivePartner(key, on) {
+      var k = String(key || "").trim().toLowerCase();
+      if (!k) return;
+      overlay.partnersArchived[k] = on === false ? false
+        : new Date().toISOString().slice(0, 10);
+      writeOverlay();
+      rebuild();
+    }
+
+    /* The base's map with the overlay laid over it, resolved the way
+       archivedNow() resolves a record's own flag. */
+    function partnersArchived() {
+      var out = {};
+      var fromFile = (base && base.partnersArchived) || {};
+      Object.keys(fromFile).forEach(function (k) { if (fromFile[k]) out[k] = fromFile[k]; });
+      Object.keys(overlay.partnersArchived).forEach(function (k) {
+        if (overlay.partnersArchived[k]) out[k] = overlay.partnersArchived[k];
+        else delete out[k];
+      });
+      return out;
+    }
+
 
     /* ARCHIVED RIGHT NOW, resolving the overlay against the record.
 
@@ -9311,6 +9385,10 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
         dealStatus: dealStatuses(),
         dealsAdded: addedDealRecords(),
         dealsHidden: hiddenDeals(),
+        /* Travels with the records for the same reason dealsHidden does:
+           a publish that dropped it would put every archived LP partner
+           back on the tab the moment somebody pressed the button. */
+        partnersArchived: partnersArchived(),
         learned: { aliases: keep },
         /* Carrying the resolved flag, where this used to export `merged`
            untouched. An investor archived here and then published came
@@ -9371,6 +9449,8 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
       isDealHidden: isDealHidden,
       hideDeal: hideDeal,
       archive: archive,
+      archivePartner: archivePartner,
+      partnersArchived: partnersArchived,
       remove: removeInvestor,
       isArchived: isArchived,
       learned: learned,
@@ -9385,7 +9465,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
                     sends: {}, sendPatches: {}, sendRemoved: {},
                     materialsAdded: [], materialPatches: {}, materialsRemoved: {},
                     dealStatus: {}, dealsAdded: [], dealsDropped: {}, dealsHidden: {},
-                    archived: {}, removed: {},
+                    archived: {}, removed: {}, partnersArchived: {},
                     learned: { aliases: {} } };
         writeOverlay();
         rebuild();
@@ -12946,7 +13026,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
     }
 
     function entry(k, name) {
-      return { key: k, name: name, investor: null,
+      return { key: k, name: name, investor: null, archived: false,
                /* One row per deal, each saying HOW they are in it. The
                   two routes are collected separately and merged onto one
                   row, because a firm can be the named LP and hold a
@@ -12989,10 +13069,13 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
       var crmByKey = {};
       Crm.all().forEach(function (inv) { crmByKey[key(inv.name)] = inv; });
 
+      var put_away = Crm.partnersArchived();
+
       var out = [];
       Object.keys(by).forEach(function (k) {
         var e = by[k];
         e.investor = crmByKey[k] || null;
+        e.archived = !!put_away[k];
         // The maintained spelling wins over whatever the deal box says.
         if (e.investor) e.name = e.investor.name;
 
@@ -13024,7 +13107,20 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
        memory and the lists are tens of records long, so a cache would
        only be somewhere for a stale answer to hide after somebody edits
        a deal on another tab. */
-    function all() { return build(); }
+    /* ARCHIVED IS OUT OF all(), the same shape every other module here
+       has. The row is still derived — archiving does not touch the deal
+       and cannot — it just records that somebody does not want this firm
+       on the list, and Restore withdraws that. There is no Delete: there
+       is no record to delete, and a permanent hide IS this. */
+    function all() {
+      return build().filter(function (e) { return !e.archived; });
+    }
+
+    function allIncludingArchived() { return build(); }
+
+    function archived() {
+      return build().filter(function (e) { return e.archived; });
+    }
 
     function get(k) {
       var want = key(k);
@@ -13083,7 +13179,8 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
       return parts.join(" · ");
     }
 
-    return { all: all, get: get, key: key, facet: facet, cheque: cheque, role: role };
+    return { all: all, allIncludingArchived: allIncludingArchived, archived: archived,
+             get: get, key: key, facet: facet, cheque: cheque, role: role };
   })();
 
   /* ============================================================
@@ -13095,7 +13192,10 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
     query: "",
     filters: { operator: "", market: "", asset: "", deal: "", record: "" },
     sortKey: "name",
-    sortDir: "asc"
+    sortDir: "asc",
+    // Whether the Archived pile at the foot of the list is open. Recorded
+    // so a re-render does not spring it shut while somebody is reading it.
+    openArchived: false
   };
 
   /* No "Added" and no drag handle, because neither exists: a partner is
@@ -13110,17 +13210,51 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
     { key: "operator", label: "Operators" },
     { key: "market",   label: "Markets" },
     { key: "live",     label: "Also live", num: true },
-    { key: "sent",     label: "Materials" },
+    { key: "sent",     label: "Sent" },
     { key: "contact",  label: "Last contact" }
   ];
 
-  function partnerTags(values, limit) {
+  /* THE DEALS COLUMN KEEPS ITS BOXES and the two beside it lost theirs.
+
+     Every value on this row used to be in a bordered tag — the deals, the
+     operators and the markets, three boxed columns running together — and
+     a row where everything is emphasised is a row where nothing is. The
+     deal is the thing this tab is about and the thing you click, so it is
+     the one that stays boxed; who ran it and where it was are context,
+     and context reads better as plain text. */
+  function partnerDealTags(values, limit) {
     if (!values.length) return '<span class="muted">—</span>';
     return values.slice(0, limit).map(function (v) {
-      return '<span class="crm-tag">' + esc(v) + '</span>';
+      return '<span class="crm-tag crm-tag--deal">' + esc(v) + '</span>';
     }).join("") +
       (values.length > limit
         ? '<span class="crm-tag">+' + (values.length - limit) + '</span>' : "");
+  }
+
+  /* Plain, one per line, and the overflow counted rather than listed —
+     a cell is not a place to read a list of six markets, and the record
+     has all of them. */
+  function partnerPlain(values, limit) {
+    if (!values.length) return '<span class="muted">—</span>';
+    return values.slice(0, limit).map(function (v) {
+      return '<span class="partner-plain">' + esc(v) + '</span>';
+    }).join("") +
+      (values.length > limit
+        ? '<span class="crm-sub">+' + (values.length - limit) + ' more</span>' : "");
+  }
+
+  /* WHAT THEY HOLD, as a count. This column used to print the material
+     NAMES as tags — the widest thing on the row, for the one question
+     nobody asks of a list ("which document, exactly"). The count and
+     whether any of it is out of date is what a list can usefully say;
+     the names are on the record, one click away. */
+  function partnerSent(inv) {
+    if (!inv) return '<span class="muted">—</span>';
+    var held = latestSends(inv);
+    if (!held.length) return '<span class="muted">—</span>';
+    var stale = staleSends(inv).length;
+    return esc(countOf(held.length, "sent", "sent")) +
+      (stale ? '<span class="crm-sub is-missing">' + stale + ' out of date</span>' : "");
   }
 
   function partnerLastContact(e) {
@@ -13189,22 +13323,25 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
     });
   }
 
-  function partnerTable(list, total) {
+  function partnerTable(list, total, pile) {
+    var archived = pile === "archived";
+
     if (!list.length) {
+      if (archived) return "";
       return total
         ? '<div class="dash-state"><h3>No partners match</h3>' +
           '<p>Clear the filters, or search for a deal, an operator or a market.</p></div>'
         : '<div class="dash-state"><h3>No LP partners yet</h3>' +
-          '<p>A firm appears here once a deal it is on reaches Closed Deals — either ' +
-          'named in the deal’s LP box, or holding a committed or funded place on its ' +
+          '<p>A firm appears here once a deal it is on reaches Closed Deals \u2014 either ' +
+          'named in the deal\u2019s LP box, or holding a committed or funded place on its ' +
           'raise. Nothing is added on this tab; it reads the deals.</p></div>';
     }
 
     var head = PARTNER_COLUMNS.map(function (c) {
-      var sorted = partnerState.sortKey === c.key;
+      var sorted = !archived && partnerState.sortKey === c.key;
       return '<th class="' + (sorted ? "is-sorted " : "") + (c.num ? "num" : "") + '">' +
              '<button type="button" data-partnersort="' + c.key + '">' + esc(c.label) +
-             '<span class="arrow">' + (sorted && partnerState.sortDir === "asc" ? "↑" : "↓") +
+             '<span class="arrow">' + (sorted && partnerState.sortDir === "asc" ? "\u2191" : "\u2193") +
              '</span></button></th>';
     }).join("") +
     '<th class="crm-actions"><span class="visually-hidden">Actions</span></th>';
@@ -13222,29 +13359,43 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
                is the one thing about a partner somebody can fix in a
                click, and a row that does not say it is a row nobody
                fixes. */
-            : '<span class="crm-sub is-missing">Not on the investor CRM</span>') + '</td>' +
+            : '<span class="crm-sub is-missing">Not on the Investor CRM</span>') + '</td>' +
         '<td class="crm-num">' + e.closed.length + '</td>' +
-        '<td>' + partnerTags(e.closed.map(function (r) { return r.deal.name; }), 2) + '</td>' +
-        '<td>' + partnerTags(Partners.facet(e, "operator"), 2) + '</td>' +
-        '<td>' + partnerTags(Partners.facet(e, "market"), 2) + '</td>' +
-        '<td class="crm-num">' + (e.live.length || '<span class="muted">—</span>') + '</td>' +
-        '<td>' + (e.investor ? sentTags(e.investor) : '<span class="muted">—</span>') + '</td>' +
+        '<td>' + partnerDealTags(e.closed.map(function (r) { return r.deal.name; }), 2) + '</td>' +
+        '<td>' + partnerPlain(Partners.facet(e, "operator"), 2) + '</td>' +
+        '<td>' + partnerPlain(Partners.facet(e, "market"), 2) + '</td>' +
+        '<td class="crm-num">' + (e.live.length || '<span class="muted">\u2014</span>') + '</td>' +
+        '<td>' + partnerSent(e.investor) + '</td>' +
         '<td>' + (last
-          ? esc(last) +
+          ? '<span class="crm-date">' + esc(last) + '</span>' +
             (note ? '<span class="crm-lastnote" title="' + esc(note) + '">' + esc(note) + '</span>' : "") +
             '<span class="crm-sub">' + countOf(e.investor.conversations.length, "logged", "logged") + '</span>'
           : (e.investor ? '<span class="muted">Never</span>'
                         : '<span class="muted">No record</span>')) + '</td>' +
         '<td class="crm-actions">' +
+          /* SAYS WHICH CRM, because there are two of them on this
+             dashboard and "Add to CRM" named neither \u2014 a button that
+             does not say where a record is about to appear. */
           (e.investor
             ? '<button type="button" class="deal-rowaction" data-crm-open-name="' + esc(e.name) +
-              '" title="Open ' + esc(e.name) + ' on the investor CRM">CRM</button>'
+              '" title="Open ' + esc(e.name) + ' on the Investor CRM">Investor CRM</button>'
             : '<button type="button" class="deal-rowaction" data-partner-adopt="' + esc(e.key) +
-              '" title="Create an investor record for ' + esc(e.name) + '">Add to CRM</button>') +
+              '" title="Create an Investor CRM record for ' + esc(e.name) +
+              '">Add to Investor CRM</button>') +
+          /* NO DELETE, and that is not an omission. There is no record
+             behind this row to delete \u2014 the deal is what puts the firm
+             here \u2014 so a permanent removal and an archive would be the
+             same tombstone under two names, and only one of them can be
+             undone. */
+          (archived
+            ? '<button type="button" class="deal-rowaction" data-partner-restore="' + esc(e.key) +
+              '" title="Put ' + esc(e.name) + ' back on the list">Restore</button>'
+            : '<button type="button" class="deal-rowaction" data-partner-archive="' + esc(e.key) +
+              '" title="Take ' + esc(e.name) + ' off the list">Archive</button>') +
         '</td></tr>';
     }).join("");
 
-    return '<div class="crmtable-wrap"><table class="crmtable">' +
+    return '<div class="crmtable-wrap"><table class="crmtable crmtable--partners">' +
            '<thead><tr>' + head + '</tr></thead><tbody>' + rows + '</tbody></table></div>';
   }
 
@@ -13292,8 +13443,8 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
     if (!e.investor) {
       return '<div class="crm-section"><h3>How we work together' +
         '<span class="crm-section__aside">Needs a record</span></h3>' +
-        '<p class="crm-research__empty">The note is kept on the investor record, and ' +
-        esc(e.name) + ' has not got one. Add them to the investor CRM and the box appears ' +
+        '<p class="crm-research__empty">The note is kept on the Investor CRM record, and ' +
+        esc(e.name) + ' has not got one. Add them to the Investor CRM and the box appears ' +
         'here.</p></div>';
     }
     var v = e.investor.partnerNote || "";
@@ -13309,9 +13460,9 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
         '<div class="partner-note__bar">' +
           '<button type="button" class="dash-refresh dash-refresh--primary" ' +
             'data-partner-note-save="' + esc(e.investor.id) + '">Save note</button>' +
-          '<span class="crm-research__hint">Stored on their investor record, so the CRM tab ' +
-            'shows the same note. Separate from “Why they are on the list”, which is ' +
-            'what was hoped before anything was done together.</span>' +
+          '<span class="crm-research__hint">Stored on their Investor CRM record, so that ' +
+            'tab shows the same note. Separate from “Why they are on the list”, ' +
+            'which is what was hoped before anything was done together.</span>' +
         '</div>' +
       '</div></div>';
   }
@@ -13338,11 +13489,18 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
       '<div class="dash-investor__actions">' +
         (inv
           ? '<button class="dash-refresh" data-crm-open-name="' + esc(e.name) +
-              '">Open on the CRM</button>' +
+              '">Open on the Investor CRM</button>' +
             '<button class="dash-refresh dash-refresh--primary" data-crm-log="' + esc(inv.id) +
               '">Log a conversation</button>'
           : '<button class="dash-refresh dash-refresh--primary" data-partner-adopt="' +
-              esc(e.key) + '">Add to investor CRM</button>') +
+              esc(e.key) + '">Add to Investor CRM</button>') +
+        // Same one action the row carries, offered where somebody who has
+        // just read the record is standing.
+        (e.archived
+          ? '<button class="dash-refresh" data-partner-restore="' + esc(e.key) +
+              '">Restore to the list</button>'
+          : '<button class="dash-refresh" data-partner-archive="' + esc(e.key) +
+              '">Archive</button>') +
       '</div></div>');
 
     /* The facts grid, from the investor record where there is one. With
@@ -13376,8 +13534,8 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
         '<p>' + esc(e.name) + ' is on this tab because of the ' +
         esc(countOf(e.closed.length, "closed deal")) + ' below, but there is no investor ' +
         'record behind the name — so there is nowhere to keep a contact, a note or a ' +
-        'conversation. “Add to investor CRM” above creates one, stage Committed, ' +
-        'with the closed deals already on it.</p></div>');
+        'conversation. “Add to Investor CRM” above creates one there, stage ' +
+        'Committed, with the closed deals already on it.</p></div>');
     }
 
     // The people, when the record holds more than the one in the grid.
@@ -13436,8 +13594,8 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
                 '</span></li>';
             }).join("") + '</ul>'
           : '<div class="dash-state"><h3>Nothing logged yet</h3>' +
-            '<p>“Log a conversation” above writes it to their investor record, ' +
-            'which is where this list reads from.</p></div>') +
+            '<p>“Log a conversation” above writes it to their Investor CRM ' +
+            'record, which is where this list reads from.</p></div>') +
         '</div>');
     } else {
       parts.push(recordTaskPanel(e.name));
@@ -13480,13 +13638,27 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
   function renderPartners() {
     /* Derived once and passed down. Every call to Partners.all() walks
        the deals and the investor list to rebuild the join, and this
-       function used to ask for it four separate times — cheap at this
+       function used to ask for it four separate times \u2014 cheap at this
        size, and still four answers where one is wanted. */
     var all = Partners.all();
     var list = partnerFiltered(all);
     var total = all.length;
+    var put_away = partnerFiltered(Partners.archived());
 
-    $("partnerBody").innerHTML = partnerTable(list, total);
+    /* A search forces the pile open, for the same reason the investor and
+       deal piles open: a hit nobody can see is worse than a longer page. */
+    var f = partnerState.filters;
+    var forced = !!partnerState.query || !!f.operator || !!f.market || !!f.asset ||
+                 !!f.deal || !!f.record;
+
+    $("partnerBody").innerHTML =
+      partnerTable(list, total, "live") +
+      archivePile('data-partner-pile="archived"', partnerState.openArchived || forced,
+        put_away.length,
+        "Off the list, not deleted \u2014 and nothing about the deals changed. Restore puts " +
+        "them back. A firm can only be here because a deal closed with them, so this is the " +
+        "only thing this tab lets you say about who is on it.",
+        partnerTable(put_away, total, "archived"));
     labelCells($("partnerBody"));
 
     $("partnerShown").textContent = list.length === total
@@ -13496,13 +13668,13 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
 
     var missing = all.filter(function (e) { return !e.investor; }).length;
     $("partnerSourceNote").innerHTML =
-      'Nothing is entered on this tab. A firm is here because a deal it is on has closed — ' +
-      'named in the deal’s LP box, or holding a committed or funded place on its raise — ' +
-      'and everything else about them is their investor record, read and written where it ' +
-      'lives. Soft circles do not count as a partnership.' +
+      'Nothing is entered on this tab. A firm is here because a deal it is on has closed \u2014 ' +
+      'named in the deal\u2019s LP box, or holding a committed or funded place on its raise \u2014 ' +
+      'and everything else about them is their <strong>Investor CRM</strong> record, read and ' +
+      'written where it lives. Soft circles do not count as a partnership.' +
       (missing
         ? ' <strong>' + countOf(missing, "partner") + ' here ' +
-          (missing === 1 ? "has" : "have") + ' no investor record</strong>, so there is ' +
+          (missing === 1 ? "has" : "have") + ' no Investor CRM record</strong>, so there is ' +
           'nowhere to keep their contacts or conversations yet.'
         : "");
   }
@@ -13546,7 +13718,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
     renderPartnerFilters();
     renderPartners();
     if (partnerState.view === "partner") renderPartner(k);
-    toast("“" + e.name + "” is on the investor CRM now — stage Committed, with " +
+    toast("“" + e.name + "” is on the Investor CRM now — stage Committed, with " +
           countOf(e.closed.length, "closed deal") + " on the record. Nothing else was filled in.");
     return made;
   }
@@ -13574,7 +13746,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
       name: "LP partners",
       widths: [34, 10, 10, 40, 30, 26, 22, 14, 12, 10, 50],
       rows: [["LP partner", "Closed", "Also live", "Deals closed", "Operators", "Markets",
-              "Location", "Last contact", "Conversations", "On the CRM",
+              "Location", "Last contact", "Conversations", "On the Investor CRM",
               "How we work together"]].concat(
         list.map(function (e) {
           var inv = e.investor;
@@ -13692,6 +13864,51 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
       renderCrm();
       if (partnerState.view === "partner") renderPartner(partnerState.key);
       toast("Saved on their investor record.");
+      return;
+    }
+
+    /* ARCHIVE AND RESTORE. Both sit above the row handler at the foot of
+       this listener, and have to: a button inside a row that opens the
+       partner would otherwise open the partner as well.
+
+       No arming on either. The two-click guard elsewhere protects a
+       DELETE, where something is lost; this is one tombstone that
+       Restore withdraws, and nothing about the deal is touched. */
+    var pArchive = e.target.closest("[data-partner-archive]");
+    if (pArchive) {
+      var ak = pArchive.getAttribute("data-partner-archive");
+      var arec = Partners.get(ak);
+      Crm.archivePartner(ak, true);
+      // Archiving the record that is open would leave the page showing a
+      // partner the list no longer has, so it goes back to the list.
+      if (partnerState.view === "partner" && partnerState.key === ak) {
+        showPartnerView("list");
+      }
+      renderPartnerFilters();
+      renderPartners();
+      toast("\u201C" + ((arec && arec.name) || ak) + "\u201D is off the LP Partners list. " +
+            "The closed deals are untouched \u2014 Restore is in the Archived pile at the foot.");
+      return;
+    }
+
+    var pRestore = e.target.closest("[data-partner-restore]");
+    if (pRestore) {
+      var rk = pRestore.getAttribute("data-partner-restore");
+      Crm.archivePartner(rk, false);
+      partnerState.openArchived = true;   // so the pile does not shut under them
+      renderPartnerFilters();
+      renderPartners();
+      var rrec = Partners.get(rk);
+      toast("\u201C" + ((rrec && rrec.name) || rk) + "\u201D is back on the list.");
+      return;
+    }
+
+    /* The pile toggles itself — <details> is doing that — so this only
+       records which way it was left. The attribute has not flipped yet at
+       click time, hence the negation. */
+    var pPile = e.target.closest("summary[data-partner-pile]");
+    if (pPile) {
+      partnerState.openArchived = !pPile.parentNode.hasAttribute("open");
       return;
     }
 
