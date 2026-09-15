@@ -43,7 +43,7 @@ ENVIRONMENT
 MODILLION_TOKEN — HOW THESE TOOLS AUTHENTICATE NOW (changed 2026-09-15)
 
 The endpoints used to be open, or locked by DASHBOARD_WRITE_KEY, which was one
-shared string. Both are gone: /api/records and /api/blast now require a real
+shared string. Both are gone: /api/records now requires a real
 signed-in person, so these scripts need a session token too.
 
 Getting one takes about ten seconds and it is deliberately manual. Automating it
@@ -81,7 +81,6 @@ SETS = {
     "crm":         ("investors",   "investor"),
     "deals":       ("deals",       "deal"),
     "tasks":       ("tasks",       "task"),
-    "mentions":    ("mentions",    "mention"),
 }
 
 

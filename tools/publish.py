@@ -18,7 +18,6 @@ WHAT IT SENDS, AND TO WHERE
     operator-data.json   -> POST /api/records?set=operators&op=publish
     tasks-data.json      -> POST /api/records?set=tasks&op=publish
     competitor-data.json -> POST /api/records?set=competitors&op=publish
-    mentions-data.json   -> POST /api/records?set=mentions&op=publish
 
 IT TALKS TO THE SITE, NOT TO THE STORE. This machine never holds the
 Redis credentials — only MODILLION_TOKEN, and only if the
@@ -46,7 +45,7 @@ ENVIRONMENT
 MODILLION_TOKEN — HOW THESE TOOLS AUTHENTICATE NOW (changed 2026-09-15)
 
 The endpoints used to be open, or locked by DASHBOARD_WRITE_KEY, which was one
-shared string. Both are gone: /api/records and /api/blast now require a real
+shared string. Both are gone: /api/records now requires a real
 signed-in person, so these scripts need a session token too.
 
 Getting one takes about ten seconds and it is deliberately manual. Automating it
@@ -87,8 +86,6 @@ TARGETS = {
     "tasks":     ("tasks-data.json",     "/api/records?set=tasks&op=publish",     "task list"),
     "competitors": ("competitor-data.json", "/api/records?set=competitors&op=publish",
                     "competitor tracker"),
-    "mentions":  ("mentions-data.json",  "/api/records?set=mentions&op=publish",
-                    "news blast watchlist"),
 }
 
 HERE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -125,15 +122,6 @@ def describe(name, doc):
         rows = doc.get("competitors") or []
         articles = sum(len(c.get("articles") or []) for c in rows)
         return "%d competitors, %d articles" % (len(rows), articles)
-    if name == "mentions":
-        watch = doc.get("watchlist") or []
-        found = doc.get("mentions") or []
-        # Publishing REPLACES the base and drops the deltas it accounts
-        # for, and every mention the sweep has filed lives in those
-        # deltas. Re-seeding from the local file after the blast has run
-        # therefore discards what it found. Say the count out loud so a
-        # zero here is read before it is sent, not after.
-        return "%d watch entries, %d mentions in this file" % (len(watch), len(found))
     for field in ("investors", "operators", "tasks"):
         if isinstance(doc.get(field), list):
             return "%d %s" % (len(doc[field]), field)

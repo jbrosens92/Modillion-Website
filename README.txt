@@ -254,8 +254,9 @@ Setting it up, in order:
   for the initial seed.
 
 AUTHENTICATION — ADDED 2026-09-15, AND IT REPLACES EVERY SIGN-IN THIS FILE USED TO DESCRIBE:
-- WHAT CHANGED, IN ONE LINE: /api/records, /api/agent, /api/research, /api/notify and
-  /api/blast now refuse anybody who is not a signed-in member of the firm. Reads included.
+- WHAT CHANGED, IN ONE LINE: /api/records, /api/agent, /api/research and /api/notify
+  now refuse anybody who is not a signed-in member of the firm. Reads included. (/api/blast
+  was gated too, and then removed outright later the same day — see "News blast".)
 - WHAT WAS WRONG BEFORE, stated plainly because two separate things looked like access
   control and neither was:
     a) The sign-in in dashboard.html checked a shared password IN THE BROWSER, on a page
@@ -1037,121 +1038,27 @@ The document snapshot — REMOVED 2026-08-20:
   deals-data.json before the deletion; that is where the 22 deals came from.
 
 
-News blast (api/blast.js) — internal, added 2026-08-25:
-- Answers one question every Monday: did anybody write about us? Usually the
-  answer is no, and the blast says so by not arriving.
-- Watchlist lives in mentions-data.json. Eight entries in two kinds:
-    ENTITY  Modillion Partners, Fairwind, and the four principals by name
-    TOPIC   GP stakes in real estate; Co-GP equity & sponsor seeding
-- Operators are deliberately NOT on it. Aker, Arboretum, Green Light,
-  Switchback and OTH collide with unrelated companies and common words, and a
-  blast that is two thirds noise stops being opened by week three. Add one
-  later if it earns its place, with an anchor that pins down which firm it is.
-
-How a hit has to prove itself:
-- An ENTITY hit must arrive with the sentence from the page in which the name
-  appears, quoted verbatim, and api/_news.js checks mechanically that one of
-  the entry's aliases is really in it, on a word boundary. A model can talk
-  itself into "close enough"; it cannot quote a name that was never on the
-  page. This is why person entries list the FULL NAME only — a bare "Ernst"
-  would wave through Ernst & Young on a technicality.
-- A TOPIC hit has no name to anchor on, so the date is the anchor: undated, or
-  older than the entry's lookback, and it is dropped rather than flagged.
-- The two rules catch different failures and neither is sufficient alone. The
-  quote check stops a different David Wolfson; it does NOT stop a piece about
-  a modillion cornice or the Fairwind Marina, which pass the letter of it. The
-  anchor text on each entry is what handles those, so keep the anchors sharp.
-- Both are stricter than the Competitor Tracker, which merely flags an undated
-  article. That tracker is read by somebody who went looking. This is read by
-  somebody who did not.
-
-Running:
-    GET  /api/blast                 probe — what is configured, what is queued
-    GET  /api/blast?op=preview      the digest as it stands, unsent
-    GET  /api/blast?op=sweep        sweep the stalest entries
-    GET  /api/blast?op=send         send it, mark it sent
-  GET carries the verbs because Vercel Cron only issues GET. POST works too,
-  with x-dashboard-key, which is what tools/blast.py uses.
-
-    python3 tools/blast.py status | preview | sweep | send
-  send asks before mailing four people unless you pass --yes, and --dry-run
-  composes without sending. Seed the set once with:
-    python3 tools/publish.py --only mentions
-
-Schedule (vercel.json): three sweeps Monday 09:00, 09:30 and 10:00 UTC, then
-one send at 11:00 UTC — 07:00 Eastern in summer. Three sweeps for eight
-entries because a sweep is INCREMENTAL: it takes entries stalest first, files
-each as it finishes, and stops starting new ones near the invocation ceiling.
-A run killed mid-entry loses that entry and nothing else, and the next run
-takes it first because its lastSwept is still the oldest.
-
-Sweep and send are deliberately separate crons. A sweep is eight web-search
-passes; a send is one HTTP call. Together, a slow Tuesday would mean no blast
-at all rather than a blast of whatever the earlier passes did find.
-
-Environment:
-    ANTHROPIC_API_KEY      the same key /api/agent and /api/research use
-    RESEND_API_KEY         the blast sends through /api/notify, not its own key
-    CRON_SECRET            what Vercel Cron sends — NOW REQUIRED, see below
-    (a person sweeping or sending by hand signs in instead; see "Authentication")
-    BLAST_RECIPIENTS       optional, overrides recipients in mentions-data.json
-    BLAST_MAX_ITEMS        optional, default 6 per entry per sweep
-- CRON_SECRET IS WHAT THE SCHEDULER NEEDS, and as of 2026-09-15 it is the only thing that will
-  do: every other caller must now be a signed-in person and the scheduler cannot be one.
-- THIS BLAST HAS NEVER RUN, confirmed 2026-09-15 from its own probe:
+News blast — REMOVED 2026-09-15, and it had never once run:
+- api/blast.js, api/_news.js and tools/blast.py are deleted, the four Monday cron entries are
+  gone from vercel.json, and the `mentions` record set is gone from /api/records.
+- WHY: its own probe said it had never worked.
       curl -s https://www.modillionpartners.com/api/blast
       -> {"locked":false,"mail":false,"counts":{"watching":8,"filed":0,"lastSend":null}}
-  Neither CRON_SECRET nor DASHBOARD_WRITE_KEY was ever set, so authorized() returned null and
-  sweep and send answered 503 every Monday since this was built. Eight watchlist entries are
-  configured and nothing has ever been swept or sent.
-- SO LEAVE CRON_SECRET UNSET UNLESS YOU ACTUALLY WANT THE BLAST. Setting it switches on a
-  feature that has never run: a weekly pass of BILLABLE model calls, which would then fail to
-  deliver anyway because there is no RESEND_API_KEY and no Resend account (see /api/notify).
-  Turning it on means wanting it, wiring up mail first, and watching the first run.
-- The behaviour change is cosmetic either way: the cron used to get 503 and now gets 401.
-  Nothing ran before and nothing runs now.
-
-Unlike /api/records, THIS ENDPOINT REFUSES TO RUN UNLOCKED. With neither
-CRON_SECRET nor DASHBOARD_WRITE_KEY set, sweep and send return 503. An open
-write to the records store costs a bad record somebody can fix; an open blast
-costs the firm's return address in four inboxes as often as a stranger asks,
-and a sweep is billable model calls, so it is also a way to spend somebody
-else's money. Preview stays open, matching reads elsewhere here.
-
-An empty week sends nothing. A weekly "no mentions this week" is how people
-learn to filter the sender. Use the probe or tools/blast.py status to confirm
-it ran.
-
-Caveat worth knowing before the first send: publishing REPLACES the base and
-drops the deltas it accounts for, and every mention the sweep has filed lives
-in those deltas. Re-seeding mentions-data.json from this folder after the
-blast has been running will discard what it found. publish.py prints the
-mention count in the local file for exactly this reason — a zero there is the
-thing to notice before you send it, not after.
-
-
-Materials and versions — what has been sent to whom (dashboard.html, Investor CRM
-tab) — added 2026-09-10:
-- ONE QUESTION, asked constantly and until now answered by searching somebody's
-  sent items: which document did this investor get, WHICH VERSION of it, and are
-  they still holding the current cut. Three pieces answer it — a register of
-  materials, each with its versions; a SEND, which is one version going to one
-  investor on one date; and a status pill on every send that says Current or
-  Superseded.
-- IT IS NOT A SIXTH RECORD SET and it is not a documents tab coming back. It
-  lives inside the crm set, alongside the investors, and the register sits behind
-  a "Materials" button on the Investor CRM toolbar as a third view of that tab.
-  Two reasons, and the first is the one that decided it: a material is here
-  BECAUSE it goes to investors — a tab of its own would invite a register of
-  documents nobody has sent anybody, which is exactly what "No documents at all"
-  above threw out. The second is mechanical: a send names a version, so the send
-  and the version must be published together or a publish can land half of one.
-- NOTHING HERE HOLDS A FILE. A version is a label, a date, a note and — if you
-  have one — a link to wherever the file actually lives. The page does not read
-  OneDrive, does not upload anything and cannot open a document. Same bargain
-  every other record on this dashboard makes.
-- NOTHING HERE SENDS ANYTHING either, and both forms say so out loud. Recording a
-  send is a note that something went out; the page has no route to a mailbox.
+  Neither CRON_SECRET nor DASHBOARD_WRITE_KEY was ever set in production, so authorized()
+  returned null and sweep and send answered 503 every Monday since 2026-08-25. Eight watchlist
+  entries were configured. Nothing was ever swept, filed or sent.
+- Keeping it would have meant either 1,001 lines of code that has never executed, or switching
+  on a weekly pass of BILLABLE model calls that would still have failed to deliver for want of
+  a Resend account. Deleted for the same reason the OneDrive connector was: a large file
+  nothing calls is a file somebody eventually believes.
+- WHAT WENT WITH IT: api/notify.js loses sendDigest(), canSend() and composeDigest(), plus the
+  handler's kind:"digest" branch. Its task-notification half is untouched. api/_store.js keeps
+  every line — the overlay never cared who was appending.
+- THE REDIS KEYS ARE STILL THERE. modillion:base:mentions and modillion:overlay:mentions are
+  now unreachable through the API, because `mentions` is off the SETS whitelist. They are a few
+  KB of orphan and can be deleted from the Upstash console whenever somebody feels like it.
+- IT IS ALL IN GIT HISTORY if it is ever wanted back. The pieces that would need rebuilding
+  first are the mail provider and CRON_SECRET, which is what it was missing all along.
 
 Which version is current, decided mechanically:
 - THE NEWEST DATE WINS, ties broken by the order the versions were added, so the
