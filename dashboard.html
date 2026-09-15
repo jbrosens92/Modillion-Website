@@ -2710,7 +2710,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
   color: var(--deep-space);
 }
 
-/* ---- LP Partners -------------------------------------------------
+/* ---- LP CRM -------------------------------------------------
    The tab adds two things to the shared vocabulary and borrows the rest:
    the note box on a partner's page, and the line on a row that says a
    firm has no investor record behind the name. Everything else here is
@@ -3668,7 +3668,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
         <button type="button" data-tab="raises">Capital Raises<span class="dash-tabs__count" id="tabRaiseCount"></span></button>
         <button type="button" data-tab="operators">Operator CRM<span class="dash-tabs__count" id="tabOperatorCount"></span></button>
         <button type="button" data-tab="crm">Investor CRM<span class="dash-tabs__count" id="tabCrmCount"></span></button>
-        <button type="button" data-tab="partners">LP Partners<span class="dash-tabs__count" id="tabPartnerCount"></span></button>
+        <button type="button" data-tab="partners">LP CRM<span class="dash-tabs__count" id="tabPartnerCount"></span></button>
         <button type="button" data-tab="tasks">Task List<span class="dash-tabs__count" id="tabTaskCount"></span></button>
         <button type="button" data-tab="competitors">Competitor Tracker<span class="dash-tabs__count" id="tabCompetitorCount"></span></button>
       </nav>
@@ -4055,13 +4055,13 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
 
       </div><!-- /#wsCrm -->
 
-      <!-- ====================== LP PARTNERS ======================= -->
+      <!-- ========================= LP CRM ========================= -->
       <!-- The LPs the firm has actually closed alongside. Nothing on
            this tab is stored by this tab: membership is DERIVED from
            the closed deals, and everything soft about a partner —
            contacts, conversations, what they have been sent — is the
            investor record, read and written where it already lives.
-           See "LP PARTNER TRACKER" in the script below. -->
+           See "LP CRM" in the script below. -->
       <div id="wsPartners" hidden>
 
         <p class="report-note" id="partnerSourceNote"></p>
@@ -4070,7 +4070,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
         <div class="dash-toolbar">
           <div class="dash-search">
             <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
-            <label class="visually-hidden" for="partnerSearch">Search LP partners</label>
+            <label class="visually-hidden" for="partnerSearch">Search the LP CRM</label>
             <input type="search" id="partnerSearch" placeholder="Search partners, deals, operators, markets and conversations" autocomplete="off">
           </div>
           <button class="dash-refresh dash-refresh--primary" id="partnerAddBtn">Add a prospective LP</button>
@@ -4087,10 +4087,10 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
         <div class="crm-draft" id="partnerAdd" hidden>
           <h4>Add a prospective LP</h4>
           <p class="crm-draft__lede">
-            A prospective LP is an Investor CRM record on the LP track — the same record,
-            not a copy, so a conversation logged here is the one that tab shows. When a deal
-            closes with them they move to Current LP partners on their own, with everything
-            logged against them intact.
+            Someone the firm is talking to about coming in as an LP. When a deal closes with
+            them they move to Current LP partners on their own, with everything logged against
+            them intact. A firm already on the Investor CRM is picked up rather than
+            duplicated — it is one record either way.
           </p>
           <div class="crm-draft__grid">
             <div class="crm-field crm-field--wide">
@@ -4142,13 +4142,6 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
             <label class="visually-hidden" for="partnerFilterDeal">Filter by deal</label>
             <select id="partnerFilterDeal"><option value="">All closed deals</option></select>
 
-            <label class="visually-hidden" for="partnerFilterRecord">Filter by investor record</label>
-            <select id="partnerFilterRecord">
-              <option value="">Investor CRM: any</option>
-              <option value="on">On the Investor CRM</option>
-              <option value="off">Not on the Investor CRM</option>
-            </select>
-
             <button type="button" class="dash-crm__clear" id="partnerClearFilters">Clear</button>
             <span class="dash-crm__shown" id="partnerShown"></span>
           </div>
@@ -4158,7 +4151,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
         <!-- Partner detail -->
         <div class="dash-investor" id="viewPartner" hidden>
           <nav class="dash-crumbs" aria-label="Breadcrumb">
-            <button type="button" data-action="partner-home">All LP partners</button>
+            <button type="button" data-action="partner-home">All LPs</button>
             <span class="sep">/</span>
             <span class="current" id="partnerCrumb"></span>
           </nav>
@@ -4717,7 +4710,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
         var n = Crm.all().length;
         return n ? n + " investor" + (n === 1 ? "" : "s") : null;
       } },
-    { tab: "partners", label: "LP Partners", icon: "shield",
+    { tab: "partners", label: "LP CRM", icon: "shield",
       blurb: "The LPs the firm has closed alongside and the ones it is talking to — what " +
              "was done together, what they put in, how the relationship works, and every " +
              "conversation.",
@@ -4863,7 +4856,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
      WHICH TAB AN LP NAME OPENS DEPENDS ON WHETHER THE DEAL CLOSED, and
      that is the whole rule.
 
-     On a CLOSED deal the LP is, by the definition the LP Partners tab
+     On a CLOSED deal the LP is, by the definition the LP CRM
      runs on, an LP partner — so the name opens THEM: what else was done
      together, what they put in, how the relationship works, every
      conversation. Sending that name to the investor CRM instead answers
@@ -4889,7 +4882,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
        than text that never offered. */
     return found
       ? '<button type="button" class="debt-link" data-partner-open="' + esc(found.key) +
-        '" title="Open ' + esc(found.name) + ' on LP Partners">' + esc(name) + '</button>'
+        '" title="Open ' + esc(found.name) + ' on the LP CRM">' + esc(name) + '</button>'
       : esc(name);
   }
 
@@ -4961,7 +4954,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
 
   /* The LP column. dealCell() escapes its value, which is right for every
      other column on this table and wrong for this one on a closed deal —
-     those names are buttons onto LP Partners. Same markup, same clipping,
+     those names are buttons onto the LP CRM. Same markup, same clipping,
      same full value on the title; the names inside are links.
 
      `index` is only passed by the closed list, so the pipeline's copy of
@@ -5467,7 +5460,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
      these names are buttons. Same shape, markup allowed through.
 
      WHERE THEY POINT follows the same rule the column does: a closed
-     deal's LP opens them on LP Partners, a live deal's on the investor
+     deal's LP opens them on the LP CRM, a live deal's on the investor
      CRM. See partnerLinkHtml(). */
   function dealLpField(rec) {
     var names = lpNames(rec);
@@ -8642,7 +8635,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
         contacts: dedupeById(inv.contacts),
         research: dedupeById(inv.research),
         why: inv.why || "",
-        /* HOW WE WORK TOGETHER — written on the LP Partners tab and
+        /* HOW WE WORK TOGETHER — written on the LP CRM and
            stored here, because there is no partner record to store it
            on: a partner IS an investor we have closed alongside, and a
            second store keyed by the same name would be a second place
@@ -8656,7 +8649,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
            disagree, because the first is what was hoped and the second
            is what happened. */
         partnerNote: inv.partnerNote || "",
-        /* ON THE LP TRACK. Set from the LP Partners tab, and the whole of
+        /* ON THE LP TRACK. Set from the LP CRM, and the whole of
            what makes a firm a "prospective LP" — there is no prospect
            record, because a prospect IS an investor record we are talking
            to about being an LP, and a second store keyed by the same name
@@ -9366,7 +9359,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
     /* ---- taking an LP partner off that tab's list ------------------
        KEYED BY NAME, lowercased, and not by an investor id — because a
        partner is derived from the deals and need not have an investor
-       record at all. The LP Partners tab joins on exactly this key, so
+       record at all. The LP CRM joins on exactly this key, so
        a tombstone written here finds the same firm the row came from.
 
        It lives on the CRM overlay rather than in a set of its own for
@@ -10791,7 +10784,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
      entry appears on the investor's record, on the register, and on a
      material's page, so an edit or a withdrawal made from any of them has
      to land on the one the person is actually looking at. */
-  /* The LP Partners tab draws the SAME panels an investor record does —
+  /* The LP CRM draws the SAME panels an investor record does —
      investorMaterials(), investorCommitments(), the task panel, the
      conversation log — so anything that changes one of them has to
      redraw there too, not only on the CRM tab. Without this a send
@@ -10920,7 +10913,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
 
   /* PREFIX, because this panel is now drawn on TWO PANES — the investor
      record and, for a firm the firm has closed alongside, their page on
-     the LP Partners tab. Both can be open at once, on different tabs,
+     the LP CRM. Both can be open at once, on different tabs,
      and the form's boxes are addressed by id: two panels sharing one
      prefix means two elements sharing one id, and $("sendMaterial")
      silently answers with whichever came first in the document. The
@@ -10931,7 +10924,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
      is the second caller using it rather than a new idea. Anything that
      READS the form must go through sendPrefixOf() from the button that
      was pressed, never a literal "send". */
-  function investorMaterials(inv, prefix) {
+  function investorMaterials(inv, prefix, partnerKey) {
     var p = prefix || "send";
     var live = Crm.materials().filter(function (m) { return !m.retired; });
     var stale = staleSends(inv);
@@ -10970,8 +10963,14 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
         '<p class="mat-empty">Nothing is on the materials register yet \u2014 name what ' +
         'you sent below and it is added to the register as you record it.</p>',
       to: (primaryContact(inv) || {}).name || "",
+      /* On the LP CRM the record may not exist yet, and recording the
+         first document sent is a fine moment for it to. The button
+         carries the partner's key in that case and the handler makes
+         one; everywhere else it carries the investor id it always did. */
       button: '<button type="button" class="dash-refresh dash-refresh--primary" ' +
-        'data-send-add="' + esc(inv.id) + '">Record it</button>' +
+        (inv.id ? 'data-send-add="' + esc(inv.id) + '"'
+                : 'data-send-add="" data-send-add-lp="' + esc(partnerKey || "") + '"') +
+        '>Record it</button>' +
         '<button type="button" class="dash-refresh" data-action="crm-materials">' +
         'The register</button>'
     });
@@ -11172,12 +11171,12 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
 
     /* Drawn only when it has been written, unlike the Research section
        above it. There is a place that invites somebody to write one —
-       the LP Partners tab, where the question comes up — and an empty
+       the LP CRM, where the question comes up — and an empty
        box on every prospect's record would be inviting an answer to a
        question nobody has been in a position to answer yet. */
     if (inv.partnerNote) {
       parts.push('<div class="crm-section"><h3>How we work together' +
-        '<span class="crm-section__aside">Shown on LP Partners too</span></h3>' +
+        '<span class="crm-section__aside">Shown on the LP CRM too</span></h3>' +
         '<p class="crm-why">' + esc(inv.partnerNote) + '</p></div>');
     }
 
@@ -11411,7 +11410,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
           '<textarea id="editMandate">' + esc(inv.mandate) + '</textarea>', true) +
         field("editWhy", "Why they are on the list",
           '<textarea id="editWhy">' + esc(inv.why) + '</textarea>', true) +
-        /* The same box the LP Partners tab writes, on the record that
+        /* The same box the LP CRM writes, on the record that
            holds it. It is offered here whether or not they are a partner
            yet, because the alternative is a field that can only be
            edited on a tab a prospect does not appear on — and then the
@@ -11419,8 +11418,8 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
         field("editPartnerNote", "How we work together",
           '<textarea id="editPartnerNote">' + esc(inv.partnerNote) + '</textarea>' +
           note("What the relationship turned out to be \u2014 how they like to be approached, " +
-               "who signs, what they said about the next one. Shown on the LP Partners tab " +
-               "once a deal has closed with them."), true) +
+               "who signs, what they said about the next one. The same box is on " +
+               "the LP CRM."), true) +
       '</div>' +
 
       /* The opening conversation, on the add form only. A record almost
@@ -12527,6 +12526,13 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
      else. logSendFromRaise() below has always worked this way. */
   function logSendFromInvestor(btn) {
     var invId = btn.getAttribute("data-send-add");
+    // The LP CRM's copy of this panel may be sitting on a firm with no
+    // record yet. Make one, then file the send against it.
+    if (!invId && btn.hasAttribute("data-send-add-lp")) {
+      var madeFor = ensureLpRecord(btn.getAttribute("data-send-add-lp"));
+      if (!madeFor) return;
+      invId = madeFor.id;
+    }
     var done = logSend(sendPrefixOf(btn), invId, null);
     if (!done) return;
     // Redraws every surface the entry shows on, this one included, so a
@@ -13117,7 +13123,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
 
 
   /* ============================================================
-     LP PARTNER TRACKER — DATA
+     LP CRM — DATA
 
      WHO IS ON THIS TAB, AND WHY IT IS NOT A RECORD SET
 
@@ -13405,13 +13411,13 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
   })();
 
   /* ============================================================
-     LP PARTNER TRACKER — RENDER
+     LP CRM — RENDER
      ============================================================ */
   var partnerState = {
     view: "list",          // list | partner
     key: null,
     query: "",
-    filters: { operator: "", market: "", asset: "", deal: "", record: "" },
+    filters: { operator: "", market: "", asset: "", deal: "" },
     sortKey: "name",
     sortDir: "asc",
     // The prospective list sorts on its own columns and keeps its own
@@ -13422,7 +13428,9 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
     // so a re-render does not spring it shut while somebody is reading it.
     openArchived: false,
     // Whether the add-a-prospect form is showing.
-    adding: false
+    adding: false,
+    // Whether the open record's details are open for editing.
+    editing: false
   };
 
   /* No "Added" and no drag handle, because neither exists: a partner is
@@ -13554,8 +13562,6 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
       if (f.market && Partners.facet(e, "market").indexOf(f.market) === -1) return false;
       if (f.asset && Partners.facet(e, "assetClass").indexOf(f.asset) === -1) return false;
       if (f.deal && !e.closed.some(function (r) { return r.deal.name === f.deal; })) return false;
-      if (f.record === "on" && !e.investor) return false;
-      if (f.record === "off" && e.investor) return false;
       return partnerMatches(e);
     });
 
@@ -13580,12 +13586,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
   function prospectFiltered(list) {
     var f = partnerState.filters;
     if (partnerDealFilterOn()) return [];
-    var out = list.filter(function (e) {
-      // Every prospect is on the Investor CRM by construction — it is
-      // where the record lives — so "not on the CRM" can match none.
-      if (f.record === "off") return false;
-      return partnerMatches(e);
-    });
+    var out = list.filter(function (e) { return partnerMatches(e); });
 
     var dir = partnerState.prospectSortDir === "asc" ? 1 : -1;
     var k = partnerState.prospectSortKey;
@@ -13658,7 +13659,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
           : '<span class="muted">Never</span>') + '</td>' +
         '<td class="crm-actions">' +
           '<button type="button" class="deal-rowaction" data-crm-open-name="' + esc(e.name) +
-            '" title="Open ' + esc(e.name) + ' on the Investor CRM">Investor CRM</button>' +
+            '" title="Also on the Investor CRM">Investor CRM</button>' +
           (archived
             ? '<button type="button" class="deal-rowaction" data-partner-restore="' + esc(e.key) +
               '" title="Put ' + esc(e.name) + ' back on the list">Restore</button>'
@@ -13711,15 +13712,14 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
       var note = e.investor ? lastNote(e.investor) : "";
 
       return '<tr data-partner="' + esc(e.key) + '">' +
+        /* No "not on the CRM" line any more. It used to matter because a
+           firm without a record had nowhere to keep anything; the record is
+           now made the moment anybody writes something, so its absence says
+           only "nobody has written anything yet" — which the empty Last
+           contact cell already says. */
         '<td><span class="crm-name">' + esc(e.name) + '</span>' +
-          (e.investor
-            ? (e.investor.location
-                ? '<span class="crm-sub">' + esc(e.investor.location) + '</span>' : "")
-            /* Said on the row rather than only on the record, because it
-               is the one thing about a partner somebody can fix in a
-               click, and a row that does not say it is a row nobody
-               fixes. */
-            : '<span class="crm-sub is-missing">Not on the Investor CRM</span>') + '</td>' +
+          (e.investor && e.investor.location
+            ? '<span class="crm-sub">' + esc(e.investor.location) + '</span>' : "") + '</td>' +
         '<td class="crm-num">' + e.closed.length + '</td>' +
         '<td>' + partnerDealTags(e.closed.map(function (r) { return r.deal.name; }), 2) + '</td>' +
         '<td>' + partnerPlain(Partners.facet(e, "operator"), 2) + '</td>' +
@@ -13730,18 +13730,15 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
           ? '<span class="crm-date">' + esc(last) + '</span>' +
             (note ? '<span class="crm-lastnote" title="' + esc(note) + '">' + esc(note) + '</span>' : "") +
             '<span class="crm-sub">' + countOf(e.investor.conversations.length, "logged", "logged") + '</span>'
-          : (e.investor ? '<span class="muted">Never</span>'
-                        : '<span class="muted">No record</span>')) + '</td>' +
+          : '<span class="muted">Never</span>') + '</td>' +
         '<td class="crm-actions">' +
-          /* SAYS WHICH CRM, because there are two of them on this
-             dashboard and "Add to CRM" named neither \u2014 a button that
-             does not say where a record is about to appear. */
+          /* Only offered when there is a record to open. The Investor CRM
+             is where the record also appears and saying so is honest;
+             offering to CREATE one there is the step this tab removed. */
           (e.investor
             ? '<button type="button" class="deal-rowaction" data-crm-open-name="' + esc(e.name) +
-              '" title="Open ' + esc(e.name) + ' on the Investor CRM">Investor CRM</button>'
-            : '<button type="button" class="deal-rowaction" data-partner-adopt="' + esc(e.key) +
-              '" title="Create an Investor CRM record for ' + esc(e.name) +
-              '">Add to Investor CRM</button>') +
+              '" title="Also on the Investor CRM">Investor CRM</button>'
+            : "") +
           /* NO DELETE, and that is not an omission. There is no record
              behind this row to delete \u2014 the deal is what puts the firm
              here \u2014 so a permanent removal and an archive would be the
@@ -13800,29 +13797,21 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
   }
 
   function partnerNoteSection(e) {
-    if (!e.investor) {
-      return '<div class="crm-section"><h3>How we work together' +
-        '<span class="crm-section__aside">Needs a record</span></h3>' +
-        '<p class="crm-research__empty">The note is kept on the Investor CRM record, and ' +
-        esc(e.name) + ' has not got one. Add them to the Investor CRM and the box appears ' +
-        'here.</p></div>';
-    }
-    var v = e.investor.partnerNote || "";
+    var v = (e.investor && e.investor.partnerNote) || "";
     return '<div class="crm-section"><h3>How we work together' +
       '<span class="crm-section__aside">' + (v ? "Saved on their record" : "Nothing written yet") +
       '</span></h3>' +
       '<div class="partner-note">' +
         '<label class="visually-hidden" for="partnerNoteBox">How we work with ' +
           esc(e.name) + '</label>' +
-        '<textarea id="partnerNoteBox" data-partner-note="' + esc(e.investor.id) + '" ' +
+        '<textarea id="partnerNoteBox" data-partner-note="' + esc(e.key) + '" ' +
           'placeholder="How they like to be approached, who signs, what they said about the ' +
           'next one, terms that took negotiating.">' + esc(v) + '</textarea>' +
         '<div class="partner-note__bar">' +
           '<button type="button" class="dash-refresh dash-refresh--primary" ' +
-            'data-partner-note-save="' + esc(e.investor.id) + '">Save note</button>' +
-          '<span class="crm-research__hint">Stored on their Investor CRM record, so that ' +
-            'tab shows the same note. Separate from “Why they are on the list”, ' +
-            'which is what was hoped before anything was done together.</span>' +
+            'data-partner-note-save="' + esc(e.key) + '">Save note</button>' +
+          '<span class="crm-research__hint">Separate from “Why they are on the ' +
+            'list”, which is what was hoped before anything was done together.</span>' +
         '</div>' +
       '</div></div>';
   }
@@ -13846,7 +13835,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
      ------------------------------------------------------------------ */
   var LP_CONV_CHANNELS = ["Call", "Meeting", "Email", "Video call", "Conference", "Note"];
 
-  function partnerConversationForm(inv) {
+  function partnerConversationForm(inv, partnerKey) {
     function field(id, label, control, wide) {
       return '<div class="crm-field' + (wide ? " crm-field--wide" : "") + '">' +
              '<label for="' + id + '">' + esc(label) + '</label>' + control + '</div>';
@@ -13883,26 +13872,32 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
           'placeholder="Separated by semicolons">', true) +
       '</div>' +
       '<div class="crm-research__actions">' +
+        /* THE PARTNER'S KEY, not the record's id — there may be no record
+           yet, and logging the first call is exactly the moment one
+           should come into existence. */
         '<button type="button" class="dash-refresh dash-refresh--primary" ' +
-          'data-lp-conv-add="' + esc(inv.id) + '">Log it</button>' +
-        '<span class="crm-research__hint">Written to their Investor CRM record, which is ' +
-          'where this log reads from. What was said is the only box that has to be ' +
+          'data-lp-conv-add="' + esc(partnerKey || "") + '">Log it</button>' +
+        '<span class="crm-research__hint">What was said is the only box that has to be ' +
           'filled in.</span>' +
       '</div>' +
     '</div>';
   }
 
-  function logPartnerConversation(id) {
-    var inv = Crm.get(id);
-    if (!inv) return;
+  function logPartnerConversation(k) {
     function val(elId) { var el = $(elId); return el ? el.value.trim() : ""; }
 
+    // Checked BEFORE the record is made, so a mis-click on an empty form
+    // cannot leave a record behind for a conversation that was not logged.
     var summary = val("lpConvSummary");
     if (!summary) {
       toast("An entry needs to say what was said.");
       if ($("lpConvSummary")) $("lpConvSummary").focus();
       return;
     }
+
+    var inv = ensureLpRecord(k);
+    if (!inv) return;
+    var id = inv.id;
 
     Crm.addConversation(id, {
       date: val("lpConvDate") || new Date().toISOString().slice(0, 10),
@@ -13916,15 +13911,133 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
       deals: val("lpConvDeals").split(";").map(function (d) { return d.trim(); })
              .filter(function (d) { return !!d; }),
       next: val("lpConvNext"),
-      loggedVia: "on LP Partners",
+      loggedVia: "on the LP CRM",
       loggedAt: new Date().toISOString()
     });
 
     // Both lists read last contact off this, and so does the CRM tab.
     renderCrm();
+    renderPartnerFilters();
     renderPartners();
     renderPartner(partnerState.key);
-    toast("Logged against " + inv.name + ". It is on their Investor CRM record too.");
+    toast("Logged against " + inv.name + ".");
+  }
+
+  /* ---- editing the details on this tab ---------------------------
+     THE FACTS GRID IS THE FORM, which is the rule the row editors
+     follow: what you can see is what you can change. The nine slots the
+     grid shows are the nine boxes here, less Last contact, which is read
+     off the newest conversation rather than typed — a box for it would
+     be a box that lies.
+
+     Its ids carry an "lpEdit" prefix because the Investor CRM's own form
+     uses "edit*" and can be open on the other tab at the same instant;
+     two forms sharing an id is one reading the other's boxes. Same
+     reason the send form and the conversation form carry theirs.
+     ---------------------------------------------------------------- */
+  function partnerEditForm(e) {
+    var inv = e.investor || {};
+    var cs = inv.checkSize || {};
+    var contact = (inv.contacts && inv.contacts[0]) || {};
+
+    function field(id, label, control, note, wide) {
+      return '<div class="crm-field' + (wide ? " crm-field--wide" : "") + '">' +
+             '<label for="' + id + '">' + esc(label) + '</label>' + control +
+             (note ? '<span class="crm-field__note">' + esc(note) + '</span>' : "") + '</div>';
+    }
+    function text(id, v, extra) {
+      return '<input type="text" id="' + id + '" autocomplete="off" value="' +
+             esc(v == null ? "" : v) + '"' + (extra || "") + '>';
+    }
+
+    var stages = Crm.stages();
+    if (inv.stage && stages.indexOf(inv.stage) === -1) stages = stages.concat([inv.stage]);
+
+    /* THE STAGE THE RECORD WOULD BE MADE AT, when there is no record yet.
+       Without this the select has nothing selected, falls to its first
+       option — Prospect — and saving writes that over the Committed
+       ensureLpRecord() had just set: editing a firm we have closed with
+       would quietly demote them. The form has to show what the save will
+       do, so it pre-selects the same answer ensureLpRecord() gives. */
+    var stageNow = inv.stage || (e.closed.length ? "Committed" : "Prospect");
+
+    return '<div class="crm-draft is-inline">' +
+      '<div class="crm-draft__grid">' +
+        field("lpEditType", "Type",
+          text("lpEditType", inv.type === "Unclassified" ? "" : inv.type)) +
+        field("lpEditStage", "Stage",
+          '<select id="lpEditStage">' + stages.map(function (v) {
+            return '<option value="' + esc(v) + '"' +
+              (v === stageNow ? " selected" : "") + '>' + esc(v) + '</option>';
+          }).join("") + '</select>') +
+        field("lpEditCheck", "Check size",
+          text("lpEditCheck", checkText(inv) || cs.note, ' placeholder="$3m\u2013$6m"'),
+          "Read the same way the CRM reads it. Anything it cannot parse is kept as typed.") +
+        field("lpEditAum", "Assets", text("lpEditAum", inv.aum)) +
+        field("lpEditLocation", "Location", text("lpEditLocation", inv.location)) +
+        field("lpEditOwner", "Owner", text("lpEditOwner", inv.owner)) +
+        field("lpEditContact", "Main contact", text("lpEditContact", contact.name)) +
+        field("lpEditEmail", "Contact email",
+          '<input type="email" id="lpEditEmail" autocomplete="off" value="' +
+          esc(contact.email || "") + '">') +
+        field("lpEditWebsite", "Website", text("lpEditWebsite", inv.website)) +
+        field("lpEditMandate", "Mandate",
+          '<textarea id="lpEditMandate">' + esc(inv.mandate || "") + '</textarea>', "", true) +
+        field("lpEditWhy", "Why they are on the list",
+          '<textarea id="lpEditWhy">' + esc(inv.why || "") + '</textarea>', "", true) +
+      '</div>' +
+      '<div class="crm-draft__actions">' +
+        '<button type="button" class="dash-refresh dash-refresh--primary" ' +
+          'data-lp-edit-save="' + esc(e.key) + '">Save</button>' +
+        '<button type="button" class="dash-refresh" data-lp-edit-cancel="1">Cancel</button>' +
+        '<span class="crm-research__hint">Last contact is not here \u2014 it is the date of ' +
+          'the newest conversation, so it changes by logging one.</span>' +
+      '</div></div>';
+  }
+
+  function savePartnerEdits(k) {
+    function val(id) { var el = $(id); return el ? el.value.trim() : ""; }
+    var inv = ensureLpRecord(k);
+    if (!inv) return;
+
+    var fields = {
+      type: val("lpEditType") || "Unclassified",
+      // inv here is the record ensureLpRecord() just returned, so its
+      // stage is the right fallback if the select somehow is not there.
+      stage: $("lpEditStage") ? $("lpEditStage").value : inv.stage,
+      aum: val("lpEditAum"),
+      location: val("lpEditLocation"),
+      owner: val("lpEditOwner"),
+      website: val("lpEditWebsite"),
+      mandate: val("lpEditMandate"),
+      why: val("lpEditWhy")
+    };
+
+    var check = parseCheckInput(val("lpEditCheck"));
+    if (check) fields.checkSize = check;
+
+    /* The main contact goes into the first slot and anybody further down
+       the record is left alone — this form edits the main contact, it
+       does not own the People list. Same bargain the CRM's form makes. */
+    var cName = val("lpEditContact"), cEmail = val("lpEditEmail");
+    var contacts = (inv.contacts || []).slice();
+    if (cName || cEmail) {
+      var first = Object.assign({}, contacts[0] || {});
+      first.name = cName;
+      first.email = cEmail;
+      contacts[0] = first;
+      fields.contacts = contacts;
+    } else if (contacts.length && (contacts[0].name || contacts[0].email)) {
+      fields.contacts = contacts.slice(1);   // both boxes cleared \u2014 drop it, keep the rest
+    }
+
+    Crm.patch(inv.id, fields);
+    partnerState.editing = false;
+    renderCrm();
+    renderPartnerFilters();
+    renderPartners();
+    renderPartner(k);
+    toast("Saved.");
   }
 
   function renderPartner(k) {
@@ -13935,11 +14048,9 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
     var inv = e.investor;
     var parts = [];
 
-    var sub = inv
-      ? (inv.mandate || (e.prospect
-          ? "On the LP track. Nothing has closed with them yet."
-          : "No mandate recorded."))
-      : "Not on the Investor CRM — everything below comes from the deals.";
+    var sub = (inv && inv.mandate) ||
+      (e.prospect ? "On the LP track. Nothing has closed with them yet."
+                  : countOf(e.closed.length, "closed deal") + " together.");
 
     parts.push('<div class="dash-investor__head"><div>' +
       '<h2>' + esc(e.name) + '</h2>' +
@@ -13949,18 +14060,20 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
           esc(inv.website.replace(/^https?:\/\//, "").replace(/\/$/, "")) + '</a>' : "") +
       '</p></div>' +
       '<div class="dash-investor__actions">' +
-        (inv
-          ? '<button class="dash-refresh" data-crm-open-name="' + esc(e.name) +
-              '">Open on the Investor CRM</button>' +
-            /* Jumps to the agent box on the CRM tab, which reads a pasted
-               email thread into a draft. The form at the foot of this page
-               is the other way and the commoner one — this is kept
-               because pasting a thread is a real thing people do and this
-               page has nothing else that does it. */
-            '<button class="dash-refresh" data-crm-log="' + esc(inv.id) +
-              '">Read a thread into the log</button>'
-          : '<button class="dash-refresh dash-refresh--primary" data-partner-adopt="' +
-              esc(e.key) + '">Add to Investor CRM</button>') +
+        /* No "Add to Investor CRM". Nothing on this page waits for a
+           record to exist any more — see ensureLpRecord(). */
+        (partnerState.editing
+          ? ""
+          : '<button class="dash-refresh" data-lp-edit="' + esc(e.key) + '">Edit details</button>' +
+            (inv
+              /* Jumps to the agent box on the CRM tab, which reads a
+                 pasted email thread into a draft. The form at the foot of
+                 this page is the other way and the commoner one; this is
+                 kept because pasting a thread is a real thing people do
+                 and this page has nothing else that does it. */
+              ? '<button class="dash-refresh" data-crm-log="' + esc(inv.id) +
+                  '">Read a thread into the log</button>'
+              : "")) +
         // Same one action the row carries, offered where somebody who has
         // just read the record is standing.
         (e.archived
@@ -13970,40 +14083,33 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
               '">Archive</button>') +
       '</div></div>');
 
-    /* The facts grid, from the investor record where there is one. With
-       no record the grid would be nine empty slots saying "not
-       recorded" about a firm nobody has written anything about, which
-       reads as a broken page rather than as an invitation — so what
-       stands in its place is the invitation itself. */
-    if (inv) {
-      parts.push('<div class="crm-facts">' + [
-        ["Type", esc(inv.type)],
-        ["Stage", '<span class="crm-pill" data-stage="' + esc(inv.stage) + '">' +
-          esc(inv.stage) + '</span>'],
-        ["Check size", checkText(inv) ? esc(checkText(inv)) : ""],
-        ["Assets", esc(inv.aum)],
-        ["Location", esc(inv.location)],
-        ["Owner", esc(inv.owner)],
-        ["Contact", esc((primaryContact(inv) || {}).name || "")],
-        ["Contact email", (primaryContact(inv) || {}).email
+    /* DRAWN WHETHER OR NOT A RECORD EXISTS YET, which is the difference
+       this tab's rename actually made. It used to be replaced, for a
+       firm nobody had written anything about, by a panel explaining that
+       there was nowhere to write — true at the time and useless: the
+       answer was always "then make somewhere". Now the slots simply read
+       "not recorded", which is what they are, and Edit fills them in. */
+    parts.push(partnerState.editing ? partnerEditForm(e)
+      : '<div class="crm-facts">' + [
+        ["Type", inv ? esc(inv.type) : ""],
+        ["Stage", inv ? '<span class="crm-pill" data-stage="' + esc(inv.stage) + '">' +
+          esc(inv.stage) + '</span>' : ""],
+        ["Check size", inv && checkText(inv) ? esc(checkText(inv)) : ""],
+        ["Assets", inv ? esc(inv.aum) : ""],
+        ["Location", inv ? esc(inv.location) : ""],
+        ["Owner", inv ? esc(inv.owner) : ""],
+        ["Contact", inv ? esc((primaryContact(inv) || {}).name || "") : ""],
+        ["Contact email", inv && (primaryContact(inv) || {}).email
           ? '<a href="mailto:' + esc(primaryContact(inv).email) + '">' +
             esc(primaryContact(inv).email) + '</a>'
           : ""],
-        ["Last contact", lastContact(inv) ? esc(lastContact(inv)) : ""]
+        ["Last contact", inv && lastContact(inv) ? esc(lastContact(inv)) : ""]
       ].map(function (pair) {
         var empty = !pair[1];
         return '<div class="crm-fact"><span class="crm-fact__label">' + pair[0] + '</span>' +
                '<span class="crm-fact__value' + (empty ? " is-empty" : "") + '">' +
                (empty ? "not recorded" : pair[1]) + '</span></div>';
       }).join("") + '</div>');
-    } else {
-      parts.push('<div class="dash-state"><h3>Nothing recorded about them yet</h3>' +
-        '<p>' + esc(e.name) + ' is on this tab because of the ' +
-        esc(countOf(e.closed.length, "closed deal")) + ' below, but there is no investor ' +
-        'record behind the name — so there is nowhere to keep a contact, a note or a ' +
-        'conversation. “Add to Investor CRM” above creates one there, stage ' +
-        'Committed, with the closed deals already on it.</p></div>');
-    }
 
     // The people, when the record holds more than the one in the grid.
     if (inv && (inv.contacts.length > 1 ||
@@ -14045,19 +14151,28 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
 
     parts.push(partnerNoteSection(e));
 
-    if (inv) {
-      parts.push(investorCommitments(inv));
-      /* Its own prefix: the investor record may be drawn at the same
-         time on the CRM tab, and two copies of this form sharing one
-         set of ids is two panes' boxes answering to one name. */
-      parts.push(investorMaterials(inv, "psend"));
-      parts.push(recordTaskPanel(inv.name));
+    /* EVERY PANEL IS DRAWN NOW, record or no record. The ones that read
+       a record read an empty stand-in when there is none, and the forms
+       that write one make it — see ensureLpRecord(). Nothing on this
+       page is behind a step somebody has to take first, which is the
+       whole of what "this tab contains all of it" means. */
+    var blank = inv || { id: "", name: e.name, conversations: [], sends: [],
+                         contacts: [], type: "", stage: "", location: "",
+                         aum: "", why: "", partnerNote: "", checkSize: {} };
 
+    parts.push(investorCommitments(blank));
+    /* Its own prefix: the investor record may be drawn at the same time
+       on the CRM tab, and two copies of this form sharing one set of ids
+       is two panes' boxes answering to one name. */
+    parts.push(investorMaterials(blank, "psend", e.key));
+    parts.push(recordTaskPanel(e.name));
+
+    {
       parts.push('<div class="crm-section"><h3>Conversations' +
         '<span class="crm-section__aside">' +
-        countOf(inv.conversations.length, "logged", "logged") + '</span></h3>' +
-        (inv.conversations.length
-          ? '<ul class="crm-log">' + inv.conversations.map(function (c) {
+        countOf(blank.conversations.length, "logged", "logged") + '</span></h3>' +
+        (blank.conversations.length
+          ? '<ul class="crm-log">' + blank.conversations.map(function (c) {
               return '<li>' +
                 '<div class="crm-log__head">' +
                   '<span class="crm-log__date">' + esc(c.date || "Undated") + '</span>' +
@@ -14076,15 +14191,13 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
           : '<p class="crm-research__empty">No calls, meetings or emails logged against ' +
             esc(e.name) + ' yet. The first one goes in below, and it is what Last contact ' +
             'reads from once it is there.</p>') +
-        partnerConversationForm(inv) +
+        partnerConversationForm(blank, e.key) +
         '</div>');
-    } else {
-      parts.push(recordTaskPanel(e.name));
     }
 
     $("partnerDetailBody").innerHTML = parts.join("");
     labelCells($("partnerDetailBody"));
-    if (inv) fillSendForms();
+    fillSendForms();
   }
 
   function renderPartnerFilters(all) {
@@ -14113,7 +14226,6 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
     fill("partnerFilterDeal", uniq([].concat.apply([], list.map(function (e) {
       return e.closed.map(function (r) { return r.deal.name; });
     }))), partnerState.filters.deal);
-    $("partnerFilterRecord").value = partnerState.filters.record;
   }
 
   function renderPartners() {
@@ -14134,8 +14246,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
     /* A search forces the pile open, for the same reason the investor and
        deal piles open: a hit nobody can see is worse than a longer page. */
     var f = partnerState.filters;
-    var forced = !!partnerState.query || !!f.operator || !!f.market || !!f.asset ||
-                 !!f.deal || !!f.record;
+    var forced = !!partnerState.query || !!f.operator || !!f.market || !!f.asset || !!f.deal;
 
     /* CURRENT FIRST. It is what the tab is named for and what the deals
        already say; the prospective list below it is the work in front of
@@ -14146,10 +14257,9 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
         "because a deal it is on has closed.",
         partnerTable(list, total, "live")) +
       partnerSection("Prospective LPs", props.length,
-        "Firms on the LP track that nothing has closed with yet. These ARE added by hand, " +
-        "and each one is an Investor CRM record \u2014 the same record, not a copy. " +
+        "Firms on the LP track that nothing has closed with yet. These ARE added by hand. " +
         "<strong>Close a deal with one and they move up to Current on their own</strong>, " +
-        "with every conversation intact.",
+        "with every conversation intact \u2014 nothing to convert, nothing to re-enter.",
         propList.length
           ? prospectTable(propList, "live")
           : '<p class="partner-group__empty">' +
@@ -14185,26 +14295,25 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
 
     var missing = all.filter(function (e) { return !e.investor; }).length;
     $("partnerSourceNote").innerHTML =
-      'Two lists, and the DEALS decide which one a firm is on. <strong>Current</strong> is ' +
-      'derived \u2014 a firm is there because a deal it is on has closed, named in the deal\u2019s ' +
-      'LP box or holding a committed or funded place on its raise, and soft circles do not ' +
-      'count. <strong>Prospective</strong> is added by hand. Everything else about either \u2014 ' +
-      'contacts, conversations, what they have been sent \u2014 is their ' +
-      '<strong>Investor CRM</strong> record, read and written where it lives.' +
-      (missing
-        ? ' <strong>' + countOf(missing, "partner") + ' here ' +
-          (missing === 1 ? "has" : "have") + ' no Investor CRM record</strong>, so there is ' +
-          'nowhere to keep their contacts or conversations yet.'
-        : "");
+      'Everything about an LP is here \u2014 who they are, what has closed with them, every ' +
+      'conversation and meeting, and what has been sent. Two lists, and the DEALS decide ' +
+      'which one a firm is on: <strong>Current</strong> is derived, a firm is there because ' +
+      'a deal it is on has closed, named in the deal\u2019s LP box or holding a committed or ' +
+      'funded place on its raise, and soft circles do not count. <strong>Prospective</strong> ' +
+      'is added by hand, and one moves up on its own the day a deal closes.';
   }
 
   function showPartnerView(name) {
+    if (name !== "partner") partnerState.editing = false;
     partnerState.view = name;
     $("viewPartners").hidden = name !== "list";
     $("viewPartner").hidden = name !== "partner";
   }
 
   function openPartner(k) {
+    // A form left open on a record nobody is looking at is a half-finished
+    // edit waiting to be forgotten about.
+    partnerState.editing = false;
     partnerState.key = k;
     showPartnerView("partner");
     renderPartner(k);
@@ -14222,24 +14331,41 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
      be the record contradicting the deal on the day it was created.
      The closed deals go on as deal interests, which is what the CRM's
      own "Deals of interest" column reads. */
-  function adoptPartner(k) {
-    var e = Partners.get(k);
-    if (!e) return;
-    if (e.investor) { switchTab("crm"); openInvestor(e.investor.id); return; }
+  /* ---- somewhere to put things, made when something is put ---------
+     THIS REPLACED A BUTTON, and the button is the thing worth
+     explaining. A partner derived from a closed deal had no record
+     behind the name until somebody pressed "Add to Investor CRM", and
+     until they did there was nowhere to keep a contact, a conversation
+     or a document sent. So the page asked a question with one sensible
+     answer, refused to do anything until it was answered, and made the
+     person answer it once per firm.
 
-    var made = Crm.create({
+     A question with one sensible answer is not a question. The record is
+     created the first time anybody actually writes something — logs a
+     call, saves a note, records a document sent, edits a detail — and
+     never before, so nothing is created for a firm nobody has touched.
+
+     STAGE FOLLOWS THE DEALS, not the form: a firm with something closed
+     is Committed, because a deal closed with them and any other stage
+     would be the record contradicting the deal on the day it was made.
+     A prospect is Prospect. The closed deals go on as deal interests,
+     which is what the Deals-of-interest column reads.
+
+     Callers MUST use the record this returns rather than the `investor`
+     on the entry they were holding: that entry was built before the
+     record existed and still says null.
+     ------------------------------------------------------------------ */
+  function ensureLpRecord(k) {
+    var e = Partners.get(k);
+    if (!e) return null;
+    if (e.investor) return e.investor;
+
+    var closed = e.closed.length;
+    return Crm.create({
       name: e.name,
-      stage: "Committed",
+      stage: closed ? "Committed" : "Prospect",
       deals: e.closed.map(function (r) { return r.deal.name; })
     });
-
-    renderCrm();
-    renderPartnerFilters();
-    renderPartners();
-    if (partnerState.view === "partner") renderPartner(k);
-    toast("“" + e.name + "” is on the Investor CRM now — stage Committed, with " +
-          countOf(e.closed.length, "closed deal") + " on the record. Nothing else was filled in.");
-    return made;
   }
 
   /* ---- adding a prospective LP -----------------------------------
@@ -14320,7 +14446,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
   }
 
   /* ============================================================
-     LP PARTNER TRACKER — EXPORTS
+     LP CRM — EXPORTS
 
      Three sheets, and the split is the same one the tab makes. The
      first is the partnership: one row per firm. The second is the
@@ -14416,14 +14542,14 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
     });
 
     download(Xlsx.build(sheets),
-             "modillion-lp-partners-" + new Date().toISOString().slice(0, 10) + ".xlsx");
+             "modillion-lp-crm-" + new Date().toISOString().slice(0, 10) + ".xlsx");
     toast("Excel workbook downloaded — " + countOf(list.length, "LP partner") + ", " +
           countOf(props.length, "prospect") + ", " + countOf(byDeal.length, "deal row") +
           ", " + countOf(log.length, "conversation") + ".");
   }
 
   /* ============================================================
-     LP PARTNER TRACKER — EVENTS
+     LP CRM — EVENTS
      ============================================================ */
   var partnerSearchTimer = null;
   $("partnerSearch").addEventListener("input", function (e) {
@@ -14438,7 +14564,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
 
   [["partnerFilterOperator", "operator"], ["partnerFilterMarket", "market"],
    ["partnerFilterAsset", "asset"], ["partnerFilterDeal", "deal"],
-   ["partnerFilterRecord", "record"]].forEach(function (pair) {
+  ].forEach(function (pair) {
     $(pair[0]).addEventListener("change", function (e) {
       partnerState.filters[pair[1]] = e.target.value;
       if (partnerState.view !== "list") showPartnerView("list");
@@ -14447,7 +14573,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
   });
 
   $("partnerClearFilters").addEventListener("click", function () {
-    partnerState.filters = { operator: "", market: "", asset: "", deal: "", record: "" };
+    partnerState.filters = { operator: "", market: "", asset: "", deal: "" };
     partnerState.query = "";
     $("partnerSearch").value = "";
     renderPartnerFilters();
@@ -14492,20 +14618,26 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
       return;
     }
 
-    /* Above the row handler below it, so the button on a row does its
-       own job rather than opening the partner underneath it. */
-    var adopt = e.target.closest("[data-partner-adopt]");
-    if (adopt) { adoptPartner(adopt.getAttribute("data-partner-adopt")); return; }
-
     var noteSave = e.target.closest("[data-partner-note-save]");
     if (noteSave) {
-      var id = noteSave.getAttribute("data-partner-note-save");
       var box = $("partnerNoteBox");
       if (!box) return;
-      Crm.patch(id, { partnerNote: box.value.trim() });
+      // Nothing typed and nothing stored is nothing to save, and it must
+      // not be the thing that brings a record into existence.
+      var nk = noteSave.getAttribute("data-partner-note-save");
+      var nrec = Partners.get(nk);
+      if (!box.value.trim() && !(nrec && nrec.investor)) {
+        toast("Nothing to save yet — write the note first.");
+        box.focus();
+        return;
+      }
+      var ninv = ensureLpRecord(nk);
+      if (!ninv) return;
+      Crm.patch(ninv.id, { partnerNote: box.value.trim() });
       renderCrm();
+      renderPartners();
       if (partnerState.view === "partner") renderPartner(partnerState.key);
-      toast("Saved on their investor record.");
+      toast("Saved.");
       return;
     }
 
@@ -14528,7 +14660,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
       }
       renderPartnerFilters();
       renderPartners();
-      toast("\u201C" + ((arec && arec.name) || ak) + "\u201D is off the LP Partners list. " +
+      toast("\u201C" + ((arec && arec.name) || ak) + "\u201D is off the LP CRM list. " +
             "The closed deals are untouched \u2014 Restore is in the Archived pile at the foot.");
       return;
     }
@@ -14556,6 +14688,23 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
 
     var lpConvAdd = e.target.closest("[data-lp-conv-add]");
     if (lpConvAdd) { logPartnerConversation(lpConvAdd.getAttribute("data-lp-conv-add")); return; }
+
+    var lpEdit = e.target.closest("[data-lp-edit]");
+    if (lpEdit) {
+      partnerState.editing = true;
+      renderPartner(lpEdit.getAttribute("data-lp-edit"));
+      return;
+    }
+
+    var lpEditSave = e.target.closest("[data-lp-edit-save]");
+    if (lpEditSave) { savePartnerEdits(lpEditSave.getAttribute("data-lp-edit-save")); return; }
+
+    var lpEditCancel = e.target.closest("[data-lp-edit-cancel]");
+    if (lpEditCancel) {
+      partnerState.editing = false;
+      renderPartner(partnerState.key);
+      return;
+    }
 
     var psort = e.target.closest("[data-prospectsort]");
     if (psort) {
@@ -20031,7 +20180,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
     var logBtn = e.target.closest("[data-crm-log]");
     if (logBtn) {
       var target = Crm.get(logBtn.getAttribute("data-crm-log"));
-      /* The button is on the LP Partners tab as well now, and the box it
+      /* The button is on the LP CRM as well now, and the box it
          fills is on this one. Switching is a no-op when it is already
          the tab you are on, which is why it can be unconditional. */
       switchTab("crm");
@@ -20257,13 +20406,13 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
        ordering the row's Archive and Dead buttons rely on.
 
        It switches tab as well as opening, the way data-raise-open does
-       going the other way: LP Partners is not a deal tab, so there is no
+       going the other way: the LP CRM is not a deal tab, so there is no
        scope to read off the element. */
     var partnerOpen = e.target.closest("[data-partner-open]");
     if (partnerOpen) {
       var pk = partnerOpen.getAttribute("data-partner-open");
       if (Partners.get(pk)) { switchTab("partners"); openPartner(pk); }
-      else toast("\u201C" + pk + "\u201D is not on LP Partners \u2014 no closed deal names them.");
+      else toast("\u201C" + pk + "\u201D is not on the LP CRM \u2014 no closed deal names them.");
       return;
     }
 
@@ -20767,7 +20916,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
       });
     }
 
-    /* WHO IS BESIDE US ON EACH ONE, added with the LP Partners tab.
+    /* WHO IS BESIDE US ON EACH ONE, added with the LP CRM.
        The snapshot used to be a name and a status, which is enough to
        resolve "how is Casa Hope doing" and not enough for "who have we
        closed with" — the question that tab exists to answer. `lp` and

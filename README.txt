@@ -1925,3 +1925,64 @@ PROSPECTIVE LPs, AND THE TAB BECOMES TWO LISTS, 2026-09-15:
   archive and restore of a prospect into the shared pile, the workbook's new
   sheet, the CRM edit form not clearing the flag, 375px, and no console errors
   on any tab.
+
+THE TAB BECOMES THE LP CRM, 2026-09-15:
+- Asked for: "let's change this tab to LP CRM. Remove the Add to Investor CRM as
+  that will be no longer necessary. This tab will contain all the info from the
+  LP conversations, deals, documents sent etc."
+- "ADD TO INVESTOR CRM" IS GONE, and what it was doing is worth recording. A
+  partner derived from a closed deal had no record behind the name until
+  somebody pressed that button, and until they did there was nowhere to keep a
+  contact, a conversation or a document sent — the note box said "needs a
+  record", the conversation log was not drawn, and the facts grid was replaced
+  by a panel explaining the problem. So the page asked a question with one
+  sensible answer, refused to do anything until it was answered, and made the
+  person answer it once per firm.
+- A QUESTION WITH ONE SENSIBLE ANSWER IS NOT A QUESTION. ensureLpRecord() makes
+  the record the first time anybody actually writes something — logs a call,
+  saves a note, records a document sent, saves the details — AND NEVER BEFORE,
+  so nothing is created for a firm nobody has touched. Verified: opening a
+  record-less partner creates nothing; every form is drawn; each of the four
+  write paths creates it.
+- EVERY WRITE PATH VALIDATES BEFORE IT CREATES. An empty conversation form or an
+  empty note must not leave a record behind for something that was not saved, so
+  the "what was said" check and the "nothing to save yet" check both run first.
+- STAGE FOLLOWS THE DEALS: a firm with something closed is created Committed,
+  because a deal closed with them and any other stage would be the record
+  contradicting the deal on the day it was made. A prospect is Prospect.
+- A BUG THIS CREATED AND THE FIX, because it is the kind that ships quietly:
+  Edit details on a record-less PARTNER had nothing selected in the Stage box,
+  so it fell to the first option — Prospect — and saving wrote that over the
+  Committed ensureLpRecord() had just set. Editing a firm we had closed with
+  silently demoted them. The form now pre-selects the same stage
+  ensureLpRecord() would use, so what it shows is what the save does.
+- EDIT DETAILS IS NEW, and it is what makes "all the info" true rather than
+  nearly true: the nine slots in the facts grid are the nine boxes in the form,
+  less Last contact, which is read off the newest conversation and would be a
+  box that lies. Its ids carry an "lpEdit" prefix because the Investor CRM's own
+  form uses "edit*" and can be open on the other tab at the same instant — the
+  third form on this tab to need its own prefix, after the send form and the
+  conversation form.
+- WHAT WENT WITH THE BUTTON: the "Not on the Investor CRM" line on a row (its
+  absence now says only "nobody has written anything yet", which the empty Last
+  contact cell already says), the "No record" last-contact state, the count of
+  record-less partners in the source line, and the whole On-the-CRM filter.
+- THE CROSS-LINK STAYS. "Investor CRM" on a row and "Open on the Investor CRM"
+  on a record are kept, and they are only offered when there IS a record. The
+  record genuinely also lives on that tab and hiding that would be a lie about
+  where the data is; what was removed is the step, not the fact.
+- STILL ONE STORE AND ONE RECORD PER FIRM. Nothing here is a second copy of
+  anything: an LP is an investor record, and the LP CRM is the view of it that
+  answers LP questions. That is why a conversation logged here appears there,
+  and why closing a deal moves a firm between the two lists without anything
+  being re-entered.
+- Renamed throughout: the tab, the breadcrumb ("All LPs"), the home tile, the
+  section banners, the workbook (modillion-lp-crm-*.xlsx), the loggedVia stamp
+  on a conversation, and every comment that named the old tab. The internal tab
+  id is still "partners" — renaming it would touch switchTab, the home tiles,
+  every data-tab and the agent's snapshot for no behaviour at all.
+- Verified in a browser at 1500px and 375px: the rename everywhere, no adopt
+  button anywhere, all four create-on-write paths and both empty-form guards,
+  the stage fix on a partner and on a prospect, Edit details round-tripping,
+  archive and restore, the workbook, the LP links from Closed Deals still
+  landing here, and no console errors on any tab.
