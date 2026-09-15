@@ -13950,6 +13950,25 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
      deal is the thing this tab is about and the thing you click, so it is
      the one that stays boxed; who ran it and where it was are context,
      and context reads better as plain text. */
+  /* WHICH OF THESE FIRMS IS ALSO AN LP FOR MODILLION.
+
+     `e.investor` on a partner entry is its LP CRM record — it was an
+     investor record before the two sets were split and the name stayed.
+     Reading it as "they are on the Investor CRM" is therefore wrong, and
+     was: the cross-link rendered for every firm with an LP record, most
+     of which are not on the other tab at all, and clicking it answered
+     "that firm is not on the investor CRM". A link whose only outcome is
+     an apology is the exact defect the closed-deal LP column was fixed
+     for, and it must not come back here.
+
+     So the link asks THIS, and only draws when the answer is yes. Built
+     once per render and passed down — it is one lookup per row. */
+  function investorTwins() {
+    var by = {};
+    Crm.all().forEach(function (i) { by[Partners.key(i.name)] = i; });
+    return by;
+  }
+
   function partnerDealTags(values, limit) {
     if (!values.length) return '<span class="muted">—</span>';
     return values.slice(0, limit).map(function (v) {
@@ -14110,8 +14129,9 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
     { key: "contact",  label: "Last contact" }
   ];
 
-  function prospectTable(list, pile) {
+  function prospectTable(list, pile, twins) {
     var archived = pile === "archived";
+    twins = twins || {};
     if (!list.length) return "";
 
     var head = PROSPECT_COLUMNS.map(function (c) {
@@ -14151,8 +14171,10 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
               countOf(inv.conversations.length, "logged", "logged") + '</span>'
           : '<span class="muted">Never</span>') + '</td>' +
         '<td class="crm-actions">' +
-          '<button type="button" class="deal-rowaction" data-crm-open-name="' + esc(e.name) +
-            '" title="Also on the Investor CRM">Investor CRM</button>' +
+          (twins[e.key]
+            ? '<button type="button" class="deal-rowaction" data-crm-open-name="' + esc(e.name) +
+              '" title="Also an LP for Modillion — open that record">Investor CRM</button>'
+            : "") +
           (archived
             ? '<button type="button" class="deal-rowaction" data-partner-restore="' + esc(e.key) +
               '" title="Put ' + esc(e.name) + ' back on the list">Restore</button>'
@@ -14177,8 +14199,9 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
       tableHtml + '</div>';
   }
 
-  function partnerTable(list, total, pile) {
+  function partnerTable(list, total, pile, twins) {
     var archived = pile === "archived";
+    twins = twins || {};
 
     if (!list.length) {
       if (archived) return "";
@@ -14225,12 +14248,12 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
             '<span class="crm-sub">' + countOf(e.investor.conversations.length, "logged", "logged") + '</span>'
           : '<span class="muted">Never</span>') + '</td>' +
         '<td class="crm-actions">' +
-          /* Only offered when there is a record to open. The Investor CRM
-             is where the record also appears and saying so is honest;
-             offering to CREATE one there is the step this tab removed. */
-          (e.investor
+          /* Only when the firm is ALSO an LP for Modillion — see
+             investorTwins(). Not "they have an LP record", which is what
+             this used to test and is true of nearly everybody here. */
+          (twins[e.key]
             ? '<button type="button" class="deal-rowaction" data-crm-open-name="' + esc(e.name) +
-              '" title="Also on the Investor CRM">Investor CRM</button>'
+              '" title="Also an LP for Modillion — open that record">Investor CRM</button>'
             : "") +
           /* NO DELETE, and that is not an omission. There is no record
              behind this row to delete \u2014 the deal is what puts the firm
@@ -14560,6 +14583,12 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
     var inv = e.investor;
     var parts = [];
 
+    /* The same question the rows ask, asked once for this record: is this
+       firm ALSO an LP for Modillion? It decides both the cross-link in
+       the header and the read-only log further down, and asking it twice
+       invited the two to disagree. */
+    var twin = Crm.all().filter(function (i) { return sameName(i.name, e.name); })[0] || null;
+
     var sub = (inv && inv.mandate) ||
       (e.prospect ? "On the LP track. Nothing has closed with them yet."
                   : countOf(e.closed.length, "closed deal") + " together.");
@@ -14577,14 +14606,11 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
         (partnerState.editing
           ? ""
           : '<button class="dash-refresh" data-lp-edit="' + esc(e.key) + '">Edit details</button>' +
-            (inv
-              /* Jumps to the agent box on the CRM tab, which reads a
-                 pasted email thread into a draft. The form at the foot of
-                 this page is the other way and the commoner one; this is
-                 kept because pasting a thread is a real thing people do
-                 and this page has nothing else that does it. */
-              ? '<button class="dash-refresh" data-crm-log="' + esc(inv.id) +
-                  '">Read a thread into the log</button>'
+            /* Only when the firm is also an LP for Modillion. Offering it
+               otherwise is a button that apologises. */
+            (twin
+              ? '<button class="dash-refresh" data-crm-open-name="' + esc(e.name) +
+                  '">Open the Investor CRM record</button>'
               : "")) +
         // Same one action the row carries, offered where somebody who has
         // just read the record is standing.
@@ -14721,7 +14747,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
          did we last speak to them" answerable two ways. Hiding them
          would be worse — somebody would ring a firm we spoke to last
          week. So they are visible and not claimed. */
-      var twinLog = Crm.all().filter(function (i) { return sameName(i.name, e.name); })[0];
+      var twinLog = twin;
       if (twinLog && twinLog.conversations.length) {
         parts.push('<div class="crm-section"><h3>Also on the Investor CRM' +
           '<span class="crm-section__aside">' +
@@ -14803,17 +14829,19 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
     /* CURRENT FIRST. It is what the tab is named for and what the deals
        already say; the prospective list below it is the work in front of
        you, and it is the one with the button. */
+    var twins = investorTwins();
+
     var body =
       partnerSection("Current LP partners", total,
         "Derived from the closed deals \u2014 nothing is added here. A firm is on this list " +
         "because a deal it is on has closed.",
-        partnerTable(list, total, "live")) +
+        partnerTable(list, total, "live", twins)) +
       partnerSection("Prospective LPs", props.length,
         "Firms on the LP track that nothing has closed with yet. These ARE added by hand. " +
         "<strong>Close a deal with one and they move up to Current on their own</strong>, " +
         "with every conversation intact \u2014 nothing to convert, nothing to re-enter.",
         propList.length
-          ? prospectTable(propList, "live")
+          ? prospectTable(propList, "live", twins)
           : '<p class="partner-group__empty">' +
             (props.length
               ? (partnerDealFilterOn()
@@ -14830,8 +14858,8 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
         put_away.length,
         "Off the list, not deleted \u2014 and nothing about the deals changed. Restore puts " +
         "them back into whichever group they belong to.",
-        partnerTable(put_away.filter(function (e) { return !e.prospect; }), total, "archived") +
-        prospectTable(put_away.filter(function (e) { return e.prospect; }), "archived"));
+        partnerTable(put_away.filter(function (e) { return !e.prospect; }), total, "archived", twins) +
+        prospectTable(put_away.filter(function (e) { return e.prospect; }), "archived", twins));
     labelCells($("partnerBody"));
 
     var shown = list.length + propList.length;

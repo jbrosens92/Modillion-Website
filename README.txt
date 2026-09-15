@@ -2096,3 +2096,31 @@ OWNER IS A DROPDOWN ON THE LP CRM TOO, 2026-09-15:
   silently blanked by opening the form. Verified with a fixture whose owner is
   not on the team: the name is offered, preselected, and survives a save that
   never touched the field.
+
+THE INVESTOR CRM LINK WAS SHOWING ON FIRMS THAT ARE NOT ON IT, 2026-09-15:
+- Reported from the LP CRM list: rows for firms that exist only as deal LPs were
+  carrying an "Investor CRM" button.
+- THE CAUSE IS A NAME THAT OUTLIVED ITS MEANING. `e.investor` on a partner entry
+  was an INVESTOR record before the two sets were split this afternoon. After
+  the split it holds the LP CRM record and the name stayed, so every test of the
+  form `e.investor ? show the cross-link` became "does this firm have an LP
+  record" — true of nearly every row on the tab — when it was written to mean
+  "is this firm also on the Investor CRM".
+- WHAT IT LOOKED LIKE: a link offered on most rows whose only outcome, for a
+  firm that is only a deal LP, was the toast "that firm is not on the investor
+  CRM". That is the exact defect the closed-deal LP column was fixed for earlier
+  the same day, reappearing one tab over by a different route.
+- FIXED by asking the real question. investorTwins() indexes the investor set by
+  name once per render and is passed to both tables and the record page; the
+  cross-link draws only where the answer is yes, and its title now says what
+  being there means — "Also an LP for Modillion".
+- REMOVED WHILE FIXING IT: "Read a thread into the log" on an LP record. It
+  carried data-crm-log with the record's id, which after the split is an LP id
+  the investor store has never heard of, so the box it opened would have been
+  prefilled blank — and worse, the agent box WRITES TO THE INVESTOR CRM. Reading
+  a thread into the log from an LP record would have filed the conversation
+  against the wrong population entirely. The form at the foot of the record is
+  the way to log one here, and it writes to the right set.
+- Verified against a fixture where one firm is on both lists and two are deal
+  LPs only: the link appears on the first and on nothing else, on the row, in
+  the archived pile and on the record page, and it lands on the right investor.
