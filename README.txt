@@ -1713,3 +1713,72 @@ LOGGING A SEND FROM THE RAISE, 2026-09-11:
   (driving one leaves the other alone), a new material and version registered
   from the raise side, the fixed deal written without being asked, the contact
   auto-filled, and the investor-side path unchanged.
+
+LP PARTNER TRACKER — a tab, 2026-09-15:
+- Asked for as "see the LPs we have closed deals with and record conversations,
+  deals shared with them, contact info, notes etc."
+- THE ONE DECISION WORTH RECORDING: it is not a record set. Every other tab here
+  is a list somebody typed and a base+overlay behind it; this one stores nothing
+  and has no Publish, no Download and no Add button. There is no `partners` set
+  in /api/records and nothing to add one for.
+- WHY. An LP partner is not a thing anybody decides to create. It is what a firm
+  BECOMES when a deal closes with them beside us, and that fact is already
+  written down twice — in the deal's LP box and in the commitments on its raise.
+  A hand-kept list of partners can disagree with the deals, and the disagreement
+  would always be this tab's fault. So membership is derived on every render:
+  close a deal with somebody and they are here; take their name off the deal and
+  they are not.
+- The other half — contacts, conversations, materials sent, the note — IS THE
+  INVESTOR RECORD, read and written exactly where it already lives. "Log a
+  conversation" on a partner's page carries you to the CRM box and writes to the
+  CRM, because it is the same conversation with the same firm. A partner log
+  kept separately would be a second answer to "when did we last speak to them".
+- TWO WAYS IN, both "we closed with them" said by different parts of one deal:
+  NAMED LP (in the deal's lp box, deal in Closed Deals) and COMMITTED (a Hard or
+  Funded commitment on a closed deal's raise). A SOFT CIRCLE IS NOT A
+  PARTNERSHIP — RAISE_COUNTED is the same gate here it is on the raise panel. A
+  commitment marked GP-side is a co-GP and is left out; one with no side recorded
+  is kept, because that question postdates some of the commitments and inventing
+  "GP" would delete a real partner.
+- Archived deals are out, because Deals.all() leaves them out and the Closed
+  Deals tab counts the same way. A partner list that included a deal the closed
+  tab does not show would be a number nobody could reconcile.
+- NO TOTALS, anywhere — not on a row, not in the workbook. Each cheque is shown
+  as the deal says it, and where a deal names more than one LP the lpCheck is
+  labelled "deal total" rather than passed off as theirs. The investor record's
+  LP section already declined to add these up; this keeps that.
+- ONE NEW STORED FIELD, `partnerNote` on an investor: "How we work together".
+  Not the same as `why`, which is why they are on the list — written before
+  anything was done together. This is what the relationship turned out to be.
+  Editable on the partner's page and on the investor edit form, and it is the
+  same field on the same record either way.
+- A partner with no investor record is shown saying so, with one button that
+  creates one at stage Committed carrying the closed deals. Until then there is
+  nowhere to keep a contact or a conversation, and the source line says how many
+  are in that state.
+- TWO DEFECTS FOUND AND FIXED WHILE DOING IT, both because a panel that had only
+  ever been drawn once is now drawn twice:
+    1. investorMaterials() hardcoded prefix "send". With the same panel on a
+       partner's page and an investor record open behind it on the other tab,
+       two forms shared one set of ids and $("sendMaterial") answered with
+       whichever came first in the document — so the partner page logged
+       whatever the CRM pane was holding. It now takes a prefix, the mechanism
+       the raise's copy has used since 2026-09-11, and the partner page passes
+       "psend". logSendFromInvestor() takes the BUTTON rather than an id so the
+       prefix comes off the form actually pressed.
+    2. Three send writers redrew their own surface and not the partner's, so a
+       send saved and the table above the form did not move. refreshOpenPartner()
+       is the single hook, beside refreshOpenRecordTasks() which exists for
+       exactly the same reason.
+- The agent snapshot gained `partners`, and `deals` gained lp/area/operator/
+  market — it could resolve "how is Casa Hope doing" and not "who have we closed
+  with". Read-only, like operators and competitors: there is no action that edits
+  a deal's LP box and one is not being invented by the back door.
+- VERIFIED IN A BROWSER against a fixture of six deals, not by reading: the two
+  routes in, a two-LP deal splitting into two partners, a Soft circle and a
+  GP-side commitment both correctly excluded, an LP on a live deal only correctly
+  excluded, sort/filter/search, the note round-tripping to the investor record
+  and back, "Add to investor CRM", a conversation logged from the partner page
+  appearing on it, a send logged from the partner page landing on the right
+  investor while a different one sat open on the CRM tab, the workbook, and no
+  duplicate ids with both panes populated. No console errors on any tab.

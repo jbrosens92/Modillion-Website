@@ -2710,6 +2710,41 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
   color: var(--deep-space);
 }
 
+/* ---- LP Partners -------------------------------------------------
+   The tab adds two things to the shared vocabulary and borrows the rest:
+   the note box on a partner's page, and the line on a row that says a
+   firm has no investor record behind the name. Everything else here is
+   .crmtable, .crm-section and .crm-fact, deliberately — a tab that reads
+   as its own product is a tab people treat as a separate system. */
+/* The cheque caveat under a figure in the partner's deal tables. The
+   list's own rule for this is scoped to .crmtable and these are
+   .report-table, so without it "$24m" and "deal total" run together into
+   one unreadable string. */
+.report-table .crm-sub { display: block; font-size: .72rem; color: var(--muted); margin-top: 3px; }
+
+.partner-note textarea {
+  font-family: var(--sans);
+  font-size: .92rem;
+  line-height: 1.6;
+  color: var(--deep-space);
+  background: var(--paper);
+  border: 1px solid var(--rule);
+  border-radius: 2px;
+  padding: 14px 16px;
+  width: 100%;
+  min-height: 116px;
+  resize: vertical;
+}
+.partner-note textarea:focus { outline: none; border-color: var(--steel); }
+.partner-note__bar {
+  display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+  margin-top: 14px;
+}
+/* A partner with nowhere to keep a contact. Said in the accent the rest
+   of the page uses for "this needs somebody", not in red — it is a gap
+   in the records, not a fault. */
+.crmtable .crm-sub.is-missing { color: #8A5A3B; }
+
 .crm-research { list-style: none; margin: 0; padding: 0; }
 .crm-research li {
   padding: 0 0 18px 0;
@@ -3580,6 +3615,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
         <button type="button" data-tab="raises">Capital Raises<span class="dash-tabs__count" id="tabRaiseCount"></span></button>
         <button type="button" data-tab="operators">Operator CRM<span class="dash-tabs__count" id="tabOperatorCount"></span></button>
         <button type="button" data-tab="crm">Investor CRM<span class="dash-tabs__count" id="tabCrmCount"></span></button>
+        <button type="button" data-tab="partners">LP Partners<span class="dash-tabs__count" id="tabPartnerCount"></span></button>
         <button type="button" data-tab="tasks">Task List<span class="dash-tabs__count" id="tabTaskCount"></span></button>
         <button type="button" data-tab="competitors">Competitor Tracker<span class="dash-tabs__count" id="tabCompetitorCount"></span></button>
       </nav>
@@ -3965,6 +4001,67 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
         </div>
 
       </div><!-- /#wsCrm -->
+
+      <!-- ====================== LP PARTNERS ======================= -->
+      <!-- The LPs the firm has actually closed alongside. Nothing on
+           this tab is stored by this tab: membership is DERIVED from
+           the closed deals, and everything soft about a partner —
+           contacts, conversations, what they have been sent — is the
+           investor record, read and written where it already lives.
+           See "LP PARTNER TRACKER" in the script below. -->
+      <div id="wsPartners" hidden>
+
+        <p class="report-note" id="partnerSourceNote"></p>
+
+        <!-- Toolbar -->
+        <div class="dash-toolbar">
+          <div class="dash-search">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+            <label class="visually-hidden" for="partnerSearch">Search LP partners</label>
+            <input type="search" id="partnerSearch" placeholder="Search partners, deals, operators, markets and conversations" autocomplete="off">
+          </div>
+          <button class="dash-refresh" id="partnerExportBtn">Export Excel</button>
+        </div>
+
+        <!-- List -->
+        <div class="dash-crm" id="viewPartners">
+          <div class="dash-crm__filters">
+            <label class="visually-hidden" for="partnerFilterOperator">Filter by operator</label>
+            <select id="partnerFilterOperator"><option value="">All operators</option></select>
+
+            <label class="visually-hidden" for="partnerFilterMarket">Filter by market</label>
+            <select id="partnerFilterMarket"><option value="">All markets</option></select>
+
+            <label class="visually-hidden" for="partnerFilterAsset">Filter by asset class</label>
+            <select id="partnerFilterAsset"><option value="">All asset classes</option></select>
+
+            <label class="visually-hidden" for="partnerFilterDeal">Filter by deal</label>
+            <select id="partnerFilterDeal"><option value="">All closed deals</option></select>
+
+            <label class="visually-hidden" for="partnerFilterRecord">Filter by investor record</label>
+            <select id="partnerFilterRecord">
+              <option value="">On the CRM or not</option>
+              <option value="on">On the investor CRM</option>
+              <option value="off">Not on the investor CRM</option>
+            </select>
+
+            <button type="button" class="dash-crm__clear" id="partnerClearFilters">Clear</button>
+            <span class="dash-crm__shown" id="partnerShown"></span>
+          </div>
+          <div id="partnerBody"></div>
+        </div>
+
+        <!-- Partner detail -->
+        <div class="dash-investor" id="viewPartner" hidden>
+          <nav class="dash-crumbs" aria-label="Breadcrumb">
+            <button type="button" data-action="partner-home">All LP partners</button>
+            <span class="sep">/</span>
+            <span class="current" id="partnerCrumb"></span>
+          </nav>
+          <div id="partnerDetailBody"></div>
+        </div>
+
+      </div><!-- /#wsPartners -->
 
       <!-- ====================== OPERATOR CRM ====================== -->
       <div id="wsOperators" hidden>
@@ -4515,6 +4612,13 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
       count: function () {
         var n = Crm.all().length;
         return n ? n + " investor" + (n === 1 ? "" : "s") : null;
+      } },
+    { tab: "partners", label: "LP Partners", icon: "shield",
+      blurb: "The LPs the firm has actually closed alongside — what was done together, " +
+             "what they put in, how the relationship works, and every conversation.",
+      count: function () {
+        var n = Partners.all().length;
+        return n ? countOf(n, "partner") : null;
       } },
     { tab: "tasks", label: "Task List", icon: "memo",
       blurb: "Company to-dos with an owner, a due date and a priority, grouped by when they " +
@@ -8356,6 +8460,20 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
         contacts: dedupeById(inv.contacts),
         research: dedupeById(inv.research),
         why: inv.why || "",
+        /* HOW WE WORK TOGETHER — written on the LP Partners tab and
+           stored here, because there is no partner record to store it
+           on: a partner IS an investor we have closed alongside, and a
+           second store keyed by the same name would be a second place
+           to look for the same firm.
+
+           Not the same field as `why` above, which is why they are on
+           the list — a prospecting note, written before anything was
+           done together. This is what the relationship turned out to
+           be: how they like to be approached, what they said about the
+           next one, who signs. A record can hold both and they can
+           disagree, because the first is what was hoped and the second
+           is what happened. */
+        partnerNote: inv.partnerNote || "",
         /* The day the record was written down. Blank on everything that
            was already in the file when this started being kept — there is
            no honest way to invent it after the fact, so those sort to the
@@ -10432,10 +10550,29 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
      entry appears on the investor's record, on the register, and on a
      material's page, so an edit or a withdrawal made from any of them has
      to land on the one the person is actually looking at. */
+  /* The LP Partners tab draws the SAME panels an investor record does —
+     investorMaterials(), investorCommitments(), the task panel, the
+     conversation log — so anything that changes one of them has to
+     redraw there too, not only on the CRM tab. Without this a send
+     logged on a partner's page saves and the table above the form does
+     not move, which reads as a form that did nothing.
+
+     It is its own check rather than a branch of whichever redraw chain
+     called it, because THE TWO PAGES CAN BE OPEN AT ONCE: a partner's
+     page here, and the same firm's investor record behind it on the
+     other tab. Cheap when the tab has never been opened — partnerState
+     starts on the list and this returns immediately. */
+  function refreshOpenPartner() {
+    if (partnerState.view === "partner" && partnerState.key) {
+      renderPartner(partnerState.key);
+    }
+  }
+
   function renderSendViews(invId) {
     renderCrm();
     // A send carries the deal it was for, so the raise roll-up reads it too.
     renderRaises();
+    refreshOpenPartner();
     if (crmState.view === "material" && Crm.material(crmState.materialId)) {
       renderMaterial(crmState.materialId);
     } else if (crmState.view === "materials") {
@@ -10540,7 +10677,21 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
     }).join("");
   }
 
-  function investorMaterials(inv) {
+  /* PREFIX, because this panel is now drawn on TWO PANES — the investor
+     record and, for a firm the firm has closed alongside, their page on
+     the LP Partners tab. Both can be open at once, on different tabs,
+     and the form's boxes are addressed by id: two panels sharing one
+     prefix means two elements sharing one id, and $("sendMaterial")
+     silently answers with whichever came first in the document. The
+     partner page would then log whatever the CRM pane was holding.
+
+     The mechanism already existed for the raise's copy of this form —
+     sendPrefixOf() reads it off the nearest [data-send-form] — so this
+     is the second caller using it rather than a new idea. Anything that
+     READS the form must go through sendPrefixOf() from the button that
+     was pressed, never a literal "send". */
+  function investorMaterials(inv, prefix) {
+    var p = prefix || "send";
     var live = Crm.materials().filter(function (m) { return !m.retired; });
     var stale = staleSends(inv);
     var aside = inv.sends.length
@@ -10572,7 +10723,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
        through the same two methods. This is a shortcut into the
        register, not a second, quieter way to keep materials. */
     var form = sendFormHtml({
-      prefix: "send",
+      prefix: p,
       live: live,
       empty: live.length ? "" :
         '<p class="mat-empty">Nothing is on the materials register yet \u2014 name what ' +
@@ -10776,6 +10927,17 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
     if (inv.why) {
       parts.push('<div class="crm-section"><h3>Why they are on the list</h3>' +
                  '<p class="crm-why">' + esc(inv.why) + '</p></div>');
+    }
+
+    /* Drawn only when it has been written, unlike the Research section
+       above it. There is a place that invites somebody to write one —
+       the LP Partners tab, where the question comes up — and an empty
+       box on every prospect's record would be inviting an answer to a
+       question nobody has been in a position to answer yet. */
+    if (inv.partnerNote) {
+      parts.push('<div class="crm-section"><h3>How we work together' +
+        '<span class="crm-section__aside">Shown on LP Partners too</span></h3>' +
+        '<p class="crm-why">' + esc(inv.partnerNote) + '</p></div>');
     }
 
     if (inv.tags.length || inv.deals.length) {
@@ -11008,6 +11170,16 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
           '<textarea id="editMandate">' + esc(inv.mandate) + '</textarea>', true) +
         field("editWhy", "Why they are on the list",
           '<textarea id="editWhy">' + esc(inv.why) + '</textarea>', true) +
+        /* The same box the LP Partners tab writes, on the record that
+           holds it. It is offered here whether or not they are a partner
+           yet, because the alternative is a field that can only be
+           edited on a tab a prospect does not appear on — and then the
+           day they become one, a note nobody could have written. */
+        field("editPartnerNote", "How we work together",
+          '<textarea id="editPartnerNote">' + esc(inv.partnerNote) + '</textarea>' +
+          note("What the relationship turned out to be \u2014 how they like to be approached, " +
+               "who signs, what they said about the next one. Shown on the LP Partners tab " +
+               "once a deal has closed with them."), true) +
       '</div>' +
 
       /* The opening conversation, on the add form only. A record almost
@@ -11120,7 +11292,8 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
       deals: commaList("editDeals"),
       contacts: contacts,
       mandate: val("editMandate"),
-      why: val("editWhy")
+      why: val("editWhy"),
+      partnerNote: val("editPartnerNote")
     };
   }
 
@@ -11149,6 +11322,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
                   owner: "", location: "", website: "", aum: "", assetClasses: [],
                   checkSize: { min: null, max: null, note: "" }, mandate: "", priority: "",
                   tags: [], deals: [], contacts: [], research: [], why: "",
+                  partnerNote: "",
                   archived: false, conversations: [], sends: [] };
     $("investorCrumb").textContent = "New investor";
     $("investorBody").innerHTML =
@@ -12105,11 +12279,18 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
     return { material: mat, version: version, registered: registered, investor: inv };
   }
 
-  function logSendFromInvestor(invId) {
-    var done = logSend("send", invId, null);
+  /* Takes the BUTTON rather than the id, so the prefix comes off the
+     form the button is actually in — see investorMaterials(). Passing
+     the id alone forced a literal "send" here, which is right on the
+     investor record and reads the wrong pane's boxes from anywhere
+     else. logSendFromRaise() below has always worked this way. */
+  function logSendFromInvestor(btn) {
+    var invId = btn.getAttribute("data-send-add");
+    var done = logSend(sendPrefixOf(btn), invId, null);
     if (!done) return;
-    renderCrm();
-    renderInvestor(invId);
+    // Redraws every surface the entry shows on, this one included, so a
+    // send logged on the partner page appears in the table above the form.
+    renderSendViews(invId);
     toast("Recorded — " + done.material.name + (done.version ? " " + done.version.label : "") +
           " to " + done.investor.name +
           (done.registered ? ". " + done.material.name + " is on the register now." : "."));
@@ -12135,6 +12316,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
     var done = logSend(prefix, invId, rec.name);
     if (!done) return;
     renderCrm();
+    refreshOpenPartner();
     repaintRaise(btn, rec);
     toast("Recorded — " + done.material.name + (done.version ? " " + done.version.label : "") +
           " to " + done.investor.name + " for " + rec.name +
@@ -12180,6 +12362,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
 
     var names = filed.map(function (row) { return row.investorName; });
     renderCrm();
+    refreshOpenPartner();
     renderMaterial(id);
     toast("Recorded " + mat.name + " " + version.label + " against " +
           countOf(names.length, "investor") + " — " + names.join(", ") + ".");
@@ -12602,12 +12785,14 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
 
     sheets.push({
       name: "Investors",
-      widths: [34, 26, 26, 15, 18, 16, 22, 14, 12, 40],
+      widths: [34, 26, 26, 15, 18, 16, 22, 14, 12, 40, 50],
       rows: [["Investor", "Type", "Asset class", "Stage", "Check size", "Assets", "Location",
-              "Last contact", "Logged", "Deals of interest"]].concat(
+              "Last contact", "Logged", "Deals of interest",
+              "How we work together"]].concat(
         list.map(function (i) {
           return [i.name, i.type, i.assetClasses.join(", "), i.stage, checkText(i), i.aum,
-                  i.location, lastContact(i) || "", i.conversations.length, i.deals.join("; ")];
+                  i.location, lastContact(i) || "", i.conversations.length, i.deals.join("; "),
+                  i.partnerNote];
         }))
     });
 
@@ -12688,6 +12873,846 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
     toast("Excel workbook downloaded — " + list.length + " investors, " + log.length +
           " conversations, " + sent.length + " materials sent.");
   }
+
+
+  /* ============================================================
+     LP PARTNER TRACKER — DATA
+
+     WHO IS ON THIS TAB, AND WHY IT IS NOT A RECORD SET
+
+     Every other tab here is a list of records somebody typed. This
+     one is not, and that is the design rather than a shortcut. An LP
+     partner is not a thing anybody decides to create — it is what a
+     firm BECOMES the moment a deal closes with them beside us, and
+     the two places that fact is already written down are the deal's
+     LP box and the commitments on its raise. So membership is
+     DERIVED from those, every render, and there is no Add button:
+     close a deal with somebody and they are here; take their name
+     off the deal and they are not. A list you can add to by hand is
+     a list that can disagree with the deals, and the disagreement
+     would always be this tab's fault.
+
+     THE OTHER HALF — contacts, conversations, what they have been
+     sent, notes — is the INVESTOR RECORD, read and written exactly
+     where it already lives. Logging a conversation here logs it on
+     the investor CRM, because it is the same conversation with the
+     same firm, and a partner log kept separately would be a second
+     answer to "when did we last speak to them".
+
+     So this module joins and nothing else. It stores no records, has
+     no overlay, no publish button and no Download — there is nothing
+     of its own to lose. Everything it shows is saved by the tab that
+     owns it.
+
+     ------------------------------------------------------------
+     THE TWO WAYS SOMEBODY GETS HERE, and both are "we closed with
+     them" said by different parts of the same deal:
+
+       NAMED LP   their name is in the deal's LP box (lpNames()) and
+                  the deal is in Closed Deals. This is the capital
+                  partner beside us on the deal itself.
+
+       COMMITTED  they hold a Hard or Funded commitment on a closed
+                  deal's raise. Money in, deal done.
+
+     A SOFT CIRCLE IS NOT A PARTNERSHIP and neither is a Passed —
+     the raise panel exists to keep that distinction and this must
+     not quietly drop it, so RAISE_COUNTED is the same gate here that
+     it is there. A commitment marked GP-side is a co-GP rather than
+     an LP and is left out; one with no side recorded is kept,
+     because a commitment written before that question existed has no
+     answer to it and inventing "GP" would remove a real partner.
+
+     JOINED BY NAME, case-insensitively, which is the join every
+     reference to a record on this page uses — see the note over
+     Deals.byName(). Rename a firm on the deal and it becomes a
+     different partner here, exactly as true as it is everywhere
+     else. The SPELLING SHOWN is the investor CRM's when a record
+     matches, because that is the one somebody maintains.
+
+     ARCHIVED DEALS ARE OUT, because Deals.all() leaves them out and
+     the Closed Deals tab counts the same way. A partner list that
+     included a deal the closed tab does not show would be a number
+     no one could reconcile.
+     ============================================================ */
+  var Partners = (function () {
+
+    function key(name) { return String(name || "").trim().toLowerCase(); }
+
+    /* An LP-side commitment that actually landed. Blank side is kept —
+       see the note above; only an explicit GP is a co-GP. */
+    function lpCommitment(c) {
+      return !!RAISE_COUNTED[c.status] && c.side !== "GP";
+    }
+
+    function entry(k, name) {
+      return { key: k, name: name, investor: null,
+               /* One row per deal, each saying HOW they are in it. The
+                  two routes are collected separately and merged onto one
+                  row, because a firm can be the named LP and hold a
+                  commitment on the same deal and that is one partnership,
+                  not two. */
+               deals: {}, closed: [], live: [] };
+    }
+
+    function row(e, rec) {
+      if (!e.deals[rec.id]) {
+        e.deals[rec.id] = { deal: rec, named: false, commitments: [] };
+      }
+      return e.deals[rec.id];
+    }
+
+    function build() {
+      var by = {};
+
+      function reach(name, rec) {
+        var k = key(name);
+        if (!k) return null;
+        if (!by[k]) by[k] = entry(k, String(name).trim());
+        return row(by[k], rec);
+      }
+
+      Deals.all().forEach(function (rec) {
+        lpNames(rec).forEach(function (n) {
+          var r = reach(n, rec);
+          if (r) r.named = true;
+        });
+        ((rec.raise && rec.raise.commitments) || []).forEach(function (c) {
+          if (!lpCommitment(c)) return;
+          var r = reach(c.investor, rec);
+          if (r) r.commitments.push(c);
+        });
+      });
+
+      /* The investor record behind each name, looked up once rather
+         than once per row. */
+      var crmByKey = {};
+      Crm.all().forEach(function (inv) { crmByKey[key(inv.name)] = inv; });
+
+      var out = [];
+      Object.keys(by).forEach(function (k) {
+        var e = by[k];
+        e.investor = crmByKey[k] || null;
+        // The maintained spelling wins over whatever the deal box says.
+        if (e.investor) e.name = e.investor.name;
+
+        Object.keys(e.deals).forEach(function (id) {
+          var r = e.deals[id];
+          (r.deal.area === "closed-deals" ? e.closed : e.live).push(r);
+        });
+        delete e.deals;
+
+        /* THE MEMBERSHIP TEST, and the only one. A firm beside us on a
+           live deal is a firm we have not closed with yet — they are on
+           the investor CRM, which is where a relationship that has not
+           happened belongs. Their live deals show on their page once
+           they are here, because "what else are we in with them" is
+           worth an answer; they are not what puts them here. */
+        if (!e.closed.length) return;
+
+        function byName(a, b) { return a.deal.name.localeCompare(b.deal.name); }
+        e.closed.sort(byName);
+        e.live.sort(byName);
+        out.push(e);
+      });
+
+      out.sort(function (a, b) { return a.name.localeCompare(b.name); });
+      return out;
+    }
+
+    /* Rebuilt on demand rather than cached. Every input is already in
+       memory and the lists are tens of records long, so a cache would
+       only be somewhere for a stale answer to hide after somebody edits
+       a deal on another tab. */
+    function all() { return build(); }
+
+    function get(k) {
+      var want = key(k);
+      return build().filter(function (e) { return e.key === want; })[0] || null;
+    }
+
+    /* Every operator, market and asset class the partner has closed
+       alongside us, for the row tags and the filters. Read off the
+       closed deals only — a market they are looking at on a live deal
+       is not somewhere they have been. */
+    function facet(e, field) {
+      var out = [];
+      e.closed.forEach(function (r) {
+        var v = String(r.deal[field] || "").trim();
+        if (v && out.indexOf(v) === -1) out.push(v);
+      });
+      return out.sort();
+    }
+
+    /* WHAT THEIR CHEQUE WAS ON ONE DEAL, and the honest caveat on it.
+
+       A commitment is theirs and says so. The deal's `lpCheck` is the
+       DEAL's LP equity, which is the same thing only when they are the
+       only LP named on it — so when the deal names more than one, the
+       figure is still shown (it is the only figure there is) and it is
+       labelled as the deal's rather than as theirs.
+
+       NOTHING IS ADDED UP ACROSS DEALS. The investor record's LP
+       section already declines to, for the reason that a column of
+       prose amounts read at different moments of different deals is
+       not a portfolio total, and a number people would quote is worse
+       than no number. */
+    function cheque(r) {
+      var committed = r.commitments.filter(function (c) { return c.amount; });
+      if (committed.length) {
+        return { text: committed.map(function (c) { return c.amount; }).join(" + "),
+                 whose: "theirs" };
+      }
+      var text = dealMoneyText(r.deal.lpCheck);
+      if (!text) return { text: "", whose: "" };
+      return { text: text,
+               whose: lpNames(r.deal).length > 1 ? "deal" : "theirs" };
+    }
+
+    // How they are in one deal, in words, for the row and the export.
+    function role(r) {
+      var parts = [];
+      if (r.named) parts.push("Named LP");
+      if (r.commitments.length) {
+        var states = [];
+        r.commitments.forEach(function (c) {
+          if (states.indexOf(c.status) === -1) states.push(c.status);
+        });
+        parts.push(states.join(" + "));
+      }
+      return parts.join(" · ");
+    }
+
+    return { all: all, get: get, key: key, facet: facet, cheque: cheque, role: role };
+  })();
+
+  /* ============================================================
+     LP PARTNER TRACKER — RENDER
+     ============================================================ */
+  var partnerState = {
+    view: "list",          // list | partner
+    key: null,
+    query: "",
+    filters: { operator: "", market: "", asset: "", deal: "", record: "" },
+    sortKey: "name",
+    sortDir: "asc"
+  };
+
+  /* No "Added" and no drag handle, because neither exists: a partner is
+     not created and has no position anybody set. The columns are the
+     questions this tab is opened to answer, in the order they get
+     asked — who, how many, which, with whom, where, and when did we
+     last speak. */
+  var PARTNER_COLUMNS = [
+    { key: "name",     label: "LP partner" },
+    { key: "closed",   label: "Closed", num: true },
+    { key: "deals",    label: "Deals closed" },
+    { key: "operator", label: "Operators" },
+    { key: "market",   label: "Markets" },
+    { key: "live",     label: "Also live", num: true },
+    { key: "sent",     label: "Materials" },
+    { key: "contact",  label: "Last contact" }
+  ];
+
+  function partnerTags(values, limit) {
+    if (!values.length) return '<span class="muted">—</span>';
+    return values.slice(0, limit).map(function (v) {
+      return '<span class="crm-tag">' + esc(v) + '</span>';
+    }).join("") +
+      (values.length > limit
+        ? '<span class="crm-tag">+' + (values.length - limit) + '</span>' : "");
+  }
+
+  function partnerLastContact(e) {
+    return e.investor ? lastContact(e.investor) : null;
+  }
+
+  function partnerSortValue(e, k) {
+    switch (k) {
+      case "closed":   return e.closed.length;
+      case "live":     return e.live.length;
+      case "deals":    return e.closed.map(function (r) { return r.deal.name; }).join(", ");
+      case "operator": return Partners.facet(e, "operator").join(", ");
+      case "market":   return Partners.facet(e, "market").join(", ");
+      case "sent":     return e.investor ? e.investor.sends.length : -1;
+      case "contact":  return partnerLastContact(e) || "";
+      default:         return e.name;
+    }
+  }
+
+  /* Searched across everything the row shows PLUS the conversation log,
+     on the same reasoning the investor search uses: "the one where they
+     asked about the Texas exit" is how people look for a firm, and the
+     sentence that answers it is in the log rather than in a column. */
+  function partnerMatches(e) {
+    var q = partnerState.query.trim().toLowerCase();
+    if (!q) return true;
+    var hay = [e.name,
+               e.closed.concat(e.live).map(function (r) {
+                 return [r.deal.name, r.deal.operator, r.deal.market,
+                         r.deal.assetClass].join(" ");
+               }).join(" ")];
+    if (e.investor) {
+      hay.push(e.investor.type, e.investor.location, e.investor.mandate,
+               e.investor.partnerNote, e.investor.why,
+               e.investor.contacts.map(function (c) {
+                 return [c.name, c.title, c.email].join(" ");
+               }).join(" "),
+               e.investor.conversations.map(function (c) {
+                 return [c.subject, c.summary, c.who, c.next].join(" ");
+               }).join(" "));
+    }
+    return hay.join(" ").toLowerCase().indexOf(q) !== -1;
+  }
+
+  function partnerFiltered(all) {
+    var f = partnerState.filters;
+    var list = (all || Partners.all()).filter(function (e) {
+      if (f.operator && Partners.facet(e, "operator").indexOf(f.operator) === -1) return false;
+      if (f.market && Partners.facet(e, "market").indexOf(f.market) === -1) return false;
+      if (f.asset && Partners.facet(e, "assetClass").indexOf(f.asset) === -1) return false;
+      if (f.deal && !e.closed.some(function (r) { return r.deal.name === f.deal; })) return false;
+      if (f.record === "on" && !e.investor) return false;
+      if (f.record === "off" && e.investor) return false;
+      return partnerMatches(e);
+    });
+
+    var dir = partnerState.sortDir === "asc" ? 1 : -1;
+    var k = partnerState.sortKey;
+    return list.sort(function (a, b) {
+      var av = partnerSortValue(a, k), bv = partnerSortValue(b, k);
+      if (typeof av === "number" && typeof bv === "number") {
+        return av === bv ? a.name.localeCompare(b.name) : (av - bv) * dir;
+      }
+      var c = String(av).localeCompare(String(bv));
+      return c ? c * dir : a.name.localeCompare(b.name);
+    });
+  }
+
+  function partnerTable(list, total) {
+    if (!list.length) {
+      return total
+        ? '<div class="dash-state"><h3>No partners match</h3>' +
+          '<p>Clear the filters, or search for a deal, an operator or a market.</p></div>'
+        : '<div class="dash-state"><h3>No LP partners yet</h3>' +
+          '<p>A firm appears here once a deal it is on reaches Closed Deals — either ' +
+          'named in the deal’s LP box, or holding a committed or funded place on its ' +
+          'raise. Nothing is added on this tab; it reads the deals.</p></div>';
+    }
+
+    var head = PARTNER_COLUMNS.map(function (c) {
+      var sorted = partnerState.sortKey === c.key;
+      return '<th class="' + (sorted ? "is-sorted " : "") + (c.num ? "num" : "") + '">' +
+             '<button type="button" data-partnersort="' + c.key + '">' + esc(c.label) +
+             '<span class="arrow">' + (sorted && partnerState.sortDir === "asc" ? "↑" : "↓") +
+             '</span></button></th>';
+    }).join("") +
+    '<th class="crm-actions"><span class="visually-hidden">Actions</span></th>';
+
+    var rows = list.map(function (e) {
+      var last = partnerLastContact(e);
+      var note = e.investor ? lastNote(e.investor) : "";
+
+      return '<tr data-partner="' + esc(e.key) + '">' +
+        '<td><span class="crm-name">' + esc(e.name) + '</span>' +
+          (e.investor
+            ? (e.investor.location
+                ? '<span class="crm-sub">' + esc(e.investor.location) + '</span>' : "")
+            /* Said on the row rather than only on the record, because it
+               is the one thing about a partner somebody can fix in a
+               click, and a row that does not say it is a row nobody
+               fixes. */
+            : '<span class="crm-sub is-missing">Not on the investor CRM</span>') + '</td>' +
+        '<td class="crm-num">' + e.closed.length + '</td>' +
+        '<td>' + partnerTags(e.closed.map(function (r) { return r.deal.name; }), 2) + '</td>' +
+        '<td>' + partnerTags(Partners.facet(e, "operator"), 2) + '</td>' +
+        '<td>' + partnerTags(Partners.facet(e, "market"), 2) + '</td>' +
+        '<td class="crm-num">' + (e.live.length || '<span class="muted">—</span>') + '</td>' +
+        '<td>' + (e.investor ? sentTags(e.investor) : '<span class="muted">—</span>') + '</td>' +
+        '<td>' + (last
+          ? esc(last) +
+            (note ? '<span class="crm-lastnote" title="' + esc(note) + '">' + esc(note) + '</span>' : "") +
+            '<span class="crm-sub">' + countOf(e.investor.conversations.length, "logged", "logged") + '</span>'
+          : (e.investor ? '<span class="muted">Never</span>'
+                        : '<span class="muted">No record</span>')) + '</td>' +
+        '<td class="crm-actions">' +
+          (e.investor
+            ? '<button type="button" class="deal-rowaction" data-crm-open-name="' + esc(e.name) +
+              '" title="Open ' + esc(e.name) + ' on the investor CRM">CRM</button>'
+            : '<button type="button" class="deal-rowaction" data-partner-adopt="' + esc(e.key) +
+              '" title="Create an investor record for ' + esc(e.name) + '">Add to CRM</button>') +
+        '</td></tr>';
+    }).join("");
+
+    return '<div class="crmtable-wrap"><table class="crmtable">' +
+           '<thead><tr>' + head + '</tr></thead><tbody>' + rows + '</tbody></table></div>';
+  }
+
+  /* ---- the detail page ------------------------------------------
+     Read top to bottom it answers, in order: who are they, what have
+     we done together, what are we doing now, how do we work with
+     them, what have they been sent, what is outstanding, and what has
+     been said. Every section below the second is the INVESTOR
+     record's, drawn here and saved there.
+     ---------------------------------------------------------------- */
+
+  function partnerDealTable(rows, heading, aside, note) {
+    if (!rows.length) return "";
+    var body = rows.map(function (r) {
+      var q = Partners.cheque(r);
+      return [
+        '<button type="button" class="debt-link" data-raise-open="' + esc(r.deal.id) + '">' +
+          esc(r.deal.name) + '</button>',
+        esc(Partners.role(r)) || '<span class="muted">—</span>',
+        { v: q.text
+            ? (q.whose === "deal"
+                ? '<span title="The deal’s LP equity. It names more than one LP, so this ' +
+                  'is not necessarily their cheque.">' + esc(q.text) +
+                  '<span class="crm-sub">deal total</span></span>'
+                : esc(q.text))
+            : '<span class="muted">—</span>', cls: "num" },
+        r.deal.operator ? esc(r.deal.operator) : '<span class="muted">—</span>',
+        r.deal.market ? esc(r.deal.market) : '<span class="muted">—</span>',
+        r.deal.assetClass ? esc(r.deal.assetClass) : '<span class="muted">—</span>',
+        '<span class="crm-pill" data-stage="' + esc(r.deal.status) + '">' +
+          esc(r.deal.status) + '</span>'
+      ];
+    });
+
+    return '<div class="crm-section"><h3>' + esc(heading) +
+      '<span class="crm-section__aside">' + esc(aside) + '</span></h3>' +
+      '<div class="numcols">' +
+        table(["Deal", "How they are in it", { label: "Cheque", num: true },
+               "Operator", "Market", "Asset class", "Status"], body) +
+      '</div>' +
+      '<p class="crm-research__note">' + note + '</p></div>';
+  }
+
+  function partnerNoteSection(e) {
+    if (!e.investor) {
+      return '<div class="crm-section"><h3>How we work together' +
+        '<span class="crm-section__aside">Needs a record</span></h3>' +
+        '<p class="crm-research__empty">The note is kept on the investor record, and ' +
+        esc(e.name) + ' has not got one. Add them to the investor CRM and the box appears ' +
+        'here.</p></div>';
+    }
+    var v = e.investor.partnerNote || "";
+    return '<div class="crm-section"><h3>How we work together' +
+      '<span class="crm-section__aside">' + (v ? "Saved on their record" : "Nothing written yet") +
+      '</span></h3>' +
+      '<div class="partner-note">' +
+        '<label class="visually-hidden" for="partnerNoteBox">How we work with ' +
+          esc(e.name) + '</label>' +
+        '<textarea id="partnerNoteBox" data-partner-note="' + esc(e.investor.id) + '" ' +
+          'placeholder="How they like to be approached, who signs, what they said about the ' +
+          'next one, terms that took negotiating.">' + esc(v) + '</textarea>' +
+        '<div class="partner-note__bar">' +
+          '<button type="button" class="dash-refresh dash-refresh--primary" ' +
+            'data-partner-note-save="' + esc(e.investor.id) + '">Save note</button>' +
+          '<span class="crm-research__hint">Stored on their investor record, so the CRM tab ' +
+            'shows the same note. Separate from “Why they are on the list”, which is ' +
+            'what was hoped before anything was done together.</span>' +
+        '</div>' +
+      '</div></div>';
+  }
+
+  function renderPartner(k) {
+    var e = Partners.get(k);
+    if (!e) { showPartnerView("list"); renderPartners(); return; }
+
+    $("partnerCrumb").textContent = e.name;
+    var inv = e.investor;
+    var parts = [];
+
+    var sub = inv
+      ? (inv.mandate || "No mandate recorded.")
+      : "Not on the investor CRM — everything below comes from the deals.";
+
+    parts.push('<div class="dash-investor__head"><div>' +
+      '<h2>' + esc(e.name) + '</h2>' +
+      '<p class="dash-investor__sub">' + esc(sub) +
+      (inv && inv.website
+        ? ' · <a href="' + esc(inv.website) + '" target="_blank" rel="noopener noreferrer">' +
+          esc(inv.website.replace(/^https?:\/\//, "").replace(/\/$/, "")) + '</a>' : "") +
+      '</p></div>' +
+      '<div class="dash-investor__actions">' +
+        (inv
+          ? '<button class="dash-refresh" data-crm-open-name="' + esc(e.name) +
+              '">Open on the CRM</button>' +
+            '<button class="dash-refresh dash-refresh--primary" data-crm-log="' + esc(inv.id) +
+              '">Log a conversation</button>'
+          : '<button class="dash-refresh dash-refresh--primary" data-partner-adopt="' +
+              esc(e.key) + '">Add to investor CRM</button>') +
+      '</div></div>');
+
+    /* The facts grid, from the investor record where there is one. With
+       no record the grid would be nine empty slots saying "not
+       recorded" about a firm nobody has written anything about, which
+       reads as a broken page rather than as an invitation — so what
+       stands in its place is the invitation itself. */
+    if (inv) {
+      parts.push('<div class="crm-facts">' + [
+        ["Type", esc(inv.type)],
+        ["Stage", '<span class="crm-pill" data-stage="' + esc(inv.stage) + '">' +
+          esc(inv.stage) + '</span>'],
+        ["Check size", checkText(inv) ? esc(checkText(inv)) : ""],
+        ["Assets", esc(inv.aum)],
+        ["Location", esc(inv.location)],
+        ["Owner", esc(inv.owner)],
+        ["Contact", esc((primaryContact(inv) || {}).name || "")],
+        ["Contact email", (primaryContact(inv) || {}).email
+          ? '<a href="mailto:' + esc(primaryContact(inv).email) + '">' +
+            esc(primaryContact(inv).email) + '</a>'
+          : ""],
+        ["Last contact", lastContact(inv) ? esc(lastContact(inv)) : ""]
+      ].map(function (pair) {
+        var empty = !pair[1];
+        return '<div class="crm-fact"><span class="crm-fact__label">' + pair[0] + '</span>' +
+               '<span class="crm-fact__value' + (empty ? " is-empty" : "") + '">' +
+               (empty ? "not recorded" : pair[1]) + '</span></div>';
+      }).join("") + '</div>');
+    } else {
+      parts.push('<div class="dash-state"><h3>Nothing recorded about them yet</h3>' +
+        '<p>' + esc(e.name) + ' is on this tab because of the ' +
+        esc(countOf(e.closed.length, "closed deal")) + ' below, but there is no investor ' +
+        'record behind the name — so there is nowhere to keep a contact, a note or a ' +
+        'conversation. “Add to investor CRM” above creates one, stage Committed, ' +
+        'with the closed deals already on it.</p></div>');
+    }
+
+    // The people, when the record holds more than the one in the grid.
+    if (inv && (inv.contacts.length > 1 ||
+                (inv.contacts.length === 1 && inv.contacts[0].title))) {
+      parts.push('<div class="crm-section"><h3>People</h3><ul class="crm-research">' +
+        inv.contacts.map(function (c) {
+          return '<li><strong>' + esc(c.name || "—") + '</strong>' +
+                 (c.title ? " · " + esc(c.title) : "") +
+                 (c.email ? '<span class="crm-research__meta">' +
+                   '<a href="mailto:' + esc(c.email) + '">' + esc(c.email) + '</a></span>' : "") +
+                 '</li>';
+        }).join("") + '</ul>' +
+        '<p class="crm-research__note">People are edited on the investor record — ' +
+        '“Open on the CRM” above, then Edit.</p></div>');
+    }
+
+    parts.push(partnerDealTable(e.closed, "Closed together",
+      countOf(e.closed.length, "deal"),
+      'Recorded on the deal, not here — the deal name opens it. Each cheque is what ' +
+      'that deal says it was; nothing is added up across them.'));
+
+    parts.push(partnerDealTable(e.live, "Also live with them",
+      countOf(e.live.length, "deal"),
+      'Still being worked. They are on this tab because of the closed deals above, ' +
+      'not because of these.'));
+
+    parts.push(partnerNoteSection(e));
+
+    if (inv) {
+      parts.push(investorCommitments(inv));
+      /* Its own prefix: the investor record may be drawn at the same
+         time on the CRM tab, and two copies of this form sharing one
+         set of ids is two panes' boxes answering to one name. */
+      parts.push(investorMaterials(inv, "psend"));
+      parts.push(recordTaskPanel(inv.name));
+
+      parts.push('<div class="crm-section"><h3>Conversations' +
+        '<span class="crm-section__aside">' +
+        countOf(inv.conversations.length, "logged", "logged") + '</span></h3>' +
+        (inv.conversations.length
+          ? '<ul class="crm-log">' + inv.conversations.map(function (c) {
+              return '<li>' +
+                '<div class="crm-log__head">' +
+                  '<span class="crm-log__date">' + esc(c.date || "Undated") + '</span>' +
+                  '<span class="crm-log__channel">' + esc(c.channel || "Note") + '</span>' +
+                  (c.who ? '<span class="crm-log__who">' + esc(c.who) + '</span>' : "") +
+                '</div>' +
+                (c.subject ? '<p class="crm-log__body"><strong>' + esc(c.subject) +
+                  '</strong></p>' : "") +
+                '<p class="crm-log__body">' + esc(c.summary || "") + '</p>' +
+                (c.next ? '<p class="crm-log__next"><strong>Next</strong>' + esc(c.next) +
+                  '</p>' : "") +
+                '<span class="crm-log__source">Logged ' + esc(c.loggedVia || "in the dashboard") +
+                  (c.loggedAt ? " · " + esc(String(c.loggedAt).slice(0, 10)) : "") +
+                '</span></li>';
+            }).join("") + '</ul>'
+          : '<div class="dash-state"><h3>Nothing logged yet</h3>' +
+            '<p>“Log a conversation” above writes it to their investor record, ' +
+            'which is where this list reads from.</p></div>') +
+        '</div>');
+    } else {
+      parts.push(recordTaskPanel(e.name));
+    }
+
+    $("partnerDetailBody").innerHTML = parts.join("");
+    labelCells($("partnerDetailBody"));
+    if (inv) fillSendForms();
+  }
+
+  function renderPartnerFilters(all) {
+    var list = all || Partners.all();
+    function uniq(arr) {
+      return arr.filter(function (v, i, a) { return v && a.indexOf(v) === i; }).sort();
+    }
+    function fill(id, values, current) {
+      var el = $(id);
+      var label = el.options[0].textContent;
+      el.innerHTML = '<option value="">' + label + '</option>' +
+        values.map(function (v) {
+          return '<option value="' + esc(v) + '"' + (v === current ? " selected" : "") + '>' +
+            esc(v) + '</option>';
+        }).join("");
+    }
+    function across(field) {
+      return uniq([].concat.apply([], list.map(function (e) {
+        return Partners.facet(e, field);
+      })));
+    }
+
+    fill("partnerFilterOperator", across("operator"), partnerState.filters.operator);
+    fill("partnerFilterMarket", across("market"), partnerState.filters.market);
+    fill("partnerFilterAsset", across("assetClass"), partnerState.filters.asset);
+    fill("partnerFilterDeal", uniq([].concat.apply([], list.map(function (e) {
+      return e.closed.map(function (r) { return r.deal.name; });
+    }))), partnerState.filters.deal);
+    $("partnerFilterRecord").value = partnerState.filters.record;
+  }
+
+  function renderPartners() {
+    /* Derived once and passed down. Every call to Partners.all() walks
+       the deals and the investor list to rebuild the join, and this
+       function used to ask for it four separate times — cheap at this
+       size, and still four answers where one is wanted. */
+    var all = Partners.all();
+    var list = partnerFiltered(all);
+    var total = all.length;
+
+    $("partnerBody").innerHTML = partnerTable(list, total);
+    labelCells($("partnerBody"));
+
+    $("partnerShown").textContent = list.length === total
+      ? countOf(list.length, "partner")
+      : list.length + " of " + total + " shown";
+    $("tabPartnerCount").textContent = total ? "(" + total + ")" : "";
+
+    var missing = all.filter(function (e) { return !e.investor; }).length;
+    $("partnerSourceNote").innerHTML =
+      'Nothing is entered on this tab. A firm is here because a deal it is on has closed — ' +
+      'named in the deal’s LP box, or holding a committed or funded place on its raise — ' +
+      'and everything else about them is their investor record, read and written where it ' +
+      'lives. Soft circles do not count as a partnership.' +
+      (missing
+        ? ' <strong>' + countOf(missing, "partner") + ' here ' +
+          (missing === 1 ? "has" : "have") + ' no investor record</strong>, so there is ' +
+          'nowhere to keep their contacts or conversations yet.'
+        : "");
+  }
+
+  function showPartnerView(name) {
+    partnerState.view = name;
+    $("viewPartners").hidden = name !== "list";
+    $("viewPartner").hidden = name !== "partner";
+  }
+
+  function openPartner(k) {
+    partnerState.key = k;
+    showPartnerView("partner");
+    renderPartner(k);
+    var el = $("viewPartner");
+    if (!el) return;
+    var bar = document.querySelector(".dash-topbar");
+    var offset = (bar ? bar.getBoundingClientRect().height : 0) + 20;
+    var top = window.scrollY + el.getBoundingClientRect().top - offset;
+    window.scrollTo({ top: top < 0 ? 0 : top, behavior: "smooth" });
+  }
+
+  /* Giving a partner somewhere to keep a contact. Stage is Committed
+     rather than Prospect because the reason they are on this tab is
+     that a deal closed with them, and starting them at Prospect would
+     be the record contradicting the deal on the day it was created.
+     The closed deals go on as deal interests, which is what the CRM's
+     own "Deals of interest" column reads. */
+  function adoptPartner(k) {
+    var e = Partners.get(k);
+    if (!e) return;
+    if (e.investor) { switchTab("crm"); openInvestor(e.investor.id); return; }
+
+    var made = Crm.create({
+      name: e.name,
+      stage: "Committed",
+      deals: e.closed.map(function (r) { return r.deal.name; })
+    });
+
+    renderCrm();
+    renderPartnerFilters();
+    renderPartners();
+    if (partnerState.view === "partner") renderPartner(k);
+    toast("“" + e.name + "” is on the investor CRM now — stage Committed, with " +
+          countOf(e.closed.length, "closed deal") + " on the record. Nothing else was filled in.");
+    return made;
+  }
+
+  /* ============================================================
+     LP PARTNER TRACKER — EXPORTS
+
+     Three sheets, and the split is the same one the tab makes. The
+     first is the partnership: one row per firm. The second is the
+     evidence behind it: one row per firm PER DEAL, which is the sheet
+     somebody actually filters and pivots. The third is the log.
+
+     NO TOTALS COLUMN, for the reason the page gives on every cheque
+     it prints: the amounts are prose, read at different moments of
+     different deals, and a column somebody could sum in Excel is a
+     column they would quote. The figures are there per deal, as
+     written, and the reader can decide what they add to.
+     ============================================================ */
+  function exportPartnersXlsx() {
+    var list = Partners.all();
+
+    var sheets = [];
+
+    sheets.push({
+      name: "LP partners",
+      widths: [34, 10, 10, 40, 30, 26, 22, 14, 12, 10, 50],
+      rows: [["LP partner", "Closed", "Also live", "Deals closed", "Operators", "Markets",
+              "Location", "Last contact", "Conversations", "On the CRM",
+              "How we work together"]].concat(
+        list.map(function (e) {
+          var inv = e.investor;
+          return [e.name, e.closed.length, e.live.length,
+                  e.closed.map(function (r) { return r.deal.name; }).join("; "),
+                  Partners.facet(e, "operator").join("; "),
+                  Partners.facet(e, "market").join("; "),
+                  inv ? inv.location : "",
+                  (inv && lastContact(inv)) || "",
+                  inv ? inv.conversations.length : 0,
+                  inv ? "Yes" : "No",
+                  inv ? inv.partnerNote : ""];
+        }))
+    });
+
+    var byDeal = [];
+    list.forEach(function (e) {
+      e.closed.concat(e.live).forEach(function (r) {
+        var q = Partners.cheque(r);
+        byDeal.push([e.name, r.deal.name,
+                     r.deal.area === "closed-deals" ? "Closed" : "Live",
+                     Partners.role(r), q.text,
+                     q.whose === "deal" ? "Deal total — more than one LP named" : "",
+                     r.deal.operator || "", r.deal.market || "", r.deal.assetClass || "",
+                     r.deal.status || ""]);
+      });
+    });
+    sheets.push({
+      name: "By deal",
+      widths: [34, 34, 10, 24, 16, 38, 26, 22, 20, 14],
+      rows: [["LP partner", "Deal", "Where", "How they are in it", "Cheque",
+              "Caveat on the cheque", "Operator", "Market", "Asset class", "Status"]]
+        .concat(byDeal)
+    });
+
+    var log = [];
+    list.forEach(function (e) {
+      if (!e.investor) return;
+      e.investor.conversations.forEach(function (c) {
+        log.push([c.date || "", e.name, c.channel || "", c.who || "", c.subject || "",
+                  c.summary || "", c.next || ""]);
+      });
+    });
+    log.sort(function (a, b) { return String(b[0]).localeCompare(String(a[0])); });
+    sheets.push({
+      name: "Conversations",
+      widths: [12, 34, 14, 24, 34, 70, 44],
+      rows: [["Date", "LP partner", "Channel", "Who", "Subject", "What happened", "Next step"]]
+        .concat(log)
+    });
+
+    download(Xlsx.build(sheets),
+             "modillion-lp-partners-" + new Date().toISOString().slice(0, 10) + ".xlsx");
+    toast("Excel workbook downloaded — " + countOf(list.length, "LP partner") + ", " +
+          countOf(byDeal.length, "deal row") + ", " + countOf(log.length, "conversation") + ".");
+  }
+
+  /* ============================================================
+     LP PARTNER TRACKER — EVENTS
+     ============================================================ */
+  var partnerSearchTimer = null;
+  $("partnerSearch").addEventListener("input", function (e) {
+    var q = e.target.value;
+    clearTimeout(partnerSearchTimer);
+    partnerSearchTimer = setTimeout(function () {
+      partnerState.query = q;
+      if (partnerState.view !== "list") showPartnerView("list");
+      renderPartners();
+    }, 200);
+  });
+
+  [["partnerFilterOperator", "operator"], ["partnerFilterMarket", "market"],
+   ["partnerFilterAsset", "asset"], ["partnerFilterDeal", "deal"],
+   ["partnerFilterRecord", "record"]].forEach(function (pair) {
+    $(pair[0]).addEventListener("change", function (e) {
+      partnerState.filters[pair[1]] = e.target.value;
+      if (partnerState.view !== "list") showPartnerView("list");
+      renderPartners();
+    });
+  });
+
+  $("partnerClearFilters").addEventListener("click", function () {
+    partnerState.filters = { operator: "", market: "", asset: "", deal: "", record: "" };
+    partnerState.query = "";
+    $("partnerSearch").value = "";
+    renderPartnerFilters();
+    renderPartners();
+  });
+
+  $("partnerExportBtn").addEventListener("click", function () {
+    try { exportPartnersXlsx(); }
+    catch (err) { toast("Could not build the workbook: " + err.message); }
+  });
+
+  document.addEventListener("click", function (e) {
+    var home = e.target.closest("[data-action='partner-home']");
+    if (home) {
+      showPartnerView("list");
+      renderPartners();
+      scrollToWorkspace();
+      return;
+    }
+
+    /* Above the row handler below it, so the button on a row does its
+       own job rather than opening the partner underneath it. */
+    var adopt = e.target.closest("[data-partner-adopt]");
+    if (adopt) { adoptPartner(adopt.getAttribute("data-partner-adopt")); return; }
+
+    var noteSave = e.target.closest("[data-partner-note-save]");
+    if (noteSave) {
+      var id = noteSave.getAttribute("data-partner-note-save");
+      var box = $("partnerNoteBox");
+      if (!box) return;
+      Crm.patch(id, { partnerNote: box.value.trim() });
+      renderCrm();
+      if (partnerState.view === "partner") renderPartner(partnerState.key);
+      toast("Saved on their investor record.");
+      return;
+    }
+
+    var sort = e.target.closest("[data-partnersort]");
+    if (sort) {
+      var k = sort.getAttribute("data-partnersort");
+      if (partnerState.sortKey === k) {
+        partnerState.sortDir = partnerState.sortDir === "asc" ? "desc" : "asc";
+      } else {
+        partnerState.sortKey = k;
+        // A name sorts A–Z first; a count or a date is asked largest or
+        // most recent first, which is what people mean by "sort by it".
+        partnerState.sortDir = k === "name" ? "asc" : "desc";
+      }
+      renderPartners();
+      return;
+    }
+
+    var row = e.target.closest("[data-partner]");
+    if (row) { openPartner(row.getAttribute("data-partner")); return; }
+  });
 
   /* ============================================================
      OPERATOR CRM — DATA
@@ -17173,6 +18198,9 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
       openDeal(dealState.dealId, DEAL_SCOPES.docs);
     } else if (crmState.tab === "closed" && closedState.view === "deal" && closedState.dealId) {
       openDeal(closedState.dealId, DEAL_SCOPES.closed);
+    } else if (crmState.tab === "partners") {
+      // The partner page carries the same panel, against the partner's name.
+      refreshOpenPartner();
     }
   }
 
@@ -17945,11 +18973,17 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
     $("wsClosed").hidden = tab !== "closed";
     $("wsRaises").hidden = tab !== "raises";
     $("wsCrm").hidden = tab !== "crm";
+    $("wsPartners").hidden = tab !== "partners";
     $("wsOperators").hidden = tab !== "operators";
     $("wsTasks").hidden = tab !== "tasks";
     $("wsCompetitors").hidden = tab !== "competitors";
     if (tab === "home") renderHome();
     if (tab === "crm") { renderCrmFilters(); renderCrm(); }
+    /* The filters are rebuilt on every arrival, not only on load: this
+       list is derived, so a deal closed on another tab a minute ago adds
+       a partner, an operator and a market that were not in the dropdowns
+       when the page opened. */
+    if (tab === "partners") { renderPartnerFilters(); renderPartners(); }
     if (tab === "operators") { renderOperatorFilters(); renderOperators(); }
     if (tab === "docs") { renderDeals(DEAL_SCOPES.docs); }
     if (tab === "closed") { renderDeals(DEAL_SCOPES.closed); }
@@ -18051,7 +19085,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
     if (sendAddRaise) { logSendFromRaise(sendAddRaise); return; }
 
     var sendAdd = e.target.closest("[data-send-add]");
-    if (sendAdd) { logSendFromInvestor(sendAdd.getAttribute("data-send-add")); return; }
+    if (sendAdd) { logSendFromInvestor(sendAdd); return; }
 
     var sendDrop = e.target.closest("[data-send-drop]");
     if (sendDrop) { dropSend(sendDrop.getAttribute("data-send-drop")); return; }
@@ -18122,6 +19156,10 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
     var logBtn = e.target.closest("[data-crm-log]");
     if (logBtn) {
       var target = Crm.get(logBtn.getAttribute("data-crm-log"));
+      /* The button is on the LP Partners tab as well now, and the box it
+         fills is on this one. Switching is a no-op when it is already
+         the tab you are on, which is why it can be unconditional. */
+      switchTab("crm");
       showCrmView("list");
       renderCrm();
       $("agentInput").value = target ? target.name + " — " : "";
@@ -18838,10 +19876,52 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
       });
     }
 
+    /* WHO IS BESIDE US ON EACH ONE, added with the LP Partners tab.
+       The snapshot used to be a name and a status, which is enough to
+       resolve "how is Casa Hope doing" and not enough for "who have we
+       closed with" — the question that tab exists to answer. `lp` and
+       `area` are what make it answerable, and they are read-only here
+       for the same reason the operator log is: there is no action that
+       edits a deal's LP box, and one is not being invented by the back
+       door. Deals are edited on the deal. */
     function deals() {
       var statuses = Deals.dealStatuses();
+      var byName = {};
+      Deals.all().forEach(function (rec) { byName[rec.name] = rec; });
       return dealNames().map(function (name) {
-        return { name: name, status: (statuses[name] || {}).status || "Live" };
+        var rec = byName[name];
+        return { name: name,
+                 status: (statuses[name] || {}).status || "Live",
+                 area: rec ? rec.area : "",
+                 closed: !!rec && rec.area === "closed-deals",
+                 lp: rec ? lpNames(rec) : [],
+                 operator: rec ? rec.operator : "",
+                 market: rec ? rec.market : "" };
+      });
+    }
+
+    /* The joined answer, so the agent does not have to re-derive it from
+       the two lists above and reach a different one than the tab shows.
+       Read-only, on the same terms as operators and competitors: it can
+       say who we have closed with and what we did together, and every
+       change to any of it happens on the tab that owns the record. */
+    function partners() {
+      return Partners.all().map(function (e) {
+        function rows(list) {
+          return list.map(function (r) {
+            return { deal: r.deal.name, how: Partners.role(r),
+                     cheque: Partners.cheque(r).text,
+                     operator: r.deal.operator || "", market: r.deal.market || "",
+                     status: r.deal.status || "" };
+          });
+        }
+        return { name: e.name,
+                 onCrm: !!e.investor,
+                 investorId: e.investor ? e.investor.id : "",
+                 note: e.investor ? e.investor.partnerNote : "",
+                 lastContact: (e.investor && lastContact(e.investor)) || "",
+                 closed: rows(e.closed),
+                 live: rows(e.live) };
       });
     }
 
@@ -18933,6 +20013,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
         statuses: TASK_STATUSES.slice(),
         team: Tasks.team().map(function (p) { return { id: p.id, name: p.name }; }),
         investors: investors(),
+        partners: partners(),
         materials: materials(),
         operators: operators(),
         competitors: competitors(),
