@@ -285,6 +285,18 @@ AUTHENTICATION — ADDED 2026-09-15, AND IT REPLACES EVERY SIGN-IN THIS FILE USE
           this public repository, in the reader's own browser. Getting past it needed no
           password at all — dev tools were enough — and it protected nothing, because
           /api/records answered everybody regardless.
+- AND IT WAS WORSE THAN THAT, discovered 2026-09-15 while deploying the fix. DASHBOARD_WRITE_KEY
+  WAS NEVER SET IN PRODUCTION. The live probe said so plainly:
+      curl -s https://www.modillionpartners.com/api/records?probe=1
+      -> {"ok":true,"configured":true,"writeLocked":false,...}
+  writable() read `if (key && header !== key) refuse` — with no key configured that check passes
+  for everyone. So WRITES WERE OPEN TOO, not just reads: anyone with the URL could have rewritten
+  the investor records anonymously, which is the exact thing this file claimed the key prevented.
+  It was documented as a lock and was never fitted.
+- THE LESSON IS ABOUT THE PATTERN, NOT THE VARIABLE. A check that silently does nothing when
+  unconfigured reads as protection in the source and is absent in production, and nothing
+  anywhere says so. That is why requireUser() in _auth.js FAILS CLOSED and returns 503 when
+  SUPABASE_URL is missing. An unconfigured authenticator must be an outage, never an open door.
     NOW   FOUR passwords, one per person, never in this repository and never checked in the
           browser. Supabase checks them; what comes back is a token the SERVER verifies on
           every request. Forging the page's state gets you an empty dashboard.
