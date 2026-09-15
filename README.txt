@@ -410,6 +410,33 @@ Connecting OneDrive — BUILT, NEVER DEPLOYED, DELETED 2026-08-20:
 - Deleted rather than kept dormant, because a 750-line file nothing calls is a file somebody
   eventually believes. It is in git history if it is ever wanted.
 
+Editing an LP on the row (LP CRM) — added 2026-09-15:
+- The Prospective LPs table now carries the same "Edit" button the Investor CRM, Operator CRM,
+  Competitor Tracker and Deal Pipeline have had: the row becomes a small form in place, with
+  Save and Cancel, Enter to save and Escape to give up. It was the ONLY record table that made
+  you open the record, use the full form and come back — four clicks to fix one word.
+- It reuses RowEdit rather than inventing anything: a new `lp` kind beside deal / investor /
+  operator / competitor, and one shared lpRowFields() so both LP tables would read the same.
+- FIELDS: Type (a box with a datalist of every type already used on EITHER CRM, so the two stay
+  joinable by vocabulary), Stage, Priority, Check size, Location, Owner (the roster as a
+  dropdown, never a typed name).
+- WHAT IS DELIBERATELY NOT THERE, and both would be bugs rather than features:
+    name     The LP CRM and the Investor CRM are joined BY NAME — that is what puts the
+             "Investor CRM" button on a row and what stops one firm being entered twice. A
+             rename typed into a table would break that join silently. The record form has
+             never offered one either.
+    markets  An LP's Markets column is DERIVED from the closed deals it is on. Editing it here
+             would let the cell disagree with the deals underneath it. Same for Last contact
+             (the conversation log), Also live and Sent.
+- Check size goes through parseCheckInput() exactly as the full form does, so "$5m–$15m"
+  becomes min/max the list can sort on and anything unparseable is kept verbatim as a note.
+- The live poll needed no change. Its typing() guard already treats any focused input, select
+  or textarea as somebody working and defers the repaint — written that way, per its own
+  comment, for "the tabs that edit a row in place".
+- Only the Prospective table gets the button. The Current LP partners table shows closed-deal
+  facts — none of Type, Priority or Check size is a column there — and a row on it can exist
+  without an LP record behind it at all.
+
 The interim sign-in — REMOVED 2026-09-15, replaced by Supabase per-person passwords (above):
 - It was four accounts sharing one password, PBKDF2-hashed into dashboard.html, checked in
   the browser. Both the hashes and the four valid usernames sat in a public repository,
