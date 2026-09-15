@@ -2775,6 +2775,10 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
    the same bargain the deal lists make. */
 .crmtable--partners .crm-actions { white-space: nowrap; }
 
+/* The twin relationship's log, shown on a record but not owned by it. */
+.crm-log.is-muted li { opacity: .72; }
+.crm-log.is-muted .crm-log__body { font-size: .86rem; }
+
 .partner-note textarea {
   font-family: var(--sans);
   font-size: .92rem;
@@ -4075,6 +4079,9 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
           </div>
           <button class="dash-refresh dash-refresh--primary" id="partnerAddBtn">Add a prospective LP</button>
           <button class="dash-refresh" id="partnerExportBtn">Export Excel</button>
+          <button class="dash-refresh" id="partnerPublishBtn">Publish to team</button>
+          <button class="dash-refresh" id="partnerSaveFileBtn">Download lp-data.json</button>
+          <span class="crm-unsaved" id="partnerUnsaved" hidden>Unsaved local edits</span>
         </div>
 
         <!-- Add a prospective LP.
@@ -8172,6 +8179,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
     var SETS = {
       deals:     { store: function () { return Deals; },     render: function () { renderDeals(); } },
       crm:       { store: function () { return Crm; },       render: function () { renderCrm(); } },
+      lps:       { store: function () { return Lps; },       render: function () { renderPartners(); } },
       operators: { store: function () { return Operators; }, render: function () { renderOperators(); } },
       tasks:     { store: function () { return Tasks; },     render: function () { renderTasks(); } },
       competitors: { store: function () { return Competitors; },
@@ -8278,6 +8286,9 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
       crm:         { store: function () { return Crm; },
                      render: function () { renderCrm(); },
                      held: function () { return !!crmState.editing; } },
+      lps:         { store: function () { return Lps; },
+                     render: function () { renderPartners(); refreshOpenPartner(); },
+                     held: function () { return !!partnerState.editing; } },
       operators:   { store: function () { return Operators; },
                      render: function () { renderOperators(); },
                      held: function () { return !!opState.editing; } },
@@ -8427,6 +8438,55 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
      them and does not duplicate what the file already holds.
      ============================================================ */
 
+  /* ---- one shape for a send, wherever it is filed -----------------
+     HOISTED OUT OF Crm ON 2026-09-15, when the LP CRM got a record set
+     of its own. Both sets store sends and both point at the SAME
+     materials register, so there is one definition of what a send is
+     rather than two that could drift. `ownerId` is whichever record it
+     hangs off — an investor on one side, an LP on the other.
+     ------------------------------------------------------------------ */
+  function stableSendId(prefix, seed) {
+    var h = 5381;
+    for (var i = 0; i < seed.length; i++) h = ((h * 33) ^ seed.charCodeAt(i)) >>> 0;
+    return prefix + h.toString(36);
+  }
+
+  /* A SEND is one delivery of one version of one material to one
+     investor. It points at a version by ID, never by label, because
+     the label is the field people rewrite — "v3" becomes "v3 final"
+     — and a link that follows a rename is a link that quietly
+     relinks itself. The names are carried alongside anyway, as they
+     read ON THE DAY IT WENT OUT: the register says what a version
+     is now, the send says what was recognisable then, and a material
+     later renamed or retired must not turn its own history blank. */
+  function normaliseSend(ownerId, sd, index) {
+    return {
+      id: sd.id || stableSendId("s-file-", ownerId + "|" + (sd.materialId || "") + "|" +
+                            (sd.versionId || "") + "|" + (sd.date || "") + "|" + index),
+      materialId: sd.materialId || "",
+      versionId: sd.versionId || "",
+      material: sd.material || "",
+      version: sd.version || "",
+      /* The deal this send was FOR, which is not always the deal the
+         material belongs to: the fund deck goes out in support of a
+         particular co-invest all the time, and the deck still belongs
+         to no deal. Filled from the material when there is one and
+         overridable on the form.
+
+         Blank is not "no deal" on an old record — it is a send written
+         down before this field existed. sendsForDeal() falls back to
+         the material's own deal for exactly that reason. */
+      deal: sd.deal || "",
+      date: sd.date || "",
+      channel: sd.channel || "",
+      to: sd.to || "",
+      by: sd.by || "",
+      note: sd.note || "",
+      loggedAt: sd.loggedAt || ""
+    };
+  }
+
+
   var CRM_STAGES = ["Prospect", "Contacted", "In diligence", "Committed", "Passed", "Dormant"];
 
   // What an investor wants to own. The same words the Operator CRM uses for
@@ -8570,40 +8630,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
                       "|" + String(entry.summary || "").slice(0, 120) + "|" + index);
     }
 
-    /* A SEND is one delivery of one version of one material to one
-       investor. It points at a version by ID, never by label, because
-       the label is the field people rewrite — "v3" becomes "v3 final"
-       — and a link that follows a rename is a link that quietly
-       relinks itself. The names are carried alongside anyway, as they
-       read ON THE DAY IT WENT OUT: the register says what a version
-       is now, the send says what was recognisable then, and a material
-       later renamed or retired must not turn its own history blank. */
-    function normaliseSend(invId, sd, index) {
-      return {
-        id: sd.id || stableId("s-file-", invId + "|" + (sd.materialId || "") + "|" +
-                              (sd.versionId || "") + "|" + (sd.date || "") + "|" + index),
-        materialId: sd.materialId || "",
-        versionId: sd.versionId || "",
-        material: sd.material || "",
-        version: sd.version || "",
-        /* The deal this send was FOR, which is not always the deal the
-           material belongs to: the fund deck goes out in support of a
-           particular co-invest all the time, and the deck still belongs
-           to no deal. Filled from the material when there is one and
-           overridable on the form.
 
-           Blank is not "no deal" on an old record — it is a send written
-           down before this field existed. sendsForDeal() falls back to
-           the material's own deal for exactly that reason. */
-        deal: sd.deal || "",
-        date: sd.date || "",
-        channel: sd.channel || "",
-        to: sd.to || "",
-        by: sd.by || "",
-        note: sd.note || "",
-        loggedAt: sd.loggedAt || ""
-      };
-    }
 
     function signedInName() {
       var who = typeof signedInUser === "function" ? signedInUser() : null;
@@ -8649,7 +8676,12 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
            disagree, because the first is what was hoped and the second
            is what happened. */
         partnerNote: inv.partnerNote || "",
-        /* ON THE LP TRACK. Set from the LP CRM, and the whole of
+        /* VESTIGIAL, kept only so a record written before 2026-09-15
+           round-trips unchanged. The LP CRM has its own record set now
+           (see Lps) and never reads this. Nothing sets it any more.
+
+           The old note follows, for anyone reading an old file:
+           ON THE LP TRACK. Set from the LP CRM, and the whole of
            what makes a firm a "prospective LP" — there is no prospect
            record, because a prospect IS an investor record we are talking
            to about being an LP, and a second store keyed by the same name
@@ -10735,9 +10767,25 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
   /* One send by id, with the investor it belongs to. patchSend() takes an
      id and nothing else, but correcting a version needs to know which
      material's versions to look in. */
+  /* BOTH SETS, because a send now belongs to whichever record it hangs
+     off. The row that calls this carries only an id, so the answer has
+     to say which store owns it — everything downstream patches and
+     removes through `store`. */
   function sendFind(sendId) {
     var all = Crm.sends();
-    for (var i = 0; i < all.length; i++) if (all[i].entry.id === sendId) return all[i];
+    for (var i = 0; i < all.length; i++) {
+      if (all[i].entry.id === sendId) {
+        return { entry: all[i].entry, investorId: all[i].investorId,
+                 investorName: all[i].investorName, store: Crm };
+      }
+    }
+    var lp = Lps.sends();
+    for (var j = 0; j < lp.length; j++) {
+      if (lp[j].entry.id === sendId) {
+        return { entry: lp[j].entry, investorId: lp[j].lpId,
+                 investorName: lp[j].lpName, store: Lps };
+      }
+    }
     return null;
   }
 
@@ -10924,8 +10972,14 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
      is the second caller using it rather than a new idea. Anything that
      READS the form must go through sendPrefixOf() from the button that
      was pressed, never a literal "send". */
-  function investorMaterials(inv, prefix, partnerKey) {
+  /* `store` says which set the sends on this panel belong to. The LP CRM
+     draws the same panel against an Lps record, and its sends are that
+     record's — a different population's documents, pointing at the SAME
+     materials register. Defaults to Crm so every existing caller is
+     unchanged. */
+  function investorMaterials(inv, prefix, partnerKey, store) {
     var p = prefix || "send";
+    var Store = store || Crm;
     var live = Crm.materials().filter(function (m) { return !m.retired; });
     var stale = staleSends(inv);
     var aside = inv.sends.length
@@ -10939,7 +10993,8 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
           '<th class="crm-actions"><span class="visually-hidden">Actions</span></th>' +
         '</tr></thead><tbody>' +
         sendRows(inv.sends.map(function (sd) {
-          return { entry: sd, investorId: inv.id, investorName: inv.name };
+          return { entry: sd, investorId: inv.id, investorName: inv.name,
+                   lp: Store !== Crm };
         }), false) +
         '</tbody></table></div>'
       : '<p class="mat-empty">Nothing recorded as sent to ' + esc(inv.name) + ' yet.</p>';
@@ -10967,9 +11022,14 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
          first document sent is a fine moment for it to. The button
          carries the partner's key in that case and the handler makes
          one; everywhere else it carries the investor id it always did. */
+      /* data-send-add-lp is present on EVERY LP-side button, not only
+         when the record is missing: it is what tells the handler which
+         set to file the send in. Without it a send logged against an
+         existing LP record would be written to the investor set, where
+         that id does not exist, and vanish. */
       button: '<button type="button" class="dash-refresh dash-refresh--primary" ' +
-        (inv.id ? 'data-send-add="' + esc(inv.id) + '"'
-                : 'data-send-add="" data-send-add-lp="' + esc(partnerKey || "") + '"') +
+        'data-send-add="' + esc(inv.id || "") + '"' +
+        (Store === Crm ? "" : ' data-send-add-lp="' + esc(partnerKey || "") + '"') +
         '>Record it</button>' +
         '<button type="button" class="dash-refresh" data-action="crm-materials">' +
         'The register</button>'
@@ -11176,7 +11236,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
        question nobody has been in a position to answer yet. */
     if (inv.partnerNote) {
       parts.push('<div class="crm-section"><h3>How we work together' +
-        '<span class="crm-section__aside">Shown on the LP CRM too</span></h3>' +
+        '</h3>' +
         '<p class="crm-why">' + esc(inv.partnerNote) + '</p></div>');
     }
 
@@ -11410,16 +11470,16 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
           '<textarea id="editMandate">' + esc(inv.mandate) + '</textarea>', true) +
         field("editWhy", "Why they are on the list",
           '<textarea id="editWhy">' + esc(inv.why) + '</textarea>', true) +
-        /* The same box the LP CRM writes, on the record that
-           holds it. It is offered here whether or not they are a partner
-           yet, because the alternative is a field that can only be
-           edited on a tab a prospect does not appear on — and then the
-           day they become one, a note nobody could have written. */
+        /* Kept on the investor record too, and it is not the same note
+           as the LP CRM's: this one is how we work with them AS AN LP
+           FOR MODILLION — how they like to be approached about a raise,
+           who signs a subscription. The LP CRM's box is the deal-partner
+           relationship. Two relationships, two notes, same as everything
+           else about the split. */
         field("editPartnerNote", "How we work together",
           '<textarea id="editPartnerNote">' + esc(inv.partnerNote) + '</textarea>' +
-          note("What the relationship turned out to be \u2014 how they like to be approached, " +
-               "who signs, what they said about the next one. The same box is on " +
-               "the LP CRM."), true) +
+          note("How they like to be approached about a raise, who signs. The LP CRM has " +
+               "its own box for the deal-partner side of a firm that is both."), true) +
       '</div>' +
 
       /* The opening conversation, on the add form only. A record almost
@@ -12436,10 +12496,15 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
      — the raise panel is looking at exactly one. Everything else,
      including registering a material or a version that does not exist
      yet, is the behaviour the investor form has always had. */
-  function logSend(prefix, invId, deal) {
+  /* `store` decides WHOSE record the send is filed on. The materials
+     register is always Crm's — it is shared, and a deck is a deck
+     whoever it went to — but the send itself belongs to the record, and
+     the LP CRM's records are in a different set. Defaults to Crm. */
+  function logSend(prefix, invId, deal, store) {
     var p = prefix || "send";
+    var Store = store || Crm;
     function fv(name) { return formValue(p + name); }
-    var inv = Crm.get(invId);
+    var inv = Store.get(invId);
     if (!inv) return;
 
     // ---- read and check, creating nothing ----
@@ -12504,7 +12569,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
     }
 
     var version = Crm.versionOf(mat, versionId);
-    Crm.addSend(invId, {
+    Store.addSend(invId, {
       materialId: mat.id, versionId: versionId,
       material: mat.name, version: version ? version.label : "",
       // The deal the form already knows beats the box, and there is no
@@ -12528,12 +12593,16 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
     var invId = btn.getAttribute("data-send-add");
     // The LP CRM's copy of this panel may be sitting on a firm with no
     // record yet. Make one, then file the send against it.
-    if (!invId && btn.hasAttribute("data-send-add-lp")) {
-      var madeFor = ensureLpRecord(btn.getAttribute("data-send-add-lp"));
-      if (!madeFor) return;
-      invId = madeFor.id;
+    var Store = Crm;
+    if (btn.hasAttribute("data-send-add-lp")) {
+      Store = Lps;
+      if (!invId) {
+        var madeFor = ensureLpRecord(btn.getAttribute("data-send-add-lp"));
+        if (!madeFor) return;
+        invId = madeFor.id;
+      }
     }
-    var done = logSend(sendPrefixOf(btn), invId, null);
+    var done = logSend(sendPrefixOf(btn), invId, null, Store);
     if (!done) return;
     // Redraws every surface the entry shows on, this one included, so a
     // send logged on the partner page appears in the table above the form.
@@ -12621,7 +12690,8 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
   function dropSend(token) {
     var bits = String(token).split(":");
     var invId = bits[0], sendId = bits.slice(1).join(":");
-    Crm.removeSend(sendId);
+    var found = sendFind(sendId);
+    (found ? found.store : Crm).removeSend(sendId);
     renderSendViews(invId);
     toast("Removed from the log.");
   }
@@ -13122,6 +13192,450 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
   }
 
 
+
+  /* ============================================================
+     LP CRM — THE RECORDS
+
+     A SET OF ITS OWN, and the reason is the whole point of the tab.
+
+       crm   LPs FOR MODILLION. The firm raises money from them into
+             its own deals and vehicles; every commitment on a Capital
+             Raise is one of them.
+
+       lps   LPs FOR OUR PARTNERS AND DEALS (this file). The capital
+             partner sitting beside us ON a deal.
+
+     These used to share one store: an LP CRM record WAS an investor
+     record carrying a flag, so logging the first conversation against a
+     deal LP created an investor record and that firm then appeared on
+     the Investor CRM list as well. Two different populations, one list
+     each, and the list kept filling up with the other one's members.
+
+     A FIRM CAN BE BOTH, and now it gets a record on each side, which is
+     the honest shape: being the capital partner on Casa Hope and being
+     somebody we raised co-invest from are two relationships with one
+     firm, with different contacts, different conversations and
+     different reasons to call. The record page says when the other one
+     exists and shows its log read-only, so nothing is hidden and
+     nothing is counted twice.
+
+     WHAT IS STILL SHARED, deliberately: the MATERIALS REGISTER. A deck
+     is a deck whoever it went to, and two registers would mean two
+     answers to "which cut is current". Sends live on the record here
+     and point at Crm.materials() by id, exactly as the investor side's
+     do — see sendState(), which never asked whose send it was.
+
+     The overlay, the merge and the publish are the operator tab's,
+     line for line, plus conversations and sends. Nothing new is
+     invented about how a record is stored.
+     ============================================================ */
+
+  var LP_FALLBACK = { generatedAt: null, source: "fallback", lps: [] };
+
+  var Lps = (function () {
+    var base = null;
+    var meta = { source: "fallback", generatedAt: null };
+    var merged = [];
+    var OVERLAY_KEY = "modillion-lp-overlay";
+    var overlay = { patches: {}, created: [], conversations: {},
+                    convPatches: {}, convRemoved: {},
+                    sends: {}, sendPatches: {}, sendRemoved: {},
+                    archived: {}, removed: {} };
+
+    function blankOverlay() {
+      return { patches: {}, created: [], conversations: {},
+               convPatches: {}, convRemoved: {},
+               sends: {}, sendPatches: {}, sendRemoved: {},
+               archived: {}, removed: {} };
+    }
+
+    function readOverlay() {
+      try {
+        var raw = localStorage.getItem(OVERLAY_KEY);
+        if (!raw) return;
+        var o = JSON.parse(raw);
+        overlay.patches       = o.patches || {};
+        overlay.created       = o.created || [];
+        overlay.conversations = o.conversations || {};
+        overlay.convPatches   = o.convPatches || {};
+        overlay.convRemoved   = o.convRemoved || {};
+        overlay.sends         = o.sends || {};
+        overlay.sendPatches   = o.sendPatches || {};
+        overlay.sendRemoved   = o.sendRemoved || {};
+        overlay.archived      = o.archived || {};
+        overlay.removed       = o.removed || {};
+      } catch (e) { /* private mode, or corrupt — start clean */ }
+    }
+
+    function writeOverlay() {
+      try { localStorage.setItem(OVERLAY_KEY, JSON.stringify(overlay)); }
+      catch (e) { /* private mode — edits live for this page view only */ }
+      var who = typeof signedInUser === "function" ? signedInUser() : null;
+      SharedOverlay.push("lps", overlay, who ? (who.name || who.username || "") : "");
+      AutoPublish.touch("lps");
+    }
+
+    function adoptPublished(doc) {
+      if (doc) base = doc;
+      overlay = blankOverlay();
+      try { localStorage.setItem(OVERLAY_KEY, JSON.stringify(overlay)); }
+      catch (e) { /* private mode — the copy in memory is what matters */ }
+      rebuild();
+    }
+
+    function hasOverlay() {
+      return Object.keys(overlay.patches).length > 0 ||
+             Object.keys(overlay.conversations).length > 0 ||
+             Object.keys(overlay.convPatches).length > 0 ||
+             Object.keys(overlay.convRemoved).length > 0 ||
+             Object.keys(overlay.sends).length > 0 ||
+             Object.keys(overlay.sendPatches).length > 0 ||
+             Object.keys(overlay.sendRemoved).length > 0 ||
+             Object.keys(overlay.archived).length > 0 ||
+             Object.keys(overlay.removed).length > 0 ||
+             overlay.created.length > 0;
+    }
+
+    /* Same stable-id trick the investor side uses: an entry that arrived
+       in the file may carry no id, and patches are keyed by id, so one is
+       derived from the entry's own contents. Same file in, same id out. */
+    function stableId(prefix, seed) {
+      var h = 5381;
+      for (var i = 0; i < seed.length; i++) h = ((h * 33) ^ seed.charCodeAt(i)) >>> 0;
+      return prefix + h.toString(36);
+    }
+
+    function normalise(rec) {
+      var c = rec.checkSize || {};
+      return {
+        id: rec.id, name: rec.name || "",
+        type: rec.type || "Unclassified",
+        stage: rec.stage || "Prospect",
+        owner: rec.owner || "",
+        location: rec.location || "",
+        website: rec.website || "",
+        aum: rec.aum || "",
+        checkSize: { min: c.min == null ? null : c.min,
+                     max: c.max == null ? null : c.max, note: c.note || "" },
+        mandate: rec.mandate || "",
+        why: rec.why || "",
+        /* How we work together — what the relationship turned out to be,
+           as against `why`, which is what was hoped beforehand. */
+        partnerNote: rec.partnerNote || "",
+        contacts: (rec.contacts || []).slice(),
+        addedAt: rec.addedAt || "",
+        archived: !!rec.archived,
+        conversations: (rec.conversations || []).map(function (e, i) {
+          var copy = {};
+          Object.keys(e).forEach(function (k) { copy[k] = e[k]; });
+          copy.id = e.id || stableId("lc-file-", rec.id + "|" + (e.date || "") + "|" +
+                      (e.channel || "") + "|" + String(e.summary || "").slice(0, 120) + "|" + i);
+          return copy;
+        }),
+        // Documents sent. Same shape the investor side stores, and
+        // pointing at the same register — see normaliseSend().
+        sends: (rec.sends || []).map(function (sd, i) {
+          return normaliseSend(rec.id, sd, i);
+        })
+      };
+    }
+
+    function rebuild() {
+      var byId = {};
+      merged = ((base && base.lps) || []).filter(function (r) {
+        return !overlay.removed[r.id];
+      }).map(function (r) {
+        var out = normalise(r);
+        byId[out.id] = out;
+        return out;
+      });
+
+      overlay.created.forEach(function (r) {
+        if (byId[r.id] || overlay.removed[r.id]) return;
+        var out = normalise(r);
+        byId[out.id] = out;
+        merged.push(out);
+      });
+
+      Object.keys(overlay.patches).forEach(function (id) {
+        var rec = byId[id];
+        if (!rec) return;
+        var patch = overlay.patches[id];
+        Object.keys(patch).forEach(function (k) { rec[k] = patch[k]; });
+      });
+
+      Object.keys(overlay.conversations).forEach(function (id) {
+        var rec = byId[id];
+        if (!rec) return;
+        var seen = {};
+        rec.conversations.forEach(function (c) { seen[c.id] = 1; });
+        overlay.conversations[id].forEach(function (c) {
+          if (!seen[c.id]) rec.conversations.push(c);
+        });
+      });
+
+      Object.keys(overlay.sends).forEach(function (id) {
+        var rec = byId[id];
+        if (!rec) return;
+        var seen = {};
+        rec.sends.forEach(function (sd) { seen[sd.id] = 1; });
+        overlay.sends[id].forEach(function (sd, i) {
+          if (!seen[sd.id]) rec.sends.push(normaliseSend(id, sd, rec.sends.length + i));
+        });
+      });
+
+      // Corrections and tombstones, exactly as the investor side applies them.
+      merged.forEach(function (rec) {
+        rec.conversations = rec.conversations
+          .filter(function (c) { return !overlay.convRemoved[c.id]; })
+          .map(function (c) {
+            var patch = overlay.convPatches[c.id];
+            if (!patch) return c;
+            var copy = {};
+            Object.keys(c).forEach(function (k) { copy[k] = c[k]; });
+            Object.keys(patch).forEach(function (k) { copy[k] = patch[k]; });
+            return copy;
+          });
+        rec.conversations.sort(function (a, b) {
+          return String(b.date || "").localeCompare(String(a.date || ""));
+        });
+
+        rec.sends = rec.sends
+          .filter(function (sd) { return !overlay.sendRemoved[sd.id]; })
+          .map(function (sd) {
+            var patch = overlay.sendPatches[sd.id];
+            if (!patch) return sd;
+            var copy = {};
+            Object.keys(sd).forEach(function (k) { copy[k] = sd[k]; });
+            Object.keys(patch).forEach(function (k) { copy[k] = patch[k]; });
+            return copy;
+          });
+        rec.sends.sort(function (a, b) {
+          return String(b.date || "").localeCompare(String(a.date || ""));
+        });
+      });
+    }
+
+    function load() {
+      readOverlay();
+      var origin = "local";
+      return SharedOverlay.load("lps")
+        .then(function (shared) {
+          if (shared && shared.overlay) SharedOverlay.mergeInto(overlay, shared.overlay);
+          if (shared && shared.base) { origin = "shared"; return shared.base; }
+          return fetch("lp-data.json", { cache: "no-store" })
+            .then(function (r) {
+              if (!r.ok) throw new Error("no local LP file");
+              return r.json();
+            });
+        })
+        .then(function (json) {
+          base = json;
+          meta = { source: origin, generatedAt: json.generatedAt || null };
+        })
+        /* AN EMPTY SET IS THE ORDINARY STATE HERE, not a failure. The LP
+           CRM starts with no records at all: the Current list is derived
+           from the deals and needs none, and one is written the first
+           time anybody logs something. So a missing lp-data.json is not
+           worth a warning the way a missing crm-data.json is. */
+        .catch(function () {
+          base = LP_FALLBACK;
+          meta = { source: origin === "shared" ? "shared" : "fallback", generatedAt: null };
+        })
+        .then(rebuild);
+    }
+
+    function byId(id) {
+      for (var i = 0; i < merged.length; i++) if (merged[i].id === id) return merged[i];
+      return null;
+    }
+
+    function byName(name) {
+      var want = String(name || "").trim().toLowerCase();
+      if (!want) return null;
+      for (var i = 0; i < merged.length; i++) {
+        if (merged[i].name.trim().toLowerCase() === want) return merged[i];
+      }
+      return null;
+    }
+
+    function slugId(name) {
+      var s = slug(name) || "lp";
+      var n = s, i = 2;
+      while (byId(n)) { n = s + "-" + i; i++; }
+      return n;
+    }
+
+    function create(fields) {
+      var rec = normalise({
+        id: slugId(fields.name),
+        name: fields.name,
+        addedAt: fields.addedAt || new Date().toISOString().slice(0, 10),
+        type: fields.type || "Unclassified",
+        stage: fields.stage || "Prospect",
+        location: fields.location || "",
+        checkSize: fields.checkSize || {},
+        contacts: fields.contacts || []
+      });
+      delete overlay.removed[rec.id];
+      overlay.created.push(rec);
+      writeOverlay();
+      rebuild();
+      return byId(rec.id);
+    }
+
+    function patch(id, fields) {
+      overlay.patches[id] = overlay.patches[id] || {};
+      Object.keys(fields).forEach(function (k) { overlay.patches[id][k] = fields[k]; });
+      writeOverlay();
+      rebuild();
+    }
+
+    function addConversation(id, entry) {
+      entry.id = entry.id || ("lc-" + Date.now().toString(36) + "-" +
+                              Math.random().toString(36).slice(2, 7));
+      overlay.conversations[id] = overlay.conversations[id] || [];
+      overlay.conversations[id].push(entry);
+      writeOverlay();
+      rebuild();
+      return entry;
+    }
+
+    function patchConversation(convId, fields) {
+      overlay.convPatches[convId] = overlay.convPatches[convId] || {};
+      Object.keys(fields).forEach(function (k) { overlay.convPatches[convId][k] = fields[k]; });
+      writeOverlay();
+      rebuild();
+    }
+
+    function removeConversation(convId) {
+      overlay.convRemoved[convId] = new Date().toISOString().slice(0, 10);
+      writeOverlay();
+      rebuild();
+    }
+
+    /* ---- documents sent -------------------------------------------
+       One entry per delivery, pointing at a version in the SHARED
+       register by id. Everything that reads one — sendState(),
+       sendMaterialName(), sendVersionName() — already takes a send and
+       looks the material up on Crm, and never asked whose send it was.
+       ---------------------------------------------------------------- */
+    function addSend(lpId, entry) {
+      var rec = byId(lpId);
+      if (!rec) return null;
+      var who = typeof signedInUser === "function" ? signedInUser() : null;
+      var stamped = normaliseSend(lpId, Object.assign({
+        id: "ls-" + Date.now().toString(36) + "-" + Math.random().toString(36).slice(2, 7),
+        by: who ? (who.name || who.username || "") : "",
+        loggedAt: new Date().toISOString().slice(0, 10)
+      }, entry), rec.sends.length);
+      overlay.sends[lpId] = overlay.sends[lpId] || [];
+      overlay.sends[lpId].push(stamped);
+      writeOverlay();
+      rebuild();
+      return stamped;
+    }
+
+    function patchSend(sendId, fields) {
+      overlay.sendPatches[sendId] = overlay.sendPatches[sendId] || {};
+      Object.keys(fields).forEach(function (k) { overlay.sendPatches[sendId][k] = fields[k]; });
+      writeOverlay();
+      rebuild();
+    }
+
+    function removeSend(sendId) {
+      overlay.sendRemoved[sendId] = new Date().toISOString().slice(0, 10);
+      writeOverlay();
+      rebuild();
+    }
+
+    // Every send across every LP, newest first, each carrying its record.
+    function sendsAll() {
+      var out = [];
+      merged.forEach(function (rec) {
+        rec.sends.forEach(function (sd) {
+          out.push({ entry: sd, lpId: rec.id, lpName: rec.name,
+                     archived: archivedNow(rec) });
+        });
+      });
+      out.sort(function (a, b) {
+        return String(b.entry.date || "").localeCompare(String(a.entry.date || ""));
+      });
+      return out;
+    }
+
+    function archivedNow(rec) {
+      if (!rec) return false;
+      return Object.prototype.hasOwnProperty.call(overlay.archived, rec.id)
+        ? !!overlay.archived[rec.id]
+        : !!rec.archived;
+    }
+
+    function archive(id, on) {
+      overlay.archived[id] = on === false ? false : new Date().toISOString().slice(0, 10);
+      writeOverlay();
+      rebuild();
+    }
+
+    function remove(id) {
+      var inFile = ((base && base.lps) || []).some(function (r) { return r.id === id; });
+      if (inFile) overlay.removed[id] = new Date().toISOString().slice(0, 10);
+      overlay.created = overlay.created.filter(function (r) { return r.id !== id; });
+      delete overlay.patches[id];
+      delete overlay.conversations[id];
+      delete overlay.sends[id];
+      writeOverlay();
+      rebuild();
+    }
+
+    function all() {
+      return merged.filter(function (r) { return !archivedNow(r); });
+    }
+
+    function toFile() {
+      return {
+        generatedAt: new Date().toISOString().slice(0, 10),
+        source: "local",
+        note: "Exported from the dashboard. LPs for our partners and deals — NOT the " +
+              "investor CRM, which is LPs for Modillion. Gitignored — never commit.",
+        lps: merged.map(function (r) {
+          var out = Object.assign({}, r);
+          out.archived = archivedNow(r);
+          return out;
+        })
+      };
+    }
+
+    return {
+      load: load,
+      meta: function () { return meta; },
+      all: all,
+      allIncludingArchived: function () { return merged; },
+      get: byId,
+      byName: byName,
+      create: create,
+      patch: patch,
+      addConversation: addConversation,
+      patchConversation: patchConversation,
+      removeConversation: removeConversation,
+      addSend: addSend,
+      patchSend: patchSend,
+      removeSend: removeSend,
+      sends: sendsAll,
+      archive: archive,
+      remove: remove,
+      isArchived: function (id) { return archivedNow(byId(id)); },
+      hasLocalEdits: hasOverlay,
+      toFile: toFile,
+      adoptPublished: adoptPublished,
+      clearOverlay: function () {
+        overlay = blankOverlay();
+        writeOverlay();
+        rebuild();
+      }
+    };
+  })();
+
   /* ============================================================
      LP CRM — DATA
 
@@ -13176,6 +13690,22 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
 
     function key(name) { return String(name || "").trim().toLowerCase(); }
 
+    /* WHICH NAMES ARE ARCHIVED OFF THIS TAB, keyed by name.
+
+       It used to be a tombstone map on the investor overlay, because a
+       partner had no record of its own to carry a flag. Now it does:
+       archiving is Lps.archive() on the record, and a derived partner
+       with no record yet cannot be archived because there is nothing to
+       archive and nothing yet worth hiding. Same map shape as before so
+       the callers did not have to change. */
+    function lpArchived() {
+      var out = {};
+      Lps.allIncludingArchived().forEach(function (r) {
+        if (Lps.isArchived(r.id)) out[key(r.name)] = true;
+      });
+      return out;
+    }
+
     function entry(k, name) {
       return { key: k, name: name, investor: null, archived: false,
                deals: {}, closed: [], live: [] };
@@ -13204,17 +13734,23 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
         lpNames(rec).forEach(function (n) { reach(n, rec); });
       });
 
-      /* The investor record behind each name, looked up once rather
-         than once per row. */
-      var crmByKey = {};
-      Crm.all().forEach(function (inv) { crmByKey[key(inv.name)] = inv; });
+      /* The LP record behind each name, looked up once rather than once
+          per row. NOT an investor record: the two are different
+          populations and the note at the top of Lps says why. */
+      /* allIncludingArchived, NOT all(). An archived LP record must stay
+          attached to its derived partner, or archiving is a one-way door:
+          the entry loses its record, Restore has no id to act on, and the
+          row sits in the pile for ever. The `archived` flag below is what
+          decides which list it is drawn in. */
+      var lpByKey = {};
+      Lps.allIncludingArchived().forEach(function (r) { lpByKey[key(r.name)] = r; });
 
-      var put_away = Crm.partnersArchived();
+      var put_away = lpArchived();
 
       var out = [];
       Object.keys(by).forEach(function (k) {
         var e = by[k];
-        e.investor = crmByKey[k] || null;
+        e.investor = lpByKey[k] || null;
         e.archived = !!put_away[k];
         // The maintained spelling wins over whatever the deal box says.
         if (e.investor) e.name = e.investor.name;
@@ -13269,8 +13805,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
     }
 
     /* ---- the other half of the tab --------------------------------
-       PROSPECTIVE LPs: an investor record flagged lpProspect that has
-       NOTHING CLOSED YET. Shaped like a partner entry so one set of
+       PROSPECTIVE LPs: an LP record that NOTHING HAS CLOSED WITH YET. Shaped like a partner entry so one set of
        render code draws both — same key, same name, same investor, and
        two empty deal lists, because that is the literal truth about a
        prospect.
@@ -13290,11 +13825,17 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
          each remaining name is on. */
       var fromDeals = {};
       collect().forEach(function (e) { fromDeals[e.key] = e; });
-      var put_away = Crm.partnersArchived();
+      var put_away = lpArchived();
 
-      return Crm.all().filter(function (inv) {
+      /* EVERY LP RECORD WITH NOTHING CLOSED. There is no flag any more:
+          this set holds nothing but LPs for our deals, so a record in it
+          that no closed deal names IS a prospective one. The flag existed
+          only to pick them out of the investor set they used to share. */
+      // allIncludingArchived for the same reason the partner join uses it:
+      // an archived prospect belongs in the pile, not out of existence.
+      return Lps.allIncludingArchived().filter(function (inv) {
         var d = fromDeals[key(inv.name)];
-        return inv.lpProspect && !(d && d.closed.length);
+        return !(d && d.closed.length);
       }).map(function (inv) {
         var k = key(inv.name);
         var d = fromDeals[k];
@@ -13850,7 +14391,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
     if (!inv) return;
     var id = inv.id;
 
-    Crm.addConversation(id, {
+    Lps.addConversation(id, {
       date: val("lpConvDate") || new Date().toISOString().slice(0, 10),
       channel: $("lpConvChannel") ? $("lpConvChannel").value : "",
       who: val("lpConvWho"),
@@ -13901,7 +14442,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
              esc(v == null ? "" : v) + '"' + (extra || "") + '>';
     }
 
-    var stages = Crm.stages();
+    var stages = CRM_STAGES;
     if (inv.stage && stages.indexOf(inv.stage) === -1) stages = stages.concat([inv.stage]);
 
     /* THE STAGE THE RECORD WOULD BE MADE AT, when there is no record yet.
@@ -13982,7 +14523,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
       fields.contacts = contacts.slice(1);   // both boxes cleared \u2014 drop it, keep the rest
     }
 
-    Crm.patch(inv.id, fields);
+    Lps.patch(inv.id, fields);
     partnerState.editing = false;
     renderCrm();
     renderPartnerFilters();
@@ -14123,7 +14664,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
     /* Its own prefix: the investor record may be drawn at the same time
        on the CRM tab, and two copies of this form sharing one set of ids
        is two panes' boxes answering to one name. */
-    parts.push(investorMaterials(blank, "psend", e.key));
+    parts.push(investorMaterials(blank, "psend", e.key, Lps));
     parts.push(recordTaskPanel(e.name));
 
     {
@@ -14152,6 +14693,38 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
             'reads from once it is there.</p>') +
         partnerConversationForm(blank, e.key) +
         '</div>');
+
+      /* THE OTHER RELATIONSHIP'S LOG, when the same firm is also an LP for
+         Modillion. Shown read-only and clearly labelled, because those
+         calls happened in that relationship and belong to it: copying
+         them here would give one conversation two homes and make "when
+         did we last speak to them" answerable two ways. Hiding them
+         would be worse — somebody would ring a firm we spoke to last
+         week. So they are visible and not claimed. */
+      var twinLog = Crm.all().filter(function (i) { return sameName(i.name, e.name); })[0];
+      if (twinLog && twinLog.conversations.length) {
+        parts.push('<div class="crm-section"><h3>Also on the Investor CRM' +
+          '<span class="crm-section__aside">' +
+          countOf(twinLog.conversations.length, "conversation") + ' there</span></h3>' +
+          '<p class="crm-research__note">' + esc(e.name) + ' is also an LP for Modillion — ' +
+          'money we have raised, rather than the capital partner on a deal. That is a ' +
+          'different relationship and its log lives on its own record; it is shown here so ' +
+          'nobody rings them twice. ' +
+          '<button type="button" class="debt-link" data-crm-open-name="' + esc(e.name) +
+          '">Open it on the Investor CRM</button></p>' +
+          '<ul class="crm-log is-muted">' + twinLog.conversations.slice(0, 5).map(function (c) {
+            return '<li>' +
+              '<div class="crm-log__head">' +
+                '<span class="crm-log__date">' + esc(c.date || "Undated") + '</span>' +
+                '<span class="crm-log__channel">' + esc(c.channel || "Note") + '</span>' +
+                (c.who ? '<span class="crm-log__who">' + esc(c.who) + '</span>' : "") +
+              '</div>' +
+              '<p class="crm-log__body">' + esc(c.summary || "") + '</p></li>';
+          }).join("") + '</ul>' +
+          (twinLog.conversations.length > 5
+            ? '<p class="crm-research__note">Newest five shown.</p>' : "") +
+          '</div>');
+      }
     }
 
     $("partnerDetailBody").innerHTML = parts.join("");
@@ -14247,9 +14820,16 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
       ? countOf(total, "partner") + " \u00B7 " + countOf(props.length, "prospect")
       : shown + " of " + everything + " shown";
     $("tabPartnerCount").textContent = everything ? "(" + everything + ")" : "";
+    markUnsaved("partnerUnsaved", Lps.hasLocalEdits());
 
-    $("lpInvestorNames").innerHTML = Crm.all().map(function (i) {
-      return '<option value="' + esc(i.name) + '">';
+    /* Names already known, from BOTH sets. An LP prospect is very often a
+       firm the Investor CRM already holds, and offering the spelling it
+       uses is what keeps the two joinable by name. */
+    var known = Lps.all().map(function (r) { return r.name; })
+      .concat(Crm.all().map(function (i) { return i.name; }))
+      .filter(function (v, i, a) { return v && a.indexOf(v) === i; }).sort();
+    $("lpInvestorNames").innerHTML = known.map(function (n) {
+      return '<option value="' + esc(n) + '">';
     }).join("");
 
     var missing = all.filter(function (e) { return !e.investor; }).length;
@@ -14319,13 +14899,39 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
     if (!e) return null;
     if (e.investor) return e.investor;
 
-    var closed = e.closed.length;
-    return Crm.create({
+    /* SEEDED FROM THE INVESTOR RECORD OF THE SAME NAME, when there is
+       one. A firm can be both an LP for Modillion and the capital
+       partner on one of our deals, and when it is, the address, the
+       cheque size and who to ring are the same facts on both sides —
+       making somebody retype them would be this split charging rent.
+
+       THE CONVERSATION LOG IS NOT COPIED, and that is the line: those
+       calls were had in the other relationship and belong to it.
+       Duplicating them would give one conversation two homes and make
+       "when did we last speak to them" answerable two ways. The record
+       page shows the investor log beside this one, read-only, so it is
+       visible without being claimed. */
+    var twin = Crm.all().filter(function (i) { return sameName(i.name, e.name); })[0];
+
+    var made = Lps.create({
       name: e.name,
-      stage: closed ? "Committed" : "Prospect",
-      deals: e.closed.map(function (r) { return r.deal.name; })
+      stage: e.closed.length ? "Committed" : "Prospect",
+      type: twin ? twin.type : "",
+      location: twin ? twin.location : "",
+      checkSize: twin ? twin.checkSize : {},
+      contacts: twin ? (twin.contacts || []).slice() : []
     });
+
+    if (twin && made) {
+      var extra = {};
+      if (twin.aum) extra.aum = twin.aum;
+      if (twin.website) extra.website = twin.website;
+      if (twin.owner) extra.owner = twin.owner;
+      if (Object.keys(extra).length) Lps.patch(made.id, extra);
+    }
+    return Lps.get(made.id);
   }
+
 
   /* ---- adding a prospective LP -----------------------------------
      ONE BOX DECIDES WHETHER A RECORD IS CREATED, and that is the whole
@@ -14360,19 +14966,25 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
       return;
     }
 
-    var existing = Crm.all().filter(function (i) { return sameName(i.name, name); })[0];
+    /* An LP record of this name already, or a new one. The Investor CRM
+       is NOT consulted for identity here — a firm being on that tab says
+       it is an LP for Modillion, which is a different relationship and not
+       a reason to skip creating this one. What the twin IS used for is
+       seeding the facts below. */
+    var existing = Lps.byName(name);
     var inv = existing;
     var made = false;
     if (!inv) {
-      inv = Crm.create({ name: name, stage: "Prospect", location: val("lpNewLocation") });
+      inv = Lps.create({ name: name, stage: "Prospect", location: val("lpNewLocation") });
       made = true;
     }
+    var twin = Crm.all().filter(function (i) { return sameName(i.name, name); })[0];
 
     /* Only what was typed. An existing record is NOT overwritten with the
        blanks on this form — somebody adding a firm they already track to
        the LP list is saying one thing about them, not re-stating
        everything the record already holds. */
-    var patch = { lpProspect: true };
+    var patch = {};
     if (val("lpNewLocation")) patch.location = val("lpNewLocation");
     if (val("lpNewWhy")) patch.why = val("lpNewWhy");
     if (val("lpNewCheck")) {
@@ -14387,11 +14999,23 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
       contacts[0] = first;
       patch.contacts = contacts;
     }
-    Crm.patch(inv.id, patch);
+    // Facts the Investor CRM already holds about the same firm, used only
+    // where this form left the box empty. Nothing typed here is overwritten.
+    if (twin && made) {
+      if (!patch.location && twin.location) patch.location = twin.location;
+      if (!patch.checkSize && twin.checkSize) patch.checkSize = twin.checkSize;
+      if (!patch.contacts && (twin.contacts || []).length) {
+        patch.contacts = twin.contacts.slice();
+      }
+      if (twin.type && twin.type !== "Unclassified") patch.type = twin.type;
+      if (twin.aum) patch.aum = twin.aum;
+      if (twin.website) patch.website = twin.website;
+    }
+    Lps.patch(inv.id, patch);
 
     // A firm archived off this tab before is on it again now — adding it
     // back is exactly the statement the tombstone was withholding.
-    Crm.archivePartner(name, false);
+    Lps.archive(inv.id, false);
 
     showPartnerAdd(false);
     renderCrm();
@@ -14399,9 +15023,10 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
     renderPartners();
     openPartner(Partners.key(name));
     toast(made
-      ? "Added " + inv.name + " as a prospective LP, and to the Investor CRM at stage Prospect."
-      : inv.name + " is on the LP track. Their existing Investor CRM record was flagged, " +
-        "not duplicated \u2014 nothing on it was overwritten.");
+      ? "Added " + inv.name + " to the LP CRM as a prospective LP" +
+        (twin ? ", with their details copied from the Investor CRM record of the same name."
+              : ".")
+      : inv.name + " is already on the LP CRM \u2014 opened rather than added twice.");
   }
 
   /* ============================================================
@@ -14553,14 +15178,30 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
     var name = e.target.value.trim();
     var note = $("lpNewNameNote");
     if (!name) { note.textContent = ""; note.removeAttribute("data-found"); return; }
-    var hit = Crm.all().filter(function (i) { return sameName(i.name, name); })[0];
-    if (hit) {
-      note.textContent = "Already on the Investor CRM \u2014 that record is flagged, not duplicated.";
+    var here = Lps.byName(name);
+    var twin = Crm.all().filter(function (i) { return sameName(i.name, name); })[0];
+    if (here) {
+      note.textContent = "Already on the LP CRM \u2014 this opens them rather than adding a second.";
+      note.setAttribute("data-found", "yes");
+    } else if (twin) {
+      note.textContent = "On the Investor CRM as an LP for Modillion. A separate LP CRM record " +
+        "is created for the deal side, with their contact details copied across.";
       note.setAttribute("data-found", "yes");
     } else {
-      note.textContent = "Not on the Investor CRM \u2014 a record is created there at stage Prospect.";
+      note.textContent = "New to both lists \u2014 an LP CRM record is created at stage Prospect.";
       note.setAttribute("data-found", "new");
     }
+  });
+
+  $("partnerPublishBtn").addEventListener("click", function () {
+    publishRecords("lps", "LP CRM", Lps.toFile, "partnerPublishBtn", Lps);
+  });
+
+  $("partnerSaveFileBtn").addEventListener("click", function () {
+    var blob = new Blob([JSON.stringify(Lps.toFile(), null, 2)], { type: "application/json" });
+    download(blob, "lp-data.json");
+    toast("Downloaded \u2014 a backup of the LP records as they stand. " +
+          "\u201CPublish to team\u201D is what makes them everyone's.");
   });
 
   $("partnerExportBtn").addEventListener("click", function () {
@@ -14592,7 +15233,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
       }
       var ninv = ensureLpRecord(nk);
       if (!ninv) return;
-      Crm.patch(ninv.id, { partnerNote: box.value.trim() });
+      Lps.patch(ninv.id, { partnerNote: box.value.trim() });
       renderCrm();
       renderPartners();
       if (partnerState.view === "partner") renderPartner(partnerState.key);
@@ -14611,7 +15252,12 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
     if (pArchive) {
       var ak = pArchive.getAttribute("data-partner-archive");
       var arec = Partners.get(ak);
-      Crm.archivePartner(ak, true);
+      if (!(arec && arec.investor)) {
+        toast("Nothing is recorded against them yet, so there is nothing to archive. " +
+              "Their name is on a closed deal — take it off the deal to take them off here.");
+        return;
+      }
+      Lps.archive(arec.investor.id, true);
       // Archiving the record that is open would leave the page showing a
       // partner the list no longer has, so it goes back to the list.
       if (partnerState.view === "partner" && partnerState.key === ak) {
@@ -14627,7 +15273,8 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
     var pRestore = e.target.closest("[data-partner-restore]");
     if (pRestore) {
       var rk = pRestore.getAttribute("data-partner-restore");
-      Crm.archivePartner(rk, false);
+      var rrecPre = Partners.get(rk);
+      if (rrecPre && rrecPre.investor) Lps.archive(rrecPre.investor.id, false);
       partnerState.openArchived = true;   // so the pile does not shut under them
       renderPartnerFilters();
       renderPartners();
@@ -19999,7 +20646,9 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
   document.addEventListener("change", function (e) {
     var sendDeal = e.target.closest("[data-send-deal]");
     if (sendDeal) {
-      Crm.patchSend(sendDeal.getAttribute("data-send-deal"), { deal: sendDeal.value });
+      var sdId = sendDeal.getAttribute("data-send-deal");
+      var sdFound = sendFind(sdId);
+      (sdFound ? sdFound.store : Crm).patchSend(sdId, { deal: sendDeal.value });
       renderSendViews();
       return;
     }
@@ -20904,13 +21553,22 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
        Read-only, on the same terms as operators and competitors: it can
        say who we have closed with and what we did together, and every
        change to any of it happens on the tab that owns the record. */
+    /* THE LP CRM'S OWN POPULATION, and the snapshot says which is which
+       because the model turns on it: `investors` are LPs for Modillion —
+       money the firm raises — and these are LPs for our partners and
+       deals. A firm in both lists is in both roles, not duplicated. */
     function prospectiveLps() {
       return Partners.prospects().map(function (e) {
         var inv = e.investor;
         return { name: e.name, stage: inv.stage, check: checkText(inv),
                  type: inv.type, location: inv.location, owner: inv.owner,
-                 why: inv.why, investorId: inv.id,
+                 why: inv.why, lpId: inv.id,
                  lastContact: lastContact(inv) || "",
+                 conversations: inv.conversations.map(function (c) {
+                   return { date: c.date || "", channel: c.channel || "",
+                            who: c.who || "", summary: c.summary || "",
+                            next: c.next || "" };
+                 }),
                  liveDeals: e.live.map(function (r) { return r.deal.name; }) };
       });
     }
@@ -20926,10 +21584,17 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
           });
         }
         return { name: e.name,
-                 onCrm: !!e.investor,
-                 investorId: e.investor ? e.investor.id : "",
+                 hasRecord: !!e.investor,
+                 lpId: e.investor ? e.investor.id : "",
                  note: e.investor ? e.investor.partnerNote : "",
                  lastContact: (e.investor && lastContact(e.investor)) || "",
+                 conversations: e.investor
+                   ? e.investor.conversations.map(function (c) {
+                       return { date: c.date || "", channel: c.channel || "",
+                                who: c.who || "", summary: c.summary || "",
+                                next: c.next || "" };
+                     })
+                   : [],
                  closed: rows(e.closed),
                  live: rows(e.live) };
       });
@@ -21023,8 +21688,12 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
         statuses: TASK_STATUSES.slice(),
         team: Tasks.team().map(function (p) { return { id: p.id, name: p.name }; }),
         investors: investors(),
-        partners: partners(),
-        prospectiveLps: prospectiveLps(),
+        /* Named for what they are. `investors` above is the Investor CRM
+           — LPs FOR MODILLION. These two are the LP CRM — LPs FOR OUR
+           PARTNERS AND DEALS. Same firm can be in both; that is two
+           relationships, not one record twice. */
+        dealLpPartners: partners(),
+        dealLpProspects: prospectiveLps(),
         materials: materials(),
         operators: operators(),
         competitors: competitors(),
@@ -23372,7 +24041,8 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
           else if (ver) patch.version = ver.label;
           // else: an id the register no longer carries. Keep the label
           // already stored — it is the only record of what that cut was.
-          Crm.patchSend(id, patch);
+          // Patched on whichever set owns the send; sendFind() said which.
+          found.store.patchSend(id, patch);
         }
       },
       investor: {
@@ -23602,7 +24272,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
      session. There is deliberately no query-string bypass — that
      would make the gate pointless.
      ============================================================ */
-  Promise.all([Deals.load(), Crm.load(), Operators.load(), Tasks.load(),
+  Promise.all([Deals.load(), Crm.load(), Lps.load(), Operators.load(), Tasks.load(),
                Competitors.load()]).then(function () {
     describeSource();
     var unlocked = false;

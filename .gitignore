@@ -33,6 +33,12 @@ deals-data.json
 deals-data.*.json
 crm-data.json
 crm-data.*.json
+
+# lp-data.json is the LP CRM — the capital partners beside us on deals, with
+# their contacts and every conversation. A different population from
+# crm-data.json above it, and the same reason for keeping it out of git.
+lp-data.json
+lp-data.*.json
 operator-data.json
 operator-data.*.json
 tasks-data.json

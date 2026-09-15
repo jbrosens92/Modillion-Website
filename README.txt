@@ -2023,3 +2023,59 @@ TWO DIFFERENT KINDS OF LP, 2026-09-15:
   against a deal LP creates one and that firm then appears on the Investor CRM
   list as well. Under the split above that is wrong. Left as it is pending a
   decision on whether the LP CRM gets its own record set.
+
+THE LP CRM GETS ITS OWN RECORD SET, 2026-09-15:
+- The storage half of "two different kinds of LP". The membership fix earlier
+  today stopped raise commitments putting people on the LP CRM; this stops the
+  LP CRM putting people on the Investor CRM.
+- WHAT WAS WRONG. An LP CRM record WAS an investor record carrying a flag, so
+  logging the first conversation against a deal LP created an investor record
+  and that firm then appeared on the Investor CRM list too. Two populations, one
+  list each, and each list kept filling up with the other one's members.
+- `lps` IS NOW A SET IN /api/records, the seventh, alongside crm. Same overlay,
+  same union merge, same publish — nothing new was invented about how a record
+  is stored. It seeds from lp-data.json, which is gitignored like every other
+  record file, and tools/publish.py grew a target for it.
+- A FIRM CAN BE BOTH, and now it gets a record on each side. Being the capital
+  partner on a deal and being somebody we raised co-invest from are two
+  relationships with one firm — different contacts, different conversations,
+  different reasons to call.
+- WHAT IS COPIED WHEN A FIRM IS BOTH: the facts. Address, type, assets, website,
+  cheque size and the main contact are seeded from the Investor CRM record of
+  the same name when an LP record is first made, because making somebody retype
+  them is this split charging rent.
+- WHAT IS NOT COPIED: THE CONVERSATION LOG, and that is the line. Those calls
+  were had in the other relationship and belong to it; duplicating them would
+  give one conversation two homes and make "when did we last speak to them"
+  answerable two ways. Instead the LP record shows the investor log READ-ONLY
+  under "Also on the Investor CRM", newest five, with a line saying what it is
+  and a link to the record that owns it. Visible without being claimed — hiding
+  it would have somebody ringing a firm we spoke to last week.
+- WHAT IS STILL SHARED, deliberately: THE MATERIALS REGISTER. A deck is a deck
+  whoever it went to, and two registers would mean two answers to "which cut is
+  current". Sends live on the record and point at Crm.materials() by id from
+  both sides. normaliseSend() was hoisted out of Crm to module scope so there is
+  one definition of what a send is rather than two that could drift, and
+  logSend/sendFind/dropSend/RowEdit all take the owning store rather than
+  assuming Crm.
+- THE lpProspect FLAG IS RETIRED. It existed only to pick LP prospects out of
+  the investor set they used to share; this set holds nothing but LPs for our
+  deals, so a record in it that no closed deal names IS a prospective one. The
+  field is left on the investor record so an old file round-trips unchanged, and
+  nothing reads it.
+- TWO REAL BUGS FOUND IN TESTING, both invisible by reading:
+    1. normaliseSend() was private to the Crm module, so the first document sent
+       from an LP record threw "normaliseSend is not defined" and the send was
+       silently lost. Hoisted.
+    2. The partner join used Lps.all(), which excludes archived records, so
+       archiving an LP detached its record, Restore had no id to act on and the
+       row sat in the pile for ever — a one-way door. Both the partner join and
+       the prospect list now use allIncludingArchived(), and the archived flag
+       decides which list a row is drawn in.
+- Verified in a browser: a conversation against a deal LP creating an lps record
+  and NOTHING on the Investor CRM (count unchanged at 9 throughout), a firm on
+  both lists getting a separate LP record with its facts copied and its investor
+  log shown read-only, documents sent landing in the lps overlay and not the crm
+  one, Edit details, archive and restore round-tripping with the log intact, the
+  workbook, Download lp-data.json, the agent still building its snapshot, 375px,
+  and no console errors on any tab.

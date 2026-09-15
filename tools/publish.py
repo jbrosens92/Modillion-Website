@@ -57,6 +57,9 @@ DEFAULT_SITE = "https://www.modillionpartners.com"
 TARGETS = {
     "deals":     ("deals-data.json",     "/api/records?set=deals&op=publish",     "deal pipeline"),
     "crm":       ("crm-data.json",       "/api/records?set=crm&op=publish",       "investor CRM"),
+    # LPs for our partners and deals — the capital partner beside us on a
+    # deal. Deliberately not part of "crm", which is LPs for Modillion.
+    "lps":       ("lp-data.json",        "/api/records?set=lps&op=publish",       "LP CRM"),
     "operators": ("operator-data.json",  "/api/records?set=operators&op=publish", "operator CRM"),
     "tasks":     ("tasks-data.json",     "/api/records?set=tasks&op=publish",     "task list"),
     "competitors": ("competitor-data.json", "/api/records?set=competitors&op=publish",

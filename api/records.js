@@ -15,12 +15,20 @@
      POST /api/records?set=deals&op=publish  make edits the new base
      GET  /api/records?probe=1            configured or not
 
-   Six sets: deals, crm, operators, tasks, competitors, mentions.
+   Seven sets: deals, crm, lps, operators, tasks, competitors, mentions.
    `deals` arrived on 2026-08-20 when the document mirror was retired
    and the pipeline stopped being a folder listing; `competitors` on
    2026-08-25 with the Competitor Tracker, and `mentions` the same day
    with the news blast — see README.txt. Adding a set is this one
    line, because nothing here understands a record.
+
+   `lps` arrived on 2026-09-15 with the LP CRM. It is deliberately NOT
+   part of `crm`: the two hold different populations. `crm` is LPs FOR
+   MODILLION — the people the firm raises money from, and every
+   commitment on a Capital Raise is one of them. `lps` is LPs FOR OUR
+   PARTNERS AND DEALS — the capital partner sitting beside us on a deal.
+   A firm can be both, and when it is, that is two relationships with one
+   firm rather than one record filed twice.
 
    `mentions` is the first set NOT edited through the dashboard: the
    watchlist is its base and /api/blast appends what the sweep finds.
@@ -85,7 +93,7 @@ import {
 
 /* A whitelist, not a sanitiser: `set` becomes part of a Redis key,
    so anything not on this list must not reach it. */
-const SETS = new Set(["deals", "crm", "operators", "tasks", "competitors", "mentions"]);
+const SETS = new Set(["deals", "crm", "lps", "operators", "tasks", "competitors", "mentions"]);
 
 function allow(req, res) {
   const allowed = process.env.DASHBOARD_ALLOWED_ORIGIN;
