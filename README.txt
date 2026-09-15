@@ -1096,11 +1096,20 @@ Environment:
     (a person sweeping or sending by hand signs in instead; see "Authentication")
     BLAST_RECIPIENTS       optional, overrides recipients in mentions-data.json
     BLAST_MAX_ITEMS        optional, default 6 per entry per sweep
-- CRON_SECRET STOPPED BEING OPTIONAL ON 2026-09-15. It used to be one of two ways in, and with
-  neither set the endpoint answered 503. Now every other caller must be a signed-in person, and
-  the scheduler cannot be one — so WITHOUT CRON_SECRET THE MONDAY SWEEP AND SEND SILENTLY
-  RETURN 401 AND NOTHING GOES OUT. Vercel sets it for you when you add it in project settings;
-  check it is there after deploying this change.
+- CRON_SECRET IS WHAT THE SCHEDULER NEEDS, and as of 2026-09-15 it is the only thing that will
+  do: every other caller must now be a signed-in person and the scheduler cannot be one.
+- THIS BLAST HAS NEVER RUN, confirmed 2026-09-15 from its own probe:
+      curl -s https://www.modillionpartners.com/api/blast
+      -> {"locked":false,"mail":false,"counts":{"watching":8,"filed":0,"lastSend":null}}
+  Neither CRON_SECRET nor DASHBOARD_WRITE_KEY was ever set, so authorized() returned null and
+  sweep and send answered 503 every Monday since this was built. Eight watchlist entries are
+  configured and nothing has ever been swept or sent.
+- SO LEAVE CRON_SECRET UNSET UNLESS YOU ACTUALLY WANT THE BLAST. Setting it switches on a
+  feature that has never run: a weekly pass of BILLABLE model calls, which would then fail to
+  deliver anyway because there is no RESEND_API_KEY and no Resend account (see /api/notify).
+  Turning it on means wanting it, wiring up mail first, and watching the first run.
+- The behaviour change is cosmetic either way: the cron used to get 503 and now gets 401.
+  Nothing ran before and nothing runs now.
 
 Unlike /api/records, THIS ENDPOINT REFUSES TO RUN UNLOCKED. With neither
 CRON_SECRET nor DASHBOARD_WRITE_KEY set, sweep and send return 503. An open
