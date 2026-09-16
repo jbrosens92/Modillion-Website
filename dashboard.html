@@ -3112,16 +3112,6 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
 .record-tasks__list .task:last-child { border-bottom: 0; }
 .record-tasks__empty { font-size: .85rem; color: var(--muted); margin: 0; }
 .record-tasks__foot { font-size: .72rem; color: var(--muted); margin: 14px 0 0; }
-.task-notify {
-  display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap;
-  margin-top: 16px;
-}
-.task-notify label {
-  display: inline-flex; align-items: center; gap: 7px;
-  color: var(--deep-space); cursor: pointer;
-}
-.task-notify input { accent-color: var(--steel); cursor: pointer; }
-.task-notify span { color: var(--muted); }
 .task-whoami {
   display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
   margin: 40px 0 0; padding-top: 22px; border-top: 1px solid var(--rule);
@@ -4327,13 +4317,6 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
               </p>
             </div>
           </div>
-          <p class="crm-field__note task-notify">
-            <label for="taskNotify">
-              <input type="checkbox" id="taskNotify" checked>
-              Email the person it is assigned to
-            </label>
-            <span id="taskNotifyHow"></span>
-          </p>
           <p class="crm-field__note" id="taskReadNote"></p>
         </div>
 
@@ -19891,182 +19874,26 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
     };
   })();
 
-  /* ============================================================
-     TASKS — TELLING THE PERSON IT WAS ASSIGNED TO
+  /* TASKS — TELLING THE PERSON IT WAS ASSIGNED TO: REMOVED 2026-09-15.
 
-     A task list only works if the person it names finds out. This
-     sends one email when a task is created with somebody on it.
+     A checkbox beside the Add button used to offer to email the assignee.
+     It never sent one automatically: that needed /api/notify, which needed
+     a Resend key, and no Resend account was ever created — confirmed the
+     same day from DNS and from the endpoint's own probe. What it actually
+     did was open a pre-filled draft in the sender's mail client, under a
+     line promising it would send by itself once somebody deployed
+     something.
 
-     Two ways, and which one is used depends on what is deployed:
+     Removed rather than reworded because the firm has no mail provider and
+     no plan for one, and a switch that advertises a capability nobody
+     intends to build is worse than no switch. api/notify.js went with it —
+     the news blast had already taken the only other caller.
 
-       /api/notify is up     the email is SENT, from the firm's
-                             address, without anybody pressing
-                             anything. The page probes the endpoint
-                             once per browser session, the same way
-                             it probes /api/agent.
+     If task email is ever wanted: set up a verified sending domain first,
+     then bring both back from git history. The endpoint was complete and
+     tested against a stub; it was only ever missing the mail account. */
 
-       nothing deployed      a pre-written draft is opened in the
-                             sender's own mail client, addressed and
-                             filled in, and THEY press send. Same
-                             approach the public contact form takes,
-                             and the same caveat: somebody on webmail
-                             with no default mail handler will see
-                             nothing happen, so the toast says who it
-                             was meant for either way.
 
-     The second is not a broken version of the first. It is what
-     this page can honestly do with no server behind it, and it
-     upgrades on its own the day the function is deployed.
-
-     WHEN IT DOES NOT SEND
-     - Nobody is assigned. There is no one to tell.
-     - You assigned it to yourself. You already know.
-     - The assignee is a free-hand name with no address on the
-       roster. Inventing one would be worse than staying quiet.
-     - The switch beside the Add button is off.
-     ============================================================ */
-  var NOTIFY_ENDPOINT = "/api/notify";
-
-  var TaskNotify = (function () {
-    var available = null;
-    var PROBE_KEY = "modillion-notify-endpoint";
-    var PREF_KEY = "modillion-notify-assignees";
-
-    /* Remembered for the browser session so a static deployment logs one
-       404 when the tab is opened rather than one per task added. */
-    function probe() {
-      try {
-        var cached = sessionStorage.getItem(PROBE_KEY);
-        if (cached) {
-          available = JSON.parse(cached).ok === true;
-          return Promise.resolve(available);
-        }
-      } catch (e) { /* private mode — probe every load instead */ }
-
-      return Auth.fetch(NOTIFY_ENDPOINT, { method: "GET", cache: "no-store" })
-        .then(function (r) { return r.ok ? r.json() : null; })
-        .then(function (j) { available = !!(j && j.ok); return available; })
-        .catch(function () { available = false; return false; })
-        .then(function (ok) {
-          try { sessionStorage.setItem(PROBE_KEY, JSON.stringify({ ok: ok })); }
-          catch (e) { /* private mode */ }
-          return ok;
-        });
-    }
-
-    // On by default: the whole point is that somebody hears about the work.
-    // Only an explicit "off" turns it off.
-    function enabled() {
-      try { return localStorage.getItem(PREF_KEY) !== "off"; } catch (e) { return true; }
-    }
-
-    function setEnabled(on) {
-      try { localStorage.setItem(PREF_KEY, on ? "on" : "off"); } catch (e) { /* private mode */ }
-    }
-
-    function senderName() {
-      var u = typeof signedInUser === "function" ? signedInUser() : null;
-      if (u && u.name) return u.name;
-      return Tasks.personName(Tasks.whoAmI()) || "";
-    }
-
-    function listHref() {
-      return location.origin + location.pathname;
-    }
-
-    /* The wording is written once, here, and the server composes the same
-       thing for the sent version — one email that reads the same whichever
-       route it took. */
-    function lines(task, toName, from) {
-      var rows = [
-        ["Task", task.title],
-        ["Due", task.due || "No date set"],
-        ["Priority", task.priority || "Medium"],
-        ["Related to", task.link || "—"],
-        ["Assigned by", from || "the dashboard"]
-      ];
-      if (task.notes) rows.push(["Notes", task.notes]);
-      return (toName ? toName.split(/\s+/)[0] + "," : "Hello,") + "\n\n" +
-             "A task has been assigned to you on the Modillion dashboard.\n\n" +
-             rows.map(function (r) { return r[0] + ": " + r[1]; }).join("\n") + "\n\n" +
-             "Open the task list: " + listHref() + "\n";
-    }
-
-    function subjectFor(task) {
-      return (task.priority === "High" ? "[High] " : "") + "New task for you: " + task.title;
-    }
-
-    function draft(to, task, toName, from) {
-      var url = "mailto:" + encodeURIComponent(to) +
-                "?subject=" + encodeURIComponent(subjectFor(task)) +
-                "&body=" + encodeURIComponent(lines(task, toName, from));
-      // Same mechanism as the contact form: hand it to the mail client and
-      // let the person press send. A window that never opens is silent, which
-      // is why the toast names the recipient rather than claiming it was sent.
-      window.location.href = url;
-    }
-
-    function send(to, task, toName, from) {
-      return Auth.fetch(NOTIFY_ENDPOINT, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          to: to, toName: toName, fromName: from,
-          dashboardUrl: listHref(),
-          task: {
-            title: task.title, due: task.due, priority: task.priority,
-            link: task.link, notes: task.notes
-          }
-        })
-      }).then(function (r) {
-        return r.json().catch(function () { return {}; }).then(function (j) {
-          if (!r.ok || j.error) throw new Error(j.error || ("The notifier answered " + r.status + "."));
-          return j;
-        });
-      });
-    }
-
-    /* One call, made wherever a task comes into being. Returns nothing —
-       a notification that fails must never stop a task being added, so
-       everything below reports through the toast and swallows the rest. */
-    function announce(task) {
-      if (!task || !enabled()) return;
-
-      var to = Tasks.personEmail(task.assignee);
-      if (!task.assignee || !to) return;
-      if (task.assignee === Tasks.whoAmI()) return;      // you already know
-
-      var toName = Tasks.personName(task.assignee);
-      var from = senderName();
-
-      probe().then(function (ok) {
-        if (!ok) {
-          draft(to, task, toName, from);
-          toast("Opened an email to " + toName + " (" + to + ") — press send in your mail client.");
-          return;
-        }
-        send(to, task, toName, from)
-          .then(function () { toast("Emailed " + toName + " at " + to + "."); })
-          .catch(function (err) {
-            // Say what went wrong and still give a way through, rather than
-            // leaving the assignee un-told and nobody any the wiser.
-            toast("Could not email " + toName + ": " + err.message + " Opening a draft instead.");
-            draft(to, task, toName, from);
-          });
-      });
-    }
-
-    return {
-      probe: probe, announce: announce,
-      enabled: enabled, setEnabled: setEnabled,
-      isAvailable: function () { return available === true; },
-      preview: function (task) {
-        return { to: Tasks.personEmail(task.assignee),
-                 subject: subjectFor(task),
-                 body: lines(task, Tasks.personName(task.assignee), senderName()) };
-      }
-    };
-  })();
 
   /* ============================================================
      TASKS — READING A ONE-LINE TASK
@@ -20839,10 +20666,6 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
       ? "Added and assigned to " + Tasks.personName(task.assignee) + "."
       : "Added — nobody is assigned to it yet.");
 
-    // Tell the person whose name is on it. Runs after the toast above on
-    // purpose — the task is already saved and on screen by the time the
-    // email is attempted, so nothing about it depends on the email working.
-    TaskNotify.announce(task);
   }
 
   function clearTaskForm() {
@@ -21073,22 +20896,6 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
      the email will actually take. Worth saying out loud: "opens a draft
      you press send on" and "sends it" are different promises, and the
      person adding the task should know which one they are making. */
-  function renderNotifyNote() {
-    var box = $("taskNotify");
-    var how = $("taskNotifyHow");
-    if (!box || !how) return;
-    box.checked = TaskNotify.enabled();
-    if (!box.checked) { how.textContent = "— off. Nobody is told."; return; }
-    how.textContent = TaskNotify.isAvailable()
-      ? "— sent from the firm's address as soon as the task is added."
-      : "— opens a draft in your mail client for you to send. Deploy /api/notify to send it automatically.";
-  }
-
-  $("taskNotify").addEventListener("change", function (e) {
-    TaskNotify.setEnabled(e.target.checked);
-    renderNotifyNote();
-  });
-
   /* ============================================================
      CRM — EVENTS
      ============================================================ */
@@ -22402,10 +22209,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
             break;
 
           case "task.add":
-            // Same notification as the Add button — a task created through
-            // the agent is still a task somebody has been given. It runs
-            // after Apply, so it is a person's decision that sent it.
-            TaskNotify.announce(Tasks.create(a.fields));
+            Tasks.create(a.fields);
             touched.tasks = true;
             break;
 
@@ -24988,10 +24792,6 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
     renderTasks();
     renderCompetitorFilters();
     renderCompetitors();
-    // Same one-probe-per-session rule as the agent endpoint. Absent is the
-    // normal case; the switch just says "opens a draft" instead of "sends".
-    renderNotifyNote();
-    TaskNotify.probe().then(renderNotifyNote);
 
     /* Start watching for everybody else's edits. After the gate on
        purpose: this runs only for a page somebody is actually looking
