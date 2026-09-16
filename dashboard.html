@@ -1271,11 +1271,59 @@ button.link-arrow {
   font-size: 1rem;
   line-height: 1.6;
 }
-.dash-grid--home { grid-template-columns: repeat(4, 1fr); }
-.dash-card--home { padding: 40px 36px 32px; }
+.dash-grid--home {
+  grid-template-columns: repeat(4, 1fr);
+  /* A REAL GAP, not the 1px hairline the other grids use. Those are
+     meant to read as one ruled table; these are eight separate places
+     to go, and a tile with air around it looks like something you press
+     rather than a cell in a grid. The hairline stays on .dash-card, so
+     each one is now its own outlined card instead of sharing an edge
+     with its neighbour. */
+  gap: 18px;
+}
+
+.dash-card--home {
+  padding: 40px 36px 32px;
+  border-radius: 10px;
+  /* Transform and shadow are listed separately from background so the
+     lift can be quicker than the colour settle — the movement is what
+     answers the pointer, and it should not wait for the tint. */
+  transition: transform .2s cubic-bezier(.2, .7, .3, 1),
+              box-shadow .2s ease,
+              background .25s ease;
+}
+
+/* THE LIFT. Three shadows rather than one: a tightened ring so the
+   outline does not disappear under the glow, a wide soft cast for the
+   height, and a short dark one directly beneath so the card looks
+   lifted off the page rather than merely glowing. */
+.dash-card--home:hover,
+.dash-card--home:focus-visible {
+  transform: translateY(-4px);
+  box-shadow: 0 0 0 1px rgba(119, 166, 182, .5),
+              0 18px 34px -16px rgba(6, 19, 43, .3),
+              0 6px 12px -8px rgba(6, 19, 43, .22);
+}
+/* Pressed: most of the way back down, so the click has somewhere to go.
+   Faster than the lift because a press should feel immediate. */
+.dash-card--home:active {
+  transform: translateY(-1px);
+  transition-duration: .07s;
+}
+.dash-card--home:focus-visible { outline: 2px solid var(--steel); outline-offset: 3px; }
+
+/* The icon grows very slightly and fills in. Small on purpose: at this
+   size anything more reads as the icon wobbling rather than responding. */
 .dash-card--home .dash-card__icon {
   width: 58px; height: 58px;
   margin-bottom: 26px;
+  transition: border-color .25s ease, background .25s ease,
+              transform .2s cubic-bezier(.2, .7, .3, 1), color .25s ease;
+}
+.dash-card--home:hover .dash-card__icon {
+  transform: scale(1.07);
+  background: rgba(119, 166, 182, .2);
+  border-color: var(--steel);
 }
 .dash-card--home .dash-card__icon svg { width: 26px; height: 26px; }
 .dash-card--home .dash-card__name { font-size: 1.6rem; margin-bottom: 12px; }
@@ -1289,7 +1337,32 @@ button.link-arrow {
   color: var(--steel);
   white-space: nowrap;
 }
-.dash-card--home:hover .dash-card__go { color: var(--deep-space); }
+/* The one piece of motion that says which way this goes. The arrow is
+   drawn in CSS rather than put in the markup, because it is decoration
+   and a screen reader should hear "Open", not "Open right arrow". */
+.dash-card__go::after {
+  content: "\2192";
+  display: inline-block;
+  margin-left: 7px;
+  transition: transform .2s cubic-bezier(.2, .7, .3, 1);
+}
+.dash-card--home:hover .dash-card__go,
+.dash-card--home:focus-visible .dash-card__go { color: var(--deep-space); }
+.dash-card--home:hover .dash-card__go::after,
+.dash-card--home:focus-visible .dash-card__go::after { transform: translateX(5px); }
+
+/* Nothing moves for anybody who has asked for that. The colour and
+   shadow changes stay — they are what says "this is the one under the
+   pointer", and they are not motion. */
+@media (prefers-reduced-motion: reduce) {
+  .dash-card--home,
+  .dash-card--home:hover,
+  .dash-card--home:focus-visible,
+  .dash-card--home:active { transform: none; }
+  .dash-card--home:hover .dash-card__icon { transform: none; }
+  .dash-card__go::after,
+  .dash-card--home:hover .dash-card__go::after { transform: none; transition: none; }
+}
 /* Two rows of four becomes four rows of two before it becomes eight of
    one. Four cards across stop being readable well before the phone
    breakpoint, and 1120px is roughly where the blurb starts wrapping to
