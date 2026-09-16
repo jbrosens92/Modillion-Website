@@ -1255,7 +1255,14 @@ button.link-arrow {
 /* Home ---------------------------------------------------------- */
 /* The page the dashboard opens on: one tile per workspace. Same card
    as the category grid, sized up — this is a front door, not a list
-   of things to skim, so there are five of them and they are bigger. */
+   of things to skim, so the tiles are bigger.
+
+   FOUR COLUMNS, FIXED, rather than fitting as many as will go. There
+   are eight workspaces, and eight into four is two full rows with no
+   gap at the end. auto-fill gave five and then three, which left a
+   hole the width of two cards next to the last row — the one thing a
+   front door should not look like. Adding a ninth workspace will leave
+   a gap on purpose; the answer then is a tenth, not auto-fill. */
 #wsHome[hidden] { display: none; }
 .dash-home__lede {
   max-width: 620px;
@@ -1264,7 +1271,7 @@ button.link-arrow {
   font-size: 1rem;
   line-height: 1.6;
 }
-.dash-grid--home { grid-template-columns: repeat(auto-fill, minmax(330px, 1fr)); }
+.dash-grid--home { grid-template-columns: repeat(4, 1fr); }
 .dash-card--home { padding: 40px 36px 32px; }
 .dash-card--home .dash-card__icon {
   width: 58px; height: 58px;
@@ -1283,6 +1290,13 @@ button.link-arrow {
   white-space: nowrap;
 }
 .dash-card--home:hover .dash-card__go { color: var(--deep-space); }
+/* Two rows of four becomes four rows of two before it becomes eight of
+   one. Four cards across stop being readable well before the phone
+   breakpoint, and 1120px is roughly where the blurb starts wrapping to
+   five lines. */
+@media (max-width: 1120px) {
+  .dash-grid--home { grid-template-columns: repeat(2, 1fr); }
+}
 @media (max-width: 720px) {
   .dash-grid--home { grid-template-columns: 1fr; }
   .dash-card--home { padding: 32px 26px 26px; }
@@ -3707,10 +3721,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
 
       <!-- ========================== HOME ========================== -->
       <div id="wsHome">
-        <p class="dash-home__lede">
-          Seven workspaces, each backed by its own data. Everything here is
-          recorded on this page — nothing is read from a folder.
-        </p>
+        <p class="dash-home__lede" id="homeLede"></p>
         <div class="dash-grid dash-grid--home" id="homeGrid"></div>
       </div><!-- /#wsHome -->
 
@@ -7463,7 +7474,24 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
           (withDebt.length ? ", " + withDebt.length + " with debt" : "") + ".");
   }
 
+  /* Spelled out to nine, which is as far as this list is ever likely to
+     go; past that the numeral is fine and nobody will notice. */
+  var COUNT_WORDS = ["No", "One", "Two", "Three", "Four", "Five",
+                     "Six", "Seven", "Eight", "Nine"];
+
   function renderHome() {
+    /* THE COUNT IS WRITTEN FROM THE LIST, not typed into the sentence.
+       It read "Seven workspaces" while eight tiles were drawn below it —
+       an eighth was added and the prose was not, which is what a number
+       kept in two places always eventually does. */
+    var lede = $("homeLede");
+    if (lede) {
+      var n = HOME_TILES.length;
+      lede.textContent = (COUNT_WORDS[n] || n) + " workspace" + (n === 1 ? "" : "s") +
+        ", each backed by its own data. Everything here is recorded on this " +
+        "page \u2014 nothing is read from a folder.";
+    }
+
     $("homeGrid").innerHTML = HOME_TILES.map(function (t) {
       // A count that is not in yet reads as blank, not as zero.
       var n = t.count();
