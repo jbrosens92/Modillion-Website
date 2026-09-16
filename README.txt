@@ -254,9 +254,10 @@ Setting it up, in order:
   for the initial seed.
 
 AUTHENTICATION — ADDED 2026-09-15, AND IT REPLACES EVERY SIGN-IN THIS FILE USED TO DESCRIBE:
-- WHAT CHANGED, IN ONE LINE: /api/records, /api/agent, /api/research and /api/notify
-  now refuse anybody who is not a signed-in member of the firm. Reads included. (/api/blast
-  was gated too, and then removed outright later the same day — see "News blast".)
+- WHAT CHANGED, IN ONE LINE: /api/records, /api/agent and /api/research now refuse anybody
+  who is not a signed-in member of the firm. Reads included. (/api/blast and /api/notify were
+  gated too, and then both removed outright later the same day — see "News blast" and
+  "Telling the assignee". Only three endpoints are left.)
 - WHAT WAS WRONG BEFORE, stated plainly because two separate things looked like access
   control and neither was:
     a) The sign-in in dashboard.html checked a shared password IN THE BROWSER, on a page
@@ -349,6 +350,8 @@ WHAT THIS DOES AND DOES NOT BUY:
 - IT DOES: stop the records being readable by anyone with the URL; give every edit a
   verifiable author; end the shared password; and close /api/notify, which could previously
   be used by a stranger to send mail FROM the firm's own address into a colleague's inbox.
+  (That endpoint was deleted later the same day, which closes it permanently rather than
+  guarding it — see "Telling the assignee".)
 - IT DOES NOT: give per-record permissions. Everyone who signs in sees all seven sets. There
   is nowhere to put a per-record rule while the store holds seven JSON documents rather than
   rows, and building that is the large change described at the end of this section, not this
@@ -855,98 +858,26 @@ The sharing limit — read this before rolling the task list out to the team:
   that would give the CRM shared state. Until then, treat the file as the source of truth and
   re-export after a working session.
 
-Telling the assignee — email on a new task, added 2026-08-19:
-- A task list only works if the person named on it finds out. When a task is created with
-  somebody assigned, one email goes to that person: what the task is, when it is due, the
-  priority, what it relates to, who assigned it, and a link back to the list.
-- It fires from BOTH places a task can come into being — the Add button and the agent's
-  task.add, after Apply. A task the agent wrote is still a task somebody has been given.
-- It does NOT fire when: nobody is assigned; you assigned it to yourself (you already know);
-  the assignee is a free-hand name with no address on the roster (inventing one would be
-  worse than staying quiet); or the switch under the Add form is off. The switch is on by
-  default and remembered per browser, next to a line saying which of the two routes below
-  the email will take — "opens a draft you press send on" and "sends it" are different
-  promises and the person adding the task should know which one they are making.
-- Changing the assignee on an EXISTING task does not email anybody. Creation only, which is
-  what was asked for. If reassignment should notify too, it is one more announce() call in
-  saveTaskEdits.
-
-Where the address comes from:
-- The roster in tasks-data.json now carries an "email" per person. A file written before that
-  field existed still works: personEmail falls back to GATE_USERS, the sign-in list, because
-  the ids on the two lists are deliberately the same four (dw / ce / ee / jb). The addresses
-  are the same ones already sitting in GATE_USERS, so repeating them in TASKS_FALLBACK
-  publishes nothing that was not already in this repository.
-
-Two routes, and which one runs depends on what is deployed:
-- /api/notify IS DEPLOYED — the email is sent from the firm's address the moment the task is
-  added. Nobody presses anything.
-- NOTHING DEPLOYED — a pre-written draft opens in the sender's own mail client, addressed and
-  filled in, and THEY press send. Same approach the public contact form takes, and the same
-  caveat: somebody on webmail with no default mail handler sees nothing happen, which is why
-  the toast names the recipient either way.
-- The second is not a broken version of the first. It is what a page with no server behind it
-  can honestly do, and it upgrades on its own the day the function is deployed. The page
-  probes GET /api/notify once per browser session, the same way it probes /api/agent.
-
-Deploying /api/notify (Vercel):
-- Set RESEND_API_KEY, and NOTIFY_FROM to a verified sender such as
-  "Modillion Dashboard <dashboard@modillionpartners.com>". Optionally NOTIFY_ALLOWED_ORIGIN,
-  the same fence /api/agent has.
-- Sending FROM @modillionpartners.com needs the domain verified with Resend first — three DNS
-  records. Until that is done the only usable sender is Resend's own onboarding@resend.dev,
-  which delivers to the account owner's address and nowhere else. Do that step before rolling
-  this out, or the team gets mail from a stranger's domain.
-- No key set is a supported state, not a broken one: GET returns 503, the probe fails, and the
-  page keeps opening drafts.
-- WHO IT WILL SEND TO. The endpoint is public — anything on the internet can POST to it, and
-  left open it would be a free spam relay wearing the firm's return address. The recipient is
-  checked before anything is sent: NOTIFY_ALLOWED_DOMAIN (one domain, default
-  modillionpartners.com) plus an optional NOTIFY_ALLOWED_RECIPIENTS list of exact addresses.
-  Anything matching neither is refused with 403. Widen it only as far as the roster needs.
-- There is no queue and no retry. A send that fails says so in the toast and falls back to
-  opening a draft, so the assignee is never left silently un-told. A failed email never stops
-  the task being added — the task is saved and on screen before the email is attempted.
-
-Tested 2026-08-19:
-- Against a local stub standing in for the deployed function: signed in as David Wolfson,
-  added "Confirm the Q2 investor report figures with the auditor by Friday, John, high". The
-  reader picked out John, 2026-08-21 and High; the page POSTed to jbrosens@modillionpartners.com
-  with the right task fields and "Assigned by: David Wolfson".
-- The three quiet cases were checked and all three stayed quiet: assigned to yourself,
-  unassigned, and the switch off. No email was sent to anybody but John.
-- What has NOT been exercised: api/notify.js itself against the live Resend API. That needs
-  the key and the verified domain above. The test above proves the page's half of it.
-- CONFIRMED 2026-09-15: THERE IS NO RESEND ACCOUNT AT ALL, so this endpoint has never sent a
-  single message and the page has been falling back to opening a draft the whole time — the
-  supported state described above, working as designed, but worth knowing it is the ONLY
-  state this has ever been in. DNS confirms it: no resend._domainkey record, no send.
-  subdomain, and the root SPF is Microsoft 365 alone
-  (v=spf1 include:spf.protection.outlook.com -all).
-- This is also why the sign-in uses passwords rather than magic links. If email is ever set
-  up, it fixes both at once — task notifications AND the option of going back to links.
-
-
-"Related to" now reaches operators too — 2026-08-19:
-- A task could hang off a deal or an investor. It can now hang off an OPERATOR as well, which
-  is the third thing the firm keeps records about and the one most tasks are actually about:
-  chasing a budget, a reforecast, a site visit write-up.
-- The picker now SAYS WHICH IS WHICH. Every option is labelled "— deal", "— deal, no folder
-  yet", "— investor" or "— operator", because three lists in one flat datalist meant a bare
-  name did not tell you whether you were relating a task to the sponsor or to the building
-  they run.
-- The one-line reader picks operators up too, after deals and investors, in that order: a deal
-  is one building, an investor is a firm, an operator is a firm whose name usually turns up in
-  a sentence that is really about one of its deals. Operator matching is WHOLE-NAME ONLY —
-  short names like "Arden" would fire on half the sentences typed here otherwise, and a wrong
-  link is worse than no link.
-- "Add operator" joins "Add investor" and "Add deal" under the field, and creates the record
-  with nothing but a name, same as the investor shortcut.
-- NAMES ARE NOW EXCLUSIVE ACROSS ALL THREE. A name already taken by a deal folder, a pending
-  deal, an investor or an operator is refused by all three shortcuts, each with its own
-  message. This is new for deals, which previously only checked investors. The reason is
-  below: "Related to" holds a NAME, so two records sharing one would both claim the same task
-  and neither would be wrong.
+Telling the assignee — email on a new task: REMOVED 2026-09-15, having never sent one:
+- A checkbox beside the Add button offered to email whoever a task was assigned to. It never
+  sent one automatically — that needed /api/notify, which needed a Resend key, and NO RESEND
+  ACCOUNT WAS EVER CREATED. Confirmed the same day two ways: DNS has no resend._domainkey
+  record and no send. subdomain (the root SPF is Microsoft 365 alone), and this file already
+  recorded that api/notify.js had never been run against the live Resend API.
+- What it ACTUALLY did was open a pre-filled draft in the sender's own mail client, under a
+  line promising it would send by itself "once /api/notify is deployed".
+- REMOVED RATHER THAN REWORDED. The firm has no mail provider and no plan for one, and a
+  switch advertising a capability nobody intends to build is worse than no switch at all. The
+  task list keeps everything else; only the email offer is gone.
+- api/notify.js WENT WITH IT. The news blast had already taken its only other caller earlier
+  the same day, so nothing imported it.
+- RESEND_API_KEY, NOTIFY_FROM, NOTIFY_ALLOWED_DOMAIN, NOTIFY_ALLOWED_RECIPIENTS and
+  NOTIFY_ALLOWED_ORIGIN are now read by nothing. None were ever set in production; if they are
+  ever set in a Vercel project, they do nothing.
+- IF TASK EMAIL IS EVER WANTED: set up a verified sending domain FIRST — that was the only
+  missing piece, not the code. Then bring both back from git history. api/notify.js was
+  complete, had an allow list on the recipient, and was tested against a stub; it was only
+  ever short of a mail account.
 
 Tasks on a record (Investor CRM, Operator CRM, Deal Pipeline) — added 2026-08-19:
 - "What is still outstanding on this?" gets asked of one deal, one investor or one operator
@@ -1111,9 +1042,10 @@ News blast — REMOVED 2026-09-15, and it had never once run:
   on a weekly pass of BILLABLE model calls that would still have failed to deliver for want of
   a Resend account. Deleted for the same reason the OneDrive connector was: a large file
   nothing calls is a file somebody eventually believes.
-- WHAT WENT WITH IT: api/notify.js loses sendDigest(), canSend() and composeDigest(), plus the
-  handler's kind:"digest" branch. Its task-notification half is untouched. api/_store.js keeps
-  every line — the overlay never cared who was appending.
+- WHAT WENT WITH IT: api/notify.js lost sendDigest(), canSend() and composeDigest(), plus the
+  handler's kind:"digest" branch, leaving only its task-notification half. THAT HALF WAS ITSELF
+  REMOVED LATER THE SAME DAY and the file is gone — see "Telling the assignee". api/_store.js
+  keeps every line: the overlay never cared who was appending.
 - THE REDIS KEYS ARE STILL THERE. modillion:base:mentions and modillion:overlay:mentions are
   now unreachable through the API, because `mentions` is off the SETS whitelist. They are a few
   KB of orphan and can be deleted from the Upstash console whenever somebody feels like it.
