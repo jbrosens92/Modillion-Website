@@ -74,6 +74,10 @@ import urllib.request
 
 DEFAULT_SITE = "https://www.modillionpartners.com"
 
+# Kept in step with api/_firms.js by hand; the server refuses an id it does
+# not know, so drift here fails loudly rather than writing somewhere odd.
+FIRMS = ("modillion", "fairwind")
+
 # set name -> (the list inside the document, what to call one)
 SETS = {
     "operators":   ("operators",   "operator"),
@@ -107,6 +111,11 @@ def call(url, key, payload=None):
 def main():
     ap = argparse.ArgumentParser(description="Remove same-id duplicate records.")
     ap.add_argument("--set", required=True, choices=sorted(SETS))
+    # Required and without a default, for the same reason as publish.py: this
+    # script ends in a publish, which replaces a base document and drops the
+    # overlay behind it. The wrong firm is another firm's records rewritten.
+    ap.add_argument("--firm", required=True, choices=sorted(FIRMS),
+                    help="which firm's records to dedupe (no default, on purpose)")
     ap.add_argument("--site", default=os.environ.get("MODILLION_SITE", DEFAULT_SITE))
     ap.add_argument("--dry-run", action="store_true", help="say what would go, send nothing")
     ap.add_argument("--backup-dir", default=".", help="where to write the before copy")
@@ -116,7 +125,7 @@ def main():
     key = os.environ.get("MODILLION_TOKEN", "")
     field, noun = SETS[args.set]
 
-    ok, got = call("%s/api/records?set=%s" % (site, args.set), key)
+    ok, got = call("%s/api/records?set=%s&firm=%s" % (site, args.set, args.firm), key)
     if not ok:
         print("Could not read: %s" % got, file=sys.stderr)
         return 1
@@ -124,7 +133,7 @@ def main():
     base = got.get("base") or {}
     rows = base.get(field) or []
     overlay = got.get("overlay") or {}
-    print("Read %d %ss from %s" % (len(rows), noun, site))
+    print("Read %d %ss from %s (%s)" % (len(rows), noun, site, args.firm))
     if overlay:
         print("  NOTE: the shared overlay is not empty (%s)." % ", ".join(sorted(overlay)))
         print("        Publishing drops the deltas it accounts for. Check with the team first.")
@@ -170,7 +179,7 @@ def main():
 
     doc = dict(base)
     doc[field] = kept
-    ok, out = call("%s/api/records?set=%s&op=publish" % (site, args.set), key,
+    ok, out = call("%s/api/records?set=%s&firm=%s&op=publish" % (site, args.set, args.firm), key,
                    {"doc": doc, "by": "dedupe-records.py"})
     if not ok:
         print("Publish failed: %s" % out, file=sys.stderr)
