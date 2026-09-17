@@ -8763,7 +8763,11 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
       return Auth.fetch(ENDPOINT + "?set=" + encodeURIComponent(set) + "&" + Firm.param() + "&op=publish", {
         method: "POST",
         headers: headers(),
-        body: JSON.stringify({ doc: doc, by: who || "", seen: seenCount[set] || 0 })
+        /* The firm travels on a publish too, and matters MORE here than
+           on an ordinary edit: publish replaces the base document
+           outright. The server compares it against the authorised
+           firm and refuses a mismatch with a 409. */
+        body: JSON.stringify({ doc: doc, firm: Firm.id(), by: who || "", seen: seenCount[set] || 0 })
       }).then(function (r) {
         /* The new base comes back, so the page can adopt it and drop the
            deltas it just folded in rather than holding a pile that is now

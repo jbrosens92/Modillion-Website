@@ -249,6 +249,36 @@ export default async function handler(req, res) {
          nobody could actually answer. */
       const by = user.email;
 
+      /* THE ONE CHECK THAT CATCHES A BUG IN THE BROWSER, and it sits
+         above BOTH branches below because publish is the more
+         destructive of the two — it replaces a base document outright.
+
+         Every other guard here answers "may this person reach this
+         firm". This one answers a different question: "is the page
+         sending what it thinks it is sending?"
+
+         The page namespaces its six localStorage overlays by firm, and
+         the modules capture those key names when they are DEFINED —
+         before any of them runs. If the Firm module ever resolved
+         late, a browser would read firm A's records and post them
+         here under a valid token, an authorised firm id and a
+         well-formed body. Nothing above could refuse it, and the union
+         merge has no undo (see the merge notes in _store.js).
+
+         So the page stamps the firm it believes it is into the body,
+         and this compares the two. It is read from payload.firm, where
+         the page puts it — NOT from inside the overlay. It was written
+         the other way first, which made it dead code that quietly
+         passed everything; a missing stamp is still allowed through on
+         purpose, because an older page cannot assert one. */
+      if (payload.firm && payload.firm !== user.firm) {
+        res.status(409).json({
+          error: "This edit was written for a different firm and has not been saved.",
+          signIn: false
+        });
+        return;
+      }
+
       /* PUBLISH — the old download-commit-push loop, as one call.
          The page sends its fully merged document; it becomes the new
          base and the deltas that produced it are dropped.
@@ -290,33 +320,6 @@ export default async function handler(req, res) {
          _store.js for why nothing is read first and why simultaneous
          writers therefore cannot clobber each other. */
       const delta = payload.overlay || payload;
-
-      /* THE ONE CHECK THAT CATCHES A BUG IN THE BROWSER.
-
-         Every other guard here answers "may this person reach this
-         firm". This one answers a different question: "is the page
-         sending what it thinks it is sending?"
-
-         The page namespaces its six localStorage overlays by firm,
-         and the modules capture those key names when they are
-         DEFINED — before any of them runs. If the Firm module ever
-         resolved late, a browser would read firm A's overlay and
-         push it here under a valid token, an authorised firm id and
-         a well-formed body. Nothing above could refuse it, and the
-         union merge HAS NO UNDO (see the merge notes in _store.js):
-         the other firm's records would simply absorb it.
-
-         So the page stamps the firm it believes it is into the
-         delta, and this compares the two. It costs a string
-         comparison and it is the only place a client-side ordering
-         mistake can be stopped. */
-      if (delta && typeof delta === "object" && delta.firm && delta.firm !== user.firm) {
-        res.status(409).json({
-          error: "This edit was written for a different firm and has not been saved.",
-          signIn: false
-        });
-        return;
-      }
 
       await db.appendOverlay(set, delta);
 
