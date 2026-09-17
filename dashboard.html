@@ -22214,7 +22214,28 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
     for (var i = 0; i < GATE_USERS.length; i++) {
       if (GATE_USERS[i].username === email) return GATE_USERS[i];
     }
-    /* Signed in, allowed by the server, not on the roster above. Show the
+
+    /* THEN THE FIRM'S OWN ROSTER, which lives in the tasks record set
+       rather than in this file.
+
+       That is the better place for it and increasingly the only one: a
+       roster held here is published, because this page is served to
+       anybody who asks for it. Modillion's four were already public
+       before any of this and stay where they are; a second firm's
+       people should not have to be, and do not need to be — the record
+       set is behind the same sign-in as everything else, and it is
+       already where the Owner and Assignee lists come from.
+
+       So a firm can keep its roster entirely in its data and still get
+       names in the corner and a working "Mine". */
+    var roster = (typeof Tasks !== "undefined" && Tasks.team) ? Tasks.team() : [];
+    for (var j = 0; j < roster.length; j++) {
+      if (roster[j].email && roster[j].email.toLowerCase() === email) {
+        return { id: roster[j].id || "", name: roster[j].name || email, username: email };
+      }
+    }
+
+    /* Signed in, allowed by the server, on neither list. Show the
        address rather than nothing — being told you are nobody is worse
        than being told you are an email address. */
     return { id: "", name: email, username: email };
