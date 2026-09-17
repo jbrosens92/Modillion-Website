@@ -2023,21 +2023,28 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
 .crmtable[data-reorder="deal"] thead th { white-space: normal; }
 .crmtable[data-reorder="deal"] thead th button { display: block; }
 
-.crmtable[data-reorder="deal"] thead th:nth-child(1)  { width: 14.2%; }  /* Deal        */
-.crmtable[data-reorder="deal"] thead th:nth-child(2)  { width: 8.2%; }   /* Operator    */
-/* A shade wider than the operator beside it, and the width was chosen
-   by a name rather than by symmetry: an LP is a fund manager and its
-   name runs long. */
-.crmtable[data-reorder="deal"] thead th:nth-child(3)  { width: 9.2%; }   /* LP          */
-.crmtable[data-reorder="deal"] thead th:nth-child(4)  { width: 9.1%; }   /* Status      */
-.crmtable[data-reorder="deal"] thead th:nth-child(5)  { width: 8%; }     /* Market      */
-.crmtable[data-reorder="deal"] thead th:nth-child(6)  { width: 7.9%; }   /* Asset class */
-.crmtable[data-reorder="deal"] thead th:nth-child(7)  { width: 5.9%; }   /* Deal size   */
-.crmtable[data-reorder="deal"] thead th:nth-child(8)  { width: 5.9%; }   /* GP check    */
-.crmtable[data-reorder="deal"] thead th:nth-child(9)  { width: 5.9%; }   /* MP GP check */
-.crmtable[data-reorder="deal"] thead th:nth-child(10) { width: 5.9%; }   /* LP check    */
-.crmtable[data-reorder="deal"] thead th:nth-child(11) { width: 7.2%; }   /* Added       */
-.crmtable[data-reorder="deal"] thead th:nth-child(12) { width: 12.6%; }  /* Actions     */
+/* WIDTHS BY COLUMN, NOT BY POSITION.
+
+   These were nth-child rules, which quietly reassign themselves the
+   moment a firm drops a column: remove one at position 9 and every
+   width after it belongs to its neighbour. Each th now carries
+   data-col, so a width follows the column it was measured for and a
+   firm with a different set of columns needs no new CSS at all.
+
+   They no longer sum to 100%, and do not need to: table-layout is
+   fixed, so the browser shares out whatever is left over. */
+.crmtable[data-reorder="deal"] thead th[data-col="name"]       { width: 14.2%; }
+.crmtable[data-reorder="deal"] thead th[data-col="operator"]   { width: 8.2%; }
+.crmtable[data-reorder="deal"] thead th[data-col="lp"]         { width: 9.2%; }
+.crmtable[data-reorder="deal"] thead th[data-col="status"]     { width: 9.1%; }
+.crmtable[data-reorder="deal"] thead th[data-col="market"]     { width: 8%; }
+.crmtable[data-reorder="deal"] thead th[data-col="assetClass"] { width: 7.9%; }
+.crmtable[data-reorder="deal"] thead th[data-col="dealSize"]   { width: 5.9%; }
+.crmtable[data-reorder="deal"] thead th[data-col="gpCheck"]    { width: 5.9%; }
+.crmtable[data-reorder="deal"] thead th[data-col="mpGpCheck"]  { width: 5.9%; }
+.crmtable[data-reorder="deal"] thead th[data-col="lpCheck"]    { width: 5.9%; }
+.crmtable[data-reorder="deal"] thead th[data-col="addedAt"]    { width: 7.2%; }
+.crmtable[data-reorder="deal"] thead th.crm-actions            { width: 12.6%; }
 
 /* One line, clipped at the column's edge. The flex is so that a mark
    keeps its place at the end rather than being eaten by the ellipsis:
@@ -4661,6 +4668,10 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
            the label written in the markup or the code, so a firm that
            talks like Modillion needs nothing here. */
         labels: {},
+        /* Optional fields this firm does NOT keep. Empty here: Modillion
+           writes part of the GP cheque itself, so it needs the column
+           that says how much. */
+        omitFields: [],
         /* The roster, and it is per firm for a reason worth stating.
            Left global, a Fairwind user's assignee picker would offer
            Modillion's partners by name — and because Tasks.team()
@@ -4715,6 +4726,18 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
           operator: "Property Manager",
           operatorsAll: "All property managers"
         },
+        /* GP CHECK AND "FW GP CHECK" ARE THE SAME NUMBER HERE.
+           Modillion keeps both because it writes only part of the GP
+           cheque on a deal somebody else is sponsoring — the whole
+           cheque, and its own share of it, are two facts. Fairwind
+           sponsors its own, so they are one fact written twice, and a
+           column that always repeats the one beside it is worse than
+           no column.
+
+           The FIELD is not removed: mpGpCheck stays in the record and
+           in the published file, so nothing is lost and a firm that
+           later wants the column back gets its data back with it. */
+        omitFields: ["mpGpCheck"],
         /* EMPTY ON PURPOSE, and not a placeholder to fill casually.
            An empty roster degrades correctly: signedInUser() falls
            back to the address on the token, which is the documented
@@ -4782,6 +4805,11 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
          missing one — it is simply unchanged. */
       label:   function (key, fallback) {
                  return (f.labels && f.labels[key]) || fallback;
+               },
+      /* Does this firm keep that field? Everything is kept unless a firm
+         says otherwise, so a new field needs no entry anywhere. */
+      hasField: function (key) {
+                 return (f.omitFields || []).indexOf(key) < 0;
                },
       has:     function (tab) { return f.tabs.indexOf(tab) >= 0; },
       key:     key,
@@ -5924,13 +5952,19 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
     /* Each tab is one area now, so every row of either list would carry
        the same "Where" — it is on the deal itself, where it can be read
        and changed, rather than repeated down the page. */
-    var cols = DEAL_COLUMNS.filter(function (c) { return c.key !== "area"; });
+    var cols = DEAL_COLUMNS.filter(function (c) {
+      return c.key !== "area" && Firm.hasField(c.key);
+    });
 
     var sortKey = dealSortKey(scope);
 
     var head = cols.map(function (c) {
       var sorted = sortKey === c.key;
-      return '<th class="' + (sorted ? "is-sorted" : "") + '">' +
+      /* data-col carries the column's identity into the DOM so its width
+         can be set by WHICH column it is rather than by where it sits.
+         The widths used to be nth-child rules, which silently reassign
+         themselves the moment a firm drops a column. */
+      return '<th data-col="' + c.key + '" class="' + (sorted ? "is-sorted" : "") + '">' +
              '<button type="button" data-dealsort="' + c.key + '">' + c.label +
              '<span class="arrow">' + (sorted && st.sortDir === "asc" ? "↑" : "↓") + '</span>' +
              '</button></th>';
@@ -5944,6 +5978,9 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
          table, so they are not here — what the list shows is what the row
          can change, and the rest is the deal's own page. */
       if (RowEdit.on("deal", rec.id)) {
+        /* A third element names the field, so an optional one can be
+           dropped by the same rule as its column. RowEdit.form reads
+           only [0] and [1], so it costs nothing. */
         return RowEdit.form("deal", rec.id, cols.length + 1, [
           ["Deal", RowEdit.text("name", rec.name)],
           [Firm.label("operator", "Operator"), RowEdit.text("operator", rec.operator, ' list="dealOperatorNames"')],
@@ -5953,12 +5990,14 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
           ["Asset class", RowEdit.text("assetClass", rec.assetClass)],
           ["Deal size", RowEdit.text("dealSize", rec.dealSize, ' placeholder="$42m"')],
           ["GP check", RowEdit.text("gpCheck", rec.gpCheck, ' placeholder="$4m"')],
-          [Firm.short() + " GP check", RowEdit.text("mpGpCheck", rec.mpGpCheck, ' placeholder="$1.2m"')],
+          [Firm.short() + " GP check",
+           RowEdit.text("mpGpCheck", rec.mpGpCheck, ' placeholder="$1.2m"'), "mpGpCheck"],
           ["LP check", RowEdit.text("lpCheck", rec.lpCheck, ' placeholder="$38m"')],
           // Stamped when the record was written down, and not editable:
           // a date somebody could change is not a record of anything.
           ["Added", RowEdit.stat(rec.addedAt || "Not recorded")]
-        ], "Enter saves · Esc cancels");
+        ].filter(function (f) { return !f[2] || Firm.hasField(f[2]); }),
+          "Enter saves · Esc cancels");
       }
       /* ONE DEAL, ONE LINE. Nothing in a row wraps and nothing sits under
          anything else: a list where one deal is four lines deep and the
@@ -5987,7 +6026,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
         dealCell(rec.assetClass, "asset", rec.debt ? dealMark("debt", "Debt is recorded on this deal") : "") +
         dealMoneyCell(rec.dealSize) +
         dealMoneyCell(rec.gpCheck) +
-        dealMoneyCell(rec.mpGpCheck) +
+        (Firm.hasField("mpGpCheck") ? dealMoneyCell(rec.mpGpCheck) : "") +
         dealMoneyCell(rec.lpCheck) +
         '<td class="crm-date">' + (rec.addedAt ? esc(rec.addedAt) : '<span class="muted">—</span>') + '</td>' +
         '<td class="crm-actions">' + dealRowActions(rec, pile) + '</td>' +
@@ -6249,7 +6288,8 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
       dealField("Asset class", rec.assetClass) +
       dealField("Deal size", dealMoneyText(rec.dealSize)) +
       dealField("GP equity check", dealMoneyText(rec.gpCheck)) +
-      dealField(Firm.short() + " GP check", dealMoneyText(rec.mpGpCheck)) +
+      (Firm.hasField("mpGpCheck")
+        ? dealField(Firm.short() + " GP check", dealMoneyText(rec.mpGpCheck)) : "") +
       dealField("LP equity check", dealMoneyText(rec.lpCheck)) +
       dealField("Added", rec.addedAt) +
       dealField("Note", rec.note, true) +
@@ -6900,8 +6940,10 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
           text("dealEditSize", rec.dealSize, "$42m — total capitalisation")) +
         field("dealEditGpCheck", "GP equity check",
           text("dealEditGpCheck", rec.gpCheck, "$4m — the whole GP cheque")) +
-        field("dealEditMpGpCheck", Firm.short() + " GP check",
-          text("dealEditMpGpCheck", rec.mpGpCheck, "$1.2m — " + Firm.name() + "'s share of it")) +
+        (Firm.hasField("mpGpCheck")
+          ? field("dealEditMpGpCheck", Firm.short() + " GP check",
+              text("dealEditMpGpCheck", rec.mpGpCheck, "$1.2m — " + Firm.name() + "'s share of it"))
+          : "") +
         field("dealEditLpCheck", "LP equity check",
           text("dealEditLpCheck", rec.lpCheck, "$38m — what sits beside it")) +
         field("dealEditNote", "Note", text("dealEditNote", rec.note), true) +
@@ -7846,16 +7888,22 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
     var list = Deals.inArea(scope.area);
     var sheets = [{
       name: isClosed ? "Closed deals" : "Deals",
+      /* The header and the row are built from the same flag, so the
+         column cannot go missing from one and not the other — which is
+         how a spreadsheet ends up with every value one cell to the left
+         of its heading. */
       rows: [["Deal", Firm.label("operator", "Operator"), "LP", "Where", "Status", "Why", "Market", "Asset class",
-              "Deal size", "GP equity check", Firm.short() + " GP check", "LP equity check",
-              "Note", "Added"]]
+              "Deal size", "GP equity check"]
+              .concat(Firm.hasField("mpGpCheck") ? [Firm.short() + " GP check"] : [])
+              .concat(["LP equity check", "Note", "Added"])]
         .concat(list.map(function (r) {
           /* As typed, not as printed. This sheet is somebody's working
              copy — "$42,000,000" is what they can put in a formula, and
              "$42m" is what they would have to undo first. */
           return [r.name, r.operator, r.lp, dealAreaLabel(r.area), r.status, r.statusWhy,
-                  r.market, r.assetClass, r.dealSize, r.gpCheck, r.mpGpCheck,
-                  r.lpCheck, r.note, r.addedAt];
+                  r.market, r.assetClass, r.dealSize, r.gpCheck]
+                  .concat(Firm.hasField("mpGpCheck") ? [r.mpGpCheck] : [])
+                  .concat([r.lpCheck, r.note, r.addedAt]);
         }))
     }];
     var withDebt = isClosed
@@ -7997,9 +8045,11 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
         field("dealNewGpCheck", "GP equity check",
           '<input type="text" id="dealNewGpCheck" autocomplete="off" placeholder="$4m">' +
           note("The whole GP cheque on the deal, whoever writes it.")) +
-        field("dealNewMpGpCheck", Firm.short() + " GP check",
-          '<input type="text" id="dealNewMpGpCheck" autocomplete="off" placeholder="$1.2m">' +
-          note(Firm.short() + " is " + Firm.name() + " \u2014 our own share of the GP cheque above.")) +
+        (Firm.hasField("mpGpCheck")
+          ? field("dealNewMpGpCheck", Firm.short() + " GP check",
+              '<input type="text" id="dealNewMpGpCheck" autocomplete="off" placeholder="$1.2m">' +
+              note(Firm.short() + " is " + Firm.name() + " \u2014 our own share of the GP cheque above."))
+          : "") +
         field("dealNewLpCheck", "LP equity check",
           '<input type="text" id="dealNewLpCheck" autocomplete="off" placeholder="$38m">') +
         field("dealNewNote", "Note",
@@ -8066,7 +8116,11 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
     var note     = $("dealNewNote").value.trim();
     var dealSize = $("dealNewSize").value.trim();
     var gpCheck  = $("dealNewGpCheck").value.trim();
-    var mpGpCheck = $("dealNewMpGpCheck").value.trim();
+    /* The box is not drawn for a firm that does not keep this field, and
+       $() would throw on it. Absent reads as empty, which is what the
+       record should then carry. */
+    var mpGpEl = $("dealNewMpGpCheck");
+    var mpGpCheck = mpGpEl ? mpGpEl.value.trim() : "";
     var lpCheck  = $("dealNewLpCheck").value.trim();
 
     // An operator already on the Operator CRM picks the deal up on their
