@@ -1653,6 +1653,10 @@ button.link-arrow {
   cursor: pointer;
   transition: color .2s ease, border-color .2s ease;
 }
+/* The rule above sets a display on these, which outranks the browser's
+   own [hidden] rule — the same trap documented on .crm-field below. A
+   tab hidden by the attribute would otherwise stay on screen. */
+.dash-tabs button[hidden] { display: none; }
 .dash-tabs button:hover { color: var(--deep-space); }
 .dash-tabs button.is-active {
   color: var(--deep-space);
@@ -4816,14 +4820,26 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
       hero.className = hero.className.replace(/page-hero--[\w-]+/, Firm.hero());
     }
 
-    /* Tabs a firm does not have are REMOVED, not hidden. Each Home
-       tile counts records by calling straight into a module singleton,
-       so a tab that is merely hidden still renders, still counts, and
-       still shows up on the Home grid. */
+    /* HIDDEN, NOT REMOVED — and the difference is not cosmetic.
+
+       Every tab button contains its own count span (#tabOperatorCount
+       and its seven siblings). Removing a button takes that span out of
+       the document, and the render function for that module then writes
+       to null and THROWS. Because those renders are called in sequence
+       from load(), the throw took out everything after it: the live
+       poll never started and the assistant never initialised. One
+       missing tab quietly broke two features on the other side of the
+       file.
+
+       Hiding keeps every id in the document. The render still runs,
+       still writes its count, and nobody sees it. The Home tiles are
+       filtered separately in renderHome(), which is where that belongs
+       anyway — a tile calls into a module singleton for its number, so
+       it has to be left out of the list rather than hidden in CSS. */
     Array.prototype.forEach.call(
       document.querySelectorAll(".dash-tabs [data-tab]"),
       function (btn) {
-        if (!Firm.has(btn.getAttribute("data-tab"))) btn.remove();
+        if (!Firm.has(btn.getAttribute("data-tab"))) btn.hidden = true;
       }
     );
   }
