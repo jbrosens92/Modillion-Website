@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex, nofollow">
-<title>Company Dashboard | Modillion Partners</title>
+<title data-brand="title">Company Dashboard | Modillion Partners</title>
 <link rel="icon" type="image/png" href="favicon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -3715,7 +3715,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
         <div class="dash-gate__row dash-gate__row--single">
           <input type="email" id="gateEmail" name="email"
                  autocomplete="username" spellcheck="false" autocapitalize="none"
-                 placeholder="name@modillionpartners.com"
+                 data-brand="gate-email" placeholder="name@modillionpartners.com"
                  aria-describedby="gateError" required>
         </div>
 
@@ -3737,7 +3737,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
         a new password to be set; there is no reset email.
       </p>
 
-      <a class="dash-gate__back" href="index.html">← modillionpartners.com</a>
+      <a class="dash-gate__back" data-brand="gate-back" href="index.html">← modillionpartners.com</a>
     </div>
   </div>
 </div>
@@ -3749,7 +3749,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
 
   <header class="site-header is-solid dash-topbar">
     <div class="container header-inner">
-      <a href="index.html" class="brand"><img src="images/modillion-logo-white.png" alt="Modillion Partners"></a>
+      <a href="index.html" class="brand"><img data-brand="logo" src="images/modillion-logo-white.png" alt="Modillion Partners"></a>
       <span class="dash-topbar__label">Company Dashboard</span>
       <div class="dash-user">
         <span class="dash-user__avatar" id="userAvatar" aria-hidden="true">—</span>
@@ -3769,7 +3769,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
     </div>
   </div>
 
-  <section class="page-hero page-hero--nyc-lobby dash-hero">
+  <section class="page-hero page-hero--nyc-lobby dash-hero" data-brand="hero">
     <div class="container">
       <p class="eyebrow">Internal</p>
       <h1>Company Dashboard</h1>
@@ -3929,7 +3929,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
 
           <div class="dash-report__head">
             <div>
-              <p class="eyebrow">Modillion Partners — Internal</p>
+              <p class="eyebrow" data-brand="report-eyebrow">Modillion Partners — Internal</p>
               <h2 id="closedReportTitle"></h2>
               <p class="dash-report__meta" id="closedReportMeta"></p>
             </div>
@@ -4557,11 +4557,11 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
       <div class="site-footer__main">
         <nav class="site-footer__nav" aria-label="Footer navigation">
           <a href="index.html">Public site</a>
-          <a href="mailto:info@modillionpartners.com">Report a problem</a>
+          <a data-brand="contact" href="mailto:info@modillionpartners.com">Report a problem</a>
         </nav>
       </div>
       <div class="site-footer__bottom">
-        <span>&copy; 2026 Modillion Partners. Internal use only.</span>
+        <span data-brand="footer">&copy; 2026 Modillion Partners. Internal use only.</span>
         <span>Confidential — do not distribute.</span>
       </div>
     </div>
@@ -4583,6 +4583,240 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
 <script>
 (function () {
   "use strict";
+
+  /* ============================================================
+     FIRM — which firm's dashboard this is
+
+     THIS MUST STAY THE FIRST THING IN THIS SCRIPT. Not as a matter of
+     taste: Auth captures SESSION_KEY, and each of the six record
+     modules captures its OVERLAY_KEY, WHEN THEY ARE DEFINED — which
+     is while this script is being evaluated, long before boot() runs.
+     Every one of those names is now namespaced by firm. Resolve the
+     firm below any of them and a browser reads one firm's overlay
+     under another firm's name, INSIDE THE BROWSER, with no server
+     involved and therefore no server able to refuse it.
+
+     There is a backstop for exactly that mistake — every overlay
+     carries the firm it was written for, and /api/records refuses a
+     delta whose firm does not match (409) — but a backstop is not a
+     reason to get the order wrong. The seven capture sites each carry
+     a one-line comment saying so.
+
+     ------------------------------------------------------------
+     THIS IS A SELECTOR. IT IS NOT A PERMISSION.
+
+     ?firm= is a query parameter, which means it is whatever anyone
+     types. It picks a URL to call and a set of storage keys to use.
+     It does NOT decide what may be read: the server checks the
+     signed-in address against the firm on every single request, and
+     the id in this file has no bearing on that answer.
+
+     Same stance as GATE_USERS further down, and for the same reason.
+
+     ABSENT DEFAULTS, UNRECOGNISED REFUSES, and they are different
+     cases on purpose:
+
+       absent         every bookmark predating this change has no
+                      ?firm and all of them are Modillion's.
+       unrecognised   REFUSE. Do not normalise to the default. If a
+                      mistyped ?firm=fiarwind quietly became
+                      modillion, the server would receive a
+                      legitimate request from someone who may well
+                      hold Modillion access and answer it correctly —
+                      so a typo becomes a silent tenant switch, which
+                      is the exact outcome this whole change exists to
+                      prevent. The client's helpfulness is what
+                      defeats the server's check.
+
+     WHAT IS SAFE TO PUT IN THIS OBJECT: this file is served to
+     anybody who asks for it, so it holds display name, short name,
+     logo and tab list and NOTHING ELSE. The email domains, the
+     cross-firm grants and the strategy sentence the assistant is
+     briefed with live in api/_firms.js and never come here. The
+     duplication is deliberate — folding the two together either
+     publishes the access rules or blocks this page on a fetch before
+     it can paint a sign-in form.
+     ============================================================ */
+  var Firm = (function () {
+    var FIRMS = {
+      modillion: {
+        id: "modillion",
+        name: "Modillion Partners",
+        /* Labels the "MP GP check" column — the reader's own share of
+           the GP cheque. The FIELD KEY stays `mpGpCheck` for every
+           firm, because it is in records already stored; only the
+           label follows whoever is reading. */
+        short: "MP",
+        logo: "images/modillion-logo-white.png",
+        hero: "page-hero--nyc-lobby",
+        site: "modillionpartners.com",
+        contact: "info@modillionpartners.com",
+        tabs: ["home","docs","closed","raises","operators","crm","partners","tasks","competitors"],
+        /* The roster, and it is per firm for a reason worth stating.
+           Left global, a Fairwind user's assignee picker would offer
+           Modillion's partners by name — and because Tasks.team()
+           is part of what the page sends the assistant, those names
+           and addresses would go to the model on a Fairwind turn.
+           No error, no warning, nothing to notice.
+
+           These four addresses were already in this public file
+           before the firm split; nothing new is published here. */
+        people: [
+          { id: "dw", name: "David Wolfson", role: "Managing Partner", username: "dwolfson@modillionpartners.com" },
+          { id: "ce", name: "Corey Ernst",   role: "Partner",          username: "cernst@modillionpartners.com" },
+          { id: "ee", name: "Eric Emrich",   role: "Partner, CFO",     username: "eemrich@modillionpartners.com" },
+          { id: "jb", name: "John Brosens",  role: "Partner",          username: "jbrosens@modillionpartners.com" }
+        ]
+      },
+      fairwind: {
+        id: "fairwind",
+        name: "Fairwind",
+        short: "FW",
+        logo: "images/fairwind-logo.png",
+        hero: "page-hero--philly-sunset",
+        site: "fairwind-partners.com",
+        contact: "",
+        tabs: ["home","docs","closed","raises","operators","crm","partners","tasks","competitors"],
+        /* EMPTY ON PURPOSE, and not a placeholder to fill casually.
+           An empty roster degrades correctly: signedInUser() falls
+           back to the address on the token, which is the documented
+           behaviour for anyone not on the list. Seeding it with
+           Modillion's names instead would be silently wrong. Fill it
+           when Fairwind's own people have accounts — and note that
+           this file is served publicly, so what goes here is
+           published. */
+        people: []
+      }
+    };
+
+    var DEFAULT_ID = "modillion";
+
+    function requested() {
+      var m = /[?&]firm=([^&]*)/.exec(window.location.search || "");
+      return m ? decodeURIComponent(m[1]).trim().toLowerCase() : "";
+    }
+
+    var asked = requested();
+    var id = asked || DEFAULT_ID;
+    var known = Object.prototype.hasOwnProperty.call(FIRMS, id);
+
+    /* Refusing means refusing. The page does not load a firm's worth
+       of modules and then apologise — it says so and stops, because
+       the alternative is a dashboard that looks like it is working. */
+    if (!known) {
+      document.documentElement.innerHTML =
+        '<head><meta charset="utf-8"><title>Unknown firm</title></head><body style="' +
+        'margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;' +
+        'background:#06132B;color:#E2EAF3;font:16px/1.6 system-ui,-apple-system,sans-serif;' +
+        'text-align:center;padding:24px">' +
+        '<div><p style="font-size:1.25rem;margin:0 0 .5rem">Unknown firm.</p>' +
+        '<p style="color:#77A6B6;margin:0 0 1.5rem">There is no dashboard for &ldquo;' +
+        String(asked).replace(/[&<>"]/g, "") + '&rdquo;.</p>' +
+        Object.keys(FIRMS).map(function (k) {
+          return '<a href="dashboard.html?firm=' + k + '" style="color:#E2EAF3;margin:0 .75rem">' +
+                 FIRMS[k].name + '</a>';
+        }).join("") + '</div></body>';
+      throw new Error("Unknown firm: " + asked);
+    }
+
+    var f = FIRMS[id];
+
+    /* Storage keys. Modillion keeps the bare `modillion-*` names it
+       has always used, so nobody's queued local edits vanish the day
+       this ships; every other firm gets its own prefix. Two firms in
+       one browser therefore share nothing — including the session, so
+       a person with access to both can hold both sign-ins at once
+       instead of being signed out of one by visiting the other. */
+    function key(suffix) { return id + "-" + suffix; }
+
+    return {
+      id:      function () { return id; },
+      name:    function () { return f.name; },
+      short:   function () { return f.short; },
+      logo:    function () { return f.logo; },
+      hero:    function () { return f.hero; },
+      site:    function () { return f.site; },
+      contact: function () { return f.contact; },
+      tabs:    function () { return f.tabs.slice(); },
+      people:  function () { return (f.people || []).slice(); },
+      has:     function (tab) { return f.tabs.indexOf(tab) >= 0; },
+      key:     key,
+      /* Appended to every /api/* call. The server ignores it in favour
+         of what the token is granted — see api/_auth.js — so this is
+         a request for a firm, never an assertion of one. */
+      param:   function () { return "firm=" + encodeURIComponent(id); },
+      ids:     function () { return Object.keys(FIRMS); }
+    };
+  })();
+
+  /* The seed files behind the shared store — the ones each module
+     falls back to when Redis is unreachable. One folder per firm, with
+     no exception carved out for Modillion: a single missing "firms/"
+     is a far easier mistake to see than one firm's records quietly
+     being read from another firm's file.
+
+     A miss here is not fatal. Each module catches it and falls back to
+     the small constant compiled into this page, which is what already
+     happened when the file was absent. */
+  function seedFile(name) { return "firms/" + Firm.id() + "/" + name; }
+
+  /* ============================================================
+     BRANDING — the firm's name on the firm's dashboard
+
+     The markup carries Modillion's values and a data-brand hook on
+     each node it can reach. That is deliberate rather than lazy: the
+     page is correct before this runs and correct if it never does,
+     which is the right failure for a cosmetic pass. Nothing here
+     decides what may be read.
+
+     It runs before the gate is painted, so nobody watches one firm's
+     name be replaced by another's.
+     ============================================================ */
+  function applyBranding() {
+    var name = Firm.name();
+
+    function at(hook) { return document.querySelector('[data-brand="' + hook + '"]'); }
+    function text(hook, value) { var el = at(hook); if (el) el.textContent = value; }
+
+    text("title", "Company Dashboard | " + name);
+    text("footer", "© 2026 " + name + ". Internal use only.");
+    text("report-eyebrow", name + " — Internal");
+
+    var logo = at("logo");
+    if (logo) { logo.src = Firm.logo(); logo.alt = name; }
+
+    var back = at("gate-back");
+    if (back) back.textContent = "← " + Firm.site();
+
+    var email = at("gate-email");
+    if (email) email.placeholder = "name@" + Firm.site();
+
+    /* A firm with no address to report problems to should not be shown
+       a link that opens an empty mail window. */
+    var contact = at("contact");
+    if (contact) {
+      if (Firm.contact()) contact.href = "mailto:" + Firm.contact();
+      else contact.remove();
+    }
+
+    /* The hero photograph, so two dashboards open on different images
+       and nobody mistakes one tab for the other at a glance. */
+    var hero = at("hero");
+    if (hero && Firm.hero()) {
+      hero.className = hero.className.replace(/page-hero--[\w-]+/, Firm.hero());
+    }
+
+    /* Tabs a firm does not have are REMOVED, not hidden. Each Home
+       tile counts records by calling straight into a module singleton,
+       so a tab that is merely hidden still renders, still counts, and
+       still shows up on the Home grid. */
+    Array.prototype.forEach.call(
+      document.querySelectorAll(".dash-tabs [data-tab]"),
+      function (btn) {
+        if (!Firm.has(btn.getAttribute("data-tab"))) btn.remove();
+      }
+    );
+  }
 
   /* ============================================================
      AUTH — who is looking, and the only reason the records are safe
@@ -4698,7 +4932,9 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
        or unattended machine stays signed in until Sign out — which is
        the same trade every webmail client makes, and Sign out is in
        the corner of every page. */
-    var SESSION_KEY = "modillion-session";
+    /* Firm.key() — captured HERE, while this module is being defined,
+       which is why the Firm module must resolve above it. See Firm. */
+    var SESSION_KEY = Firm.key("session");
 
     var session = null;
     var refreshing = null;         // dedupes concurrent refreshes
@@ -5244,7 +5480,9 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
     { key: "assetClass", label: "Asset class" },
     { key: "dealSize",   label: "Deal size" },
     { key: "gpCheck",    label: "GP check" },
-    { key: "mpGpCheck",  label: "MP GP check" },
+    /* The KEY stays mpGpCheck for every firm — it is in records that
+       are already stored. Only the label follows whoever is reading. */
+    { key: "mpGpCheck",  label: Firm.short() + " GP check" },
     { key: "lpCheck",    label: "LP check" },
     { key: "addedAt",    label: "Added" }
   ];
@@ -5622,7 +5860,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
           ["Asset class", RowEdit.text("assetClass", rec.assetClass)],
           ["Deal size", RowEdit.text("dealSize", rec.dealSize, ' placeholder="$42m"')],
           ["GP check", RowEdit.text("gpCheck", rec.gpCheck, ' placeholder="$4m"')],
-          ["MP GP check", RowEdit.text("mpGpCheck", rec.mpGpCheck, ' placeholder="$1.2m"')],
+          [Firm.short() + " GP check", RowEdit.text("mpGpCheck", rec.mpGpCheck, ' placeholder="$1.2m"')],
           ["LP check", RowEdit.text("lpCheck", rec.lpCheck, ' placeholder="$38m"')],
           // Stamped when the record was written down, and not editable:
           // a date somebody could change is not a record of anything.
@@ -5918,7 +6156,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
       dealField("Asset class", rec.assetClass) +
       dealField("Deal size", dealMoneyText(rec.dealSize)) +
       dealField("GP equity check", dealMoneyText(rec.gpCheck)) +
-      dealField("MP GP check", dealMoneyText(rec.mpGpCheck)) +
+      dealField(Firm.short() + " GP check", dealMoneyText(rec.mpGpCheck)) +
       dealField("LP equity check", dealMoneyText(rec.lpCheck)) +
       dealField("Added", rec.addedAt) +
       dealField("Note", rec.note, true) +
@@ -6569,8 +6807,8 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
           text("dealEditSize", rec.dealSize, "$42m — total capitalisation")) +
         field("dealEditGpCheck", "GP equity check",
           text("dealEditGpCheck", rec.gpCheck, "$4m — the whole GP cheque")) +
-        field("dealEditMpGpCheck", "MP GP check",
-          text("dealEditMpGpCheck", rec.mpGpCheck, "$1.2m — Modillion's share of it")) +
+        field("dealEditMpGpCheck", Firm.short() + " GP check",
+          text("dealEditMpGpCheck", rec.mpGpCheck, "$1.2m — " + Firm.name() + "'s share of it")) +
         field("dealEditLpCheck", "LP equity check",
           text("dealEditLpCheck", rec.lpCheck, "$38m — what sits beside it")) +
         field("dealEditNote", "Note", text("dealEditNote", rec.note), true) +
@@ -7500,7 +7738,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
     }
 
     download(Xlsx.build(sheets),
-      "modillion-capital-raises-" + new Date().toISOString().slice(0, 10) + ".xlsx");
+      Firm.id() + "-capital-raises-" + new Date().toISOString().slice(0, 10) + ".xlsx");
     toast("Excel workbook downloaded \u2014 " + countOf(list.length, "raise") +
           (lines.length ? ", " + countOf(lines.length, "commitment") : "") + ".");
   }
@@ -7516,7 +7754,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
     var sheets = [{
       name: isClosed ? "Closed deals" : "Deals",
       rows: [["Deal", "Operator", "LP", "Where", "Status", "Why", "Market", "Asset class",
-              "Deal size", "GP equity check", "MP GP check", "LP equity check",
+              "Deal size", "GP equity check", Firm.short() + " GP check", "LP equity check",
               "Note", "Added"]]
         .concat(list.map(function (r) {
           /* As typed, not as printed. This sheet is somebody's working
@@ -7540,7 +7778,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
       });
     }
     download(Xlsx.build(sheets),
-      "modillion-" + (isClosed ? "closed-deals-" : "pipeline-") +
+      Firm.id() + "-" + (isClosed ? "closed-deals-" : "pipeline-") +
       new Date().toISOString().slice(0, 10) + ".xlsx");
     toast("Excel workbook downloaded — " + list.length +
           (isClosed ? " closed deals" : " deals") +
@@ -7553,19 +7791,24 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
                      "Six", "Seven", "Eight", "Nine"];
 
   function renderHome() {
+    /* Only this firm's tabs. A tile calls straight into a module
+       singleton for its count, so a tab the firm does not have has to
+       be filtered out here rather than hidden in CSS — and the lede
+       counts the same list, so the two cannot disagree. */
+    var tiles = HOME_TILES.filter(function (t) { return Firm.has(t.tab); });
     /* THE COUNT IS WRITTEN FROM THE LIST, not typed into the sentence.
        It read "Seven workspaces" while eight tiles were drawn below it —
        an eighth was added and the prose was not, which is what a number
        kept in two places always eventually does. */
     var lede = $("homeLede");
     if (lede) {
-      var n = HOME_TILES.length;
+      var n = tiles.length;
       lede.textContent = (COUNT_WORDS[n] || n) + " workspace" + (n === 1 ? "" : "s") +
         ", each backed by its own data. Everything here is recorded on this " +
         "page \u2014 nothing is read from a folder.";
     }
 
-    $("homeGrid").innerHTML = HOME_TILES.map(function (t) {
+    $("homeGrid").innerHTML = tiles.map(function (t) {
       // A count that is not in yet reads as blank, not as zero.
       var n = t.count();
       var meta = n
@@ -7661,9 +7904,9 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
         field("dealNewGpCheck", "GP equity check",
           '<input type="text" id="dealNewGpCheck" autocomplete="off" placeholder="$4m">' +
           note("The whole GP cheque on the deal, whoever writes it.")) +
-        field("dealNewMpGpCheck", "MP GP check",
+        field("dealNewMpGpCheck", Firm.short() + " GP check",
           '<input type="text" id="dealNewMpGpCheck" autocomplete="off" placeholder="$1.2m">' +
-          note("MP is Modillion Partners \u2014 our own share of the GP cheque above.")) +
+          note(Firm.short() + " is " + Firm.name() + " \u2014 our own share of the GP cheque above.")) +
         field("dealNewLpCheck", "LP equity check",
           '<input type="text" id="dealNewLpCheck" autocomplete="off" placeholder="$38m">') +
         field("dealNewNote", "Note",
@@ -7806,7 +8049,10 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
      Existing notes are kept. A re-run adds what is new and skips what is
      already there, matched on the source URL and the text.
      ============================================================ */
-  var RESEARCH_ENDPOINT = "/api/research";
+  /* The firm rides on the URL so the server can brief the model as the
+     right firm — and refuse outright if this browser is asking for one
+     it has no grant for. */
+  var RESEARCH_ENDPOINT = "/api/research?" + Firm.param();
 
   /* A web search plus two model calls takes the better part of a minute.
      A button that says the same thing for fifty seconds is indistinguishable
@@ -8440,7 +8686,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
     var seenStamp = {};
 
     function load(set) {
-      return Auth.fetch(ENDPOINT + "?set=" + encodeURIComponent(set), { cache: "no-store" })
+      return Auth.fetch(ENDPOINT + "?set=" + encodeURIComponent(set) + "&" + Firm.param(), { cache: "no-store" })
         .then(function (r) {
           if (!r.ok) throw new Error("no shared records");
           return r.json();
@@ -8459,10 +8705,16 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
 
     function push(set, overlay, who) {
       if (state === "local") return Promise.resolve(false);
-      return Auth.fetch(ENDPOINT + "?set=" + encodeURIComponent(set), {
+      return Auth.fetch(ENDPOINT + "?set=" + encodeURIComponent(set) + "&" + Firm.param(), {
         method: "POST",
         headers: headers(),
-        body: JSON.stringify({ overlay: overlay, by: who || "" })
+        /* THE FIRM TRAVELS INSIDE THE EDIT, not just on the URL, and
+           the server compares the two. It is the only check that can
+           catch this page reading the wrong firm's overlay out of
+           localStorage — that request would otherwise carry a valid
+           token, an authorised firm and a well-formed body, and the
+           union merge it landed in has no undo. See /api/records. */
+        body: JSON.stringify({ overlay: overlay, firm: Firm.id(), by: who || "" })
       }).then(function (r) {
         /* ONLY a 503 means "there is no store, work locally". A 401 means
            the SESSION went, not the store — Auth.fetch has already ended it
@@ -8470,6 +8722,19 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
            would additionally leave the page claiming edits were shared
            after the reader signs back in. */
         if (!r.ok && r.status === 503) state = "local";
+        /* A REFUSAL HAS TO BE SAID OUT LOUD. This used to return false
+           and tell nobody, which was nearly harmless while the only way
+           to get a 403 was being removed from the firm mid-session.
+           With a firm boundary, 403 (wrong firm) and 409 (this edit was
+           written for a different firm) are the routine symptoms of a
+           threading bug — and staying quiet leaves somebody watching
+           their edits sit in localStorage looking saved. */
+        if (!r.ok && (r.status === 403 || r.status === 409)) {
+          state = "blocked";
+          r.json().then(function (j) {
+            toast((j && j.error) || "That edit was not saved.");
+          }).catch(function () { toast("That edit was not saved."); });
+        }
         if (!r.ok) return false;
         /* The stamp this write produced, recorded before the next poll can
            run. Without it a browser reads its own edit as somebody else's
@@ -8495,7 +8760,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
       if (state === "local") {
         return Promise.resolve({ ok: false, reason: "The shared store is not reachable." });
       }
-      return Auth.fetch(ENDPOINT + "?set=" + encodeURIComponent(set) + "&op=publish", {
+      return Auth.fetch(ENDPOINT + "?set=" + encodeURIComponent(set) + "&" + Firm.param() + "&op=publish", {
         method: "POST",
         headers: headers(),
         body: JSON.stringify({ doc: doc, by: who || "", seen: seenCount[set] || 0 })
@@ -8528,12 +8793,25 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
     /* The one thing the team genuinely needs to know at a glance: is
        what I am typing going to reach anybody else? Rendered into the
        source line on all three record tabs. */
+    /* THREE STATES, NOT TWO. "blocked" was added with the firm
+       boundary and it is deliberately not folded into "local": the
+       two have the same symptom — your edits are not reaching anyone
+       — and completely different causes. "The store is unreachable"
+       is something to wait out. "The server refused this" is not, and
+       telling somebody to wait is how they keep working for an hour
+       into a browser nobody else can see. */
     function note() {
-      return state === "shared"
-        ? " <strong>Edits are shared.</strong> They save to the whole team the moment they are " +
-          "made, and other people's arrive here within a few seconds."
-        : " <strong>Edits stay in this browser.</strong> The shared store is not reachable, " +
-          "so nobody else can see them — “Publish to team” will say the same until it is.";
+      if (state === "shared") {
+        return " <strong>Edits are shared.</strong> They save to the whole team the moment they are " +
+               "made, and other people's arrive here within a few seconds.";
+      }
+      if (state === "blocked") {
+        return " <strong>Edits are not being saved.</strong> The server refused them for this " +
+               "firm's records. They are still in this browser — do not rely on that, and " +
+               "reload before doing more.";
+      }
+      return " <strong>Edits stay in this browser.</strong> The shared store is not reachable, " +
+             "so nobody else can see them — “Publish to team” will say the same until it is.";
     }
 
     return {
@@ -8760,7 +9038,14 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
     function tick() {
       if (busy || SharedOverlay.state() === "local") { schedule(); return; }
       busy = true;
-      Auth.fetch(ENDPOINT + "?op=stamps", { cache: "no-store" })
+      /* THE FIRM IS ADDED HERE, not threaded — this request never
+         carried a scope of any kind, because one hash held every set.
+         Left firm-blind against a per-firm server it would be the
+         quietest bug in the change: a page would poll another firm's
+         counters, see them move whenever those people worked, and
+         refetch its own records forever. No leak, no error, and a
+         perfectly good covert channel. */
+      Auth.fetch(ENDPOINT + "?op=stamps&" + Firm.param(), { cache: "no-store" })
         .then(function (r) { return r.ok ? r.json() : null; })
         .then(function (j) {
           if (!j || !j.stamps) return null;
@@ -8933,7 +9218,9 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
     var base = null;                 // as loaded from file or fallback
     var meta = { source: "fallback", generatedAt: null };
     var merged = [];                 // base + overlay, what the UI reads
-    var OVERLAY_KEY = "modillion-crm-overlay";
+    /* Firm.key() — captured HERE, while this module is being defined,
+       which is why the Firm module must resolve above it. See Firm. */
+    var OVERLAY_KEY = Firm.key("crm-overlay");
     var overlay = { patches: {}, conversations: {}, created: [],
                     convPatches: {}, convRemoved: {},
                     sends: {}, sendPatches: {}, sendRemoved: {},
@@ -9241,7 +9528,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
         .then(function (shared) {
           if (shared && shared.overlay) SharedOverlay.mergeInto(overlay, shared.overlay);
           if (shared && shared.base) { origin = "shared"; return shared.base; }
-          return fetch("crm-data.json", { cache: "no-store" })
+          return fetch(seedFile("crm-data.json"), { cache: "no-store" })
             .then(function (r) {
               if (!r.ok) throw new Error("no local CRM file");
               return r.json();
@@ -13508,7 +13795,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
      ============================================================ */
   function exportCrmFile() {
     var blob = new Blob([JSON.stringify(Crm.toFile(), null, 2)], { type: "application/json" });
-    download(blob, "crm-data.json");
+    download(blob, Firm.id() + "-crm-data.json");
     toast("Downloaded — a backup of the records as they stand. \u201CPublish to team\u201D is what makes them everyone's.");
   }
 
@@ -13602,7 +13889,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
     });
 
     download(Xlsx.build(sheets),
-             "modillion-investor-crm-" + new Date().toISOString().slice(0, 10) + ".xlsx");
+             Firm.id() + "-investor-crm-" + new Date().toISOString().slice(0, 10) + ".xlsx");
     toast("Excel workbook downloaded — " + list.length + " investors, " + log.length +
           " conversations, " + sent.length + " materials sent.");
   }
@@ -13652,7 +13939,9 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
     var base = null;
     var meta = { source: "fallback", generatedAt: null };
     var merged = [];
-    var OVERLAY_KEY = "modillion-lp-overlay";
+    /* Firm.key() — captured HERE, while this module is being defined,
+       which is why the Firm module must resolve above it. See Firm. */
+    var OVERLAY_KEY = Firm.key("lp-overlay");
     var overlay = { patches: {}, created: [], conversations: {},
                     convPatches: {}, convRemoved: {},
                     sends: {}, sendPatches: {}, sendRemoved: {},
@@ -13844,7 +14133,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
         .then(function (shared) {
           if (shared && shared.overlay) SharedOverlay.mergeInto(overlay, shared.overlay);
           if (shared && shared.base) { origin = "shared"; return shared.base; }
-          return fetch("lp-data.json", { cache: "no-store" })
+          return fetch(seedFile("lp-data.json"), { cache: "no-store" })
             .then(function (r) {
               if (!r.ok) throw new Error("no local LP file");
               return r.json();
@@ -14018,7 +14307,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
         generatedAt: new Date().toISOString().slice(0, 10),
         source: "local",
         note: "Exported from the dashboard. LPs for our partners and deals — NOT the " +
-              "investor CRM, which is LPs for Modillion. Gitignored — never commit.",
+              "investor CRM, which is LPs for " + Firm.name() + ". Gitignored — never commit.",
         lps: merged.map(function (r) {
           var out = Object.assign({}, r);
           out.archived = archivedNow(r);
@@ -14675,7 +14964,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
         '<td class="crm-actions">' +
           (twins[e.key]
             ? '<button type="button" class="deal-rowaction" data-crm-open-name="' + esc(e.name) +
-              '" title="Also an LP for Modillion — open that record">Investor CRM</button>'
+              '" title="Also an LP for ' + esc(Firm.name()) + ' — open that record">Investor CRM</button>'
             : "") +
           (archived ? "" : RowEdit.trigger("lp", inv.id, e.name)) +
           (archived
@@ -14769,7 +15058,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
              this used to test and is true of nearly everybody here. */
           (twins[e.key]
             ? '<button type="button" class="deal-rowaction" data-crm-open-name="' + esc(e.name) +
-              '" title="Also an LP for Modillion — open that record">Investor CRM</button>'
+              '" title="Also an LP for ' + esc(Firm.name()) + ' — open that record">Investor CRM</button>'
             : "") +
           /* NO DELETE, and that is not an omission. There is no record
              behind this row to delete \u2014 the deal is what puts the firm
@@ -15285,7 +15574,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
         parts.push('<div class="crm-section"><h3>Also on the Investor CRM' +
           '<span class="crm-section__aside">' +
           countOf(twinLog.conversations.length, "conversation") + ' there</span></h3>' +
-          '<p class="crm-research__note">' + esc(e.name) + ' is also an LP for Modillion — ' +
+          '<p class="crm-research__note">' + esc(e.name) + ' is also an LP for ' + esc(Firm.name()) + ' — ' +
           'money we have raised, rather than the capital partner on a deal. That is a ' +
           'different relationship and its log lives on its own record; it is shown here so ' +
           'nobody rings them twice. ' +
@@ -15720,7 +16009,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
     });
 
     download(Xlsx.build(sheets),
-             "modillion-lp-crm-" + new Date().toISOString().slice(0, 10) + ".xlsx");
+             Firm.id() + "-lp-crm-" + new Date().toISOString().slice(0, 10) + ".xlsx");
     toast("Excel workbook downloaded — " + countOf(list.length, "LP partner") + ", " +
           countOf(props.length, "prospect") + ", " + countOf(byDeal.length, "deal row") +
           ", " + countOf(log.length, "conversation") + ".");
@@ -15778,7 +16067,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
       note.textContent = "Already on the LP CRM \u2014 this opens them rather than adding a second.";
       note.setAttribute("data-found", "yes");
     } else if (twin) {
-      note.textContent = "On the Investor CRM as an LP for Modillion. A separate LP CRM record " +
+      note.textContent = "On the Investor CRM as an LP for " + Firm.name() + ". A separate LP CRM record " +
         "is created for the deal side, with their contact details copied across.";
       note.setAttribute("data-found", "yes");
     } else {
@@ -15793,7 +16082,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
 
   $("partnerSaveFileBtn").addEventListener("click", function () {
     var blob = new Blob([JSON.stringify(Lps.toFile(), null, 2)], { type: "application/json" });
-    download(blob, "lp-data.json");
+    download(blob, Firm.id() + "-lp-data.json");
     toast("Downloaded \u2014 a backup of the LP records as they stand. " +
           "\u201CPublish to team\u201D is what makes them everyone's.");
   });
@@ -16044,7 +16333,9 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
     var base = null;
     var meta = { source: "fallback", generatedAt: null, note: "" };
     var merged = [];
-    var OVERLAY_KEY = "modillion-deals-overlay";
+    /* Firm.key() — captured HERE, while this module is being defined,
+       which is why the Firm module must resolve above it. See Firm. */
+    var OVERLAY_KEY = Firm.key("deals-overlay");
     var overlay = { patches: {}, created: [], archived: {}, removed: {} };
 
     function readOverlay() {
@@ -16274,7 +16565,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
         .then(function (shared) {
           if (shared && shared.overlay) SharedOverlay.mergeInto(overlay, shared.overlay);
           if (shared && shared.base) { origin = "shared"; return shared.base; }
-          return fetch("deals-data.json", { cache: "no-store" })
+          return fetch(seedFile("deals-data.json"), { cache: "no-store" })
             .then(function (r) {
               if (!r.ok) throw new Error("no local deals file");
               return r.json();
@@ -16550,7 +16841,9 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
     var base = null;
     var meta = { source: "fallback", generatedAt: null, note: "" };
     var merged = [];
-    var OVERLAY_KEY = "modillion-operator-overlay";
+    /* Firm.key() — captured HERE, while this module is being defined,
+       which is why the Firm module must resolve above it. See Firm. */
+    var OVERLAY_KEY = Firm.key("operator-overlay");
     var overlay = { patches: {}, created: [], archived: {}, removed: {} };
 
     function readOverlay() {
@@ -16740,7 +17033,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
         .then(function (shared) {
           if (shared && shared.overlay) SharedOverlay.mergeInto(overlay, shared.overlay);
           if (shared && shared.base) { origin = "shared"; return shared.base; }
-          return fetch("operator-data.json", { cache: "no-store" })
+          return fetch(seedFile("operator-data.json"), { cache: "no-store" })
             .then(function (r) {
               if (!r.ok) throw new Error("no local operator file");
               return r.json();
@@ -17505,7 +17798,9 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
               'is logged — the rest of the log is written on the record afterwards.</p>' +
             '<div class="crm-edit__grid">' +
               field("opNewConvSummary", "What was said",
-                '<textarea id="opNewConvSummary" placeholder="Intro from Fairwind — they run ' +
+                /* Named a real partner firm, which read as "Fairwind is
+                   somebody else" — wrong on Fairwind's own dashboard. */
+                '<textarea id="opNewConvSummary" placeholder="Intro from a mutual contact — they run ' +
                 'four multifamily assets in Houston"></textarea>', true) +
               field("opNewConvDate", "Date",
                 '<input type="date" id="opNewConvDate" value="' +
@@ -17881,7 +18176,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
      ============================================================ */
   function exportOperatorFile() {
     var blob = new Blob([JSON.stringify(Operators.toFile(), null, 2)], { type: "application/json" });
-    download(blob, "operator-data.json");
+    download(blob, Firm.id() + "-operator-data.json");
     toast("Downloaded — a backup of the records as they stand. \u201CPublish to team\u201D is what makes them everyone's.");
   }
 
@@ -17946,7 +18241,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
     });
 
     download(Xlsx.build(sheets),
-             "modillion-operator-crm-" + new Date().toISOString().slice(0, 10) + ".xlsx");
+             Firm.id() + "-operator-crm-" + new Date().toISOString().slice(0, 10) + ".xlsx");
     toast("Excel workbook downloaded — " + list.length + " operators, " + log.length +
           " conversations, " + byDeal.length + " deal rows.");
   }
@@ -18175,7 +18470,9 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
     var base = null;
     var meta = { source: "fallback", generatedAt: null, note: "" };
     var merged = [];
-    var OVERLAY_KEY = "modillion-competitor-overlay";
+    /* Firm.key() — captured HERE, while this module is being defined,
+       which is why the Firm module must resolve above it. See Firm. */
+    var OVERLAY_KEY = Firm.key("competitor-overlay");
     var overlay = { patches: {}, created: [], archived: {}, removed: {} };
 
     function readOverlay() {
@@ -18314,7 +18611,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
         .then(function (shared) {
           if (shared && shared.overlay) SharedOverlay.mergeInto(overlay, shared.overlay);
           if (shared && shared.base) { origin = "shared"; return shared.base; }
-          return fetch("competitor-data.json", { cache: "no-store" })
+          return fetch(seedFile("competitor-data.json"), { cache: "no-store" })
             .then(function (r) {
               if (!r.ok) throw new Error("no local competitor file");
               return r.json();
@@ -19478,7 +19775,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
      ============================================================ */
   function exportCompetitorFile() {
     var blob = new Blob([JSON.stringify(Competitors.toFile(), null, 2)], { type: "application/json" });
-    download(blob, "competitor-data.json");
+    download(blob, Firm.id() + "-competitor-data.json");
     toast("Downloaded — a backup of the records as they stand. “Publish to team” is what makes them everyone's.");
   }
 
@@ -19524,7 +19821,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
     });
 
     download(Xlsx.build(sheets),
-             "modillion-competitor-tracker-" + new Date().toISOString().slice(0, 10) + ".xlsx");
+             Firm.id() + "-competitor-tracker-" + new Date().toISOString().slice(0, 10) + ".xlsx");
     toast("Excel workbook downloaded — " + list.length + " competitors, " +
           byArticle.length + " article rows.");
   }
@@ -19714,16 +20011,13 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
     // nothing new is published by repeating them here. They are what the
     // assignment notification is sent to; a person with no email on the roster
     // simply does not get one.
-    team: [
-      { id: "dw", name: "David Wolfson", role: "Managing Partner",
-        email: "dwolfson@modillionpartners.com" },
-      { id: "ce", name: "Corey Ernst", role: "Partner",
-        email: "cernst@modillionpartners.com" },
-      { id: "ee", name: "Eric Emrich", role: "Partner, CFO",
-        email: "eemrich@modillionpartners.com" },
-      { id: "jb", name: "John Brosens", role: "Partner",
-        email: "jbrosens@modillionpartners.com" }
-    ],
+    /* Per firm, and only a FALLBACK — the real roster arrives with the
+       tasks record set. Same reasoning as GATE_USERS: one firm's
+       colleagues must not turn up in another firm's assignee list, or
+       in what this page hands the assistant. */
+    team: Firm.people().map(function (p) {
+      return { id: p.id, name: p.name, role: p.role || "", email: p.username };
+    }),
     tasks: []
   };
 
@@ -19732,8 +20026,12 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
     var meta = { source: "fallback" };
     var merged = [];
     var team = [];
-    var OVERLAY_KEY = "modillion-tasks-overlay";
-    var WHO_KEY = "modillion-tasks-whoami";
+    /* Firm.key() — captured HERE, while this module is being defined,
+       which is why the Firm module must resolve above it. See Firm. */
+    var OVERLAY_KEY = Firm.key("tasks-overlay");
+    /* Per firm too: "me" on this machine is a different person, from a
+       different roster, on each firm's dashboard. */
+    var WHO_KEY = Firm.key("tasks-whoami");
     var overlay = { patches: {}, created: [], removed: {} };
 
     function readOverlay() {
@@ -19833,7 +20131,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
         .then(function (shared) {
           if (shared && shared.overlay) SharedOverlay.mergeInto(overlay, shared.overlay);
           if (shared && shared.base) { origin = "shared"; return shared.base; }
-          return fetch("tasks-data.json", { cache: "no-store" })
+          return fetch(seedFile("tasks-data.json"), { cache: "no-store" })
             .then(function (r) {
               if (!r.ok) throw new Error("no local task file");
               return r.json();
@@ -20830,7 +21128,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
   /* ---- exports ------------------------------------------------- */
   function exportTaskFile() {
     var blob = new Blob([JSON.stringify(Tasks.toFile(), null, 2)], { type: "application/json" });
-    download(blob, "tasks-data.json");
+    download(blob, Firm.id() + "-tasks-data.json");
     toast("Downloaded — a backup of the list as it stands. \u201CPublish to team\u201D is what makes it everyone's.");
   }
 
@@ -20846,7 +21144,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
           return [t.title, Tasks.personName(t.assignee) || "Unassigned", t.due || "",
                   t.priority, t.status, t.link, t.created || "", t.done || ""];
         }))
-    }]), "modillion-tasks-" + today() + ".xlsx");
+    }]), Firm.id() + "-tasks-" + today() + ".xlsx");
     toast("Excel workbook downloaded — " + list.length + " tasks.");
   }
 
@@ -21656,7 +21954,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
 
   $("dealSaveFileBtn").addEventListener("click", function () {
     var blob = new Blob([JSON.stringify(Deals.toFile(), null, 2)], { type: "application/json" });
-    download(blob, "deals-data.json");
+    download(blob, Firm.id() + "-deals-data.json");
     toast("Downloaded — a backup of the pipeline as it stands. “Publish to team” is what makes it everyone's.");
   });
 
@@ -21704,12 +22002,13 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
      address and "Mine" matches nothing. Adding a colleague means inviting
      them in Supabase; adding them here is only so the page can say their
      name. */
-  var GATE_USERS = [
-    { id: "dw", name: "David Wolfson", username: "dwolfson@modillionpartners.com" },
-    { id: "ce", name: "Corey Ernst",   username: "cernst@modillionpartners.com" },
-    { id: "ee", name: "Eric Emrich",   username: "eemrich@modillionpartners.com" },
-    { id: "jb", name: "John Brosens",  username: "jbrosens@modillionpartners.com" }
-  ];
+  /* THIS FIRM'S people — see Firm.people(). Still not a permission
+     check, exactly as before: it maps a verified address to a short
+     id and a display name, and an address that is not on it works
+     fine (signedInUser falls through to the token's own address).
+     What changed is only that it is no longer one firm's list shown
+     to every firm. */
+  var GATE_USERS = Firm.people();
 
   /* Whoever the verified session says is here. Every "Mine", every name
      in a corner and every `by` the page writes comes through this, and
@@ -21830,7 +22129,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
      too: a remote answer proposes, it does not commit.
      ============================================================ */
 
-  var AGENT_ENDPOINT = "/api/agent";
+  var AGENT_ENDPOINT = "/api/agent?" + Firm.param();
 
   /* ---- what the agent knows ------------------------------------
      A compact snapshot of the three datasets. The local engine
@@ -23226,7 +23525,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
     // Remembered for the browser session so a static deployment logs one
     // 404 when the tab is opened rather than one on every page load. A
     // newly deployed function is picked up by the next new tab.
-    var PROBE_KEY = "modillion-agent-endpoint";
+    var PROBE_KEY = Firm.key("agent-endpoint");
 
     function probe() {
       try {
@@ -23281,7 +23580,10 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
 
   /* ---- the dock ------------------------------------------------- */
   var Agent = (function () {
-    var LOG_KEY = "modillion-agent-log";
+    /* The agent transcript quotes record content back, so this is one
+       firm's data sitting in localStorage and must not be read under
+       another firm's dock. */
+    var LOG_KEY = Firm.key("agent-log");
     var MAX_TURNS = 60;
 
     var state = { open: false, busy: false, unread: 0, pending: null, messages: [] };
@@ -24927,6 +25229,11 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
      dashboard, because the refusals are on the server.
      ============================================================ */
   (function boot() {
+    /* FIRST, and before the gate can be seen. Branding is cosmetic,
+       but watching one firm's name flip to another's on every load
+       would not look cosmetic to the person reading it. */
+    applyBranding();
+
     Auth.restore();
 
     if (!Auth.signedIn()) {

@@ -76,3 +76,16 @@ tools/snapshot-source.txt
 .env
 .env.*
 !.env.example
+
+# ---------------------------------------------------------------------------
+# PER-FIRM SEED FILES — firms/<id>/*.json
+#
+# The dashboard went multi-tenant and the seed files each module falls back
+# to when Redis is unreachable moved from the site root into one folder per
+# firm. The bare names above still match them (no leading slash, so they
+# match at any depth), but this says it outright, and it catches any file a
+# future firm brings that is not on the list above.
+#
+# Same reason as every pattern above it: these hold investor names,
+# conversation notes and contact details. Nothing under firms/ is code.
+firms/*/*.json
