@@ -13,11 +13,18 @@ Now the data lives in Vercel storage and this script puts it there.
 The repository holds code and nothing else.
 
 WHAT IT SENDS, AND TO WHERE
-    deals-data.json      -> POST /api/records?set=deals&op=publish
-    crm-data.json        -> POST /api/records?set=crm&op=publish
-    operator-data.json   -> POST /api/records?set=operators&op=publish
-    tasks-data.json      -> POST /api/records?set=tasks&op=publish
-    competitor-data.json -> POST /api/records?set=competitors&op=publish
+Files are read from firms/<firm>/ and sent to that firm's records:
+    firms/<firm>/deals-data.json      -> POST ...?set=deals&firm=<firm>&op=publish
+    firms/<firm>/crm-data.json        -> POST ...?set=crm&firm=<firm>&op=publish
+    firms/<firm>/lp-data.json         -> POST ...?set=lps&firm=<firm>&op=publish
+    firms/<firm>/operator-data.json   -> POST ...?set=operators&firm=<firm>&op=publish
+    firms/<firm>/tasks-data.json      -> POST ...?set=tasks&firm=<firm>&op=publish
+    firms/<firm>/competitor-data.json -> POST ...?set=competitors&firm=<firm>&op=publish
+
+--firm IS REQUIRED AND HAS NO DEFAULT. Publishing replaces a set's base
+document and drops the overlay behind it, so the wrong firm here is not a
+misfiled copy — it is another firm's records overwritten and their queued
+edits discarded. A default would put that one typo away.
 
 IT TALKS TO THE SITE, NOT TO THE STORE. This machine never holds the
 Redis credentials — only MODILLION_TOKEN, and only if the
@@ -32,11 +39,11 @@ dashboard's "Publish to team" button instead, which sends what is on
 screen and cannot be out of date. This script is for the initial seed.
 
 USAGE
-    python3 tools/publish.py                      # everything
-    python3 tools/publish.py --only deals         # just the pipeline
-    python3 tools/publish.py --only crm operators # just those record sets
-    python3 tools/publish.py --site https://www.modillionpartners.com
-    python3 tools/publish.py --dry-run            # say what would be sent
+    python3 tools/publish.py --firm modillion                   # everything
+    python3 tools/publish.py --firm fairwind --only deals       # just the pipeline
+    python3 tools/publish.py --firm modillion --only crm operators
+    python3 tools/publish.py --firm modillion --site https://www.modillionpartners.com
+    python3 tools/publish.py --firm modillion --dry-run         # say what would be sent
 
 ENVIRONMENT
     MODILLION_SITE         default https://www.modillionpartners.com
@@ -75,18 +82,33 @@ import urllib.request
 
 DEFAULT_SITE = "https://www.modillionpartners.com"
 
-# name -> (local file, path on the site, what to call it in output)
+# The firms this script will publish to. Kept in step with api/_firms.js by
+# hand — there is no import across the language boundary, and the server
+# refuses an id it does not know, so a drift here fails loudly rather than
+# writing somewhere unexpected.
+FIRMS = ("modillion", "fairwind")
+
+# name -> (local file, set name, what to call it in output)
 TARGETS = {
-    "deals":     ("deals-data.json",     "/api/records?set=deals&op=publish",     "deal pipeline"),
-    "crm":       ("crm-data.json",       "/api/records?set=crm&op=publish",       "investor CRM"),
+    "deals":     ("deals-data.json",     "deals",     "deal pipeline"),
+    "crm":       ("crm-data.json",       "crm",       "investor CRM"),
     # LPs for our partners and deals — the capital partner beside us on a
-    # deal. Deliberately not part of "crm", which is LPs for Modillion.
-    "lps":       ("lp-data.json",        "/api/records?set=lps&op=publish",       "LP CRM"),
-    "operators": ("operator-data.json",  "/api/records?set=operators&op=publish", "operator CRM"),
-    "tasks":     ("tasks-data.json",     "/api/records?set=tasks&op=publish",     "task list"),
-    "competitors": ("competitor-data.json", "/api/records?set=competitors&op=publish",
-                    "competitor tracker"),
+    # deal. Deliberately not part of "crm", which is LPs for the firm itself.
+    "lps":       ("lp-data.json",        "lps",       "LP CRM"),
+    "operators": ("operator-data.json",  "operators", "operator CRM"),
+    "tasks":     ("tasks-data.json",     "tasks",     "task list"),
+    "competitors": ("competitor-data.json", "competitors", "competitor tracker"),
 }
+
+
+def publish_path(set_name, firm):
+    return "/api/records?set=%s&firm=%s&op=publish" % (set_name, firm)
+
+
+def firm_dir(firm):
+    """Seed files live under firms/<id>/ — one folder per firm, no exception
+    for the firm that happened to be here first."""
+    return os.path.join(HERE, "firms", firm)
 
 HERE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
@@ -130,6 +152,13 @@ def describe(name, doc):
 
 def main():
     ap = argparse.ArgumentParser(description="Publish dashboard data to the live site.")
+    # REQUIRED, AND DELIBERATELY WITHOUT A DEFAULT. Publishing replaces a
+    # set's base document AND drops the overlay behind it, so the wrong firm
+    # here is not a misfiled copy — it is another firm's records overwritten
+    # and their queued edits discarded. A default would make that a typo
+    # away; making it required makes it a decision.
+    ap.add_argument("--firm", required=True, choices=sorted(FIRMS),
+                    help="which firm's dashboard to publish to (no default, on purpose)")
     ap.add_argument("--site", default=os.environ.get("MODILLION_SITE", DEFAULT_SITE),
                     help="site root, default %s" % DEFAULT_SITE)
     ap.add_argument("--only", nargs="+", choices=sorted(TARGETS),
@@ -139,10 +168,11 @@ def main():
     args = ap.parse_args()
 
     site = args.site.rstrip("/")
+    firm = args.firm
     key = os.environ.get("MODILLION_TOKEN", "")
     names = args.only or list(TARGETS)
 
-    print("Publishing to %s" % site)
+    print("Publishing %s records to %s" % (firm, site))
     if not key:
         print("No MODILLION_TOKEN set — every request will be refused. "
               "a 403 below if they are not.")
@@ -150,8 +180,8 @@ def main():
 
     failures = 0
     for name in names:
-        filename, path, label = TARGETS[name]
-        local = os.path.join(HERE, filename)
+        filename, set_name, label = TARGETS[name]
+        local = os.path.join(firm_dir(firm), filename)
 
         if not os.path.exists(local):
             print("  SKIP  %-15s %s not found" % (label, filename))
@@ -172,7 +202,7 @@ def main():
             continue
 
         payload = {"doc": doc, "by": "tools/publish.py"}
-        ok, result = post(site + path, payload, key)
+        ok, result = post(site + publish_path(set_name, firm), payload, key)
         if ok:
             print("  OK    %-15s %s  (%s, %.1f KB)" % (label, filename, summary, size / 1024.0))
         else:

@@ -10,10 +10,16 @@
 
    Now both halves live in Redis and the loop is one button.
 
-     GET  /api/records?set=deals          { base, overlay }
-     POST /api/records?set=deals          append an edit
-     POST /api/records?set=deals&op=publish  make edits the new base
-     GET  /api/records?probe=1            configured or not
+     GET  /api/records?set=deals&firm=modillion   { base, overlay }
+     POST /api/records?set=deals&firm=modillion   append an edit
+     POST /api/records?set=deals&firm=…&op=publish  new base
+     GET  /api/records?op=stamps&firm=modillion   the live poll
+     GET  /api/records?probe=1                    configured or not
+
+   `firm` is absent on old bookmarks and defaults to modillion. It is
+   NOT a selector — it is checked against what the signed-in address
+   has been granted, and the id used below is the one _auth.js
+   authorised, never the one the query string asked for.
 
    Six sets: deals, crm, lps, operators, tasks, competitors.
    `deals` arrived on 2026-08-20 when the document mirror was retired
@@ -56,10 +62,11 @@
    ------------------------------------------------------------
    WHO CAN READ, AND WHO CAN WRITE — CHANGED 2026-09-15
 
-   BOTH, NOW, REQUIRE A SIGNED-IN PERSON. Every method below goes
-   through requireUser() in _auth.js, which verifies a Supabase
-   magic-link token and checks the address is on the firm's domain.
-   No token, no records.
+   BOTH, NOW, REQUIRE A SIGNED-IN PERSON WITH A GRANT FOR THE FIRM
+   THEY ASKED FOR. Every method below goes through requireUser() in
+   _auth.js, which verifies a Supabase token and then resolves the
+   requested firm against what that address may reach (_firms.js).
+   No token, no records; the wrong firm, no records.
 
    That is a change in kind, not degree, and it is worth being
    precise about what it replaced:
@@ -88,37 +95,40 @@
    and this file does not understand record content by design. A
    signed-in colleague can still write a note attributed to a
    different colleague. Everyone who gets past requireUser() has the
-   same access to all seven sets; there is no per-record permission
-   here and nowhere to put one while the store holds documents
-   rather than rows. See README.txt.
+   same access to all six of THEIR FIRM'S sets; there is no
+   per-record permission here and nowhere to put one while the store
+   holds documents rather than rows. The firm boundary is real; there
+   is still nothing finer than it. See README.txt.
    ============================================================ */
 
 import { requireUser, authConfigured } from "./_auth.js";
-import {
-  redisConfigured,
-  readBase,
-  writeBase,
-  appendOverlay,
-  readStamps,
-  readOverlay,
-  clearOverlay,
-  overlayLength,
-  trimOverlay
-} from "./_store.js";
+import { redisConfigured, store } from "./_store.js";
 
 /* A whitelist, not a sanitiser: `set` becomes part of a Redis key,
    so anything not on this list must not reach it. */
 const SETS = new Set(["deals", "crm", "lps", "operators", "tasks", "competitors"]);
 
+/* CSRF hygiene, not an access control — note that a MISSING Origin
+   header passes, which is why it was never one.
+
+   A LIST since the dashboard went multi-tenant: a second firm can
+   mean a second hostname, and a single-string check leaves exactly
+   two options, both bad. Either one firm 403s on every write, or the
+   variable gets unset — and an unset variable does not merely relax
+   the check, it also stops the Access-Control-Allow-Origin header
+   being sent at all, which is a different posture than anyone
+   intended. */
 function allow(req, res) {
-  const allowed = process.env.DASHBOARD_ALLOWED_ORIGIN;
-  if (!allowed) return true;
+  const allowed = String(process.env.DASHBOARD_ALLOWED_ORIGIN || "")
+    .split(/[,\s]+/).map(s => s.trim()).filter(Boolean);
+  if (!allowed.length) return true;
   const origin = req.headers.origin || "";
-  if (origin && origin !== allowed) {
+  if (origin && !allowed.includes(origin)) {
     res.status(403).json({ error: "Origin not allowed." });
     return false;
   }
-  res.setHeader("Access-Control-Allow-Origin", allowed);
+  res.setHeader("Access-Control-Allow-Origin", origin && allowed.includes(origin) ? origin : allowed[0]);
+  res.setHeader("Vary", "Origin");
   return true;
 }
 
@@ -148,7 +158,12 @@ export default async function handler(req, res) {
      answers "is the deployment configured" without answering anything
      about the firm. That is worth keeping reachable — it is what you
      curl at three in the afternoon when the dashboard says it cannot
-     reach anything and you need to know which half is missing. */
+     reach anything and you need to know which half is missing.
+
+     IT MUST STAY FIRM-BLIND, and it must stay above the guard. The
+     tempting addition is "which firms exist?" — do not add it. That
+     turns the one open branch into a directory of tenants, readable
+     by anyone with the URL. */
   if (q.probe) {
     res.status(200).json({
       ok: true,
@@ -158,21 +173,37 @@ export default async function handler(req, res) {
     return;
   }
 
-  /* EVERYTHING BELOW THIS LINE REQUIRES A SIGNED-IN PERSON. It is
-     placed here, above the `set` check and above the stamps poll,
-     precisely so that no branch added later can accidentally sit in
-     front of it. */
-  const user = await requireUser(req, res);
+  /* EVERYTHING BELOW THIS LINE REQUIRES A SIGNED-IN PERSON WITH A
+     GRANT FOR THE FIRM THEY ASKED FOR. It is placed here, above the
+     `set` check and above the stamps poll, precisely so that no
+     branch added later can accidentally sit in front of it.
+
+     requireUser does both checks in one call and hands back the
+     AUTHORISED firm. Use `user.firm` from here on and never `q.firm`
+     — they are the same value on every successful request, which is
+     exactly what makes reaching for the wrong one survive review. */
+  const user = await requireUser(req, res, q.firm);
   if (!user) return;
+
+  /* Bound once, to the authorised firm. Nothing below this line can
+     name a different one — see store() in _store.js for why that is
+     a closure rather than a parameter. */
+  const db = store(user.firm);
 
   /* THE LIVE POLL. Every set's change stamp in one small answer, so a
      page can find out whether anything moved without reading a single
      record. This is deliberately ahead of the `set` check below: the
-     question is about all of them at once. */
+     question is about all of them at once — but only within one firm.
+
+     This branch is why the guard above sits where it does. Answering
+     it without a firm check would not leak a record, which is what
+     makes it easy to wave through; it would leak the SHAPE of another
+     firm's day, every two seconds, as a set of counters that move
+     when they are working. */
   if (q.op === "stamps") {
-    const stamps = await readStamps([...SETS]);
+    const stamps = await db.readStamps([...SETS]);
     res.setHeader("Cache-Control", "no-store");
-    res.status(200).json({ ok: true, stamps });
+    res.status(200).json({ ok: true, firm: user.firm, stamps });
     return;
   }
 
@@ -199,14 +230,14 @@ export default async function handler(req, res) {
   try {
     if (req.method === "GET") {
       const [base, overlay, count, stamps] = await Promise.all([
-        readBase(set), readOverlay(set), overlayLength(set), readStamps([set])
+        db.readBase(set), db.readOverlay(set), db.overlayLength(set), db.readStamps([set])
       ]);
       res.setHeader("Cache-Control", "no-store");
       // `count` is how many deltas produced that overlay. The page hands it
       // back when it publishes, so the trim can be exact — see trimOverlay().
       // `stamp` is where this payload sits in the set's history, so the live
       // poll has something to compare against without guessing.
-      res.status(200).json({ ok: true, set, base, overlay, count, stamp: stamps[set] || 0 });
+      res.status(200).json({ ok: true, firm: user.firm, set, base, overlay, count, stamp: stamps[set] || 0 });
       return;
     }
 
@@ -217,6 +248,36 @@ export default async function handler(req, res) {
          self-declared, which is what made "who published this" a question
          nobody could actually answer. */
       const by = user.email;
+
+      /* THE ONE CHECK THAT CATCHES A BUG IN THE BROWSER, and it sits
+         above BOTH branches below because publish is the more
+         destructive of the two — it replaces a base document outright.
+
+         Every other guard here answers "may this person reach this
+         firm". This one answers a different question: "is the page
+         sending what it thinks it is sending?"
+
+         The page namespaces its six localStorage overlays by firm, and
+         the modules capture those key names when they are DEFINED —
+         before any of them runs. If the Firm module ever resolved
+         late, a browser would read firm A's records and post them
+         here under a valid token, an authorised firm id and a
+         well-formed body. Nothing above could refuse it, and the union
+         merge has no undo (see the merge notes in _store.js).
+
+         So the page stamps the firm it believes it is into the body,
+         and this compares the two. It is read from payload.firm, where
+         the page puts it — NOT from inside the overlay. It was written
+         the other way first, which made it dead code that quietly
+         passed everything; a missing stamp is still allowed through on
+         purpose, because an older page cannot assert one. */
+      if (payload.firm && payload.firm !== user.firm) {
+        res.status(409).json({
+          error: "This edit was written for a different firm and has not been saved.",
+          signIn: false
+        });
+        return;
+      }
 
       /* PUBLISH — the old download-commit-push loop, as one call.
          The page sends its fully merged document; it becomes the new
@@ -237,7 +298,7 @@ export default async function handler(req, res) {
           publishedAt: new Date().toISOString(),
           publishedBy: by
         });
-        await writeBase(set, stamped);
+        await db.writeBase(set, stamped);
         /* `seen` is how many deltas the page had folded into the document
            above. Trim exactly those and anything that arrived while it was
            being computed stays queued, to be folded by the next publish.
@@ -246,11 +307,11 @@ export default async function handler(req, res) {
            button, not when this runs on a timer. Absent, the old behaviour
            stands, so an older page still publishes correctly. */
         const seen = Number(payload.seen);
-        if (Number.isFinite(seen) && seen > 0) await trimOverlay(set, seen);
-        else await clearOverlay(set);
-        const after = await readStamps([set]);
+        if (Number.isFinite(seen) && seen > 0) await db.trimOverlay(set, seen);
+        else await db.clearOverlay(set);
+        const after = await db.readStamps([set]);
         res.setHeader("Cache-Control", "no-store");
-        res.status(200).json({ ok: true, set, published: true, base: stamped,
+        res.status(200).json({ ok: true, firm: user.firm, set, published: true, base: stamped,
                                overlay: {}, stamp: after[set] || 0 });
         return;
       }
@@ -259,17 +320,18 @@ export default async function handler(req, res) {
          _store.js for why nothing is read first and why simultaneous
          writers therefore cannot clobber each other. */
       const delta = payload.overlay || payload;
-      await appendOverlay(set, delta);
+
+      await db.appendOverlay(set, delta);
 
       // Return the folded overlay so the writer immediately sees
       // whatever other people have saved since their last load.
       const [overlay, stamps] = await Promise.all([
-        readOverlay(set), readStamps([set])
+        db.readOverlay(set), db.readStamps([set])
       ]);
       res.setHeader("Cache-Control", "no-store");
       // The stamp this write produced. Handed back so the writer's own
       // edit does not read as somebody else's change on the next poll.
-      res.status(200).json({ ok: true, set, overlay, stamp: stamps[set] || 0 });
+      res.status(200).json({ ok: true, firm: user.firm, set, overlay, stamp: stamps[set] || 0 });
       return;
     }
 

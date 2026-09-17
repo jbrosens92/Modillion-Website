@@ -69,23 +69,56 @@
              Nothing secret is configured for these — the public key
              is fetched and cached.
 
-   WHAT THIS DOES NOT DO
+   WHAT THIS ANSWERS, AND WHAT IT STILL DOES NOT
 
-   It answers "is this a signed-in member of the firm", and that is
-   all it answers. Everyone who passes gets the same access to
+   Two questions now, not one:
+
+     is this a signed-in person        the signature, then the claims
+     which FIRM may they reach         _firms.js, via requireUser's
+                                       third argument
+
+   The second arrived when the dashboard went multi-tenant and
+   Fairwind's people got their own sign-in. It is a real boundary:
+   a Modillion token asking for ?firm=fairwind is refused here, and
+   the store below it cannot be reached without a firm id that this
+   file authorised.
+
+   WITHIN a firm, everyone who passes still gets the same access to
    everything. There is no per-record permission here and there is no
-   place to put one, because the store holds seven JSON documents
-   rather than rows anybody can write a policy against. If one
-   partner should not see another's LPs, that is a different and much
-   larger change — see README.txt.
+   place to put one, because the store holds six JSON documents per
+   firm rather than rows anybody can write a policy against. If one
+   Modillion partner should not see another's LPs, that is still a
+   different and much larger change — see README.txt.
+
+   ONE SUPABASE PROJECT FOR BOTH FIRMS, deliberately. Two projects
+   looks tidier and is worse: issuer() below could no longer pin a
+   single `iss`, there would be two JWKS caches, and the page would
+   carry two publishable keys to be chosen between by an untrusted
+   query parameter — an attacker-influenced choice of signing
+   authority, which is a far weaker position than the one this
+   replaces. Separation between the firms is enforced by the grant
+   check, not by having two issuers.
    ============================================================ */
 
 import { createHmac, createPublicKey, verify as verifySignature, timingSafeEqual } from "node:crypto";
+import { grantedFirms, authoriseFirm, FIRM_UNKNOWN } from "./_firms.js";
 
-/* The addresses allowed through. The domain is the normal control;
-   DASHBOARD_ALLOWED_EMAILS narrows it to named people if that is ever
-   wanted. Both are checked AFTER the signature, never instead of it. */
-const ALLOWED_DOMAIN = (process.env.DASHBOARD_ALLOWED_DOMAIN || "modillionpartners.com").toLowerCase();
+/* WHICH FIRM AN ADDRESS MAY REACH now lives in _firms.js, per firm,
+   because "the firm's domain" stopped being a single thing when
+   Fairwind's people got their own sign-in. DASHBOARD_ALLOWED_DOMAIN
+   is still read there, but it means Modillion's domain specifically —
+   read as a global it would admit Fairwind addresses to Modillion.
+
+   Checked AFTER the signature, never instead of it. */
+
+/* DASHBOARD_ALLOWED_EMAILS is a GLOBAL KILL-SWITCH, and only that.
+   It was "narrow the domain to named people" when there was one
+   domain; crossed with per-firm domains that reading is ambiguous and
+   dangerous — set it to name three Modillion partners and every
+   Fairwind user is locked out with a message that is true and
+   useless. So: if it is set, an address must be on it AND be granted
+   the firm it asked for. To narrow one firm, use that firm's entry in
+   _firms.js instead. */
 const ALLOWED_LIST = String(process.env.DASHBOARD_ALLOWED_EMAILS || "")
   .split(/[,\s]+/).map(s => s.trim().toLowerCase()).filter(Boolean);
 
@@ -228,9 +261,19 @@ function checkClaims(claims) {
   const email = String(claims.email || "").trim().toLowerCase();
   if (!email) throw new AuthError(403, "This account has no email address.");
 
-  const domainOk = email.endsWith("@" + ALLOWED_DOMAIN);
-  const listOk = ALLOWED_LIST.length ? ALLOWED_LIST.includes(email) : true;
-  if (!domainOk || !listOk) {
+  /* THE GLOBAL GATE, still here and still first. It used to be
+     `domainOk && listOk`; it is now "resolves to at least one firm",
+     which is the same question asked of a registry instead of a
+     constant. An address granted NOTHING is refused outright.
+
+     Note what is deliberately NOT written here: an empty grant list
+     must never fall through to DEFAULT_FIRM. That inversion — no
+     access reading as ordinary access — is precisely how a gate like
+     this quietly stops existing. */
+  if (ALLOWED_LIST.length && !ALLOWED_LIST.includes(email)) {
+    throw new AuthError(403, "This account is not allowed to use the dashboard.");
+  }
+  if (!grantedFirms(email).length) {
     throw new AuthError(403, "This account is not allowed to use the dashboard.");
   }
 
@@ -281,15 +324,33 @@ export async function verifyToken(token) {
 
    Call at the top of a handler:
 
-     const user = await requireUser(req, res);
+     const user = await requireUser(req, res, req.query.firm);
      if (!user) return;            // it has already answered
+     // user.firm is now the AUTHORISED firm id — use that, never
+     // req.query.firm, for anything that builds a key or a prompt.
 
    Returns the person, or null having already sent the response —
    the same shape as the existing allow() and writable() helpers in
    records.js, so it reads the way the file already reads.
+
+   WHY THE FIRM IS AUTHORISED HERE AND NOT IN A SECOND CALL
+
+   A separate requireFirm(user, id) would read fine and would be one
+   line to forget. Doing both in one call means a handler cannot end
+   up with a verified person and an unchecked firm — the state that
+   every leak in this design would have to pass through.
+
+   It returns ONE id, not the list of firms this person may reach.
+   That is the whole reason the caller cannot get it wrong: given a
+   list, handler code eventually writes
+
+     user.firms.includes(q.firm) ? q.firm : user.firms[0]
+
+   and a dual-access person who mistypes ?firm lands silently in the
+   other firm. One id has nothing to fall back to. See _firms.js.
    ============================================================ */
 
-export async function requireUser(req, res) {
+export async function requireUser(req, res, requestedFirm) {
   /* An unconfigured deployment must FAIL CLOSED. This is the one place
      in the codebase where "not configured" cannot mean "carry on
      without it" — that is exactly the posture being fixed, and a
@@ -312,7 +373,33 @@ export async function requireUser(req, res) {
   }
 
   try {
-    return await verifyToken(m[1].trim());
+    const user = await verifyToken(m[1].trim());
+
+    /* THE FIRM CHECK. Everything past this point in every handler is
+       entitled to assume user.firm is real and granted.
+
+       The two refusals are different kinds of thing and must not be
+       collapsed into one status:
+
+         unknown id   a typo or a stale bookmark. It says nothing
+                      about who is asking, so it is not a permission
+                      failure — 400.
+         not granted  a real refusal — 403, and signIn:false, because
+                      that token is perfectly good and bouncing them
+                      to the sign-in screen would just loop them. */
+    const decided = authoriseFirm(user.email, requestedFirm);
+    if (!decided.ok) {
+      const unknown = decided.reason === FIRM_UNKNOWN;
+      res.status(unknown ? 400 : 403).json({
+        error: unknown
+          ? "Unknown firm."
+          : "This account is not allowed to use that firm's dashboard.",
+        signIn: false
+      });
+      return null;
+    }
+
+    return { id: user.id, email: user.email, firm: decided.firm };
   } catch (e) {
     /* An AuthError is a considered refusal and its message is meant to be
        read. ANYTHING ELSE is a bug in here or an outage at Supabase, and
