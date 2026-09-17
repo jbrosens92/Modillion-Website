@@ -1257,12 +1257,19 @@ button.link-arrow {
    as the category grid, sized up — this is a front door, not a list
    of things to skim, so the tiles are bigger.
 
-   FOUR COLUMNS, FIXED, rather than fitting as many as will go. There
-   are eight workspaces, and eight into four is two full rows with no
-   gap at the end. auto-fill gave five and then three, which left a
-   hole the width of two cards next to the last row — the one thing a
-   front door should not look like. Adding a ninth workspace will leave
-   a gap on purpose; the answer then is a tenth, not auto-fill. */
+   A FIXED NUMBER OF COLUMNS, rather than fitting as many as will go.
+   auto-fill gave five and then three, which left a hole the width of
+   two cards beside the last row — the one thing a front door should
+   not look like.
+
+   WHICH fixed number now depends on how many workspaces the firm has,
+   because firms no longer all have eight. The rule is the one that was
+   always being applied by hand: pick the width that divides the count,
+   so the last row is full. Eight goes into four; six goes into three.
+   A count that divides by neither falls back to four and leaves a gap
+   at the end on purpose — the answer to that is another workspace, not
+   a ragged auto-fill. renderHome() sets data-cols; the widths are
+   below. */
 #wsHome[hidden] { display: none; }
 .dash-home__lede {
   max-width: 620px;
@@ -1272,7 +1279,7 @@ button.link-arrow {
   line-height: 1.6;
 }
 .dash-grid--home {
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(4, 1fr);   /* the fallback; see data-cols */
   /* A REAL GAP, not the 1px hairline the other grids use. Those are
      meant to read as one ruled table; these are eight separate places
      to go, and a tile with air around it looks like something you press
@@ -1281,6 +1288,8 @@ button.link-arrow {
      with its neighbour. */
   gap: 18px;
 }
+.dash-grid--home[data-cols="3"] { grid-template-columns: repeat(3, 1fr); }
+.dash-grid--home[data-cols="4"] { grid-template-columns: repeat(4, 1fr); }
 
 .dash-card--home {
   padding: 40px 36px 32px;
@@ -7949,7 +7958,14 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
         "page \u2014 nothing is read from a folder.";
     }
 
-    $("homeGrid").innerHTML = tiles.map(function (t) {
+    /* The width that leaves no gap at the end: four for eight tiles,
+       three for six. Neither divides? Four, and a short last row —
+       see the note on .dash-grid--home. */
+    var grid = $("homeGrid");
+    grid.setAttribute("data-cols",
+      tiles.length % 4 === 0 ? "4" : (tiles.length % 3 === 0 ? "3" : "4"));
+
+    grid.innerHTML = tiles.map(function (t) {
       // A count that is not in yet reads as blank, not as zero.
       var n = t.count();
       var meta = n
