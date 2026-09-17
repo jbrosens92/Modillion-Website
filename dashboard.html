@@ -4676,7 +4676,17 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
         hero: "page-hero--philly-sunset",
         site: "fairwind-partners.com",
         contact: "",
-        tabs: ["home","docs","closed","raises","operators","crm","partners","tasks","competitors"],
+        /* NO OPERATOR CRM. That tab tracks the sponsors a firm invests
+           ALONGSIDE, and Fairwind is itself the operator — the tab has
+           no subject here. Everything else maps: their deals, their
+           raises, the LPs they raise from, the capital partners beside
+           them on a deal, and other affordable-housing operators as
+           competitors.
+
+           The Operators MODULE still loads, and should: a deal record
+           carries an `operator` name and the deal form autocompletes
+           from it. Only the tab is gone. */
+        tabs: ["home","docs","closed","raises","crm","partners","tasks","competitors"],
         /* EMPTY ON PURPOSE, and not a placeholder to fill casually.
            An empty roster degrades correctly: signedInUser() falls
            back to the address on the token, which is the documented

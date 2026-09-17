@@ -91,7 +91,14 @@ const FIRMS = {
     hero: "page-hero--philly-sunset",
     site: "fairwind-partners.com",
     contact: "",
-    strategy: "a real-estate investment firm",
+    /* Reads into the prompts as "the internal dashboard of Fairwind,
+       <this>." It is what "we" means to the assistant and what the
+       Competitor Tracker treats as a peer, so it does real work —
+       wrong, it does not error, it returns confident research about
+       the wrong industry. Taken from the partnership card on
+       partnerships.html; sharpen it when Fairwind say how they
+       describe themselves. */
+    strategy: "an affordable housing real-estate developer and operator",
     /* Empty on purpose. The roster is what the Task List offers as
        assignees and what Tasks.team() feeds the assistant; seeded with
        Modillion's four names it would put this firm's colleagues'
