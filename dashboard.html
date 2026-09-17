@@ -3833,8 +3833,8 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
             <label class="visually-hidden" for="dealFilterStatus">Filter by status</label>
             <select id="dealFilterStatus"><option value="">Any status</option></select>
 
-            <label class="visually-hidden" for="dealFilterOperator">Filter by operator</label>
-            <select id="dealFilterOperator"><option value="">All operators</option></select>
+            <label class="visually-hidden" data-brand="operator-filter-label" for="dealFilterOperator">Filter by operator</label>
+            <select id="dealFilterOperator" data-brand="operators-all"><option value="">All operators</option></select>
 
             <label class="visually-hidden" for="dealFilterLp">Filter by LP</label>
             <select id="dealFilterLp"><option value="">All LPs</option></select>
@@ -3899,8 +3899,8 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
             <label class="visually-hidden" for="closedFilterStatus">Filter by status</label>
             <select id="closedFilterStatus"><option value="">Any status</option></select>
 
-            <label class="visually-hidden" for="closedFilterOperator">Filter by operator</label>
-            <select id="closedFilterOperator"><option value="">All operators</option></select>
+            <label class="visually-hidden" data-brand="operator-filter-label" for="closedFilterOperator">Filter by operator</label>
+            <select id="closedFilterOperator" data-brand="operators-all"><option value="">All operators</option></select>
 
             <label class="visually-hidden" for="closedFilterLp">Filter by LP</label>
             <select id="closedFilterLp"><option value="">All LPs</option></select>
@@ -4656,6 +4656,11 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
         site: "modillionpartners.com",
         contact: "info@modillionpartners.com",
         tabs: ["home","docs","closed","raises","operators","crm","partners","tasks","competitors"],
+        /* Words this firm uses where another would use a different one.
+           Only what actually differs — everything unlisted falls back to
+           the label written in the markup or the code, so a firm that
+           talks like Modillion needs nothing here. */
+        labels: {},
         /* The roster, and it is per firm for a reason worth stating.
            Left global, a Fairwind user's assignee picker would offer
            Modillion's partners by name — and because Tasks.team()
@@ -4690,7 +4695,26 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
            The Operators MODULE still loads, and should: a deal record
            carries an `operator` name and the deal form autocompletes
            from it. Only the tab is gone. */
-        tabs: ["home","docs","closed","raises","crm","partners","tasks","competitors"],
+        /* NO LP CRM. Modillion keeps two because they hold different
+           populations — investors IT raises from, and the capital
+           partner sitting beside it on a deal. Fairwind raises for its
+           own deals, so those are the same people and one list is the
+           honest shape. The `crm` module survives because it is the
+           richer of the two (research, check size, materials, the
+           conversation log); only the word on the tab changes.
+
+           Nothing breaks by dropping it: a deal's LP name already links
+           to the INVESTOR CRM (see lpNameHtml), and the LP-CRM link only
+           renders when an LP record exists, which here it never will. */
+        tabs: ["home","docs","closed","raises","crm","tasks","competitors"],
+        labels: {
+          crm: "LP CRM",
+          crmOne: "LP",
+          /* Fairwind is always the operator on its own deals, so the
+             column that names one is asking a different question. */
+          operator: "Property Manager",
+          operatorsAll: "All property managers"
+        },
         /* EMPTY ON PURPOSE, and not a placeholder to fill casually.
            An empty roster degrades correctly: signedInUser() falls
            back to the address on the token, which is the documented
@@ -4753,6 +4777,12 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
       contact: function () { return f.contact; },
       tabs:    function () { return f.tabs.slice(); },
       people:  function () { return (f.people || []).slice(); },
+      /* A word this firm uses, or the one the caller already had. Every
+         call site passes its own fallback, so an unlisted label is not a
+         missing one — it is simply unchanged. */
+      label:   function (key, fallback) {
+                 return (f.labels && f.labels[key]) || fallback;
+               },
       has:     function (tab) { return f.tabs.indexOf(tab) >= 0; },
       key:     key,
       /* Appended to every /api/* call. The server ignores it in favour
@@ -4820,6 +4850,25 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
       hero.className = hero.className.replace(/page-hero--[\w-]+/, Firm.hero());
     }
 
+    /* The two deal filters are drawn in static markup and only refilled
+       when there are operators to list, so their resting label has to be
+       set here or it stays "All operators" on a firm that calls them
+       something else. */
+    Array.prototype.forEach.call(
+      document.querySelectorAll('[data-brand="operators-all"] option[value=""]'),
+      function (o) { o.textContent = Firm.label("operatorsAll", "All operators"); }
+    );
+
+    /* The screen-reader label on the same two filters. Invisible, which
+       is exactly why it would have kept saying "operator" on a dashboard
+       that shows "Property Manager" everywhere a sighted reader looks. */
+    Array.prototype.forEach.call(
+      document.querySelectorAll('[data-brand="operator-filter-label"]'),
+      function (el) {
+        el.textContent = "Filter by " + Firm.label("operator", "Operator").toLowerCase();
+      }
+    );
+
     /* HIDDEN, NOT REMOVED — and the difference is not cosmetic.
 
        Every tab button contains its own count span (#tabOperatorCount
@@ -4839,7 +4888,20 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
     Array.prototype.forEach.call(
       document.querySelectorAll(".dash-tabs [data-tab]"),
       function (btn) {
-        if (!Firm.has(btn.getAttribute("data-tab"))) btn.hidden = true;
+        if (!Firm.has(btn.getAttribute("data-tab"))) { btn.hidden = true; return; }
+
+        /* Rename by writing the TEXT NODE, never innerHTML. Each button
+           carries its own count span, and replacing the markup would
+           take that span out of the document — which is the exact
+           failure that removing a tab already caused once: the render
+           for that module then writes to null, throws inside load(),
+           and everything after it silently stops running. */
+        var want = Firm.label(btn.getAttribute("data-tab"), null);
+        if (!want) return;
+        for (var i = 0; i < btn.childNodes.length; i++) {
+          var n = btn.childNodes[i];
+          if (n.nodeType === 3 && n.nodeValue.trim()) { n.nodeValue = want; break; }
+        }
       }
     );
   }
@@ -5380,12 +5442,15 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
         var n = Operators.all().length;
         return n ? n + " operator" + (n === 1 ? "" : "s") : null;
       } },
-    { tab: "crm", label: "Investor CRM", icon: "handshake",
+    { tab: "crm", label: Firm.label("crm", "Investor CRM"), icon: "handshake",
       blurb: "Who has been spoken to and where it got to — check size, the deals they are " +
              "interested in, the research behind them, and a dated log of every conversation.",
       count: function () {
         var n = Crm.all().length;
-        return n ? n + " investor" + (n === 1 ? "" : "s") : null;
+        /* "investor" on a dashboard that also keeps a separate LP list;
+           "LP" on one where this IS the list. */
+        var word = Firm.label("crmOne", "investor");
+        return n ? n + " " + word + (n === 1 ? "" : "s") : null;
       } },
     { tab: "partners", label: "LP CRM", icon: "shield",
       blurb: "The LPs the firm has closed alongside and the ones it is talking to — what " +
@@ -5487,7 +5552,9 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
 
   var DEAL_COLUMNS = [
     { key: "name",       label: "Deal" },
-    { key: "operator",   label: "Operator" },
+    /* "Operator" for a firm that invests alongside one; whatever the
+       reading firm calls that party otherwise — see Firm.label(). */
+    { key: "operator",   label: Firm.label("operator", "Operator") },
     /* WHO THE LP IS, which is not the same question as how big their
        cheque was. "LP check" has been on this table all along and it
        answers neither "who is beside us on this one" nor "what else
@@ -5879,7 +5946,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
       if (RowEdit.on("deal", rec.id)) {
         return RowEdit.form("deal", rec.id, cols.length + 1, [
           ["Deal", RowEdit.text("name", rec.name)],
-          ["Operator", RowEdit.text("operator", rec.operator, ' list="dealOperatorNames"')],
+          [Firm.label("operator", "Operator"), RowEdit.text("operator", rec.operator, ' list="dealOperatorNames"')],
           ["LP", RowEdit.text("lp", rec.lp, ' list="raiseInvestorNames" placeholder="Who is beside us"')],
           ["Status", RowEdit.select("status", Deals.statuses(), rec.status)],
           ["Market", RowEdit.text("market", rec.market)],
@@ -5981,7 +6048,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
     ops.sort();
     fill(scope.prefix + "FilterOperator", ops.map(function (o) {
       return { value: o, label: o };
-    }), "All operators");
+    }), Firm.label("operatorsAll", "All operators"));
 
     // Same rule for the LPs: only the ones actually beside a deal on
     // this tab. A deal naming two of them puts both in the picker, and
@@ -6174,7 +6241,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
       '</div></div>';
 
     var fields = '<div class="crm-edit__grid">' +
-      dealField("Operator", rec.operator) +
+      dealField(Firm.label("operator", "Operator"), rec.operator) +
       dealLpField(rec) +
       dealField("Where", dealAreaLabel(rec.area)) +
       dealField("Status", rec.status + (rec.statusWhy ? " — " + rec.statusWhy : "")) +
@@ -6811,7 +6878,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
     return '<div class="crm-edit"><h3>Edit deal</h3>' +
       '<div class="crm-edit__grid">' +
         field("dealEditName", "Deal name", text("dealEditName", rec.name)) +
-        field("dealEditOperator", "Operator",
+        field("dealEditOperator", Firm.label("operator", "Operator"),
           '<input type="text" id="dealEditOperator" list="dealOperatorNames" value="' +
           esc(rec.operator) + '" autocomplete="off">') +
         field("dealEditLp", "LP",
@@ -7779,7 +7846,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
     var list = Deals.inArea(scope.area);
     var sheets = [{
       name: isClosed ? "Closed deals" : "Deals",
-      rows: [["Deal", "Operator", "LP", "Where", "Status", "Why", "Market", "Asset class",
+      rows: [["Deal", Firm.label("operator", "Operator"), "LP", "Where", "Status", "Why", "Market", "Asset class",
               "Deal size", "GP equity check", Firm.short() + " GP check", "LP equity check",
               "Note", "Added"]]
         .concat(list.map(function (r) {
@@ -7911,7 +7978,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
         field("dealNewStatus", "Status",
           '<select id="dealNewStatus">' + options(DEAL_STATES) + '</select>' +
           note("Anything other than Live is a CRM-side note, shown wherever the deal appears.")) +
-        field("dealNewOperator", "Operator",
+        field("dealNewOperator", Firm.label("operator", "Operator"),
           '<input type="text" id="dealNewOperator" autocomplete="off" list="dealOperatorNames" ' +
             'placeholder="Who runs it">' +
           note("Optional. A name already on the Operator CRM picks the deal up on their record; " +
