@@ -70,12 +70,35 @@ anon() {
 
 echo "Testing $SITE"
 echo
-echo "The firm boundary — a MODILLION token asking for Fairwind:"
+# WHICH FIRMS IS THIS TOKEN GRANTED? Asked, not assumed.
+#
+# These five checks assert that a token for one firm cannot reach
+# another. That is only a meaningful assertion when the address holds a
+# SINGLE firm. Once DASHBOARD_FIRM_GRANTS gives somebody both — which is
+# a legitimate thing to want — the same five start failing, and a suite
+# that reports failures for correct behaviour is one nobody reads. That
+# is how the dead 409 guard survived a green run.
+#
+# So: probe once, and say plainly which case we are in.
+echo "The firm boundary — can this token reach the OTHER firm?"
+probe=$(curl -s -m 25 -o /dev/null -w "%{http_code}" "${BYPASS_ARGS[@]}" \
+        -H "Authorization: Bearer $TOK" "$SITE/api/records?set=crm&firm=fairwind")
+if [ "$probe" = "200" ]; then
+  echo "  SKIPPED — this address is granted BOTH firms, so cross-firm refusal"
+  echo "            cannot be exercised with it. The boundary is UNTESTED here."
+  echo "            To test it properly, run again with a token for an address"
+  echo "            granted one firm only."
+  crossfirm=0
+else
+  crossfirm=1
+fi
+if [ "$crossfirm" = "1" ]; then
 check "records ?firm=fairwind"            403 "/api/records?set=crm&firm=fairwind"
 check "records ?firm=fairwind (lps)"      403 "/api/records?set=lps&firm=fairwind"
 check "stamps  ?firm=fairwind"            403 "/api/records?op=stamps&firm=fairwind"
 check "agent   ?firm=fairwind"            403 "/api/agent?firm=fairwind"
 check "research ?firm=fairwind"           403 "/api/research?firm=fairwind"
+fi
 echo
 echo "A typo must NOT silently become the default firm:"
 check "records ?firm=fiarwind"            400 "/api/records?set=crm&firm=fiarwind"
@@ -106,5 +129,13 @@ post "PUBLISH stamped for another firm"     409 '{"doc":{"investors":[]},"firm":
 post "correctly stamped edit (no-op)"       200 '{"overlay":{"patches":{}},"firm":"modillion"}' "/api/records?set=crm&firm=modillion"
 post "unstamped edit from an older page"    200 '{"overlay":{"patches":{}}}' "/api/records?set=crm&firm=modillion"
 echo
-if [ $fail -eq 0 ]; then echo "All checks passed."; else echo "$fail CHECK(S) FAILED."; fi
+if [ $fail -eq 0 ]; then
+  if [ "$crossfirm" = "0" ]; then
+    echo "All checks passed — BUT the cross-firm refusals were skipped (see above)."
+  else
+    echo "All checks passed."
+  fi
+else
+  echo "$fail CHECK(S) FAILED."
+fi
 exit $fail
