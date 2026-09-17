@@ -78,6 +78,10 @@
 
 import Anthropic from "@anthropic-ai/sdk";
 import { requireUser } from "./_auth.js";
+/* Aliased: `firm` is already this file's word for the SUBJECT being
+   researched. The two must not be confused — one is who is asking,
+   the other is who is being looked up. */
+import { firm as firmProfile } from "./_firms.js";
 
 export const maxDuration = 120;
 
@@ -97,7 +101,7 @@ const WEB_SEARCH_TOOL = {
 /* Kept deliberately close to RESEARCH_SYSTEM in api/agent.js — the two
    are doing the same job for the same firm, and they should not develop
    different ideas about what counts as a source. */
-const SEARCH_SYSTEM = `You are researching one firm for the internal Investor CRM of Modillion Partners, a real-estate investment firm raising capital.
+const searchSystemFor = f => `You are researching one firm for the internal Investor CRM of ${f.name}, ${f.strategy}, raising capital.
 
 What is worth recording: what the firm is (family office, endowment, GP-stakes fund, platform, high-net-worth individual), what it manages, what it invests in, whether it has done real estate or GP-stakes deals, its check sizes if they are public, and anything recent and dated that a person about to email them would want to know.
 
@@ -121,7 +125,12 @@ Rules:
 - If the prose says the firm could not be identified, return no rows at all and say so in unidentified.
 - Do not repeat the same fact in two rows.`;
 
-const ARTICLE_SEARCH_SYSTEM = `You are looking for what has been published about one firm, for the internal Competitor Tracker of Modillion Partners, a real-estate investment firm that writes Co-GP equity and seeds sponsors. The firm you are researching is a COMPETITOR — somebody doing the same thing.
+/* THE STRATEGY LINE IS WHAT "COMPETITOR" MEANS HERE. It is the only
+   thing telling the model which firms count as doing the same job, so
+   a wrong one does not fail — it returns a confident, well-sourced
+   answer about the wrong industry. Per firm, from _firms.js, by the
+   authorised id. */
+const articleSearchSystemFor = f => `You are looking for what has been published about one firm, for the internal Competitor Tracker of ${f.name}, ${f.strategy}. The firm you are researching is a COMPETITOR — somebody doing the same thing.
 
 What is worth finding: news and analysis about this firm from roughly the last two years. Fund closes and fund launches, new capital partners or anchor investors, named deals and joint ventures, senior hires and departures, strategy changes, market entries and exits, and anything a person deciding how seriously to take this competitor would want to have read.
 
@@ -305,14 +314,21 @@ async function shape(client, firm, prose, system, schema) {
 }
 
 export default async function handler(req, res) {
-  const allowed = process.env.RESEARCH_ALLOWED_ORIGIN;
-  if (allowed) {
+  /* A LIST, for the same reason as /api/records: a second firm can
+     mean a second hostname, and a single string forces a choice
+     between 403ing one of them on every call and unsetting the
+     variable — which also stops the Allow-Origin header being sent
+     at all. */
+  const allowed = String(process.env.RESEARCH_ALLOWED_ORIGIN || "")
+    .split(/[,\s]+/).map(s => s.trim()).filter(Boolean);
+  if (allowed.length) {
     const origin = req.headers.origin || "";
-    if (origin && origin !== allowed) {
+    if (origin && !allowed.includes(origin)) {
       res.status(403).json({ error: "Origin not allowed." });
       return;
     }
-    res.setHeader("Access-Control-Allow-Origin", allowed);
+    res.setHeader("Access-Control-Allow-Origin", origin && allowed.includes(origin) ? origin : allowed[0]);
+    res.setHeader("Vary", "Origin");
   }
 
   if (req.method === "OPTIONS") {
@@ -328,8 +344,13 @@ export default async function handler(req, res) {
      The probe below is covered too. It answers a question about the
      deployment rather than about the firm, but it is cheap to gate and
      an ungated diagnostic is how an endpoint quietly stays open. */
-  const user = await requireUser(req, res);
+  const user = await requireUser(req, res, (req.query || {}).firm);
   if (!user) return;
+
+  /* Who is ASKING. Looked up from the authorised id, never from the
+     body — see the note on systemFor() in agent.js for why a system
+     prompt is the one place caller text must not reach. */
+  const profile = firmProfile(user.firm);
 
   // No key is a normal state: the button hides itself rather than failing.
   if (req.method === "GET") {
@@ -351,8 +372,11 @@ export default async function handler(req, res) {
     return;
   }
 
-  const ip = req.headers["x-forwarded-for"] || req.socket?.remoteAddress || "anon";
-  if (throttled(String(ip).split(",")[0].trim())) {
+  /* Per firm and per person rather than per IP — an office behind one
+     NAT egress should not spend another firm's allowance. These are
+     the expensive turns (web_search is billed per search), so this is
+     the throttle that matters more of the two. */
+  if (throttled(user.firm + ":" + (user.id || user.email))) {
     res.status(429).json({ error: "Too many lookups — try again in a minute." });
     return;
   }
@@ -381,7 +405,7 @@ export default async function handler(req, res) {
 
     const prose = await search(
       client, firm, notes,
-      articles ? ARTICLE_SEARCH_SYSTEM : SEARCH_SYSTEM,
+      articles ? articleSearchSystemFor(profile) : searchSystemFor(profile),
       articles ? "Find what has been published about this firm."
                : "Research this firm for the CRM.");
     if (!prose) {
