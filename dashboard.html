@@ -8695,9 +8695,34 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
        from "that was me" without pulling a document to find out. */
     var seenStamp = {};
 
+    /* WHY A REFUSAL IS NOT A FAILURE.
+
+       This used to throw on any !r.ok and the catch below turned all of
+       them into "the store is unreachable, work locally". For a 500 or a
+       dropped connection that is right. For a 403 it is badly wrong, and
+       the way it was wrong is the worst kind:
+
+       a person with no grant for this firm signed in, every request was
+       refused, the page fell back to empty, and boot then declared
+       itself READY. What they saw was a working dashboard with no
+       records in it — indistinguishable from a firm that simply has
+       none yet. It reads as "I got in", which is the opposite of what
+       happened, and it makes the boundary look broken when it is the
+       only part that worked.
+
+       So 403 is recorded separately and boot refuses to open the page. */
+    var denied = null;
+
     function load(set) {
       return Auth.fetch(ENDPOINT + "?set=" + encodeURIComponent(set) + "&" + Firm.param(), { cache: "no-store" })
         .then(function (r) {
+          if (r.status === 403) {
+            return r.json().catch(function () { return {}; }).then(function (j) {
+              denied = (j && j.error) ||
+                "This account does not have access to the " + Firm.name() + " dashboard.";
+              throw new Error("denied");
+            });
+          }
           if (!r.ok) throw new Error("no shared records");
           return r.json();
         })
@@ -8832,6 +8857,9 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
       load: load, push: push, publish: publish,
       merge: merge, mergeInto: mergeInto,
       note: note, state: function () { return state; },
+      /* Null unless the server refused this firm outright. Boot reads it
+         instead of opening the page — see the note on load(). */
+      denied: function () { return denied; },
       seen: function (set) { return seenCount[set] || 0; },
       stamp: function (set) { return seenStamp[set] || 0; }
     };
@@ -22098,6 +22126,13 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
          unauthenticated. Load them now, then show the dashboard. */
       Promise.all([Deals.load(), Crm.load(), Lps.load(), Operators.load(), Tasks.load(),
                    Competitors.load()]).then(function () {
+        /* REFUSED, NOT BROKEN. Signing in proves who somebody is;
+           it does not decide which firm they may read. Supabase
+           authenticates anyone with a valid password, so the gate opens
+           for a colleague from another firm too — and without this the
+           page would go on to render an empty dashboard, which reads as
+           a successful sign-in rather than a refusal. Say so instead. */
+        if (SharedOverlay.denied()) { lock(SharedOverlay.denied()); return; }
         describeSource();
         unlock(who);
       });
@@ -25265,6 +25300,8 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
        session is still good. */
     Promise.all([Deals.load(), Crm.load(), Lps.load(), Operators.load(), Tasks.load(),
                  Competitors.load()]).then(function () {
+      // Same guard as the sign-in path above; both reach this point.
+      if (SharedOverlay.denied()) { lock(SharedOverlay.denied()); return; }
       describeSource();
       var who = signedInUser();
       if (who && who.id) Tasks.setWhoAmI(who.id);
