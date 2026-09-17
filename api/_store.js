@@ -30,10 +30,15 @@
    (see README.txt) and the blob went with it. Nothing here reads a
    folder or stores a file.
 
-   NEITHER THE STORE NOR THE ENDPOINT IS AUTHENTICATED.
-   /api/records answers anyone who asks. This file decides where the
-   data lives and who can lose it; it does not decide who can read
-   it. That remains the separate, deferred piece of work.
+   WHO CAN READ IS DECIDED ELSEWHERE — _auth.js verifies the person
+   and _firms.js decides which firm they may reach. This file decides
+   where the data lives and who can lose it.
+
+   What it DOES enforce is that a firm id is present and real before
+   any key is built. Since the dashboard went multi-tenant the firm is
+   a permission boundary, and the failure mode without that check is
+   silent rather than loud — see KEY() below, and store() at the
+   bottom, which is the only way in.
 
    ------------------------------------------------------------
    WHY THE REPOSITORY CAN BE PUBLIC
@@ -45,7 +50,31 @@
    hazard stops existing rather than being managed.
    ============================================================ */
 
-const KEY = (kind, set) => "modillion:" + kind + ":" + set;
+import { isFirm } from "./_firms.js";
+
+/* ============================================================
+   THE KEY, AND WHY IT THROWS
+
+   `modillion:` is the APPLICATION namespace — the product, not the
+   tenant. The firm is the segment after it, so Modillion's own
+   records read `modillion:modillion:base:crm`. That is momentarily
+   odd to look at and it is the right shape: one rule, no exception
+   carved out for the firm that happened to be here first.
+
+   IT THROWS ON AN UNREGISTERED FIRM, and that single line is the
+   most valuable one in the multi-tenant change. Without it, a firm
+   that failed to arrive builds `modillion:undefined:base:crm` — a
+   perfectly valid key, which reads back null. The page then shows an
+   empty CRM, and thirty seconds later AutoPublish writes the whole
+   document into it. Nothing throws, nothing logs, and the failure is
+   discovered when somebody asks where the records went.
+
+   A 500 is a much better day than that.
+   ============================================================ */
+const KEY = (kind, firm, set) => {
+  if (!isFirm(firm)) throw new Error("Refusing to build a key for an unknown firm: " + String(firm));
+  return "modillion:" + firm + ":" + kind + ":" + set;
+};
 
 /* How many overlay deltas accumulate before a write folds them into
    one. Purely housekeeping — a folded list and a long one read the
@@ -124,8 +153,8 @@ function parse(raw, fallback) {
    moved?" without pulling a 35 KB document to discover that nothing
    has.
 
-   ALL SIX LIVE IN ONE HASH, and that is a billing decision as much
-   as a tidiness one. Upstash charges by the command, not by the
+   ALL SIX OF A FIRM'S LIVE IN ONE HASH, and that is a billing
+   decision as much as a tidiness one. Upstash charges by the command, not by the
    request, so six GETs pipelined into one HTTP call is still six
    commands. HGETALL is one. At a two-second poll with four people
    that is the difference between roughly 350,000 commands a day and
@@ -138,16 +167,29 @@ function parse(raw, fallback) {
    flush either: an empty hash reads as zero everywhere, every page
    sees a difference once, refreshes once, and carries on.
    ============================================================ */
-const STAMP_HASH = "modillion:stamps";
+/* ONE HASH PER FIRM, and it must stay that way. This was a module
+   constant — a single `modillion:stamps` shared by everything — and
+   leaving it that way through the multi-tenant change would have kept
+   working while being wrong: every firm's page would refetch whenever
+   any other firm saved, and readStamps() would hand each firm a
+   per-minute readout of how busy the others are. The constant is gone
+   rather than merely unused, so nothing can reference it by accident.
 
-export async function readStamps(sets) {
+   The billing property the comment above describes is untouched: this
+   is still ONE HGETALL per poll, just against a smaller hash. */
+const stampHash = firm => {
+  if (!isFirm(firm)) throw new Error("Refusing to build a stamp key for an unknown firm: " + String(firm));
+  return "modillion:" + firm + ":stamps";
+};
+
+async function readStamps(firm, sets) {
   const list = (sets || []).slice();
   const out = {};
   if (!list.length) return out;
   /* HGETALL comes back as an object from Upstash's REST API, and as a
      flat [field, value, field, value] array from some clients. Both are
      accepted because which one you get is not worth a bug later. */
-  const raw = await redis(["HGETALL", STAMP_HASH]);
+  const raw = await redis(["HGETALL", stampHash(firm)]);
   const got = {};
   if (Array.isArray(raw)) {
     for (let i = 0; i + 1 < raw.length; i += 2) got[raw[i]] = raw[i + 1];
@@ -161,16 +203,16 @@ export async function readStamps(sets) {
 /* The base document — the same shape crm-data.json has on disk.
    Seeded by tools/publish.py and replaced by a "fold" (see
    /api/records), never edited in place. */
-export async function readBase(set) {
-  return parse(await redis(["GET", KEY("base", set)]), null);
+async function readBase(firm, set) {
+  return parse(await redis(["GET", KEY("base", firm, set)]), null);
 }
 
-export async function writeBase(set, doc) {
+async function writeBase(firm, set, doc) {
   // Stamped in the same round trip, so a fold is never visible to the
   // poll before the poll can tell that it happened.
   await redisPipeline([
-    ["SET", KEY("base", set), JSON.stringify(doc)],
-    ["HINCRBY", STAMP_HASH, set, 1]
+    ["SET", KEY("base", firm, set), JSON.stringify(doc)],
+    ["HINCRBY", stampHash(firm), set, 1]
   ]);
   return doc;
 }
@@ -179,19 +221,19 @@ export async function writeBase(set, doc) {
    atomic, so two people saving at the same instant produce two list
    entries rather than one overwriting the other. Nothing is read
    first, so there is nothing to read stale. */
-export async function appendOverlay(set, delta) {
+async function appendOverlay(firm, set, delta) {
   /* RPUSH and the stamp together. The append is still the atomic thing
      that matters; INCR rides along so no edit can sit in the list
      unannounced. Returns the list length, which is what decides when a
      fold is due. */
   const [len] = await redisPipeline([
-    ["RPUSH", KEY("overlay", set), JSON.stringify(delta)],
-    ["HINCRBY", STAMP_HASH, set, 1]
+    ["RPUSH", KEY("overlay", firm, set), JSON.stringify(delta)],
+    ["HINCRBY", stampHash(firm), set, 1]
   ]);
   if (typeof len === "number" && len >= COMPACT_AT) {
     // Housekeeping, and deliberately best-effort: a failure here
     // costs a longer list, not an edit.
-    try { await compactOverlay(set); } catch (e) { /* leave it long */ }
+    try { await compactOverlay(firm, set); } catch (e) { /* leave it long */ }
   }
   return len;
 }
@@ -203,8 +245,8 @@ function fold(items) {
 /* Fold the deltas in insertion order. The merge is a union, so the
    only thing order decides is which value wins when two people set
    the SAME field — and insertion order is the right answer to that. */
-export async function readOverlay(set) {
-  return fold(await redis(["LRANGE", KEY("overlay", set), "0", "-1"]));
+async function readOverlay(firm, set) {
+  return fold(await redis(["LRANGE", KEY("overlay", firm, set), "0", "-1"]));
 }
 
 /* Drop the N entries we just folded and push the folded result in
@@ -222,8 +264,8 @@ const LUA_COMPACT =
   "redis.call('LPUSH', KEYS[1], ARGV[2]) " +
   "return 1";
 
-export async function compactOverlay(set) {
-  const k = KEY("overlay", set);
+async function compactOverlay(firm, set) {
+  const k = KEY("overlay", firm, set);
   const items = await redis(["LRANGE", k, "0", "-1"]);
   if (!items || items.length < 2) return null;
   const folded = fold(items);
@@ -231,15 +273,15 @@ export async function compactOverlay(set) {
   return folded;
 }
 
-export async function clearOverlay(set) {
-  await redis(["DEL", KEY("overlay", set)]);
+async function clearOverlay(firm, set) {
+  await redis(["DEL", KEY("overlay", firm, set)]);
 }
 
 /* How many deltas are queued right now. Handed to the page on a read so
    that a later publish can say how much of the queue its document
    actually accounts for. */
-export async function overlayLength(set) {
-  const n = await redis(["LLEN", KEY("overlay", set)]);
+async function overlayLength(firm, set) {
+  const n = await redis(["LLEN", KEY("overlay", firm, set)]);
   return typeof n === "number" ? n : 0;
 }
 
@@ -250,10 +292,51 @@ export async function overlayLength(set) {
    while publishing was a button somebody pressed now and then; on a timer
    it becomes a routine way to lose a colleague's edit. Trimming exactly
    what the page had seen leaves anything newer queued for next time. */
-export async function trimOverlay(set, n) {
-  const k = KEY("overlay", set);
+async function trimOverlay(firm, set, n) {
+  const k = KEY("overlay", firm, set);
   if (!(n > 0)) return;
   await redis(["LTRIM", k, String(n), "-1"]);
+}
+
+/* ============================================================
+   store(firm) — THE ONLY WAY IN, AND WHY IT IS A CLOSURE
+
+   Everything above is module-private. A handler gets its nine
+   operations by naming a firm ONCE, and every call after that is
+   bound to it.
+
+   The obvious alternative was to export the functions with `firm` as
+   a leading parameter. It would work, and it would be wrong in a way
+   worth spelling out: /api/records makes eight store calls across
+   five distinct functions, each of which builds its own key. That is
+   eight independent chances to pass the wrong variable — and the
+   consequences are not symmetrical. Forget it on a read and somebody
+   sees an empty CRM. Forget it on compactOverlay() and forty of
+   ANOTHER firm's deltas get folded into one entry: cross-boundary
+   data loss, triggered by volume rather than by any particular
+   action, so it will not happen in testing and it has no undo.
+
+   A closure removes the class. Inside a handler there is no second
+   firm in scope to pass by mistake.
+
+   The firm is validated here rather than at every call, so an
+   unregistered id fails at the top of the request with a name in the
+   message — not eight calls later inside a Redis command.
+   ============================================================ */
+export function store(firm) {
+  if (!isFirm(firm)) throw new Error("No store for an unknown firm: " + String(firm));
+  return {
+    firm,
+    readStamps:    sets        => readStamps(firm, sets),
+    readBase:      set         => readBase(firm, set),
+    writeBase:     (set, doc)  => writeBase(firm, set, doc),
+    appendOverlay: (set, delta) => appendOverlay(firm, set, delta),
+    readOverlay:   set         => readOverlay(firm, set),
+    compactOverlay: set        => compactOverlay(firm, set),
+    clearOverlay:  set         => clearOverlay(firm, set),
+    overlayLength: set         => overlayLength(firm, set),
+    trimOverlay:   (set, n)    => trimOverlay(firm, set, n)
+  };
 }
 
 /* ============================================================
