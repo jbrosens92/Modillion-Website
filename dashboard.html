@@ -2575,6 +2575,11 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
 /* On the roll-up: what is left to find, and what no longer is. */
 .report-table td.raise-short { color: var(--deep-space); font-weight: 500; }
 .raise-over { color: #1D6F42; }
+/* Soft, in the table, reading as the meter's two tones do: the same colour
+   at a fraction of its strength. Not the muted grey this file uses for an
+   absent value — a soft circle is money in a weaker state, and greying it
+   would file it with the em dashes rather than with the figures. */
+.report-table td.raise-soft { color: rgba(45, 58, 81, 0.62); }
 
 @media (max-width: 760px) {
   /* The boxes get their frames back on a phone. There is no column grid
@@ -7423,13 +7428,21 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
       return '<td class="num' + (cls ? " " + cls : "") + '" data-raise-cell="' + key + '">' +
              (v ? esc(v) : '<span class="muted">\u2014</span>') + '</td>';
     }
-    /* Soft-circled is NOT a column here. It is still counted, still shown
-       on the deal's own raise panel and in its meter, still a state a
-       commitment can be in — this list is read to ask how much is left to
-       find, and an indication is not money towards that. It was a column
-       of em dashes on the way to the one figure that answers the
-       question. */
+    /* SOFT IS A COLUMN AGAIN. What it replaces is worth keeping, because
+       it was right at the time: it was "a column of em dashes on the way
+       to the one figure that answers the question", back when nothing on
+       the books carried a soft circle. That stopped being true the day a
+       raise held soft circles and no hard money — with the column gone
+       the row read as though nobody had been asked yet, which is the
+       opposite of what had happened.
+
+       IT SITS BESIDE COMMITTED AND IS NEVER FOLDED INTO IT. Still to
+       raise and % are computed off Committed alone, exactly as before.
+       A soft circle is an indication, not money towards the target, and
+       the whole point of the distinction is lost the moment the two are
+       added together. */
     return num("committed", t.committed ? raiseMoney(t.committed) : "") +
+      num("soft", t.soft ? raiseMoney(t.soft) : "", "raise-soft") +
       /* The column the tab is for. Negative means oversubscribed, and it
          says so rather than printing a minus sign somebody has to work
          out the meaning of at a glance. */
@@ -7504,7 +7517,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
        commitments table in this file and not two that drift apart. */
     return row +
       '<tr class="raise-roll__detail" data-raise-for="' + esc(rec.id) + '">' +
-        '<td colspan="10">' +
+        '<td colspan="11">' +
           (n ? "" : '<p class="raise-empty">Nobody is in yet. Add the first one below.</p>') +
           raiseRows(rec) +
           raiseAddForm(rec, "rollNew_" + rec.id + "_") +
@@ -7518,13 +7531,14 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
       var t = raiseTotals(rec);
       acc.target += t.target || 0;
       acc.committed += t.committed;
+      acc.soft += t.soft;
       // A deal with no target contributes its commitments and no shortfall.
       // Adding zero for it would say the firm needs nothing more on that
       // deal, which is not the same as not knowing.
       if (t.remaining != null && t.remaining > 0) acc.remaining += t.remaining;
       if (t.target == null) acc.untargeted++;
       return acc;
-    }, { target: 0, committed: 0, remaining: 0, untargeted: 0 });
+    }, { target: 0, committed: 0, soft: 0, remaining: 0, untargeted: 0 });
   }
 
   function raiseFootHtml(list) {
@@ -7535,6 +7549,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
     return '<tr><td></td><td>' + esc(countOf(list.length, "raise")) + '</td><td></td><td></td>' +
       num(f.target ? raiseMoney(f.target) : "") +
       num(f.committed ? raiseMoney(f.committed) : "") +
+      num(f.soft ? raiseMoney(f.soft) : "") +
       num(f.remaining ? raiseMoney(f.remaining) : "") +
       num(f.target ? Math.round((f.committed / f.target) * 100) + "%" : "") +
       '<td>' + (f.untargeted
@@ -7556,13 +7571,21 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
      would land on that too. Percentages, so both resolve the same at any
      width; the min-width on the table is what makes a narrow window
      scroll the wrap instead of crushing a deal name into four lines. */
-  var RAISE_COLS = [4, 23, 14, 9, 10, 10, 11, 5, 9, 5]
+  var RAISE_COLS = [4, 21, 12, 8, 10, 10, 10, 10, 5, 6, 4]
     .map(function (w) { return '<col style="width:' + w + '%">'; }).join("");
 
   function raiseTable(list, key) {
     var head = '<tr><th class="raise-roll__toggle"><span class="visually-hidden">' +
-      'Show commitments</span></th><th>Deal or fund</th><th>Sponsor</th><th>Status</th>' +
+      'Show commitments</span></th><th>Deal or fund</th>' +
+      /* THE FIRM'S OWN WORD, the way every other reference to this field
+         already reads it — see the Firm module's labels. Fairwind sponsors
+         its own deals, so the question this column asks there is not "who
+         is the sponsor" but "who manages it"; the fallback keeps it
+         reading Sponsor for anyone who has not said otherwise. It was the
+         last place still hard-coding the word. */
+      '<th>' + esc(Firm.label("operator", "Sponsor")) + '</th><th>Status</th>' +
       '<th class="num">Target</th><th class="num">Committed</th>' +
+      '<th class="num">Soft</th>' +
       '<th class="num">Still to raise</th><th class="num">%</th><th>Close by</th>' +
       '<th class="raise-roll__move"><span class="visually-hidden">Move</span></th></tr>';
 
