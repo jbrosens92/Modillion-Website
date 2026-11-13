@@ -862,6 +862,9 @@ body[data-state="ready"]  .dash-gate { display: none; }
   background: rgba(93, 124, 145, .1);
   box-shadow: inset 0 -1px 0 rgba(93, 124, 145, .45);
 }
+/* For a cell with nothing but the value in it: the whole width of the
+   column is the target, so an empty one is as easy to hit as a full one. */
+.celledit--fill { display: block; }
 .celledit:focus-visible {
   outline: 2px solid var(--oak);
   outline-offset: 1px;
@@ -5720,10 +5723,20 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
     return a ? a.text : "";
   }
 
-  function dealMoneyCell(raw) {
+  function dealMoneyCell(raw, edit) {
     var a = dealAmount(raw);
+    var inner = a ? esc(a.text) : '<span class="muted">—</span>';
     return '<td class="crm-num">' +
-           (a ? esc(a.text) : '<span class="muted">—</span>') + '</td>';
+           (edit ? '<span class="celledit celledit--fill"' + edit + ' title="Click to edit">' +
+                   inner + '</span>'
+                 : inner) + '</td>';
+  }
+
+  /* The hook that makes a cell on the deal list editable where it is
+     written — see CellEdit. Only the live pile gets one: an archived or
+     dead row offers the way back and nothing else, as its buttons do. */
+  function dealEdit(rec, field, pile) {
+    return pile === "live" ? CellEdit.attrs("deal", rec.id, field) : "";
   }
 
   /* A cell that holds prose rather than a figure. It is one line, it is
@@ -5735,9 +5748,14 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
      table cell is advice an auto-layout table is free to ignore, and this
      one did. On a phone the rows are cards and the clip is undone — there
      are no columns left to keep in line. */
-  function dealCell(value, kind, mark) {
-    return '<td><span class="crm-cell crm-cell--' + kind + '"' +
-           (value ? ' title="' + esc(value) + '"' : "") + '>' +
+  function dealCell(value, kind, mark, edit) {
+    /* An editable cell IS the crm-cell rather than a wrapper round it:
+       the clip depends on this span being the flex box that fills the
+       column, and an inline-block around it would let a long value push
+       past its neighbour. */
+    return '<td><span class="crm-cell crm-cell--' + kind + (edit ? " celledit" : "") + '"' +
+           (edit || "") +
+           (value ? ' title="' + esc(value) + '"' : edit ? ' title="Click to edit"' : "") + '>' +
            (value ? '<span class="crm-clip">' + esc(value) + '</span>'
                   : '<span class="muted">—</span>') +
            (mark || "") + '</span></td>';
@@ -5750,9 +5768,11 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
 
      `index` is only passed by the closed list, so the pipeline's copy of
      this column falls through to the plain cell it has always been. */
-  function dealLpCell(rec, index) {
+  function dealLpCell(rec, index, edit) {
     var names = index ? lpNames(rec) : [];
-    if (!names.length) return dealCell(rec.lp, "lp");
+    // Editable only as the plain cell: on a closed deal the names are
+    // links onto the LP CRM, and a click there already means something.
+    if (!names.length) return dealCell(rec.lp, "lp", "", edit);
     return '<td><span class="crm-cell crm-cell--lp" title="' + esc(rec.lp) + '">' +
            '<span class="crm-clip">' +
              names.map(function (n) { return partnerLinkHtml(n, index); }).join(", ") +
@@ -6028,23 +6048,25 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
             // The note itself is off the list — see dealMark(). This says
             // there is one, and the row opens the deal that holds it.
             (rec.note ? dealMark("note", rec.note) : "") + '</span></td>' +
-        dealCell(rec.operator, "operator") +
-        dealLpCell(rec, partnerIndex) +
+        dealCell(rec.operator, "operator", "", dealEdit(rec, "operator", pile)) +
+        dealLpCell(rec, partnerIndex, dealEdit(rec, "lp", pile)) +
         /* "Why" was a second line under the pill and it is on the pill's
            own title now, with no mark of its own beside the note's: a
            mark and a pill sharing this column left the pill about 36px
            to say "LIVE" in, and the why is a sentence ABOUT the status
            rather than a second thing filed next to it. */
-        '<td><span class="crm-cell crm-cell--status">' +
+        '<td><span class="crm-cell crm-cell--status' +
+          (pile === "live" ? ' celledit"' + dealEdit(rec, "status", pile) : '"') + '>' +
           '<span class="crm-pill" data-stage="' + esc(rec.status) + '" title="' +
             esc(rec.status + (rec.statusWhy ? " — " + rec.statusWhy : "")) + '">' +
             esc(rec.status) + '</span></span></td>' +
-        dealCell(rec.market, "market") +
-        dealCell(rec.assetClass, "asset", rec.debt ? dealMark("debt", "Debt is recorded on this deal") : "") +
-        dealMoneyCell(rec.dealSize) +
-        dealMoneyCell(rec.gpCheck) +
-        (Firm.hasField("mpGpCheck") ? dealMoneyCell(rec.mpGpCheck) : "") +
-        dealMoneyCell(rec.lpCheck) +
+        dealCell(rec.market, "market", "", dealEdit(rec, "market", pile)) +
+        dealCell(rec.assetClass, "asset", rec.debt ? dealMark("debt", "Debt is recorded on this deal") : "",
+                 dealEdit(rec, "assetClass", pile)) +
+        dealMoneyCell(rec.dealSize, dealEdit(rec, "dealSize", pile)) +
+        dealMoneyCell(rec.gpCheck, dealEdit(rec, "gpCheck", pile)) +
+        (Firm.hasField("mpGpCheck") ? dealMoneyCell(rec.mpGpCheck, dealEdit(rec, "mpGpCheck", pile)) : "") +
+        dealMoneyCell(rec.lpCheck, dealEdit(rec, "lpCheck", pile)) +
         '<td class="crm-date">' + (rec.addedAt ? esc(rec.addedAt) : '<span class="muted">—</span>') + '</td>' +
         '<td class="crm-actions">' + dealRowActions(rec, pile) + '</td>' +
         '</tr>';
@@ -24883,8 +24905,26 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
         render: function () { renderCompetitorFilters(); renderCompetitors(); },
         priorities: function () { return [""].concat(Competitors.priorities()); },
         marketList: "compMarkets"
+      },
+      deal: {
+        get: function (id) { return Deals.get(id); },
+        patch: function (id, p) { Deals.patch(id, p); },
+        render: function () { renderDeals(); }
       }
     };
+
+    /* A deal's columns are plain strings stored as typed — the money ones
+       included, which are read for display and sorting and never rewritten
+       — so one shape covers all of them. */
+    function dealText(key, placeholder, list) {
+      return {
+        control: "text",
+        placeholder: placeholder,
+        list: list ? function () { return list; } : null,
+        value: function (rec) { return rec[key] || ""; },
+        patch: function (v) { var p = {}; p[key] = v.trim(); return p; }
+      };
+    }
 
     /* One entry per editable field: the control it becomes, the value it
        starts from, and the patch it produces. Adding a field is an entry
@@ -24922,6 +24962,28 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
         placeholder: "Comma separated",
         value: function (rec) { return (rec.markets || []).join(", "); },
         patch: function (v) { return { markets: RowEdit.list(v) }; }
+      },
+
+      /* The deal list. The name is not here: the row opens the deal, and
+         the name is what people click to do it. Added is not here either —
+         a date somebody could change is not a record of anything. */
+      operator:   dealText("operator", "", "dealOperatorNames"),
+      lp:         dealText("lp", "Who is beside us", "raiseInvestorNames"),
+      market:     dealText("market"),
+      assetClass: dealText("assetClass"),
+      dealSize:   dealText("dealSize", "$42m"),
+      gpCheck:    dealText("gpCheck", "$4m"),
+      mpGpCheck:  dealText("mpGpCheck", "$1.2m"),
+      lpCheck:    dealText("lpCheck", "$38m"),
+      status: {
+        control: "select",
+        options: function () { return Deals.statuses(); },
+        value: function (rec) { return rec.status || ""; },
+        // The same rule the row form follows: the date moves with the
+        // status. This only runs when the value changed, so it always does.
+        patch: function (v) {
+          return { status: v, statusSetAt: new Date().toISOString().slice(0, 10) };
+        }
       }
     };
 
@@ -24933,6 +24995,14 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
       return '<span class="celledit" tabindex="0" role="button"' +
         ' data-celledit="' + esc(kind + ":" + id + ":" + field) + '"' +
         ' title="Click to edit">' + displayHtml + '</span>';
+    }
+
+    /* The same hook as cell(), as attributes for an element that already
+       exists — for a cell whose own markup has to stay the box it is. The
+       caller adds the celledit class. */
+    function attrs(kind, id, field) {
+      if (!KINDS[kind] || !FIELDS[field]) return "";
+      return ' tabindex="0" role="button" data-celledit="' + esc(kind + ":" + id + ":" + field) + '"';
     }
 
     function close(save) {
@@ -25067,7 +25137,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
       }, 0);
     }, true);
 
-    return { cell: cell, held: function () { return !!open; } };
+    return { cell: cell, attrs: attrs, held: function () { return !!open; } };
   })();
 
   var RowEdit = (function () {
