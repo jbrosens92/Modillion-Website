@@ -3173,6 +3173,9 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
 /* Under contract is the live end of the pipeline, not an ending, so it
    reads in the house blue rather than in a colour that means stopped. */
 .deal-status[data-state="In Contract"] { background: rgba(119, 166, 182, 0.18); color: #3E6C7C; }
+/* A term sheet out is a step short of that and still being worked, so it
+   takes the same blue. */
+.deal-status[data-state="Term Sheet Sent"] { background: rgba(119, 166, 182, 0.18); color: #3E6C7C; }
 
 /* A deal added on the pipeline before its OneDrive folder exists. It sits in
    the list with the folders it will one day join and says plainly that there
@@ -11016,7 +11019,7 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
      carry its own list — see mergeStages(), which folds this one in rather
      than being replaced by it, so a status added here reaches everybody
      without a data migration first. */
-  var DEAL_STATES_BUILTIN = ["Live", "In Contract", "On hold", "Dead", "Closed"];
+  var DEAL_STATES_BUILTIN = ["Live", "Term Sheet Sent", "In Contract", "On hold", "Dead", "Closed"];
   var DEAL_STATES = DEAL_STATES_BUILTIN.slice();
 
   var Interpreter = (function () {
@@ -11230,7 +11233,8 @@ body.is-reordering { cursor: grabbing; user-select: none; -webkit-user-select: n
      The badge is a separate question: it shows for every status except
      Live, because Live is the absence of news rather than news. */
   function dealStruck(status) {
-    return !!status && status.status !== "Live" && status.status !== "In Contract";
+    return !!status && status.status !== "Live" &&
+           status.status !== "Term Sheet Sent" && status.status !== "In Contract";
   }
 
   function dealTag(name) {
